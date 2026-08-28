@@ -3,6 +3,7 @@ namespace MIS.Domain.Entities;
 public sealed class User
 {
     private readonly List<UserRole> _userRoles = [];
+    private readonly List<UserAccessGrant> _accessGrants = [];
 
     private User()
     {
@@ -44,6 +45,8 @@ public sealed class User
 
     public bool IsActive { get; private set; } = true;
 
+    public int AccessVersion { get; private set; } = 1;
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     public DateTimeOffset? UpdatedAt { get; private set; }
@@ -51,6 +54,8 @@ public sealed class User
     public DateTimeOffset? LastLoginAt { get; private set; }
 
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles.AsReadOnly();
+
+    public IReadOnlyCollection<UserAccessGrant> AccessGrants => _accessGrants.AsReadOnly();
 
     public void SetPasswordHash(string passwordHash, DateTimeOffset updatedAt)
     {
@@ -71,6 +76,29 @@ public sealed class User
     {
         LastLoginAt = loggedInAt;
         UpdatedAt = loggedInAt;
+    }
+
+    public void SetActive(bool isActive, DateTimeOffset updatedAt)
+    {
+        IsActive = isActive;
+        AccessVersion++;
+        UpdatedAt = updatedAt;
+    }
+
+    public void InvalidateAccess(DateTimeOffset updatedAt)
+    {
+        AccessVersion++;
+        UpdatedAt = updatedAt;
+    }
+
+    public void UpdateIdentity(string fullName, string email, Guid departmentId, DateTimeOffset updatedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        FullName = fullName.Trim();
+        Email = email.Trim().ToLowerInvariant();
+        DepartmentId = departmentId;
+        UpdatedAt = updatedAt;
     }
 
     public void AssignRole(Role role, DateTimeOffset createdAt)

@@ -33,4 +33,9 @@ public sealed class CurrentUserContext : ICurrentUserContext
         .Select(claim => claim.Value)
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToArray();
+
+    public IReadOnlyCollection<string> Permissions => User.FindAll(MIS.Domain.Constants.SystemPermissionCodes.ClaimType)
+        .Select(claim => claim.Value)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
 }

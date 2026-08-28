@@ -15,6 +15,8 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
 
     public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<UserAccessGrant> UserAccessGrants => Set<UserAccessGrant>();
+    public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Position> Positions => Set<Position>();
     public DbSet<Branch> Branches => Set<Branch>();
@@ -62,6 +64,20 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<CollectionImportRow> CollectionImportRows => Set<CollectionImportRow>();
     public DbSet<CollectionAttachment> CollectionAttachments => Set<CollectionAttachment>();
     public DbSet<BankPortfolioImport> BankPortfolioImports => Set<BankPortfolioImport>();
+    public DbSet<FinanceLegalEntity> FinanceLegalEntities => Set<FinanceLegalEntity>();
+    public DbSet<FinanceCurrency> FinanceCurrencies => Set<FinanceCurrency>();
+    public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
+    public DbSet<FinanceAccount> FinanceAccounts => Set<FinanceAccount>();
+    public DbSet<AccountingEvent> AccountingEvents => Set<AccountingEvent>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
+    public DbSet<ClientLedgerEntry> ClientLedgerEntries => Set<ClientLedgerEntry>();
+    public DbSet<FinancialAuditLog> FinancialAuditLogs => Set<FinancialAuditLog>();
+    public DbSet<CollectionFinancialReceipt> CollectionFinancialReceipts => Set<CollectionFinancialReceipt>();
+    public DbSet<CollectionPaymentAllocation> CollectionPaymentAllocations => Set<CollectionPaymentAllocation>();
+    public DbSet<CollectorCustodyAccount> CollectorCustodyAccounts => Set<CollectorCustodyAccount>();
+    public DbSet<CollectorCustodyTransaction> CollectorCustodyTransactions => Set<CollectorCustodyTransaction>();
+    public DbSet<CollectionClearingEvent> CollectionClearingEvents => Set<CollectionClearingEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -38,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     isLoading = false,
     leftIcon,
     rightIcon,
-    size = 'lg',
+    size = 'md',
     variant = 'primary',
     ...props
   },

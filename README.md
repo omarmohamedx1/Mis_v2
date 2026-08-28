@@ -51,6 +51,19 @@ MIS/
 - Node.js 24+
 - PostgreSQL
 
+## Administration Center
+
+Administrators are routed to `/admin/dashboard`. The administration center provides:
+
+- a decision queue for pending, expiring, privileged, and unused access;
+- account provisioning, secure temporary-password reset, activation, and immediate suspension;
+- granular permissions for current and planned modules with own/team/department/client/all scopes;
+- explicit impact review, business justification, responsibility acknowledgement, and typed confirmation before access is granted;
+- client-scoped Collections access synchronized with backend row-level organization access;
+- an immutable administration audit trail and immediate JWT invalidation after access, password, or account-status changes.
+
+The users supplied in the initial operating directory are seeded in development as inactive, non-login accounts. Their department/client relationships are saved only as `PENDING` access proposals. An administrator must set a secure temporary password, complete the access review, and activate each account separately.
+
 ## Backend Setup
 
 The backend does not store secrets in `appsettings.json`. Configure sensitive values with environment variables or user secrets.
@@ -183,6 +196,19 @@ Routes:
 - `/collections/settings` - audited client, portfolio, target, PTP policy, and bucket configuration
 - `/collections/branding` - validated bank/client logo management with polished fallback identity marks
 - `/collections/profile` and `/hr/profile` - self-service account, login email, and password security
+- `/finance/dashboard` - posted-ledger finance command center with client-money separation
+- `/finance/journals` and `/finance/journals/:id` - journal workflow, approval, posting, and linked reversal
+- `/finance/accounts` - bilingual chart of accounts and live posted balances
+- `/finance/periods` - fiscal-year initialization, soft close, close, and controlled reopen
+- `/finance/reports` - as-of trial balance sourced from posted/reversed journal chains
+
+## Accounting & Finance Module
+
+Finance is implemented as a bounded context inside the existing modular monolith. PostgreSQL schema `finance` owns legal entities, currencies, accounting periods, accounts, accounting events, journal headers/lines, the client subledger, and append-only financial audit records. The initial chart separates collection-channel assets from client-money liabilities and company revenue.
+
+Approving a Collections payment now performs the operational balance update and the `CollectionConfirmed` accounting event, balanced journal, client-subledger entry, audit record, and source-to-journal link inside the same serializable database transaction. A failure rolls back the complete approval. Database uniqueness protects the source event and idempotency key, and a payment can link to only one financial journal.
+
+Manual journals follow `DRAFT -> PENDING_APPROVAL -> APPROVED -> POSTED`. The maker cannot approve their own journal, closed periods reject posting, control accounts require specialized access and dimensions, and posted entries are corrected through linked reversals rather than editing or deletion. The current implementation posts EGP at rate 1 and deliberately blocks foreign-currency posting until an approved exchange-rate source/profile is configured.
 
 ## Enterprise Collections Module
 

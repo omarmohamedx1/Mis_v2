@@ -1,0 +1,8 @@
+10:05:53 PM [vite] (client) [console.error] The final argument passed to useEffect changed size between renders. The order and size of this array must remain constant.
+
+Previous: [, , [object Object],[object Object],[object Object],[object Object]]
+Incoming: [, , , [object Object],[object Object],[object Object],[object Object]]
+10:05:53 PM [vite] (client) [console.error] The final argument passed to useEffect changed size between renders. The order and size of this array must remain constant.
+
+Previous: [, , [object Object],[object Object],[object Object],[object Object],[object Object],[object Object]]
+Incoming: [, , , [object Object],[object Object],[object Object],[object Object],[object Object],[object Object]]

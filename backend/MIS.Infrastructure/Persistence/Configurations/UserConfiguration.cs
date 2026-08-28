@@ -36,6 +36,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasDefaultValue(true)
             .IsRequired();
 
+        builder.Property(user => user.AccessVersion)
+            .HasDefaultValue(1)
+            .IsRequired();
+
         builder.Property(user => user.CreatedAt)
             .IsRequired();
 
@@ -59,6 +63,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(user => user.UserRoles)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(user => user.AccessGrants)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

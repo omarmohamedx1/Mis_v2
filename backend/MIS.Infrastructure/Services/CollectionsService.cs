@@ -15,9 +15,10 @@ public sealed class CollectionsService : ICollectionsService
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserContext _user;
+    private readonly IFinancePostingService _financePosting;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public CollectionsService(ApplicationDbContext db, ICurrentUserContext user) { _db = db; _user = user; }
+    public CollectionsService(ApplicationDbContext db, ICurrentUserContext user, IFinancePostingService financePosting) { _db = db; _user = user; _financePosting = financePosting; }
 
     public async Task<CollectionDashboardDto> GetDashboardAsync(Guid? organizationId, CancellationToken token)
     {
@@ -179,7 +180,7 @@ public sealed class CollectionsService : ICollectionsService
         var collectionCase = await AccessibleCases().SingleOrDefaultAsync(x => x.Id == caseId, token) ?? throw new HrNotFoundException("Collection case was not found.");
         if (request.Amount <= 0 || request.PaymentDate > CairoToday() || string.IsNullOrWhiteSpace(request.ReferenceNumber)) throw new HrValidationException("A positive amount, non-future payment date, and reference number are required.");
         var duplicate = await _db.CollectionPayments.AnyAsync(x => x.ReferenceNumber.ToLower() == request.ReferenceNumber.Trim().ToLower(), token); if (duplicate) throw new HrConflictException("A payment with this reference number already exists.");
-        var payment = new CollectionPayment(caseId, request.Amount, request.PaymentDate, request.Method, request.ReferenceNumber, _user.UserId, null, DateTimeOffset.UtcNow);
+        var payment = new CollectionPayment(caseId, request.Amount, request.PaymentDate, request.Method, request.ReferenceNumber, _user.UserId, null, DateTimeOffset.UtcNow, request.CurrencyCode);
         _db.CollectionPayments.Add(payment); _db.CollectionActivities.Add(new CollectionActivity(caseId, CollectionsValues.ActivityTypes.Payment, payment.Status, null, request.Method, _user.UserId, payment.SubmittedAt, null)); AddAudit("PaymentSubmitted", payment, caseId, null, request); await _db.SaveChangesAsync(token);
         return new CollectionPaymentDto(payment.Id, caseId, collectionCase.CaseNumber, await CustomerNameAsync(collectionCase.CustomerId, token), payment.Amount, payment.PaymentDate, payment.Method, payment.ReferenceNumber, payment.Status, _user.Username, payment.SubmittedAt, null, null, null);
     }
@@ -192,6 +193,7 @@ public sealed class CollectionsService : ICollectionsService
         var before = new { payment.Status, payment.VerifiedById, payment.RejectionReason }; payment.Review(_user.UserId, request.Approve, request.RejectionReason, true, DateTimeOffset.UtcNow);
         if (request.Approve)
         {
+            await _financePosting.PostApprovedCollectionAsync(payment, payment.Case, token);
             payment.Case.RecordApprovedPayment(payment.Amount, payment.PaymentDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), DateTimeOffset.UtcNow);
             var policy = await GetPtpPolicyAsync(payment.CaseId, token); var promises = await _db.CollectionPromisesToPay.Where(x => x.CaseId == payment.CaseId && x.Status != CollectionsValues.PromiseStatuses.Cancelled && x.Status != CollectionsValues.PromiseStatuses.Rescheduled).ToArrayAsync(token);
             foreach (var promise in promises)
@@ -328,7 +330,7 @@ public sealed class CollectionsService : ICollectionsService
 
     public async Task<PagedResultDto<CollectionAuditDto>> GetAuditAsync(int page, int pageSize, string? search, Guid? caseId, CancellationToken token)
     {
-        ValidatePage(page, pageSize); if (!HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager) && !HasRole(SystemRoleNames.CollectionsAuditor)) throw new HrForbiddenException("You do not have permission to view collection audit history.");
+        ValidatePage(page, pageSize); if (!HasPermission(SystemPermissionCodes.CollectionsAuditView) && !HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager) && !HasRole(SystemRoleNames.CollectionsAuditor)) throw new HrForbiddenException("You do not have permission to view collection audit history.");
         var query = _db.CollectionAuditLogs.AsNoTracking(); if (caseId.HasValue) query = query.Where(x => x.CaseId == caseId);
         if (!string.IsNullOrWhiteSpace(search)) { var value = search.Trim().ToLower(); query = query.Where(x => x.Action.ToLower().Contains(value) || x.EntityType.ToLower().Contains(value) || (x.User != null && x.User.Username.ToLower().Contains(value))); }
         var total = await query.CountAsync(token); var rows = await query.OrderByDescending(x => x.OccurredAt).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new CollectionAuditDto(x.Id, x.User == null ? "System" : x.User.Username, x.Action, x.EntityType, x.EntityId, x.CaseId, x.BeforeJson, x.AfterJson, x.Source, x.OccurredAt)).ToArrayAsync(token); return Page(rows, total, page, pageSize);
@@ -370,7 +372,7 @@ public sealed class CollectionsService : ICollectionsService
     private IQueryable<CollectionCase> AccessibleCases()
     {
         var userId = _user.UserId; if (IsGlobalRole()) return _db.CollectionCases.Where(x => !x.IsArchived);
-        var isSupervisor = HasRole(SystemRoleNames.CollectionsSupervisor); var isCollector = HasRole(SystemRoleNames.CollectionsCollector); var isClientViewer = HasRole(SystemRoleNames.CollectionsClientViewer);
+        var isSupervisor = HasRole(SystemRoleNames.CollectionsSupervisor); var isCollector = HasRole(SystemRoleNames.CollectionsCollector); var isClientViewer = HasRole(SystemRoleNames.CollectionsClientViewer) || HasPermission("collections.case.view");
         return _db.CollectionCases.Where(x => !x.IsArchived && (
             (isCollector && x.AssignedCollectorId == userId) ||
             (isSupervisor && ((x.AssignedTeam != null && x.AssignedTeam.SupervisorId == userId) || (x.AssignedTeamId == null && _db.CollectionUserAccess.Any(a => a.UserId == userId && a.OrganizationId == x.Portfolio.OrganizationId && (a.PortfolioId == null || a.PortfolioId == x.PortfolioId))))) ||
@@ -412,12 +414,13 @@ public sealed class CollectionsService : ICollectionsService
         return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localTime, timeZone), TimeSpan.Zero);
     }
     private bool HasRole(string role) => _user.Roles.Contains(role, StringComparer.OrdinalIgnoreCase);
+    private bool HasPermission(string permission) => _user.Permissions.Contains("*", StringComparer.OrdinalIgnoreCase) || _user.Permissions.Contains(permission, StringComparer.OrdinalIgnoreCase);
     private bool IsGlobalRole() => HasRole(SystemRoleNames.Admin) || HasRole(SystemRoleNames.CollectionsOperationsManager) || HasRole(SystemRoleNames.CollectionsReviewer) || HasRole(SystemRoleNames.CollectionsAuditor);
-    private bool CanRevealSensitive() => HasRole(SystemRoleNames.Admin) || HasRole(SystemRoleNames.CollectionsOperationsManager) || HasRole(SystemRoleNames.CollectionsSupervisor) || HasRole(SystemRoleNames.CollectionsAuditor);
-    private bool CanSearchSensitive() => CanRevealSensitive(); private bool CanAssign() => HasRole(SystemRoleNames.Admin) || HasRole(SystemRoleNames.CollectionsOperationsManager) || HasRole(SystemRoleNames.CollectionsSupervisor);
-    private bool CanReviewPayments() => HasRole(SystemRoleNames.Admin) || HasRole(SystemRoleNames.CollectionsOperationsManager) || HasRole(SystemRoleNames.CollectionsReviewer);
-    private void EnsureConfigurationManage() { if (!HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager)) throw new HrForbiddenException("Only Collections operations management can change client configuration."); }
-    private void EnsureOperationalWrite() { if (!HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager) && !HasRole(SystemRoleNames.CollectionsSupervisor) && !HasRole(SystemRoleNames.CollectionsCollector)) throw new HrForbiddenException("Your Collections role is read-only for this operation."); }
+    private bool CanRevealSensitive() => HasPermission(SystemPermissionCodes.CollectionsSensitiveView) || HasRole(SystemRoleNames.Admin) || HasRole(SystemRoleNames.CollectionsOperationsManager) || HasRole(SystemRoleNames.CollectionsSupervisor) || HasRole(SystemRoleNames.CollectionsAuditor);
+    private bool CanSearchSensitive() => CanRevealSensitive(); private bool CanAssign() => HasPermission(SystemPermissionCodes.CollectionsAssignmentManage) || HasRole(SystemRoleNames.Admin) || HasRole(SystemRoleNames.CollectionsOperationsManager) || HasRole(SystemRoleNames.CollectionsSupervisor);
+    private bool CanReviewPayments() => HasPermission(SystemPermissionCodes.CollectionsPaymentApprove) || HasRole(SystemRoleNames.Admin) || HasRole(SystemRoleNames.CollectionsOperationsManager) || HasRole(SystemRoleNames.CollectionsReviewer);
+    private void EnsureConfigurationManage() { if (!HasPermission(SystemPermissionCodes.CollectionsConfigurationManage) && !HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager)) throw new HrForbiddenException("Only Collections operations management can change client configuration."); }
+    private void EnsureOperationalWrite() { if (!_user.Permissions.Any(x => x is "*" or "collections.activity.manage" or "collections.ptp.manage" or "collections.payment.submit" or "collections.visit.manage" or "collections.complaint.manage") && !HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager) && !HasRole(SystemRoleNames.CollectionsSupervisor) && !HasRole(SystemRoleNames.CollectionsCollector)) throw new HrForbiddenException("Your Collections access is read-only for this operation."); }
     private async Task<(int GraceDays, decimal ToleranceAmount)> GetPtpPolicyAsync(Guid caseId, CancellationToken token)
     {
         var settings = await _db.CollectionCases.AsNoTracking().Where(x => x.Id == caseId).Select(x => new { Portfolio = x.Portfolio.SettingsJson, Organization = x.Portfolio.Organization.SettingsJson }).SingleAsync(token);

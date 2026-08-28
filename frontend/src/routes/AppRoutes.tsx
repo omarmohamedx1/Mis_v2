@@ -3,10 +3,14 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { HrLayout } from '../components/layout/HrLayout';
 import { CollectionsLayout } from '../components/layout/CollectionsLayout';
+import { AdminLayout } from '../components/layout/AdminLayout';
+import { FinanceLayout } from '../components/layout/FinanceLayout';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { UnauthorizedPage } from '../pages/UnauthorizedPage';
 import { DepartmentHome } from './DepartmentHome';
 import { ProtectedRoute } from './ProtectedRoute';
+
+const ModuleSelectorPage = lazy(() => import('../pages/modules/ModuleSelectorPage').then((module) => ({ default: module.ModuleSelectorPage })));
 
 const HrDashboardPage = lazy(() => import('../pages/hr/HrDashboardPage').then((module) => ({ default: module.HrDashboardPage })));
 const HrEmployeesPage = lazy(() => import('../pages/hr/HrEmployeesPage').then((module) => ({ default: module.HrEmployeesPage })));
@@ -50,6 +54,17 @@ const BankDcrPage = lazy(() => import('../pages/banks/BankDcrPage').then((module
 const BankComplaintsManagementPage = lazy(() => import('../pages/banks/BankComplaintsManagementPage').then((module) => ({ default: module.BankComplaintsManagementPage })));
 const BankArchivePage = lazy(() => import('../pages/banks/BankArchivePage').then((module) => ({ default: module.BankArchivePage })));
 const AccountProfilePage = lazy(() => import('../pages/profile/AccountProfilePage').then((module) => ({ default: module.AccountProfilePage })));
+const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })));
+const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
+const AdminAuditPage = lazy(() => import('../pages/admin/AdminAuditPage').then((module) => ({ default: module.AdminAuditPage })));
+const FinanceDashboardPage = lazy(() => import('../pages/finance/FinanceDashboardPage').then((module) => ({ default: module.FinanceDashboardPage })));
+const FinanceJournalsPage = lazy(() => import('../pages/finance/FinanceJournalsPage').then((module) => ({ default: module.FinanceJournalsPage })));
+const FinanceJournalDetailsPage = lazy(() => import('../pages/finance/FinanceJournalDetailsPage').then((module) => ({ default: module.FinanceJournalDetailsPage })));
+const FinanceAccountsPage = lazy(() => import('../pages/finance/FinanceAccountsPage').then((module) => ({ default: module.FinanceAccountsPage })));
+const FinancePeriodsPage = lazy(() => import('../pages/finance/FinancePeriodsPage').then((module) => ({ default: module.FinancePeriodsPage })));
+const FinanceReportsPage = lazy(() => import('../pages/finance/FinanceReportsPage').then((module) => ({ default: module.FinanceReportsPage })));
+const FinanceCollectionsPage = lazy(() => import('../pages/finance/FinanceCollectionsPage').then((module) => ({ default: module.FinanceCollectionsPage })));
+const FinanceCustodyPage = lazy(() => import('../pages/finance/FinanceCustodyPage').then((module) => ({ default: module.FinanceCustodyPage })));
 
 function HrRouteBoundary() {
   return <Suspense fallback={<div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>}><HrLayout /></Suspense>;
@@ -59,11 +74,31 @@ function CollectionsRouteBoundary() {
   return <Suspense fallback={<div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>}><CollectionsLayout /></Suspense>;
 }
 
+function AdminRouteBoundary() {
+  return <Suspense fallback={<div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>}><AdminLayout /></Suspense>;
+}
+
+function FinanceRouteBoundary() {
+  return <Suspense fallback={<div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>}><FinanceLayout /></Suspense>;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<DepartmentHome />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/modules" element={<Suspense fallback={<div className="flex min-h-screen items-center justify-center"><LoadingSpinner /></div>}><ModuleSelectorPage /></Suspense>} />
+      </Route>
+      <Route element={<ProtectedRoute requiredRole="Admin" />}>
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/admin" element={<AdminRouteBoundary />}>
+          <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="audit" element={<AdminAuditPage />} />
+          <Route path="profile" element={<AccountProfilePage />} />
+        </Route>
+      </Route>
       <Route element={<ProtectedRoute department="HR" />}>
         <Route path="/hr" element={<Navigate to="/hr/dashboard" replace />} />
         <Route path="/hr" element={<HrRouteBoundary />}>
@@ -80,6 +115,20 @@ export function AppRoutes() {
           <Route path="employee-documents" element={<HrEmployeeDocumentsPage />} />
           <Route path="audit" element={<HrAuditPage />} />
           <Route path="master" element={<HrMasterPage />} />
+          <Route path="profile" element={<AccountProfilePage />} />
+        </Route>
+      </Route>
+      <Route element={<ProtectedRoute department="ACCOUNTING" />}>
+        <Route path="/finance" element={<Navigate to="/finance/dashboard" replace />} />
+        <Route path="/finance" element={<FinanceRouteBoundary />}>
+          <Route path="dashboard" element={<FinanceDashboardPage />} />
+          <Route path="journals" element={<FinanceJournalsPage />} />
+          <Route path="journals/:id" element={<FinanceJournalDetailsPage />} />
+          <Route path="collections" element={<FinanceCollectionsPage />} />
+          <Route path="custody" element={<FinanceCustodyPage />} />
+          <Route path="accounts" element={<FinanceAccountsPage />} />
+          <Route path="periods" element={<FinancePeriodsPage />} />
+          <Route path="reports" element={<FinanceReportsPage />} />
           <Route path="profile" element={<AccountProfilePage />} />
         </Route>
       </Route>

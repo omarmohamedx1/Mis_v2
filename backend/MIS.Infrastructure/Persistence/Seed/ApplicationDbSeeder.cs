@@ -156,11 +156,68 @@ public static class ApplicationDbSeeder
             collectionsUser.AssignRole(collectionsRoles.GetValueOrDefault(configured) ?? collectionsRoles[SystemRoleNames.CollectionsOperationsManager], now);
         }
 
+        await SeedProvisionedUserDirectoryAsync(dbContext, now);
+
         if (string.IsNullOrWhiteSpace(adminPassword) && string.IsNullOrWhiteSpace(hrPassword) && string.IsNullOrWhiteSpace(collectionsPassword))
         {
             logger.LogWarning("No development users were seeded because seed passwords are not configured.");
         }
 
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedProvisionedUserDirectoryAsync(ApplicationDbContext dbContext, DateTimeOffset now)
+    {
+        var departmentIds = await dbContext.Departments.ToDictionaryAsync(x => x.Code, x => x.Id);
+        var directory = new[]
+        {
+            ("ola", "Ola", DepartmentCodes.Accounting), ("ayman", "Ayman", DepartmentCodes.Accounting),
+            ("manar", "Manar", DepartmentCodes.Admin), ("ahmed", "Ahmed", DepartmentCodes.Admin), ("duaa", "Duaa", DepartmentCodes.Admin),
+            ("fatma", "Fatma", DepartmentCodes.Hr), ("samah", "Samah", DepartmentCodes.Legal),
+            ("islam", "Islam", DepartmentCodes.Collections), ("marwan", "Marwan", DepartmentCodes.Collections),
+            ("mohamed", "Mohamed", DepartmentCodes.Collections), ("yousef", "Yousef", DepartmentCodes.Collections),
+            ("omar", "Omar", DepartmentCodes.Collections), ("tamer", "Tamer", DepartmentCodes.Collections),
+            ("malak", "Malak", DepartmentCodes.Collections), ("mohamed.said", "Mohamed Said", DepartmentCodes.Collections),
+            ("rahma", "Rahma", DepartmentCodes.Collections), ("hussein", "Hussein", DepartmentCodes.Collections),
+            ("ziad", "Ziad", DepartmentCodes.Collections), ("eman", "Eman", DepartmentCodes.Collections), ("nadia", "Nadia", DepartmentCodes.Collections)
+        };
+        foreach (var (username, fullName, departmentCode) in directory)
+        {
+            if (await dbContext.Users.AnyAsync(x => x.Username == username)) continue;
+            var user = new User(username, $"{username.Replace('.', '_')}@mis.local", "PROVISIONED-NO-LOGIN", fullName, departmentIds[departmentCode], now);
+            user.SetActive(false, now);
+            dbContext.Users.Add(user);
+        }
+        await dbContext.SaveChangesAsync();
+
+        var users = await dbContext.Users.Where(x => directory.Select(d => d.Item1).Contains(x.Username)).ToDictionaryAsync(x => x.Username, x => x.Id);
+        async Task Propose(string username, string permission, string scope, Guid? clientId, string reason)
+        {
+            if (!users.TryGetValue(username, out var userId)) return;
+            if (await dbContext.UserAccessGrants.AnyAsync(x => x.UserId == userId && x.PermissionCode == permission && x.ScopeType == scope && x.ClientOrganizationId == clientId && x.Status == "PENDING")) return;
+            dbContext.UserAccessGrants.Add(new UserAccessGrant(userId, permission, scope, clientId, "PENDING", reason, Guid.Empty, now, null));
+        }
+
+        foreach (var username in new[] { "ola", "ayman" }) await Propose(username, "accounting.access", "DEPARTMENT", null, "Proposed from the approved initial department directory; requires administrator review.");
+        foreach (var username in new[] { "manar", "ahmed", "duaa" }) await Propose(username, "admin.dashboard.view", "ALL", null, "Proposed from the approved initial administration directory; does not grant administrator role.");
+        await Propose("fatma", "hr.access", "DEPARTMENT", null, "Proposed from the approved initial HR directory; requires administrator review.");
+        await Propose("fatma", "data_entry.access", "DEPARTMENT", null, "Proposed from the approved initial data-entry directory; module is planned.");
+        await Propose("samah", "legal.access", "DEPARTMENT", null, "Proposed from the approved initial legal directory; module is planned.");
+
+        var assignments = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ALEXBANK"] = ["ola","ayman","manar","islam","marwan","mohamed","yousef"],
+            ["ATTIJARIWAFA"] = ["ola","ayman","manar","omar","tamer","malak","mohamed.said","rahma"],
+            ["CAE"] = ["ola","ayman","manar","hussein"], ["QIB"] = ["ola","ayman","manar"],
+            ["BDC"] = ["ola","ayman","manar"], ["ELAB"] = ["ola","ayman","manar"],
+            ["RAYA"] = ["ola","ayman","manar","ziad"], ["AMAN"] = ["ola","ayman","manar","eman"],
+            ["MNT_HALAN"] = ["ola","ayman","manar","mohamed"], ["PREMIUM_CARD"] = ["ola","ayman","manar","hussein","nadia"]
+        };
+        var clients = await dbContext.CollectionClientOrganizations.ToDictionaryAsync(x => x.Code, x => x.Id);
+        foreach (var (code, usernames) in assignments)
+            if (clients.TryGetValue(code, out var clientId))
+                foreach (var username in usernames)
+                    await Propose(username, "collections.access", "CLIENT", clientId, $"Proposed client access from the initial operating directory for {code}; review before activation.");
         await dbContext.SaveChangesAsync();
     }
 

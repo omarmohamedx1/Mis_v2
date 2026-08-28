@@ -21,6 +21,7 @@ public sealed class UserRepository : IUserRepository
             .Include(user => user.Department)
             .Include(user => user.UserRoles)
             .ThenInclude(userRole => userRole.Role)
+            .Include(user => user.AccessGrants)
             .FirstOrDefaultAsync(
                 user => user.Username.ToLower() == normalizedLookup || user.Email.ToLower() == normalizedLookup || user.LoginCode.ToLower() == normalizedLookup,
                 cancellationToken);
@@ -30,6 +31,7 @@ public sealed class UserRepository : IUserRepository
         .Include(user => user.Department)
         .Include(user => user.UserRoles)
         .ThenInclude(userRole => userRole.Role)
+        .Include(user => user.AccessGrants)
         .SingleOrDefaultAsync(user => user.Id == id, cancellationToken);
 
     public Task<bool> EmailExistsAsync(string email, Guid excludingUserId, CancellationToken cancellationToken)

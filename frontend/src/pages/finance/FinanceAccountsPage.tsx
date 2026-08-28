@@ -1,0 +1,18 @@
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
+import { Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ErrorState } from '../../components/common/ErrorState';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { useFinanceText } from '../../features/finance/financeUi';
+import { financeService } from '../../features/finance/services/financeService';
+import type { FinanceAccount } from '../../features/finance/types/finance';
+
+export function FinanceAccountsPage() {
+  const f = useFinanceText(); const [rows, setRows] = useState<FinanceAccount[]>(); const [search, setSearch] = useState(''); const [type, setType] = useState(''); const [error, setError] = useState(false);
+  useEffect(() => { financeService.accounts().then(setRows).catch(() => setError(true)); }, []); const filtered = useMemo(() => (rows ?? []).filter(x => (!type || x.accountType === type) && (!search || `${x.code} ${x.nameArabic} ${x.nameEnglish}`.toLowerCase().includes(search.toLowerCase()))), [rows, search, type]);
+  if (error) return <ErrorState title={f.text('تعذر تحميل دليل الحسابات', 'Could not load the chart of accounts')} />; if (!rows) return <div className="grid min-h-[420px] place-items-center"><LoadingSpinner /></div>;
+  return <div><header><p className="text-xs font-bold uppercase tracking-[.18em] text-mis-primary">GENERAL LEDGER</p><h1 className="mt-2 text-3xl font-bold text-mis-navy">{f.text('دليل الحسابات', 'Chart of Accounts')}</h1><p className="mt-2 text-sm text-slate-500">{f.text('حسابات رقابية موحدة، والعملاء والمحصلون أبعاد في الدفاتر الفرعية.', 'Control accounts stay compact; clients and collectors remain subledger dimensions.')}</p></header>
+    <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-mis-border bg-white p-4 sm:flex-row"><label className="relative flex-1"><Search className="absolute start-3 top-3.5 h-4 w-4 text-slate-400" /><input className="field ps-10" value={search} onChange={e => setSearch(e.target.value)} placeholder={f.text('بحث بالكود أو الاسم', 'Search code or name')} /></label><ProfessionalSelect className="field sm:w-56" value={type} onChange={e => setType(e.target.value)}><option value="">{f.text('كل الأنواع', 'All account types')}</option>{['ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE'].map(x => <option key={x}>{x}</option>)}</ProfessionalSelect></div>
+    <div className="mt-5 overflow-hidden rounded-2xl border border-mis-border bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-4 text-start">{f.text('الكود', 'Code')}</th><th className="px-5 py-4 text-start">{f.text('الحساب', 'Account')}</th><th className="px-5 py-4 text-start">{f.text('النوع', 'Type')}</th><th className="px-5 py-4 text-start">{f.text('حساب رقابي', 'Control')}</th><th className="px-5 py-4 text-end">{f.text('الرصيد', 'Balance')}</th></tr></thead><tbody className="divide-y divide-mis-border">{filtered.map(x => <tr key={x.id} className="hover:bg-slate-50"><td className="px-5 py-4 font-mono font-bold text-mis-primary">{x.code}</td><td className="px-5 py-4"><p className="font-semibold text-mis-navy">{f.ar ? x.nameArabic : x.nameEnglish}</p><p className="mt-1 text-xs text-slate-400">{f.ar ? x.nameEnglish : x.nameArabic}</p></td><td className="px-5 py-4 text-slate-600">{x.accountType}</td><td className="px-5 py-4 text-slate-500">{x.controlAccountType ?? '—'}</td><td className={`px-5 py-4 text-end font-semibold ${x.balance < 0 ? 'text-rose-700' : 'text-slate-800'}`} data-bidi="ltr">{f.money(x.balance)}</td></tr>)}</tbody></table></div></div>
+  </div>;
+}

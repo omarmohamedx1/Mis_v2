@@ -8,4 +8,5 @@ public sealed record AuthenticatedUserDto(
     string FullName,
     string Department,
     string Role,
-    IReadOnlyCollection<string> Roles);
+    IReadOnlyCollection<string> Roles,
+    IReadOnlyCollection<string> Permissions);

@@ -22,6 +22,167 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PayloadSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("SourceVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "OccurredAt");
+
+                    b.HasIndex("EventType", "SourceType", "SourceId", "SourceVersion")
+                        .IsUnique();
+
+                    b.ToTable("accounting_events", "finance");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CloseReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClosedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("LegalEntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int>("PeriodNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LegalEntityId", "StartDate", "EndDate");
+
+                    b.HasIndex("LegalEntityId", "Year", "PeriodNumber")
+                        .IsUnique();
+
+                    b.ToTable("accounting_periods", "finance");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AdminAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(96)
+                        .HasColumnType("character varying(96)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AfterJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("BeforeJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("SourceIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("ActorUserId", "OccurredAt");
+
+                    b.HasIndex("TargetType", "TargetId", "OccurredAt");
+
+                    b.ToTable("AdminAuditLogs", (string)null);
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.AttendanceImportBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -683,6 +844,58 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("CollectionCaseBucketHistory", (string)null);
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.ClientLedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Credit")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<decimal>("Debit")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<string>("EntryType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("JournalEntryLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("TransactionDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JournalEntryLineId")
+                        .IsUnique();
+
+                    b.HasIndex("ClientId", "TransactionDate");
+
+                    b.ToTable("client_ledger_entries", "finance", t =>
+                        {
+                            t.HasCheckConstraint("CK_ClientLedger_DebitCredit", "(\"Debit\" > 0 AND \"Credit\" = 0) OR (\"Credit\" > 0 AND \"Debit\" = 0)");
+                        });
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.ClientOrganization", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1127,6 +1340,62 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionClearingEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FromAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("ReceiptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ToAccountId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("FromAccountId");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.HasIndex("ReceiptId")
+                        .IsUnique();
+
+                    b.HasIndex("ToAccountId", "OccurredOn", "Reference", "Amount")
+                        .IsUnique();
+
+                    b.ToTable("collection_clearing_events", "finance", t =>
+                        {
+                            t.HasCheckConstraint("CK_CollectionClearing_Amount", "\"Amount\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.CollectionComplaint", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1405,6 +1674,111 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionFinancialReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("BaseAmount")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("numeric(20,2)");
+
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("ClearedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClearingJournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CollectionPaymentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CollectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("DestinationReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DestinationType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("ExchangeRate")
+                        .HasPrecision(20, 10)
+                        .HasColumnType("numeric(20,10)");
+
+                    b.Property<decimal>("GrossAmount")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("PostedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReversalJournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ReversedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("ClearingJournalEntryId")
+                        .IsUnique()
+                        .HasFilter("\"ClearingJournalEntryId\" IS NOT NULL");
+
+                    b.HasIndex("CollectionPaymentId")
+                        .IsUnique();
+
+                    b.HasIndex("CollectorId");
+
+                    b.HasIndex("JournalEntryId")
+                        .IsUnique();
+
+                    b.HasIndex("ReversalJournalEntryId")
+                        .IsUnique()
+                        .HasFilter("\"ReversalJournalEntryId\" IS NOT NULL");
+
+                    b.HasIndex("ClientId", "Status");
+
+                    b.HasIndex("Status", "PostedAt");
+
+                    b.ToTable("collection_receipts", "finance", t =>
+                        {
+                            t.HasCheckConstraint("CK_CollectionReceipt_Amounts", "\"GrossAmount\" > 0 AND \"BaseAmount\" > 0 AND \"ExchangeRate\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.CollectionImportBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1588,6 +1962,19 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CaseId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("EGP");
+
+                    b.Property<Guid?>("FinancialJournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("FinancialReversalJournalEntryId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Method")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -1628,6 +2015,14 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("FinancialJournalEntryId")
+                        .IsUnique()
+                        .HasFilter("\"FinancialJournalEntryId\" IS NOT NULL");
+
+                    b.HasIndex("FinancialReversalJournalEntryId")
+                        .IsUnique()
+                        .HasFilter("\"FinancialReversalJournalEntryId\" IS NOT NULL");
+
                     b.HasIndex("ReferenceNumber")
                         .IsUnique();
 
@@ -1642,6 +2037,52 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("CollectionPayments", null, t =>
                         {
                             t.HasCheckConstraint("CK_CollectionPayments_Amount", "\"Amount\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionPaymentAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<Guid>("CaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("OutstandingBefore")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<decimal>("OverdueBefore")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<Guid>("ReceiptId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaseId");
+
+                    b.HasIndex("ReceiptId", "CaseId")
+                        .IsUnique();
+
+                    b.HasIndex("ReceiptId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("collection_payment_allocations", "finance", t =>
+                        {
+                            t.HasCheckConstraint("CK_CollectionAllocation_Amount", "\"Amount\" > 0");
                         });
                 });
 
@@ -1794,6 +2235,104 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("CollectionUserAccess", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectorCustodyAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CollectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<decimal>("HardLimit")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<decimal>("SoftLimit")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CollectorId", "CurrencyCode")
+                        .IsUnique();
+
+                    b.ToTable("collector_custody_accounts", "finance", t =>
+                        {
+                            t.HasCheckConstraint("CK_CustodyAccount_Limits", "\"SoftLimit\" >= 0 AND \"HardLimit\" > 0 AND \"HardLimit\" >= \"SoftLimit\"");
+                        });
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectorCustodyTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Credit")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<Guid>("CustodyAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Debit")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<Guid>("JournalEntryLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReceiptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("TransactionDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JournalEntryLineId")
+                        .IsUnique();
+
+                    b.HasIndex("ReceiptId");
+
+                    b.HasIndex("CustodyAccountId", "TransactionDate");
+
+                    b.ToTable("collector_custody_transactions", "finance", t =>
+                        {
+                            t.HasCheckConstraint("CK_CustodyTransaction_DebitCredit", "(\"Debit\" > 0 AND \"Credit\" = 0) OR (\"Credit\" > 0 AND \"Debit\" = 0)");
+                        });
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.ContractType", b =>
@@ -2900,6 +3439,382 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("CollectionFieldVisits", (string)null);
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.FinanceAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AccountType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<string>("ControlAccountType")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("LegalEntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NameArabic")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameEnglish")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NormalBalance")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("PostingAllowed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("RequiresBranch")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("RequiresClient")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("RequiresCollector")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("LegalEntityId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("accounts", "finance");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0001-000000110100"),
+                            AccountType = "ASSET",
+                            Code = "110100",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "النقدية والخزائن",
+                            NameEnglish = "Cashboxes",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0001-000000110200"),
+                            AccountType = "ASSET",
+                            Code = "110200",
+                            ControlAccountType = "TREASURY",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "الحسابات البنكية",
+                            NameEnglish = "Bank Accounts",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = true,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0001-000000111100"),
+                            AccountType = "ASSET",
+                            Code = "111100",
+                            ControlAccountType = "COLLECTOR_CUSTODY",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "عهدة نقدية لدى المحصلين",
+                            NameEnglish = "Collector Cash Custody",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = true,
+                            RequiresCollector = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0001-000000112100"),
+                            AccountType = "ASSET",
+                            Code = "112100",
+                            ControlAccountType = "TREASURY",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "تحويلات بنكية تحت التسوية",
+                            NameEnglish = "Bank Clearing",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = true,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0001-000000112200"),
+                            AccountType = "ASSET",
+                            Code = "112200",
+                            ControlAccountType = "CHEQUES",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "شيكات تحت التحصيل",
+                            NameEnglish = "Cheques Under Collection",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = true,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0001-000000112300"),
+                            AccountType = "ASSET",
+                            Code = "112300",
+                            ControlAccountType = "GATEWAY",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "مستحقات بوابات الدفع",
+                            NameEnglish = "Gateway Receivable",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = true,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0002-000000210100"),
+                            AccountType = "LIABILITY",
+                            Code = "210100",
+                            ControlAccountType = "CLIENT_FUNDS",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "أموال عملاء تحت التسوية",
+                            NameEnglish = "Client Funds Clearing",
+                            NormalBalance = "CREDIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = true,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0002-000000210200"),
+                            AccountType = "LIABILITY",
+                            Code = "210200",
+                            ControlAccountType = "CLIENT_FUNDS",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "أموال عملاء مستحقة",
+                            NameEnglish = "Client Funds Payable",
+                            NormalBalance = "CREDIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = true,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0004-000000410100"),
+                            AccountType = "REVENUE",
+                            Code = "410100",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "إيراد عمولات التحصيل",
+                            NameEnglish = "Collection Commission Revenue",
+                            NormalBalance = "CREDIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610100"),
+                            AccountType = "EXPENSE",
+                            Code = "610100",
+                            IsActive = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "مصروفات تشغيلية عامة",
+                            NameEnglish = "General Operating Expenses",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        });
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.FinanceCurrency", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MinorUnits")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NameArabic")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NameEnglish")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("currencies", "finance");
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "EGP",
+                            IsActive = true,
+                            MinorUnits = 2,
+                            NameArabic = "الجنيه المصري",
+                            NameEnglish = "Egyptian Pound"
+                        },
+                        new
+                        {
+                            Code = "USD",
+                            IsActive = true,
+                            MinorUnits = 2,
+                            NameArabic = "الدولار الأمريكي",
+                            NameEnglish = "US Dollar"
+                        },
+                        new
+                        {
+                            Code = "EUR",
+                            IsActive = true,
+                            MinorUnits = 2,
+                            NameArabic = "اليورو",
+                            NameEnglish = "Euro"
+                        });
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.FinanceLegalEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BaseCurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NameArabic")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameEnglish")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("legal_entities", "finance");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000001"),
+                            BaseCurrencyCode = "EGP",
+                            Code = "MIS-EG",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            NameArabic = "شركة إم آي إس للتحصيل",
+                            NameEnglish = "MIS Collection Firm"
+                        });
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.FinancialAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AfterJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("BeforeJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("EntityType", "EntityId", "CreatedAt");
+
+                    b.ToTable("financial_audit_logs", "finance");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.HrAuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2951,6 +3866,178 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "Timestamp");
 
                     b.ToTable("HrAuditLogs", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.JournalEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AccountingEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("EntryType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("JournalNumber")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("LegalEntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PeriodId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PostedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PostedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("PostingDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("ReversalOfJournalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<decimal>("TotalCredit")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("numeric(20,2)");
+
+                    b.Property<decimal>("TotalDebit")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("numeric(20,2)");
+
+                    b.Property<DateOnly>("TransactionDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountingEventId")
+                        .IsUnique()
+                        .HasFilter("\"AccountingEventId\" IS NOT NULL");
+
+                    b.HasIndex("ApprovedById");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("PeriodId");
+
+                    b.HasIndex("PostedById");
+
+                    b.HasIndex("ReversalOfJournalId");
+
+                    b.HasIndex("LegalEntityId", "JournalNumber")
+                        .IsUnique()
+                        .HasFilter("\"JournalNumber\" IS NOT NULL");
+
+                    b.HasIndex("Status", "PostingDate");
+
+                    b.ToTable("journal_entries", "finance");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.JournalEntryLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("BaseCredit")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("numeric(20,2)");
+
+                    b.Property<decimal>("BaseDebit")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("numeric(20,2)");
+
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CollectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CostCenterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Credit")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<decimal>("Debit")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal>("ExchangeRate")
+                        .HasPrecision(20, 10)
+                        .HasColumnType("numeric(20,10)");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("CollectorId");
+
+                    b.HasIndex("JournalEntryId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("journal_entry_lines", "finance", t =>
+                        {
+                            t.HasCheckConstraint("CK_FinanceJournalLine_BaseDebitCredit", "(\"BaseDebit\" > 0 AND \"BaseCredit\" = 0) OR (\"BaseCredit\" > 0 AND \"BaseDebit\" = 0)");
+
+                            t.HasCheckConstraint("CK_FinanceJournalLine_DebitCredit", "(\"Debit\" > 0 AND \"Credit\" = 0) OR (\"Credit\" > 0 AND \"Debit\" = 0)");
+                        });
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.LeaveRequest", b =>
@@ -3252,6 +4339,11 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("AccessVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -3308,6 +4400,74 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.UserAccessGrant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClientOrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("GrantedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("GrantedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PermissionCode")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RevocationReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RevokedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ScopeType")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientOrganizationId");
+
+                    b.HasIndex("Status", "ExpiresAt");
+
+                    b.HasIndex("UserId", "PermissionCode", "ScopeType", "ClientOrganizationId", "Status");
+
+                    b.ToTable("UserAccessGrants", (string)null);
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.UserRole", b =>
@@ -3413,6 +4573,17 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("CK_WorkingDaySettings_NonWorkingValues", "\"IsWorkingDay\" OR (\"BreakMinutes\" = 0 AND \"LateGraceMinutes\" = 0 AND \"EarlyLeaveGraceMinutes\" = 0 AND \"MinimumOvertimeMinutes\" = 0)");
                         });
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingPeriod", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.FinanceLegalEntity", "LegalEntity")
+                        .WithMany()
+                        .HasForeignKey("LegalEntityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LegalEntity");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.AttendanceImportBatch", b =>
@@ -3590,6 +4761,25 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("ChangedBy");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.ClientLedgerEntry", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntryLine", "JournalEntryLine")
+                        .WithOne()
+                        .HasForeignKey("MIS.Domain.Entities.ClientLedgerEntry", "JournalEntryLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("JournalEntryLine");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.CollectionActivity", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.CollectionCase", "Case")
@@ -3761,6 +4951,49 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("SourceImport");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionClearingEvent", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.FinanceAccount", "FromAccount")
+                        .WithMany()
+                        .HasForeignKey("FromAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionFinancialReceipt", "Receipt")
+                        .WithMany()
+                        .HasForeignKey("ReceiptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.FinanceAccount", "ToAccount")
+                        .WithMany()
+                        .HasForeignKey("ToAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("FromAccount");
+
+                    b.Navigation("JournalEntry");
+
+                    b.Navigation("Receipt");
+
+                    b.Navigation("ToAccount");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.CollectionComplaint", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.CollectionCase", "Case")
@@ -3865,6 +5098,61 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("LinkedVisit");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionFinancialReceipt", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", "ClearingJournalEntry")
+                        .WithMany()
+                        .HasForeignKey("ClearingJournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionPayment", "CollectionPayment")
+                        .WithOne()
+                        .HasForeignKey("MIS.Domain.Entities.CollectionFinancialReceipt", "CollectionPaymentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", "Collector")
+                        .WithMany()
+                        .HasForeignKey("CollectorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", "ReversalJournalEntry")
+                        .WithMany()
+                        .HasForeignKey("ReversalJournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("ClearingJournalEntry");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("CollectionPayment");
+
+                    b.Navigation("Collector");
+
+                    b.Navigation("JournalEntry");
+
+                    b.Navigation("ReversalJournalEntry");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.CollectionImportBatch", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.ClientOrganization", "Organization")
@@ -3911,6 +5199,16 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", null)
+                        .WithMany()
+                        .HasForeignKey("FinancialJournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", null)
+                        .WithMany()
+                        .HasForeignKey("FinancialReversalJournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MIS.Domain.Entities.User", "SubmittedBy")
                         .WithMany()
                         .HasForeignKey("SubmittedById")
@@ -3927,6 +5225,25 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("SubmittedBy");
 
                     b.Navigation("VerifiedBy");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionPaymentAllocation", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.CollectionCase", "Case")
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionFinancialReceipt", "Receipt")
+                        .WithMany("Allocations")
+                        .HasForeignKey("ReceiptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Case");
+
+                    b.Navigation("Receipt");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.CollectionPortfolio", b =>
@@ -3993,6 +5310,50 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("Portfolio");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectorCustodyAccount", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", "Collector")
+                        .WithMany()
+                        .HasForeignKey("CollectorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Collector");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectorCustodyTransaction", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.CollectorCustodyAccount", "CustodyAccount")
+                        .WithMany()
+                        .HasForeignKey("CustodyAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntryLine", "JournalEntryLine")
+                        .WithOne()
+                        .HasForeignKey("MIS.Domain.Entities.CollectorCustodyTransaction", "JournalEntryLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionFinancialReceipt", "Receipt")
+                        .WithMany()
+                        .HasForeignKey("ReceiptId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CustodyAccount");
+
+                    b.Navigation("JournalEntryLine");
+
+                    b.Navigation("Receipt");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.DelinquencyBucketDefinition", b =>
@@ -4267,6 +5628,34 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("CreatedBy");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.FinanceAccount", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.FinanceLegalEntity", "LegalEntity")
+                        .WithMany()
+                        .HasForeignKey("LegalEntityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.FinanceAccount", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("LegalEntity");
+
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.FinancialAuditLog", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Actor");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.HrAuditLog", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.Employee", "Employee")
@@ -4282,6 +5671,97 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.JournalEntry", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.AccountingEvent", "AccountingEvent")
+                        .WithOne()
+                        .HasForeignKey("MIS.Domain.Entities.JournalEntry", "AccountingEventId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.FinanceLegalEntity", "LegalEntity")
+                        .WithMany()
+                        .HasForeignKey("LegalEntityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.AccountingPeriod", "Period")
+                        .WithMany()
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("PostedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", "ReversalOfJournal")
+                        .WithMany()
+                        .HasForeignKey("ReversalOfJournalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AccountingEvent");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("LegalEntity");
+
+                    b.Navigation("Period");
+
+                    b.Navigation("ReversalOfJournal");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.JournalEntryLine", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.FinanceAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", "Collector")
+                        .WithMany()
+                        .HasForeignKey("CollectorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany("Lines")
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Collector");
+
+                    b.Navigation("JournalEntry");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.LeaveRequest", b =>
@@ -4365,6 +5845,24 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("Department");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.UserAccessGrant", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", "ClientOrganization")
+                        .WithMany()
+                        .HasForeignKey("ClientOrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", "User")
+                        .WithMany("AccessGrants")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClientOrganization");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.UserRole", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.Role", "Role")
@@ -4395,6 +5893,16 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("WorkingCalendar");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionFinancialReceipt", b =>
+                {
+                    b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.JournalEntry", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.Role", b =>
                 {
                     b.Navigation("UserRoles");
@@ -4402,6 +5910,8 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MIS.Domain.Entities.User", b =>
                 {
+                    b.Navigation("AccessGrants");
+
                     b.Navigation("UserRoles");
                 });
 

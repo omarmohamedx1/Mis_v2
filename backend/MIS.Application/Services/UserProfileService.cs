@@ -39,6 +39,7 @@ public sealed partial class UserProfileService : IUserProfileService
         if (request.NewPassword.Equals(request.CurrentPassword, StringComparison.Ordinal)) throw new HrValidationException("New password must be different from the current password.");
         if (!StrongPassword().IsMatch(request.NewPassword)) throw new HrValidationException("Password must contain uppercase, lowercase, number, and special character and be at least 10 characters.");
         user.SetPasswordHash(_passwords.HashPassword(user, request.NewPassword), DateTimeOffset.UtcNow);
+        user.InvalidateAccess(DateTimeOffset.UtcNow);
         await _users.SaveChangesAsync(token);
     }
 

@@ -79,7 +79,8 @@ public sealed record SubmitPaymentRequest(
     [Range(typeof(decimal), "0.01", "9999999999999999")] decimal Amount,
     DateOnly PaymentDate,
     [Required, MaxLength(40)] string Method,
-    [Required, MaxLength(160)] string ReferenceNumber);
+    [Required, MaxLength(160)] string ReferenceNumber,
+    [Required, StringLength(3, MinimumLength = 3)] string CurrencyCode = "EGP");
 
 public sealed record ReviewPaymentRequest(bool Approve, [MaxLength(1000)] string? RejectionReason);
 public sealed record BulkAssignmentRequest(IReadOnlyCollection<Guid> CaseIds, Guid CollectorId, Guid? TeamId, [Required, MaxLength(500)] string Reason, bool Confirmed);

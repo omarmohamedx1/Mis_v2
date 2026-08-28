@@ -4,7 +4,7 @@
 
 @layer components {
   .field {
-    @apply w-full rounded-xl border border-mis-border bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-mis-blue focus:ring-4 focus:ring-mis-pale;
+    @apply min-h-11 w-full rounded-xl border border-mis-border bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-mis-blue focus:ring-4 focus:ring-mis-pale disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
   }
 }
 
@@ -35,12 +35,74 @@ body {
   min-height: 100vh;
   margin: 0;
   background: #f7f9fc;
+  overflow-x: hidden;
+  font-family: Inter, "Segoe UI", Tahoma, Arial, sans-serif;
 }
 
-.module-content { padding-inline-start: 0; transition: padding 200ms ease; }
+#root { min-height: 100vh; }
+
+img, svg { max-width: 100%; }
+
+.module-content { min-width: 0; padding-inline-start: 0; transition: padding 200ms ease; }
+.module-sidebar { max-width: calc(100vw - 3rem); }
 @media (min-width: 1024px) {
+  .module-sidebar { width: 18rem; max-width: none; transform: translateX(0) !important; }
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar { width: 5rem; }
   .module-shell[data-sidebar-collapsed='false'] .module-content { padding-inline-start: 18rem; }
   .module-shell[data-sidebar-collapsed='true'] .module-content { padding-inline-start: 5rem; }
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-header { justify-content: center; padding-inline: .5rem; }
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-identity { justify-content: center; }
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-logo { height: 2.5rem; }
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-toggle { position: absolute; inset-inline-end: .25rem; top: .25rem; }
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-brand,
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-label { display: none; }
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-scroll,
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-footer { padding-inline: .5rem; }
+  .module-shell[data-sidebar-collapsed='true'] .module-sidebar-link { justify-content: center; padding-inline: .5rem; }
+}
+
+.module-sidebar-scroll,
+.overflow-x-auto,
+.overflow-y-auto,
+.overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #b9c9d6 transparent;
+}
+
+.module-sidebar-scroll::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar { width: 8px; height: 8px; }
+.module-sidebar-scroll::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-auto::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: #b9c9d6; background-clip: padding-box; }
+.module-sidebar-scroll::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-auto::-webkit-scrollbar-track { background: transparent; }
+
+table { border-collapse: separate; border-spacing: 0; }
+th, td { vertical-align: middle; }
+thead th { white-space: nowrap; }
+tbody tr { transition: background-color 150ms ease; }
+
+select:not(.sr-only) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  padding-inline-end: 2.5rem !important;
+}
+[dir='rtl'] select:not(.sr-only) { background-position: left 0.8rem center; }
+
+@media (max-width: 639px) {
+  h1 { line-height: 1.25; }
+  .field { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
 [dir='rtl'] .text-left,

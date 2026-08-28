@@ -43,6 +43,9 @@ public static class DependencyInjection
         services.AddScoped<IHrReportService, HrReportService>();
         services.AddScoped<IHrAttendanceService, HrAttendanceService>();
         services.AddScoped<IHrAttendanceImportService, HrAttendanceImportService>();
+        services.AddScoped<FinanceService>();
+        services.AddScoped<IFinanceService>(serviceProvider => serviceProvider.GetRequiredService<FinanceService>());
+        services.AddScoped<IFinancePostingService>(serviceProvider => serviceProvider.GetRequiredService<FinanceService>());
         services.AddScoped<ICollectionsService, CollectionsService>();
         services.AddScoped<IBanksService, BanksService>();
         services.AddScoped<IBankPortfolioImportService, BankPortfolioImportService>();
@@ -58,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<ICollectionsAttachmentService, CollectionsAttachmentService>();
         services.AddScoped<ICollectionsReportService, CollectionsReportService>();
         services.AddScoped<ICollectionsBrandingService, CollectionsBrandingService>();
+        services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<HrCalendarService>();
         services.AddScoped<IHrCalendarService>(serviceProvider => serviceProvider.GetRequiredService<HrCalendarService>());
         services.AddScoped<IWorkingCalendarCalculator>(serviceProvider => serviceProvider.GetRequiredService<HrCalendarService>());

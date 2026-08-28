@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MIS.Application.Interfaces;
 using MIS.Domain.Entities;
+using MIS.Domain.Constants;
 
 namespace MIS.Infrastructure.Authentication;
 
@@ -26,7 +27,7 @@ public sealed class JwtTokenService : ITokenService
         _securityKey = new SymmetricSecurityKey(keyBytes);
     }
 
-    public string GenerateAccessToken(User user, IReadOnlyCollection<string> roles)
+    public string GenerateAccessToken(User user, IReadOnlyCollection<string> roles, IReadOnlyCollection<string> permissions)
     {
         var claims = new List<Claim>
         {
@@ -35,10 +36,12 @@ public sealed class JwtTokenService : ITokenService
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.Username),
             new("full_name", user.FullName),
-            new("department", user.Department.Code)
+            new("department", user.Department.Code),
+            new("access_version", user.AccessVersion.ToString(System.Globalization.CultureInfo.InvariantCulture))
         };
 
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+        claims.AddRange(permissions.Select(permission => new Claim(SystemPermissionCodes.ClaimType, permission)));
 
         var credentials = new SigningCredentials(_securityKey, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(

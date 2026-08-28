@@ -1,3 +1,4 @@
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { Database, Pencil, Plus, Power, PowerOff, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '../../components/common/Button';
@@ -279,11 +280,11 @@ export function HrMasterPage() {
             <Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" aria-hidden="true" />
             <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchMasterData')} value={searchInput} />
           </label>
-          <select aria-label={t('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm text-slate-700 outline-none focus:border-mis-blue" onChange={(event) => { setActiveFilter(event.target.value as typeof activeFilter); setPage(1); }} value={activeFilter}>
+          <ProfessionalSelect aria-label={t('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm text-slate-700 outline-none focus:border-mis-blue" onChange={(event) => { setActiveFilter(event.target.value as typeof activeFilter); setPage(1); }} value={activeFilter}>
             <option value="all">{t('allStatuses')}</option>
             <option value="active">{t('active')}</option>
             <option value="inactive">{t('inactive')}</option>
-          </select>
+          </ProfessionalSelect>
         </div>
 
         {loading ? <div className="flex min-h-72 items-center justify-center"><LoadingSpinner /></div> : error ? (

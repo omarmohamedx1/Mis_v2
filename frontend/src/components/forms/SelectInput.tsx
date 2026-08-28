@@ -1,5 +1,6 @@
 import { forwardRef, useId, type ReactNode, type SelectHTMLAttributes } from 'react';
 import { FormField, formControlClass, joinDescribedBy } from './FormField';
+import { ProfessionalSelect } from './ProfessionalSelect';
 
 export interface SelectInputProps extends SelectHTMLAttributes<HTMLSelectElement> {
   containerClassName?: string;
@@ -31,7 +32,7 @@ export const SelectInput = forwardRef<HTMLSelectElement, SelectInputProps>(funct
 
   return (
     <FormField className={containerClassName} error={error} errorId={errorId} hint={hint} hintId={hintId} inputId={inputId} label={label} required={required}>
-      <select
+      <ProfessionalSelect
         aria-describedby={joinDescribedBy(ariaDescribedBy, hintId, errorId)}
         aria-invalid={error ? true : undefined}
         className={`h-12 px-4 ${formControlClass} ${error ? 'border-red-400' : 'border-mis-border'} ${className}`}
@@ -42,7 +43,7 @@ export const SelectInput = forwardRef<HTMLSelectElement, SelectInputProps>(funct
         {...props}
       >
         {children}
-      </select>
+      </ProfessionalSelect>
     </FormField>
   );
 });

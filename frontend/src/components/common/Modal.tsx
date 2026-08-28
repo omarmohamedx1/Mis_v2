@@ -45,7 +45,7 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 }
 
 export function Modal({
-  bodyClassName = 'p-6',
+  bodyClassName = 'p-4 sm:p-6',
   children,
   className = '',
   closeLabel,
@@ -127,7 +127,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-mis-ink/45 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-mis-ink/45 p-2 backdrop-blur-[2px] sm:p-4"
       onMouseDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) onCloseRef.current();
       }}
@@ -136,12 +136,12 @@ export function Modal({
         aria-describedby={description ? descriptionId : undefined}
         aria-labelledby={titleId}
         aria-modal="true"
-        className={`my-auto max-h-[calc(100vh-2rem)] w-full overflow-hidden rounded-2xl border border-mis-border bg-white shadow-panel ${sizeClasses[size]} ${className}`}
+        className={`my-auto flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-2xl border border-mis-border bg-white shadow-panel sm:max-h-[calc(100dvh-2rem)] ${sizeClasses[size]} ${className}`}
         ref={dialogRef}
         role={dialogRole}
         tabIndex={-1}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-mis-border px-6 py-5">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-mis-border px-4 py-4 sm:px-6 sm:py-5">
           <div className="min-w-0">
             <h2 className="break-words text-xl font-bold text-mis-navy" id={titleId}>{title}</h2>
             {description ? <div className="mt-1 text-sm leading-5 text-slate-500" id={descriptionId}>{description}</div> : null}
@@ -157,8 +157,8 @@ export function Modal({
             </button>
           ) : null}
         </header>
-        <div className={`max-h-[calc(100vh-12rem)] overflow-y-auto ${bodyClassName}`}>{children}</div>
-        {footer ? <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-mis-border px-6 py-4">{footer}</footer> : null}
+        <div className={`min-h-0 flex-1 overflow-y-auto ${bodyClassName}`}>{children}</div>
+        {footer ? <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-mis-border px-4 py-3 [&>*]:w-full sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 sm:px-6 sm:py-4 sm:[&>*]:w-auto">{footer}</footer> : null}
       </div>
     </div>,
     document.body,

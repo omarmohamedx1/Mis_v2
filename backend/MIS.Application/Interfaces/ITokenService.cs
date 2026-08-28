@@ -4,5 +4,5 @@ namespace MIS.Application.Interfaces;
 
 public interface ITokenService
 {
-    string GenerateAccessToken(User user, IReadOnlyCollection<string> roles);
+    string GenerateAccessToken(User user, IReadOnlyCollection<string> roles, IReadOnlyCollection<string> permissions);
 }

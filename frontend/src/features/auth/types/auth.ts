@@ -16,6 +16,7 @@ export interface AuthenticatedUser {
   department: string;
   role: string;
   roles: string[];
+  permissions: string[];
 }
 
 export interface UserProfile { id: string; loginCode: string; username: string; email: string; fullName: string; department: string; roles: string[]; lastLoginAt?: string }

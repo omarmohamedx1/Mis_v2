@@ -1,34 +1,24 @@
-import { Activity, BadgeDollarSign, BarChart3, BriefcaseBusiness, Building2, FileUp, Gauge, Landmark, Languages, LogOut, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Settings, UserCircle, WalletCards, X } from 'lucide-react';
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import misLogo from '../../assets/mis-logo.svg';
+import { Activity, BadgeDollarSign, BarChart3, BriefcaseBusiness, Building2, FileUp, Gauge, Landmark, MapPinned, Settings, WalletCards } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCollectionsLocalization } from '../../features/collections/localization/collectionsTranslations';
+import { ModuleLayoutShell, type ModuleNavigationItem } from './ModuleLayoutShell';
 
 const links = [
-  { to: '/collections/dashboard', label: 'overview', icon: Gauge }, { to: '/banks', label: 'banks', icon: Landmark }, { to: '/collections/installment-companies', label: 'installmentCompanies', icon: BadgeDollarSign }, { to: '/collections/clients', label: 'clients', icon: Building2 },
-  { to: '/collections/cases', label: 'cases', icon: BriefcaseBusiness },
-  { to: '/collections/payments', label: 'payments', icon: WalletCards },
-  { to: '/collections/visits', label: 'visits', icon: MapPinned },
-  { to: '/collections/reports', label: 'reports', icon: BarChart3 }, { to: '/collections/audit', label: 'audit', icon: Activity, auditOnly: true },
-  { to: '/collections/imports', label: 'imports', icon: FileUp, operationsOnly: true }, { to: '/collections/settings', label: 'settings', icon: Settings, operationsOnly: true },
+  { to: '/collections/dashboard', label: 'overview', icon: Gauge }, { to: '/banks', label: 'banks', icon: Landmark },
+  { to: '/collections/installment-companies', label: 'installmentCompanies', icon: BadgeDollarSign }, { to: '/collections/clients', label: 'clients', icon: Building2 },
+  { to: '/collections/cases', label: 'cases', icon: BriefcaseBusiness }, { to: '/collections/payments', label: 'payments', icon: WalletCards },
+  { to: '/collections/visits', label: 'visits', icon: MapPinned }, { to: '/collections/reports', label: 'reports', icon: BarChart3 },
+  { to: '/collections/audit', label: 'audit', icon: Activity, auditOnly: true }, { to: '/collections/imports', label: 'imports', icon: FileUp, operationsOnly: true },
+  { to: '/collections/settings', label: 'settings', icon: Settings, operationsOnly: true },
 ] as const;
 
 export function CollectionsLayout() {
-  const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('mis.collections.sidebar') === 'collapsed');
-  const { language, setLanguage, isRtl, ct } = useCollectionsLocalization(); const { user, logout } = useAuth(); const navigate = useNavigate();
-  const toggleCollapsed = () => setCollapsed(value => { const next = !value; localStorage.setItem('mis.collections.sidebar', next ? 'collapsed' : 'expanded'); return next; });
-  const signOut = () => { logout(); navigate('/login', { replace: true }); };
-  const profileLabel = language === 'ar' ? 'ملفي الشخصي' : 'My profile';
-  return <div className="module-shell min-h-screen bg-mis-surface text-mis-ink" data-sidebar-collapsed={collapsed}>
-    {open && <button aria-label={ct('closeNavigation')} className="fixed inset-0 z-30 bg-mis-ink/40 lg:hidden" onClick={() => setOpen(false)} />}
-    <aside style={{ insetInlineStart: 0, borderInlineEndWidth: 1 }} className={`fixed inset-y-0 z-40 flex w-72 flex-col border-mis-border bg-white shadow-sm transition-[width,transform] duration-200 lg:translate-x-0 ${collapsed ? 'lg:w-20' : 'lg:w-72'} ${open ? 'translate-x-0' : isRtl ? 'translate-x-full' : '-translate-x-full'}`}>
-      <div className={`flex h-24 items-center border-b border-mis-border ${collapsed ? 'lg:justify-center lg:px-2' : 'justify-between px-6'}`}><img src={misLogo} alt="MIS" className={`${collapsed ? 'lg:h-10' : 'h-16'} w-auto`} /><div className="flex items-center"><button aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'} title={collapsed ? 'Expand navigation' : 'Collapse navigation'} className="hidden rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:inline-flex" onClick={toggleCollapsed}>{collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}</button><button aria-label={ct('closeNavigation')} className="rounded-lg p-2 text-slate-500 lg:hidden" onClick={() => setOpen(false)}><X /></button></div></div>
-      <div className={`pb-3 pt-6 ${collapsed ? 'lg:hidden' : 'px-6'}`}><p className="text-xs font-bold uppercase tracking-widest text-mis-primary">{ct('commandCenter')}</p><p className="mt-1 text-sm text-slate-500">{ct('collections')}</p></div>
-      <nav className={`min-h-0 flex-1 space-y-1 overflow-y-auto py-3 ${collapsed ? 'lg:px-2' : 'px-4'}`} aria-label={ct('navigation')}>{links.filter(link => (!('auditOnly' in link) || user?.roles.some(role => ['Admin', 'CollectionsOperationsManager', 'CollectionsAuditor'].includes(role))) && (!('operationsOnly' in link) || user?.roles.some(role => ['Admin', 'CollectionsOperationsManager'].includes(role)))).map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} title={collapsed ? ct(label) : undefined} onClick={() => setOpen(false)} className={({ isActive }) => `flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition ${collapsed ? 'lg:justify-center lg:px-2' : ''} ${isActive ? 'bg-mis-pale text-mis-deep' : 'text-slate-600 hover:bg-slate-50 hover:text-mis-primary'}`}><Icon className="h-5 w-5 shrink-0" /><span className={collapsed ? 'lg:hidden' : ''}>{ct(label)}</span></NavLink>)}</nav>
-      <div className={`border-t border-mis-border ${collapsed ? 'lg:p-2' : 'p-4'}`}><button title={ct('language')} className={`mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 ${collapsed ? 'lg:justify-center lg:px-2' : ''}`} onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}><Languages className="h-5 w-5 shrink-0" /><span className={collapsed ? 'lg:hidden' : ''}>{ct('language')}</span><span className={`ms-auto font-semibold ${collapsed ? 'lg:hidden' : ''}`}>{language === 'ar' ? 'EN' : 'العربية'}</span></button><NavLink to="/collections/profile" title={profileLabel} className={({ isActive }) => `mb-2 flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-slate-50 ${collapsed ? 'lg:justify-center lg:px-2' : ''} ${isActive ? 'bg-mis-pale text-mis-deep' : 'text-slate-600'}`}><UserCircle className="h-5 w-5 shrink-0" /><div className={`min-w-0 ${collapsed ? 'lg:hidden' : ''}`}><p className="truncate text-sm font-semibold text-mis-navy">{user?.fullName}</p><p className="truncate text-xs text-slate-500">{profileLabel}</p></div></NavLink><button title={ct('signOut')} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 ${collapsed ? 'lg:justify-center lg:px-2' : ''}`} onClick={signOut}><LogOut className="h-5 w-5 shrink-0" /><span className={collapsed ? 'lg:hidden' : ''}>{ct('signOut')}</span></button></div>
-    </aside>
-    <div className="module-content"><header className="sticky top-0 z-20 flex h-20 items-center border-b border-mis-border bg-white/95 px-5 backdrop-blur sm:px-8"><button aria-label={ct('openNavigation')} className="me-4 rounded-lg border border-mis-border p-2 lg:hidden" onClick={() => setOpen(true)}><Menu /></button><div><p className="text-xs font-semibold uppercase tracking-wide text-mis-primary">MIS COLLECTION FIRM</p><p className="mt-1 font-bold text-mis-navy">{ct('commandCenter')}</p></div><BarChart3 className="ms-auto h-5 w-5 text-mis-sky" /></header><main className="p-5 sm:p-8"><Outlet /></main></div>
-  </div>;
+  const { language, setLanguage, isRtl, ct } = useCollectionsLocalization();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const navigation: ModuleNavigationItem[] = links
+    .filter((link) => (!('auditOnly' in link) || user?.roles.some((role) => ['Admin', 'CollectionsOperationsManager', 'CollectionsAuditor'].includes(role))) && (!('operationsOnly' in link) || user?.roles.some((role) => ['Admin', 'CollectionsOperationsManager'].includes(role))))
+    .map(({ to, label, icon }) => ({ to, icon, label: ct(label) }));
+  return <ModuleLayoutShell collapseLabel={language === 'ar' ? 'طي القائمة' : 'Collapse navigation'} companyLabel={language === 'ar' ? 'شركة MIS للتحصيل' : 'MIS Collection Firm'} expandLabel={language === 'ar' ? 'توسيع القائمة' : 'Expand navigation'} headerTitle={ct('commandCenter')} isRtl={isRtl} languageLabel={language === 'ar' ? 'English' : 'العربية'} moduleName={ct('collections')} moduleSubtitle={ct('commandCenter')} navigation={navigation} navigationLabel={ct('navigation')} onLanguageToggle={() => setLanguage(language === 'ar' ? 'en' : 'ar')} onSignOut={() => { logout(); navigate('/login', { replace: true }); }} openNavigationLabel={ct('openNavigation')} closeNavigationLabel={ct('closeNavigation')} profileLabel={language === 'ar' ? 'ملفي الشخصي' : 'My profile'} profilePath="/collections/profile" signOutLabel={ct('signOut')} storageKey="mis.collections.sidebar" theme="collections" userName={user?.fullName} />;
 }

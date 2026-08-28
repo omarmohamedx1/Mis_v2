@@ -1,3 +1,5 @@
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
+import { DateControl } from '../../components/forms/DateControl';
 import { BadgeDollarSign, Ban, CalendarX2, CheckCircle2, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -280,15 +282,15 @@ export function HrAbsencesPage() {
             <Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" aria-hidden="true" />
             <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchEmployee')} value={searchInput} />
           </label>
-          <select aria-label={t('department')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setDepartmentId(event.target.value); setPage(1); }} value={departmentId}>
+          <ProfessionalSelect aria-label={t('department')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setDepartmentId(event.target.value); setPage(1); }} value={departmentId}>
             <option value="">{t('allDepartments')}</option>
             {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-          </select>
-          <input aria-label={t('absenceDateFilter')} className="h-11 rounded-xl border border-mis-border px-3 text-sm" onChange={(event) => { setDate(event.target.value); setPage(1); }} type="date" value={date} />
-          <select aria-label={t('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setStatus(event.target.value); setPage(1); }} value={status}>
+          </ProfessionalSelect>
+          <DateControl aria-label={t('absenceDateFilter')} className="h-11 rounded-xl border border-mis-border px-3 text-sm" onChange={(event) => { setDate(event.target.value); setPage(1); }}  value={date} />
+          <ProfessionalSelect aria-label={t('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setStatus(event.target.value); setPage(1); }} value={status}>
             <option value="all">{t('all')}</option>
             {statuses.map((item) => <option key={item} value={item.toLowerCase()}>{t(statusLabels[item])}</option>)}
-          </select>
+          </ProfessionalSelect>
         </div>
 
         {error ? <div className="p-5"><ErrorState compact message={error} onRetry={() => void load()} title={t('loadAbsencesError')} /></div> : loading ? (

@@ -7,4 +7,5 @@ public interface ICurrentUserContext
     string Username { get; }
 
     IReadOnlyCollection<string> Roles { get; }
+    IReadOnlyCollection<string> Permissions { get; }
 }
