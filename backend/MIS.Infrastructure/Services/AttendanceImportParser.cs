@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using CsvHelper;
 using CsvHelper.Configuration;
 using ExcelDataReader;
@@ -44,7 +45,7 @@ internal sealed class AttendanceImportParser
                 if (rows.Count >= InspectionRows) break;
             }
             var (headerRow, columns) = SelectHeader(rows);
-            return [new AttendanceImportSheetDto(null, headerRow, columns)];
+            return [new AttendanceImportSheetDto(null, headerRow, columns, SuggestTimeSystem(rows.Skip(headerRow)))];
         }
 
         var sheets = new List<AttendanceImportSheetDto>();
@@ -59,7 +60,7 @@ internal sealed class AttendanceImportParser
                 rows.Add(ReadExcelCells(reader));
             }
             var (headerRow, columns) = SelectHeader(rows);
-            sheets.Add(new AttendanceImportSheetDto(reader.Name, headerRow, columns));
+            sheets.Add(new AttendanceImportSheetDto(reader.Name, headerRow, columns, SuggestTimeSystem(rows.Skip(headerRow))));
         } while (reader.NextResult());
 
         if (sheets.Count == 0) throw new HrValidationException("The workbook does not contain any worksheets.");
@@ -144,6 +145,52 @@ internal sealed class AttendanceImportParser
         Stream stream,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        await foreach (var row in ReadDelimitedRowsAsync(stream, cancellationToken)) yield return row;
+    }
+
+    internal static async Task<(string[] Headers, List<string[]> Rows)> ReadTableAsync(Stream stream, string extension,
+        string? sheetName, int headerRow, int firstDataRow, CancellationToken cancellationToken)
+    {
+        if (headerRow < 1 || headerRow > 1000 || firstDataRow <= headerRow || firstDataRow > 2000)
+            throw new HrValidationException("Invalid header or first data row.");
+        Reset(stream);
+        string[]? headers = null;
+        var rows = new List<string[]>();
+        void Add(int number, string[] cells)
+        {
+            if (number == headerRow) headers = BuildHeaders(cells);
+            if (number >= firstDataRow && cells.Any(cell => !string.IsNullOrWhiteSpace(cell)))
+            {
+                if (rows.Count >= 2000) throw new HrValidationException("Employee imports cannot exceed 2000 rows.");
+                rows.Add(cells);
+            }
+        }
+        if (extension == ".csv")
+        {
+            await foreach (var row in ReadDelimitedRowsAsync(stream, cancellationToken)) Add(row.RowNumber, row.Cells);
+        }
+        else
+        {
+            using var reader = ExcelReaderFactory.CreateReader(stream, new ExcelReaderConfiguration { LeaveOpen = true });
+            var found = false;
+            do
+            {
+                if (!string.IsNullOrWhiteSpace(sheetName) && !string.Equals(reader.Name, sheetName, StringComparison.OrdinalIgnoreCase)) continue;
+                found = true;
+                var number = 0;
+                while (reader.Read()) { cancellationToken.ThrowIfCancellationRequested(); Add(++number, ReadExcelCells(reader)); }
+                break;
+            } while (reader.NextResult());
+            if (!found) throw new HrValidationException("The selected worksheet was not found.");
+        }
+        if (headers is null || rows.Count == 0) throw new HrValidationException("No employee data rows were found.");
+        return (headers, rows);
+    }
+
+    private static async IAsyncEnumerable<SourceRow> ReadDelimitedRowsAsync(
+        Stream stream,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         using var textReader = new StreamReader(stream, Encoding.UTF8, true, 81_920, true);
         var configuration = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
@@ -178,7 +225,11 @@ internal sealed class AttendanceImportParser
             cells[index] = NormalizeCell(value switch
             {
                 null => null,
+                DateTime dateTime when dateTime >= new DateTime(1899, 12, 30) && dateTime < new DateTime(1900, 1, 2)
+                    => dateTime.ToString("HH:mm:ss.fffffff", CultureInfo.InvariantCulture),
                 DateTime dateTime => dateTime.ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture),
+                TimeSpan timeSpan when timeSpan >= TimeSpan.Zero && timeSpan < TimeSpan.FromDays(1)
+                    => TimeOnly.FromTimeSpan(timeSpan).ToString("HH:mm:ss.fffffff", CultureInfo.InvariantCulture),
                 TimeSpan timeSpan => timeSpan.ToString("c", CultureInfo.InvariantCulture),
                 double number => number.ToString("R", CultureInfo.InvariantCulture),
                 float number => number.ToString("R", CultureInfo.InvariantCulture),
@@ -243,11 +294,15 @@ internal sealed class AttendanceImportParser
             Optional(mapping.CheckInColumn, "check-in"),
             Optional(mapping.CheckOutColumn, "check-out"),
             Optional(mapping.PunchDateTimeColumn, "punch date/time"),
-            Optional(mapping.PunchTypeColumn, "punch type"));
+            Optional(mapping.PunchTypeColumn, "punch type"),
+            Optional(mapping.TimeColumn, "time"),
+            Optional(mapping.AmPmColumn, "AM/PM"));
     }
 
     private static void ValidateMapping(AttendanceImportColumnMappingRequest mapping)
     {
+        if (mapping.TimeSystem is not ("24-hour" or "12-hour"))
+            throw new HrValidationException("Import time system is invalid.");
         if (mapping.HeaderRowNumber < 1 || mapping.DataStartRowNumber <= mapping.HeaderRowNumber)
             throw new HrValidationException("Data must start after the configured header row.");
         if (mapping.DataStartRowNumber > 1_000_000) throw new HrValidationException("Data start row is outside the supported range.");
@@ -261,7 +316,12 @@ internal sealed class AttendanceImportParser
         }
         else if (mapping.Layout == HrAttendanceImportLayouts.PunchRows)
         {
-            if (string.IsNullOrWhiteSpace(mapping.PunchDateTimeColumn)) throw new HrValidationException("Punch date/time mapping is required for punch-row layout.");
+            if (!string.IsNullOrWhiteSpace(mapping.TimeColumn))
+            {
+                if (string.IsNullOrWhiteSpace(mapping.AttendanceDateColumn)) throw new HrValidationException("Attendance date mapping is required for separate punch times.");
+                if (mapping.TimeSystem == "12-hour" && string.IsNullOrWhiteSpace(mapping.AmPmColumn)) throw new HrValidationException("AM/PM mapping is required for separate 12-hour punch times.");
+            }
+            else if (string.IsNullOrWhiteSpace(mapping.PunchDateTimeColumn)) throw new HrValidationException("Punch date/time mapping is required for punch-row layout.");
         }
         else
         {
@@ -318,6 +378,9 @@ internal sealed class AttendanceImportParser
     private sealed class PreviewAccumulator
     {
         private readonly AttendanceImportColumnMappingRequest _mapping;
+        private string TimeFormat => string.IsNullOrWhiteSpace(_mapping.TimeFormat)
+            ? _mapping.TimeSystem == "12-hour" ? "hh:mm tt" : "HH:mm"
+            : _mapping.TimeFormat;
         private readonly CultureInfo _culture;
         private readonly TimeZoneInfo _zone;
         private readonly IWorkingCalendarCalculator _calendar;
@@ -368,7 +431,7 @@ internal sealed class AttendanceImportParser
                         checkIn = parsedCheckIn;
                         punches.Add(new ParsedPunch(parsedCheckIn, AttendanceValues.CheckInPunch, rowNumber));
                     }
-                    else errors.Add("Check-in is invalid.");
+                    else errors.Add("Invalid check-in time.");
                 }
                 if (!string.IsNullOrWhiteSpace(checkOutText) && attendanceDate.HasValue)
                 {
@@ -377,7 +440,7 @@ internal sealed class AttendanceImportParser
                         checkOut = parsedCheckOut;
                         punches.Add(new ParsedPunch(parsedCheckOut, AttendanceValues.CheckOutPunch, rowNumber));
                     }
-                    else errors.Add("Check-out is invalid.");
+                    else errors.Add("Invalid check-out time.");
                 }
             }
             else
@@ -388,7 +451,17 @@ internal sealed class AttendanceImportParser
                     if (TryParseDate(dateText, _mapping.DateFormat, _culture, out var parsedDate)) attendanceDate = parsedDate;
                     else errors.Add("Attendance date is invalid.");
                 }
-                var punchText = Cell(cells, columns.PunchDateTime);
+                var punchText = Cell(cells, columns.Time ?? columns.PunchDateTime);
+                if (columns.Time.HasValue && columns.AmPm.HasValue)
+                {
+                    var marker = Cell(cells, columns.AmPm).Trim().ToUpperInvariant();
+                    if (marker is not ("AM" or "PM" or "ص" or "م"))
+                    {
+                        errors.Add("AM/PM value is missing or invalid.");
+                        punchText = string.Empty;
+                    }
+                    else punchText = CombineSeparateTime(punchText, marker);
+                }
                 if (string.IsNullOrWhiteSpace(punchText))
                 {
                     errors.Add("Punch date/time is missing.");
@@ -464,7 +537,7 @@ internal sealed class AttendanceImportParser
             out DateTimeOffset instant)
         {
             if (TryParseOffset(value, _culture, out instant)) return true;
-            if (TryParseTime(value, _mapping.TimeFormat, _culture, out var time))
+            if (TryParseTime(value, TimeFormat, _culture, out var time))
             {
                 var localDate = isCheckOut && parsedCheckIn.HasValue
                     ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(parsedCheckIn.Value, _zone).DateTime)
@@ -474,7 +547,7 @@ internal sealed class AttendanceImportParser
                     instant = _calendar.ToInstant(localDate.AddDays(1), time, _mapping.TimeZoneId);
                 return true;
             }
-            if (TryParseLocalDateTime(value, _mapping.DateFormat, _mapping.TimeFormat, _culture, out var local))
+            if (TryParseLocalDateTime(value, _mapping.DateFormat, TimeFormat, _culture, out var local))
             {
                 instant = _calendar.ToInstant(DateOnly.FromDateTime(local), TimeOnly.FromDateTime(local), _mapping.TimeZoneId);
                 return true;
@@ -485,7 +558,7 @@ internal sealed class AttendanceImportParser
 
         private bool TryParsePunch(string value, DateOnly? date, out DateTimeOffset instant, out DateOnly localDate)
         {
-            if (date.HasValue && TryParseTime(value, _mapping.TimeFormat, _culture, out var time))
+            if (date.HasValue && TryParseTime(value, TimeFormat, _culture, out var time))
             {
                 instant = _calendar.ToInstant(date.Value, time, _mapping.TimeZoneId);
                 localDate = date.Value;
@@ -496,7 +569,7 @@ internal sealed class AttendanceImportParser
                 localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(instant, _zone).DateTime);
                 return true;
             }
-            if (TryParseLocalDateTime(value, _mapping.DateFormat, _mapping.TimeFormat, _culture, out var local))
+            if (TryParseLocalDateTime(value, _mapping.DateFormat, TimeFormat, _culture, out var local))
             {
                 localDate = DateOnly.FromDateTime(local);
                 instant = _calendar.ToInstant(localDate, TimeOnly.FromDateTime(local), _mapping.TimeZoneId);
@@ -516,7 +589,7 @@ internal sealed class AttendanceImportParser
             var indexes = new[]
             {
                 columns.EmployeeNumber, columns.EmployeeName, columns.AttendanceDate, columns.CheckIn,
-                columns.CheckOut, columns.PunchDateTime, columns.PunchType
+                columns.CheckOut, columns.PunchDateTime, columns.PunchType, columns.Time, columns.AmPm
             }.Where(index => index.HasValue).Select(index => index!.Value).Distinct();
             var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase) { ["SourceRowNumber"] = rowNumber.ToString(CultureInfo.InvariantCulture) };
             foreach (var index in indexes) values[headers[index]] = Cell(cells, index);
@@ -529,8 +602,16 @@ internal sealed class AttendanceImportParser
 
     private static bool TryParseDate(string value, string? format, CultureInfo culture, out DateOnly date)
     {
+        // ExcelDataReader returns typed date cells as DateTime, serialized invariantly above.
+        if (DateTime.TryParseExact(value, "yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out var excelDate))
+        {
+            date = DateOnly.FromDateTime(excelDate);
+            return true;
+        }
         if (!string.IsNullOrWhiteSpace(format) && DateOnly.TryParseExact(value, format, culture, DateTimeStyles.AllowWhiteSpaces, out date)) return true;
         if (DateOnly.TryParse(value, culture, DateTimeStyles.AllowWhiteSpaces, out date)) return true;
+        if (DateOnly.TryParseExact(value, "dd-MMM-yy", CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out date)) return true;
         if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var serial) && serial is >= 1 and <= 2_958_465)
         {
             try
@@ -548,6 +629,15 @@ internal sealed class AttendanceImportParser
 
     private static bool TryParseTime(string value, string? format, CultureInfo culture, out TimeOnly time)
     {
+        value = NormalizeMeridiem(value);
+        if (Regex.IsMatch(value, @"(?:AM|PM)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            // Parse marked clock times explicitly: never reinterpret 13:00 PM as a valid 24-hour time.
+            if (!string.IsNullOrWhiteSpace(format) && TimeOnly.TryParseExact(value, format,
+                CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out time)) return true;
+            return TimeOnly.TryParseExact(value, ["h:mm tt", "hh:mm tt", "h:mm:ss tt", "hh:mm:ss tt"],
+                CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out time);
+        }
         if (!string.IsNullOrWhiteSpace(format) && TimeOnly.TryParseExact(value, format, culture, DateTimeStyles.AllowWhiteSpaces, out time)) return true;
         if (TimeOnly.TryParse(value, culture, DateTimeStyles.AllowWhiteSpaces, out time)) return true;
         if (TimeSpan.TryParse(value, culture, out var span) && span >= TimeSpan.Zero && span < TimeSpan.FromDays(1))
@@ -578,6 +668,18 @@ internal sealed class AttendanceImportParser
         CultureInfo culture,
         out DateTime local)
     {
+        value = NormalizeMeridiem(value);
+        // A failed clock value must not fall back to DateTime's implicit current date.
+        if (!Regex.IsMatch(value, @"\d[/.\-]\d|[\p{L}]{3,}"))
+        {
+            if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric) || numeric < 1)
+            {
+                local = default;
+                return false;
+            }
+        }
+        if (Regex.IsMatch(value, @"(?:AM|PM)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            culture = CultureInfo.InvariantCulture;
         if (!string.IsNullOrWhiteSpace(dateFormat) && !string.IsNullOrWhiteSpace(timeFormat) &&
             DateTime.TryParseExact(value, $"{dateFormat} {timeFormat}", culture, DateTimeStyles.AllowWhiteSpaces, out local)) return true;
         if (DateTime.TryParse(value, culture, DateTimeStyles.AllowWhiteSpaces, out local) &&
@@ -598,7 +700,26 @@ internal sealed class AttendanceImportParser
     }
 
     private sealed record SourceRow(int RowNumber, string[] Cells);
-    private sealed record ResolvedColumns(int EmployeeNumber, int? EmployeeName, int? AttendanceDate, int? CheckIn, int? CheckOut, int? PunchDateTime, int? PunchType);
+    private static string NormalizeMeridiem(string value) => Regex.Replace(value.Trim(),
+        @"\s*(AM|PM|ص|م)$", match => " " + (match.Groups[1].Value.ToUpperInvariant() switch
+        {
+            "ص" => "AM", "م" => "PM", var marker => marker
+        }), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static string SuggestTimeSystem(IEnumerable<string[]> rows) => rows.SelectMany(row => row)
+        .Any(value => Regex.IsMatch(value, @"\d{1,2}:\d{2}(?::\d{2})?\s*(AM|PM|ص|م)$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) ? "12-hour" : "24-hour";
+    private static string CombineSeparateTime(string value, string marker)
+    {
+        // Native Excel clock cells may arrive as a fractional day or a normalized clock.
+        if ((double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var serial) && serial is >= 0 and < 1
+             || Regex.IsMatch(value, @"^\d{2}:\d{2}:\d{2}\.\d{7}$"))
+            && TryParseTime(value, null, CultureInfo.InvariantCulture, out var clock))
+            value = clock.ToString("h:mm:ss", CultureInfo.InvariantCulture);
+        return $"{value} {marker}";
+    }
+
+    private sealed record ResolvedColumns(int EmployeeNumber, int? EmployeeName, int? AttendanceDate, int? CheckIn, int? CheckOut, int? PunchDateTime, int? PunchType, int? Time, int? AmPm);
 
     private sealed class MutablePreviewGroup
     {

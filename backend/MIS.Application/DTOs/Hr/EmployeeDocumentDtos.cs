@@ -110,3 +110,81 @@ public sealed record DocumentExpirySummaryDto(
     int ExpiringWithin7Days,
     int ExpiringWithin15Days,
     int ExpiringWithin30Days);
+
+public static class RequiredEmployeeDocumentCodes
+{
+    public const string BirthCertificate = "BIRTH_CERTIFICATE";
+    public const string GraduationCertificate = "GRADUATION_CERTIFICATE";
+    public const string NationalIdCopy = "NATIONAL_ID_COPY";
+    public const string MilitaryStatus = "MILITARY_STATUS";
+    public const string CriminalRecord = "CRIMINAL_RECORD";
+    public const string EmploymentAppointmentPaper = "EMPLOYMENT_APPOINTMENT_PAPER";
+    public const string LaborOfficeRegistration = "LABOR_OFFICE_REGISTRATION";
+    public static readonly IReadOnlyCollection<string> All = [BirthCertificate, GraduationCertificate, NationalIdCopy, MilitaryStatus, CriminalRecord, EmploymentAppointmentPaper, LaborOfficeRegistration];
+}
+
+public static class PersonnelFileCompletionFilters
+{
+    public const string All = "All";
+    public const string Complete = "Complete";
+    public const string Incomplete = "Incomplete";
+}
+
+public sealed class PersonnelFileFilterDto
+{
+    [Range(1, int.MaxValue)] public int Page { get; init; } = 1;
+    [Range(1, 200)] public int PageSize { get; init; } = 20;
+    [StringLength(160)] public string? Search { get; init; }
+    public Guid? EmployeeId { get; init; }
+    public Guid? DepartmentId { get; init; }
+    public Guid? PositionId { get; init; }
+    [StringLength(32)] public string? Gender { get; init; }
+    [StringLength(40)] public string? CompletionStatus { get; init; }
+    [StringLength(40)] public string? MissingDocumentCode { get; init; }
+}
+
+public sealed record PersonnelDocumentChecklistItemDto(
+    string Code,
+    string Name,
+    string NameArabic,
+    bool IsRequired,
+    bool IsUploaded,
+    Guid? DocumentId,
+    string? FileName,
+    string? MimeType,
+    long? FileSize,
+    string? UploadedBy,
+    DateTimeOffset? UploadedAt,
+    DateTimeOffset? UpdatedAt);
+
+public sealed record EmployeePersonnelFileDto(
+    Guid EmployeeId,
+    string EmployeeNumber,
+    string EmployeeName,
+    string DepartmentName,
+    Guid DepartmentId,
+    string? PositionName,
+    Guid? PositionId,
+    string? Gender,
+    string? NationalId,
+    bool IsActive,
+    bool IsArchived,
+    int CompletedDocuments,
+    int RequiredDocuments,
+    int MissingDocuments,
+    int CompletionPercentage,
+    string Status,
+    IReadOnlyCollection<PersonnelDocumentChecklistItemDto> Documents);
+
+public sealed record PagedEmployeePersonnelFilesDto(
+    IReadOnlyCollection<EmployeePersonnelFileDto> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages);
+
+public sealed record PersonnelFileSummaryDto(
+    int TotalEmployees,
+    int CompleteFiles,
+    int IncompleteFiles,
+    int MissingDocuments);

@@ -242,7 +242,8 @@ public sealed record AttendanceImportFile(
 public sealed record AttendanceImportSheetDto(
     string? SheetName,
     int SuggestedHeaderRowNumber,
-    IReadOnlyCollection<string> DetectedColumns);
+    IReadOnlyCollection<string> DetectedColumns,
+    string SuggestedTimeSystem = "24-hour");
 
 public sealed record AttendanceImportUploadDto(
     Guid BatchId,
@@ -288,11 +289,20 @@ public sealed class AttendanceImportColumnMappingRequest
     [StringLength(160)]
     public string? PunchTypeColumn { get; init; }
 
+    [StringLength(160)]
+    public string? TimeColumn { get; init; }
+
+    [StringLength(160)]
+    public string? AmPmColumn { get; init; }
+
     [StringLength(32)]
     public string? DateFormat { get; init; }
 
     [StringLength(32)]
     public string? TimeFormat { get; init; }
+
+    [Required, RegularExpression("^(24-hour|12-hour)$")]
+    public string TimeSystem { get; init; } = "24-hour";
 
     [StringLength(20)]
     public string? CultureName { get; init; }
@@ -337,7 +347,8 @@ public sealed record AttendanceImportPreviewRowDto(
     IReadOnlyCollection<DateTimeOffset> Punches,
     bool CanImport,
     IReadOnlyCollection<string> Categories,
-    IReadOnlyCollection<string> Errors);
+    IReadOnlyCollection<string> Errors,
+    IReadOnlyCollection<Dictionary<string, string?>> SourceRows);
 
 public sealed record PagedAttendanceImportPreviewDto(
     IReadOnlyCollection<AttendanceImportPreviewRowDto> Items,

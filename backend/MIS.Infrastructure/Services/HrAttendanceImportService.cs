@@ -235,7 +235,8 @@ public sealed class HrAttendanceImportService : IHrAttendanceImportService
                 item.PunchesJson,
                 item.CanImport,
                 item.CategoriesJson,
-                item.ErrorsJson))
+                item.ErrorsJson,
+                item.SourceRowsJson))
             .ToListAsync(cancellationToken);
 
         return new PagedAttendanceImportPreviewDto(
@@ -809,7 +810,8 @@ public sealed class HrAttendanceImportService : IHrAttendanceImportService
         ReadJson<DateTimeOffset[]>(item.PunchesJson) ?? [],
         item.CanImport,
         ReadJson<string[]>(item.CategoriesJson) ?? [],
-        ApiTextLocalizer.LocalizeErrors(ReadJson<string[]>(item.ErrorsJson)));
+        ApiTextLocalizer.LocalizeErrors(ReadJson<string[]>(item.ErrorsJson)),
+        ReadJson<Dictionary<string, string?>[]>(item.SourceRowsJson) ?? []);
 
     private static T? ReadJson<T>(string? json)
     {
@@ -853,7 +855,7 @@ public sealed class HrAttendanceImportService : IHrAttendanceImportService
         return extension;
     }
 
-    private static async Task ValidateSignatureAsync(Stream stream, string extension, CancellationToken cancellationToken)
+    internal static async Task ValidateSignatureAsync(Stream stream, string extension, CancellationToken cancellationToken)
     {
         if (!stream.CanSeek) throw new HrValidationException("Stored attendance files must be seekable.");
         stream.Position = 0;
@@ -904,7 +906,8 @@ public sealed class HrAttendanceImportService : IHrAttendanceImportService
         string PunchesJson,
         bool CanImport,
         string CategoriesJson,
-        string ErrorsJson);
+        string ErrorsJson,
+        string SourceRowsJson);
     private sealed record HistoryProjection(
         Guid Id,
         string FileName,

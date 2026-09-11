@@ -321,6 +321,12 @@ public static class ApplicationDbSeeder
 
         var documentTypes = new[]
         {
+            ("Criminal Record", "الفيش الجنائي", "CRIMINAL_RECORD", false),
+            ("Employment / Appointment Paper", "ورقة التعيين", "EMPLOYMENT_APPOINTMENT_PAPER", false),
+            ("Labor Office Registration (Kaab El Amal)", "كعب العمل", "LABOR_OFFICE_REGISTRATION", false),
+            ("Birth Certificate", "شهادة الميلاد", "BIRTH_CERTIFICATE", false),
+            ("National ID Copy", "صورة البطاقة", "NATIONAL_ID_COPY", false),
+            ("Military Exemption / Status", "ورق الإعفاء / موقف التجنيد", "MILITARY_STATUS", false),
             ("National ID", "بطاقة الرقم القومي", "NATIONAL_ID", true),
             ("Contract", "عقد العمل", "CONTRACT", true),
             ("Graduation Certificate", "شهادة التخرج", "GRADUATION_CERTIFICATE", false),

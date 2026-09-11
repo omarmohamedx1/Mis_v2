@@ -182,7 +182,7 @@ public sealed class CollectionsService : ICollectionsService
         var duplicate = await _db.CollectionPayments.AnyAsync(x => x.ReferenceNumber.ToLower() == request.ReferenceNumber.Trim().ToLower(), token); if (duplicate) throw new HrConflictException("A payment with this reference number already exists.");
         var payment = new CollectionPayment(caseId, request.Amount, request.PaymentDate, request.Method, request.ReferenceNumber, _user.UserId, null, DateTimeOffset.UtcNow, request.CurrencyCode);
         _db.CollectionPayments.Add(payment); _db.CollectionActivities.Add(new CollectionActivity(caseId, CollectionsValues.ActivityTypes.Payment, payment.Status, null, request.Method, _user.UserId, payment.SubmittedAt, null)); AddAudit("PaymentSubmitted", payment, caseId, null, request); await _db.SaveChangesAsync(token);
-        return new CollectionPaymentDto(payment.Id, caseId, collectionCase.CaseNumber, await CustomerNameAsync(collectionCase.CustomerId, token), payment.Amount, payment.PaymentDate, payment.Method, payment.ReferenceNumber, payment.Status, _user.Username, payment.SubmittedAt, null, null, null);
+        return await ProjectPayments(_db.CollectionPayments.AsNoTracking().Where(x => x.Id == payment.Id)).SingleAsync(token);
     }
 
     public async Task<CollectionPaymentDto> ReviewPaymentAsync(Guid paymentId, ReviewPaymentRequest request, CancellationToken token)
@@ -205,16 +205,41 @@ public sealed class CollectionsService : ICollectionsService
             }
         }
         AddAudit(request.Approve ? "PaymentApproved" : "PaymentRejected", payment, payment.CaseId, before, new { payment.Status, payment.VerifiedById, payment.RejectionReason }); await _db.SaveChangesAsync(token); await transaction.CommitAsync(token);
-        return new CollectionPaymentDto(payment.Id, payment.CaseId, payment.Case.CaseNumber, LocalizedCustomerName(payment.Case.Customer), payment.Amount, payment.PaymentDate, payment.Method, payment.ReferenceNumber, payment.Status, payment.SubmittedBy.FullName, payment.SubmittedAt, _user.Username, payment.VerifiedAt, payment.RejectionReason);
+        return await ProjectPayments(_db.CollectionPayments.AsNoTracking().Where(x => x.Id == payment.Id)).SingleAsync(token);
     }
 
     public async Task<PagedResultDto<CollectionPaymentDto>> GetPaymentsAsync(PaymentFilters filters, CancellationToken token)
     {
         ValidatePage(filters.Page, filters.PageSize); var cases = AccessibleCases(); var query = _db.CollectionPayments.AsNoTracking().Where(x => cases.Any(c => c.Id == x.CaseId));
-        if (filters.OrganizationId.HasValue) query = query.Where(x => x.Case.Portfolio.OrganizationId == filters.OrganizationId); if (!string.IsNullOrWhiteSpace(filters.Status)) { var status = filters.Status.Trim().ToUpperInvariant(); query = query.Where(x => x.Status == status); }
+        if (filters.OrganizationId.HasValue) query = query.Where(x => x.Case.Portfolio.OrganizationId == filters.OrganizationId); if (filters.CollectorId.HasValue) query = query.Where(x => x.SubmittedById == filters.CollectorId); if (!string.IsNullOrWhiteSpace(filters.Status)) { var status = filters.Status.Trim().ToUpperInvariant(); query = query.Where(x => x.Status == status); }
         if (filters.From.HasValue) query = query.Where(x => x.PaymentDate >= filters.From); if (filters.To.HasValue) query = query.Where(x => x.PaymentDate <= filters.To);
-        if (!string.IsNullOrWhiteSpace(filters.Search)) { var term = filters.Search.Trim().ToLower(); query = query.Where(x => x.ReferenceNumber.ToLower().Contains(term) || x.Case.CaseNumber.ToLower().Contains(term) || x.Case.Customer.CustomerCode.ToLower().Contains(term)); }
+        if (!string.IsNullOrWhiteSpace(filters.Search)) { var term = filters.Search.Trim().ToLower(); query = query.Where(x => x.ReferenceNumber.ToLower().Contains(term) || x.Case.CaseNumber.ToLower().Contains(term) || x.Case.AccountReference.ToLower().Contains(term) || x.Case.Customer.CustomerCode.ToLower().Contains(term) || (x.Case.Customer.FullNameArabic != null && x.Case.Customer.FullNameArabic.ToLower().Contains(term)) || (x.Case.Customer.FullNameEnglish != null && x.Case.Customer.FullNameEnglish.ToLower().Contains(term))); }
         var total = await query.CountAsync(token); var rows = await ProjectPayments(query.OrderByDescending(x => x.SubmittedAt).Skip((filters.Page - 1) * filters.PageSize).Take(filters.PageSize)).ToArrayAsync(token); return Page(rows, total, filters.Page, filters.PageSize);
+    }
+
+    public async Task<CollectionPaymentSummaryDto> GetPaymentSummaryAsync(CancellationToken token)
+    {
+        var cases = AccessibleCases(); var today = CairoToday();
+        var payments = _db.CollectionPayments.AsNoTracking().Where(x => cases.Any(c => c.Id == x.CaseId));
+        var approvedToday = payments.Where(x => x.PaymentDate == today && x.Status == CollectionsValues.PaymentStatuses.Approved);
+        return new CollectionPaymentSummaryDto(await approvedToday.SumAsync(x => (decimal?)x.Amount, token) ?? 0, await approvedToday.CountAsync(token), await payments.CountAsync(x => x.Status == CollectionsValues.PaymentStatuses.Submitted || x.Status == CollectionsValues.PaymentStatuses.UnderReview, token));
+    }
+
+    public async Task<CollectionPaymentFilterOptionsDto> GetPaymentFilterOptionsAsync(CancellationToken token)
+    {
+        var ar = ApiTextLocalizer.IsArabic; var cases = AccessibleCases();
+        var payments = _db.CollectionPayments.AsNoTracking().Where(x => cases.Any(c => c.Id == x.CaseId));
+        var organizationRows = await payments.Select(x => new { Id = x.Case.Portfolio.OrganizationId, Name = ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish }).Distinct().ToArrayAsync(token);
+        var collectorRows = await payments.Select(x => new { Id = x.SubmittedById, Name = x.SubmittedBy.FullName }).Distinct().ToArrayAsync(token);
+        var organizations = organizationRows.OrderBy(x => x.Name).Select(x => new CollectionPaymentFilterOptionDto(x.Id, x.Name)).ToArray();
+        var collectors = collectorRows.OrderBy(x => x.Name).Select(x => new CollectionPaymentFilterOptionDto(x.Id, x.Name)).ToArray();
+        return new CollectionPaymentFilterOptionsDto(organizations, collectors);
+    }
+
+    public async Task<CollectionPaymentDetailsDto> GetPaymentAsync(Guid paymentId, CancellationToken token)
+    {
+        var ar = ApiTextLocalizer.IsArabic; var cases = AccessibleCases();
+        return await _db.CollectionPayments.AsNoTracking().Where(x => x.Id == paymentId && cases.Any(c => c.Id == x.CaseId)).Select(x => new CollectionPaymentDetailsDto(x.Id, x.CaseId, x.Case.CaseNumber, x.Case.AccountReference, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.Case.Portfolio.OrganizationId, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Case.Portfolio.Organization.OrganizationType, ar ? x.Case.Portfolio.NameArabic : x.Case.Portfolio.NameEnglish, x.SubmittedById, x.SubmittedBy.FullName, x.Amount, x.CurrencyCode, x.PaymentDate, x.Method, x.ReferenceNumber, x.Status, x.SubmittedBy.FullName, x.SubmittedAt, x.VerifiedBy == null ? null : x.VerifiedBy.FullName, x.VerifiedAt, x.RejectionReason)).SingleOrDefaultAsync(token) ?? throw new HrNotFoundException("Payment was not found.");
     }
 
     public async Task<AssignmentPreviewDto> PreviewAssignmentAsync(IReadOnlyCollection<Guid> caseIds, Guid collectorId, CancellationToken token)
@@ -269,12 +294,42 @@ public sealed class CollectionsService : ICollectionsService
             .ToArrayAsync(token);
     }
 
-    public async Task<PagedResultDto<FieldVisitDto>> GetVisitsAsync(int page, int pageSize, string? status, DateOnly? date, CancellationToken token)
+    public async Task<PagedResultDto<FieldVisitDto>> GetVisitsAsync(VisitFilters filters, CancellationToken token)
     {
-        ValidatePage(page, pageSize); var cases = AccessibleCases(); var query = _db.CollectionFieldVisits.AsNoTracking().Where(x => cases.Any(c => c.Id == x.CaseId));
-        if (!string.IsNullOrWhiteSpace(status)) { var value = status.Trim().ToUpperInvariant(); query = query.Where(x => x.Status == value); }
-        if (date.HasValue) { var (start, end) = CairoDayUtcRange(date.Value); query = query.Where(x => x.ScheduledAt >= start && x.ScheduledAt < end); }
-        var total = await query.CountAsync(token); var rows = await ProjectVisits(query.OrderBy(x => x.ScheduledAt).Skip((page - 1) * pageSize).Take(pageSize)).ToArrayAsync(token); return Page(rows, total, page, pageSize);
+        ValidatePage(filters.Page, filters.PageSize); var cases = AccessibleCases(); var query = _db.CollectionFieldVisits.AsNoTracking().Where(x => cases.Any(c => c.Id == x.CaseId));
+        if (filters.OrganizationId.HasValue) query = query.Where(x => x.Case.Portfolio.OrganizationId == filters.OrganizationId); if (filters.CollectorId.HasValue) query = query.Where(x => x.CollectorId == filters.CollectorId);
+        if (!string.IsNullOrWhiteSpace(filters.Status)) { var value = filters.Status.Trim().ToUpperInvariant(); query = query.Where(x => x.Status == value); }
+        if (filters.Date.HasValue) { var (start, end) = CairoDayUtcRange(filters.Date.Value); query = query.Where(x => x.ScheduledAt >= start && x.ScheduledAt < end); }
+        if (!string.IsNullOrWhiteSpace(filters.Search)) { var term = filters.Search.Trim().ToLower(); query = query.Where(x => x.Case.CaseNumber.ToLower().Contains(term) || x.Case.AccountReference.ToLower().Contains(term) || x.Case.Customer.CustomerCode.ToLower().Contains(term) || (x.Case.Customer.FullNameArabic != null && x.Case.Customer.FullNameArabic.ToLower().Contains(term)) || (x.Case.Customer.FullNameEnglish != null && x.Case.Customer.FullNameEnglish.ToLower().Contains(term)) || x.Address.ToLower().Contains(term)); }
+        var total = await query.CountAsync(token); var rows = await ProjectVisits(query.OrderByDescending(x => x.ScheduledAt).Skip((filters.Page - 1) * filters.PageSize).Take(filters.PageSize)).ToArrayAsync(token); return Page(rows, total, filters.Page, filters.PageSize);
+    }
+
+    public async Task<FieldVisitSummaryDto> GetVisitSummaryAsync(CancellationToken token)
+    {
+        var cases = AccessibleCases(); var visits = _db.CollectionFieldVisits.AsNoTracking().Where(x => cases.Any(c => c.Id == x.CaseId)); var (start, end) = CairoDayUtcRange(CairoToday());
+        return new FieldVisitSummaryDto(await visits.CountAsync(x => x.ScheduledAt >= start && x.ScheduledAt < end, token), await visits.CountAsync(x => x.Status == CollectionsValues.VisitStatuses.Scheduled || x.Status == CollectionsValues.VisitStatuses.Assigned || x.Status == CollectionsValues.VisitStatuses.Planned || x.Status == CollectionsValues.VisitStatuses.Rescheduled, token), await visits.CountAsync(x => x.Status == CollectionsValues.VisitStatuses.Completed, token));
+    }
+
+    public async Task<FieldVisitFilterOptionsDto> GetVisitFilterOptionsAsync(CancellationToken token)
+    {
+        var ar = ApiTextLocalizer.IsArabic; var cases = AccessibleCases(); var visits = _db.CollectionFieldVisits.AsNoTracking().Where(x => cases.Any(c => c.Id == x.CaseId));
+        var organizationRows = await visits.Select(x => new { Id = x.Case.Portfolio.OrganizationId, Name = ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish }).Distinct().ToArrayAsync(token);
+        var collectorRows = await visits.Select(x => new { Id = x.CollectorId, Name = x.Collector.FullName }).Distinct().ToArrayAsync(token);
+        return new FieldVisitFilterOptionsDto(organizationRows.OrderBy(x => x.Name).Select(x => new FieldVisitFilterOptionDto(x.Id, x.Name)).ToArray(), collectorRows.OrderBy(x => x.Name).Select(x => new FieldVisitFilterOptionDto(x.Id, x.Name)).ToArray());
+    }
+
+    public async Task<FieldVisitScheduleOptionsDto> GetVisitScheduleOptionsAsync(string? search, CancellationToken token)
+    {
+        if (!CanAssign()) throw new HrForbiddenException("You do not have permission to plan field visits."); var ar = ApiTextLocalizer.IsArabic; var query = AccessibleCases().AsNoTracking().Where(x => x.Status == CollectionsValues.CaseStatuses.Active);
+        if (!string.IsNullOrWhiteSpace(search)) { var term = search.Trim().ToLower(); query = query.Where(x => x.CaseNumber.ToLower().Contains(term) || x.AccountReference.ToLower().Contains(term) || (x.Customer.FullNameArabic != null && x.Customer.FullNameArabic.ToLower().Contains(term)) || (x.Customer.FullNameEnglish != null && x.Customer.FullNameEnglish.ToLower().Contains(term))); }
+        var cases = await query.OrderBy(x => x.CaseNumber).Take(100).Select(x => new FieldVisitCaseOptionDto(x.Id, x.CaseNumber, ar ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!, x.Portfolio.OrganizationId, ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish, x.Portfolio.Organization.OrganizationType, ar ? x.Customer.AddressArabic ?? x.Customer.AddressEnglish : x.Customer.AddressEnglish ?? x.Customer.AddressArabic, x.Customer.Governorate, x.Customer.Area, x.AssignedCollectorId, x.AssignedCollector == null ? null : x.AssignedCollector.FullName)).ToArrayAsync(token);
+        var collectors = (await GetCollectorsAsync(token)).Select(x => new FieldVisitFilterOptionDto(x.Id, x.Name)).ToArray(); return new FieldVisitScheduleOptionsDto(cases, collectors);
+    }
+
+    public async Task<FieldVisitDetailsDto> GetVisitAsync(Guid visitId, CancellationToken token)
+    {
+        var ar = ApiTextLocalizer.IsArabic; var cases = AccessibleCases();
+        return await _db.CollectionFieldVisits.AsNoTracking().Where(x => x.Id == visitId && cases.Any(c => c.Id == x.CaseId)).Select(x => new FieldVisitDetailsDto(x.Id, x.CaseId, x.Case.CaseNumber, x.Case.AccountReference, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.Case.Portfolio.OrganizationId, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Case.Portfolio.Organization.OrganizationType, x.CollectorId, x.Collector.FullName, x.ScheduledAt, x.Status, x.Address, x.Governorate, x.Area, x.Purpose, x.Result, x.Notes, x.CreatedBy.FullName, x.CreatedAt, x.UpdatedAt, x.CheckedOutAt, _db.CollectionDcrs.Where(d => d.LinkedVisitId == x.Id).Select(d => (Guid?)d.Id).FirstOrDefault(), _db.CollectionDcrs.Where(d => d.LinkedVisitId == x.Id).Select(d => d.Feedback).FirstOrDefault(), _db.CollectionDcrs.Where(d => d.LinkedVisitId == x.Id).Select(d => d.LinkedPtpId).FirstOrDefault())).SingleOrDefaultAsync(token) ?? throw new HrNotFoundException("Field visit was not found.");
     }
 
     public async Task<FieldVisitDto> CreateVisitAsync(CreateVisitRequest request, CancellationToken token)
@@ -282,9 +337,9 @@ public sealed class CollectionsService : ICollectionsService
         if (!CanAssign()) throw new HrForbiddenException("You do not have permission to plan field visits.");
         var collectionCase = await AccessibleCases().SingleOrDefaultAsync(x => x.Id == request.CaseId, token) ?? throw new HrNotFoundException("Collection case was not found.");
         if (request.ScheduledAt < DateTimeOffset.UtcNow.AddMinutes(-5) || string.IsNullOrWhiteSpace(request.Address)) throw new HrValidationException("Visit schedule and address are required, and the schedule cannot be in the past.");
-        if (!await _db.Users.AnyAsync(x => x.Id == request.CollectorId && x.IsActive && x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.CollectionsCollector), token)) throw new HrValidationException("A valid active collector is required.");
-        var visit = new FieldVisit(request.CaseId, request.CollectorId, request.ScheduledAt, request.Address, request.Governorate, request.Area, _user.UserId, DateTimeOffset.UtcNow); _db.CollectionFieldVisits.Add(visit);
-        _db.CollectionActivities.Add(new CollectionActivity(request.CaseId, CollectionsValues.ActivityTypes.Visit, CollectionsValues.VisitStatuses.Assigned, null, "FIELD", _user.UserId, DateTimeOffset.UtcNow, request.ScheduledAt)); AddAudit("VisitCreated", visit, request.CaseId, null, request); await _db.SaveChangesAsync(token);
+        var authorizedCollectors = await GetCollectorsAsync(token); if (!authorizedCollectors.Any(x => x.Id == request.CollectorId)) throw new HrForbiddenException("The selected collector is outside your authorized scope.");
+        var visit = new FieldVisit(request.CaseId, request.CollectorId, request.ScheduledAt, request.Address, request.Governorate, request.Area, _user.UserId, DateTimeOffset.UtcNow, null, request.Notes); _db.CollectionFieldVisits.Add(visit);
+        _db.CollectionActivities.Add(new CollectionActivity(request.CaseId, CollectionsValues.ActivityTypes.Visit, CollectionsValues.VisitStatuses.Assigned, request.Notes, "FIELD", _user.UserId, DateTimeOffset.UtcNow, request.ScheduledAt)); AddAudit("VisitCreated", visit, request.CaseId, null, request); await _db.SaveChangesAsync(token);
         return await ProjectVisits(_db.CollectionFieldVisits.AsNoTracking().Where(x => x.Id == visit.Id)).SingleAsync(token);
     }
 
@@ -392,8 +447,8 @@ public sealed class CollectionsService : ICollectionsService
         var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new CollectionCaseListItemDto(x.Id, x.CaseNumber, x.Customer.CustomerCode, ar ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!, x.AccountReference, ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish, ar ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish, x.OutstandingBalance, x.OverdueBalance, x.DaysPastDue, ar ? x.CurrentBucket.NameArabic : x.CurrentBucket.NameEnglish, x.Status, x.Priority, x.PriorityScore, x.PriorityExplanation, x.AssignedCollectorId, x.AssignedCollector == null ? null : x.AssignedCollector.FullName, x.NextFollowUpAt));
     }
     private IQueryable<PromiseToPayDto> ProjectPromises(IQueryable<PromiseToPay> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new PromiseToPayDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.PromisedAmount, x.PromiseDate, x.ActualPaidAmount, x.Status, x.Collector.FullName, x.Channel, x.CreatedAt)); }
-    private IQueryable<CollectionPaymentDto> ProjectPayments(IQueryable<CollectionPayment> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new CollectionPaymentDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.Amount, x.PaymentDate, x.Method, x.ReferenceNumber, x.Status, x.SubmittedBy.FullName, x.SubmittedAt, x.VerifiedBy == null ? null : x.VerifiedBy.FullName, x.VerifiedAt, x.RejectionReason)); }
-    private IQueryable<FieldVisitDto> ProjectVisits(IQueryable<FieldVisit> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new FieldVisitDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.CollectorId, x.Collector.FullName, x.ScheduledAt, x.Status, x.Address, x.Governorate, x.Area, x.Result, x.Notes)); }
+    private IQueryable<CollectionPaymentDto> ProjectPayments(IQueryable<CollectionPayment> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new CollectionPaymentDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.Amount, x.PaymentDate, x.Method, x.ReferenceNumber, x.Status, x.SubmittedBy.FullName, x.SubmittedAt, x.VerifiedBy == null ? null : x.VerifiedBy.FullName, x.VerifiedAt, x.RejectionReason, x.Case.Portfolio.OrganizationId, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Case.Portfolio.Organization.OrganizationType, x.SubmittedById, x.SubmittedBy.FullName, x.CurrencyCode)); }
+    private IQueryable<FieldVisitDto> ProjectVisits(IQueryable<FieldVisit> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new FieldVisitDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.Case.Portfolio.OrganizationId, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Case.Portfolio.Organization.OrganizationType, x.CollectorId, x.Collector.FullName, x.ScheduledAt, x.Status, x.Address, x.Governorate, x.Area, x.Result, x.Notes)); }
     private IQueryable<ComplaintDto> ProjectComplaints(IQueryable<CollectionComplaint> query) { var ar = ApiTextLocalizer.IsArabic; var now = DateTimeOffset.UtcNow; return query.Select(x => new ComplaintDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Reference, x.Source, x.Category, x.Severity, x.Description, x.ReceivedAt, x.SlaDueAt, x.Status == CollectionsValues.ComplaintStatuses.Closed || x.Status == CollectionsValues.ComplaintStatuses.Resolved || x.SlaDueAt == null ? "ON_TIME" : x.SlaDueAt < now ? "BREACHED" : x.SlaDueAt < now.AddHours(24) ? "APPROACHING" : "ON_TIME", x.Status, x.OwnerId, x.Owner == null ? null : x.Owner.FullName, x.Resolution, x.ClosedAt)); }
     private async Task<string> CustomerNameAsync(Guid customerId, CancellationToken token) { var ar = ApiTextLocalizer.IsArabic; return await _db.CollectionCustomers.AsNoTracking().Where(x => x.Id == customerId).Select(x => ar ? x.FullNameArabic ?? x.FullNameEnglish! : x.FullNameEnglish ?? x.FullNameArabic!).SingleAsync(token); }
     private static DateOnly CairoToday() { var cairo = TimeZoneInfo.FindSystemTimeZoneById("Africa/Cairo"); return DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, cairo).DateTime); }

@@ -18,6 +18,10 @@ public sealed class SaveEmployeeRequest
     [Required]
     public Guid DepartmentId { get; init; }
     public bool IsActive { get; init; } = true;
+    [RegularExpression("^(Male|Female)$")]
+    public string? Gender { get; init; }
+    [RegularExpression("^(Active|Inactive|OnLeave|Suspended|Terminated)$")]
+    public string? Status { get; init; }
     public Guid? PositionId { get; init; }
     [StringLength(24)] public string? OperationalRole { get; init; }
     public DateOnly? WorkStartDate { get; init; }

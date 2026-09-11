@@ -24,7 +24,11 @@ public sealed record CollectionCaseListItemDto(
 
 public sealed record CollectionActivityDto(Guid Id, string Type, string? Result, string? Notes, string? Channel, string CreatedBy, DateTimeOffset CreatedAt, DateTimeOffset? NextFollowUpAt);
 public sealed record PromiseToPayDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, decimal PromisedAmount, DateOnly PromiseDate, decimal ActualPaidAmount, string Status, string CollectorName, string Channel, DateTimeOffset CreatedAt);
-public sealed record CollectionPaymentDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, decimal Amount, DateOnly PaymentDate, string Method, string ReferenceNumber, string Status, string SubmittedBy, DateTimeOffset SubmittedAt, string? VerifiedBy, DateTimeOffset? VerifiedAt, string? RejectionReason);
+public sealed record CollectionPaymentDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, decimal Amount, DateOnly PaymentDate, string Method, string ReferenceNumber, string Status, string SubmittedBy, DateTimeOffset SubmittedAt, string? VerifiedBy, DateTimeOffset? VerifiedAt, string? RejectionReason, Guid OrganizationId, string OrganizationName, string OrganizationType, Guid CollectorId, string CollectorName, string CurrencyCode);
+public sealed record CollectionPaymentSummaryDto(decimal TodayCollectedAmount, int TodayTransactionCount, int PendingReview);
+public sealed record CollectionPaymentFilterOptionDto(Guid Id, string Name);
+public sealed record CollectionPaymentFilterOptionsDto(IReadOnlyCollection<CollectionPaymentFilterOptionDto> Organizations, IReadOnlyCollection<CollectionPaymentFilterOptionDto> Collectors);
+public sealed record CollectionPaymentDetailsDto(Guid Id, Guid CaseId, string CaseNumber, string AccountReference, string CustomerName, Guid OrganizationId, string OrganizationName, string OrganizationType, string PortfolioName, Guid CollectorId, string CollectorName, decimal Amount, string CurrencyCode, DateOnly PaymentDate, string Method, string ReferenceNumber, string Status, string SubmittedBy, DateTimeOffset SubmittedAt, string? VerifiedBy, DateTimeOffset? VerifiedAt, string? RejectionReason);
 
 public sealed record CollectionCaseDetailsDto(
     Guid Id, string CaseNumber, string ClientName, string PortfolioName, string CustomerCode, string CustomerName,
@@ -47,8 +51,15 @@ public sealed record AutoAssignmentRequest(IReadOnlyCollection<Guid> CaseIds, IR
 public sealed record AutoAssignmentCaseDto(Guid CaseId, string CaseNumber, Guid CollectorId, string CollectorName, string Reason);
 public sealed record AutoAssignmentPreviewDto(string RuleCode, int CaseCount, IReadOnlyCollection<AssignmentPreviewItemDto> Collectors, IReadOnlyCollection<AutoAssignmentCaseDto> Assignments);
 public sealed record CollectorLookupDto(Guid Id, string Name, int ActiveWorkload, Guid? TeamId, string? TeamName);
-public sealed record FieldVisitDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, Guid CollectorId, string CollectorName, DateTimeOffset ScheduledAt, string Status, string Address, string? Governorate, string? Area, string? Result, string? Notes);
-public sealed record CreateVisitRequest(Guid CaseId, Guid CollectorId, DateTimeOffset ScheduledAt, [Required, MaxLength(600)] string Address, [MaxLength(100)] string? Governorate, [MaxLength(100)] string? Area);
+public sealed record FieldVisitDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, Guid OrganizationId, string OrganizationName, string OrganizationType, Guid CollectorId, string CollectorName, DateTimeOffset ScheduledAt, string Status, string Address, string? Governorate, string? Area, string? Result, string? Notes);
+public sealed record FieldVisitSummaryDto(int VisitsToday, int ScheduledVisits, int CompletedVisits);
+public sealed record FieldVisitFilterOptionDto(Guid Id, string Name);
+public sealed record FieldVisitFilterOptionsDto(IReadOnlyCollection<FieldVisitFilterOptionDto> Organizations, IReadOnlyCollection<FieldVisitFilterOptionDto> Collectors);
+public sealed record FieldVisitCaseOptionDto(Guid Id, string CaseNumber, string CustomerName, Guid OrganizationId, string OrganizationName, string OrganizationType, string? Address, string? Governorate, string? Area, Guid? AssignedCollectorId, string? AssignedCollectorName);
+public sealed record FieldVisitScheduleOptionsDto(IReadOnlyCollection<FieldVisitCaseOptionDto> Cases, IReadOnlyCollection<FieldVisitFilterOptionDto> Collectors);
+public sealed record FieldVisitDetailsDto(Guid Id, Guid CaseId, string CaseNumber, string AccountReference, string CustomerName, Guid OrganizationId, string OrganizationName, string OrganizationType, Guid CollectorId, string CollectorName, DateTimeOffset ScheduledAt, string Status, string Address, string? Governorate, string? Area, string? Purpose, string? Result, string? Notes, string CreatedBy, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset? CompletedAt, Guid? RelatedDcrId, string? DcrFeedback, Guid? RelatedPtpId);
+public sealed record VisitFilters(int Page = 1, int PageSize = 20, string? Search = null, Guid? OrganizationId = null, Guid? CollectorId = null, string? Status = null, DateOnly? Date = null);
+public sealed record CreateVisitRequest(Guid CaseId, Guid CollectorId, DateTimeOffset ScheduledAt, [Required, MaxLength(600)] string Address, [MaxLength(100)] string? Governorate, [MaxLength(100)] string? Area, [MaxLength(3000)] string? Notes = null);
 public sealed record CompleteVisitRequest([Required, MaxLength(100)] string Result, [MaxLength(3000)] string? Notes);
 public sealed record ComplaintDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, string ClientName, string Reference, string Source, string Category, string Severity, string Description, DateTimeOffset ReceivedAt, DateTimeOffset? SlaDueAt, string SlaStatus, string Status, Guid? OwnerId, string? OwnerName, string? Resolution, DateTimeOffset? ClosedAt);
 public sealed record CreateComplaintRequest(Guid CaseId, [Required, MaxLength(80)] string Reference, [Required, MaxLength(60)] string Source, [Required, MaxLength(100)] string Category, [Required, MaxLength(30)] string Severity, [Required, MaxLength(4000)] string Description, DateTimeOffset ReceivedAt, DateTimeOffset SlaDueAt, Guid OwnerId);
@@ -90,4 +101,4 @@ public sealed record CollectionFilters(
     Guid? CollectorId = null, string? Bucket = null, string? Status = null, string? Priority = null);
 
 public sealed record PromiseFilters(int Page = 1, int PageSize = 20, string? Search = null, Guid? OrganizationId = null, Guid? CollectorId = null, string? Status = null, DateOnly? From = null, DateOnly? To = null);
-public sealed record PaymentFilters(int Page = 1, int PageSize = 20, string? Search = null, Guid? OrganizationId = null, string? Status = null, DateOnly? From = null, DateOnly? To = null);
+public sealed record PaymentFilters(int Page = 1, int PageSize = 20, string? Search = null, Guid? OrganizationId = null, Guid? CollectorId = null, string? Status = null, DateOnly? From = null, DateOnly? To = null);

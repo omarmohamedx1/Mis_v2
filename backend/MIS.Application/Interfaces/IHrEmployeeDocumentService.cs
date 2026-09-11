@@ -12,4 +12,8 @@ public interface IHrEmployeeDocumentService
     Task<EmployeeDocumentFile> OpenAsync(Guid id, CancellationToken cancellationToken);
     Task DeleteAsync(Guid id, DeleteEmployeeDocumentRequest request, CancellationToken cancellationToken);
     Task<DocumentExpirySummaryDto> GetExpirySummaryAsync(CancellationToken cancellationToken);
+    Task<PagedEmployeePersonnelFilesDto> GetPersonnelFilesAsync(PersonnelFileFilterDto filter, CancellationToken cancellationToken);
+    Task<EmployeePersonnelFileDto> GetPersonnelFileAsync(Guid employeeId, CancellationToken cancellationToken);
+    Task<PersonnelFileSummaryDto> GetPersonnelFileSummaryAsync(CancellationToken cancellationToken);
+    Task<EmployeeDocumentDetailsDto> UploadRequiredAsync(Guid employeeId, string documentCode, HrUploadFile file, CancellationToken cancellationToken);
 }

@@ -17,7 +17,8 @@ public sealed class EmployeeDocument
         DateOnly? expiryDate,
         string? notes,
         Guid uploadedByUserId,
-        DateTimeOffset uploadedAt)
+        DateTimeOffset uploadedAt,
+        string? requiredDocumentCode = null)
     {
         if (employeeId == Guid.Empty) throw new ArgumentException("Employee is required.", nameof(employeeId));
         if (documentTypeId == Guid.Empty) throw new ArgumentException("Document type is required.", nameof(documentTypeId));
@@ -30,6 +31,7 @@ public sealed class EmployeeDocument
         SetFile(fileName, storageKey, mimeType, fileSize, sha256Hash);
         UploadedByUserId = uploadedByUserId;
         UploadedAt = uploadedAt;
+        RequiredDocumentCode = string.IsNullOrWhiteSpace(requiredDocumentCode) ? null : requiredDocumentCode.Trim().ToUpperInvariant();
     }
 
     public Guid Id { get; private set; }
@@ -38,6 +40,7 @@ public sealed class EmployeeDocument
     public Guid? DocumentTypeId { get; private set; }
     public DocumentType? DocumentTypeDefinition { get; private set; }
     public string DocumentType { get; private set; } = string.Empty;
+    public string? RequiredDocumentCode { get; private set; }
     public string FileName { get; private set; } = string.Empty;
     public string StorageKey { get; private set; } = string.Empty;
     public string MimeType { get; private set; } = string.Empty;

@@ -11,6 +11,7 @@ public sealed class EmployeeDocumentConfiguration : IEntityTypeConfiguration<Emp
         builder.ToTable("EmployeeDocuments");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.DocumentType).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.RequiredDocumentCode).HasMaxLength(40);
         builder.Property(x => x.FileName).HasMaxLength(255).IsRequired();
         builder.Property(x => x.StorageKey).HasMaxLength(1024).IsRequired();
         builder.Property(x => x.MimeType).HasMaxLength(127).IsRequired();
@@ -25,6 +26,9 @@ public sealed class EmployeeDocumentConfiguration : IEntityTypeConfiguration<Emp
         builder.HasIndex(x => new { x.EmployeeId, x.ExpiryDate });
         builder.HasIndex(x => x.DocumentTypeId);
         builder.HasIndex(x => x.StorageKey).IsUnique();
+        builder.HasIndex(x => new { x.EmployeeId, x.RequiredDocumentCode })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = FALSE AND \"RequiredDocumentCode\" IS NOT NULL");
         builder.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.DocumentTypeDefinition).WithMany().HasForeignKey(x => x.DocumentTypeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.UploadedByUser).WithMany().HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);

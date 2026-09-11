@@ -84,6 +84,7 @@ export const attendanceImportCategories = ['Valid', 'Invalid', 'EmployeeNotFound
 export type AttendanceImportCategory = (typeof attendanceImportCategories)[number];
 
 export interface AttendanceImportSheet {
+  suggestedTimeSystem: '24-hour' | '12-hour';
   sheetName: string | null;
   suggestedHeaderRowNumber: number;
   detectedColumns: string[];
@@ -111,8 +112,11 @@ export interface AttendanceImportMappingRequest {
   checkOutColumn: string | null;
   punchDateTimeColumn: string | null;
   punchTypeColumn: string | null;
+  timeColumn: string | null;
+  amPmColumn: string | null;
   dateFormat: string | null;
   timeFormat: string | null;
+  timeSystem: '24-hour' | '12-hour';
   cultureName: string | null;
   timeZoneId: string;
 }
@@ -141,6 +145,7 @@ export interface AttendanceImportBatch {
 }
 
 export interface AttendanceImportPreviewRow {
+  sourceRows: Record<string, string | null>[];
   id: string;
   batchId: string;
   sourceRowNumbers: number[];

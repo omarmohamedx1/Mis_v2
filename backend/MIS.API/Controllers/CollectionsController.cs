@@ -85,8 +85,17 @@ public sealed class CollectionPaymentsController : ControllerBase
     private readonly ICollectionsService _service;
     public CollectionPaymentsController(ICollectionsService service) => _service = service;
     [HttpGet]
-    public Task<PagedResultDto<CollectionPaymentDto>> Payments([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] Guid? organizationId = null, [FromQuery] string? status = null, [FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null, CancellationToken token = default)
-        => _service.GetPaymentsAsync(new PaymentFilters(page, pageSize, search, organizationId, status, from, to), token);
+    public Task<PagedResultDto<CollectionPaymentDto>> Payments([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] Guid? organizationId = null, [FromQuery] Guid? collectorId = null, [FromQuery] string? status = null, [FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null, CancellationToken token = default)
+        => _service.GetPaymentsAsync(new PaymentFilters(page, pageSize, search, organizationId, collectorId, status, from, to), token);
+
+    [HttpGet("summary")]
+    public Task<CollectionPaymentSummaryDto> Summary(CancellationToken token) => _service.GetPaymentSummaryAsync(token);
+
+    [HttpGet("filter-options")]
+    public Task<CollectionPaymentFilterOptionsDto> FilterOptions(CancellationToken token) => _service.GetPaymentFilterOptionsAsync(token);
+
+    [HttpGet("{id:guid}")]
+    public Task<CollectionPaymentDetailsDto> Payment(Guid id, CancellationToken token) => _service.GetPaymentAsync(id, token);
 
     [HttpPatch("{id:guid}/review")]
     [Authorize(Policy = AuthorizationPolicies.CollectionsPaymentApprove)]
@@ -120,7 +129,16 @@ public sealed class CollectionVisitsController : ControllerBase
     private readonly ICollectionsService _service;
     public CollectionVisitsController(ICollectionsService service) => _service = service;
     [HttpGet]
-    public Task<PagedResultDto<FieldVisitDto>> Visits([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? status = null, [FromQuery] DateOnly? date = null, CancellationToken token = default) => _service.GetVisitsAsync(page, pageSize, status, date, token);
+    public Task<PagedResultDto<FieldVisitDto>> Visits([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] Guid? organizationId = null, [FromQuery] Guid? collectorId = null, [FromQuery] string? status = null, [FromQuery] DateOnly? date = null, CancellationToken token = default) => _service.GetVisitsAsync(new VisitFilters(page, pageSize, search, organizationId, collectorId, status, date), token);
+    [HttpGet("summary")]
+    public Task<FieldVisitSummaryDto> Summary(CancellationToken token) => _service.GetVisitSummaryAsync(token);
+    [HttpGet("filter-options")]
+    public Task<FieldVisitFilterOptionsDto> FilterOptions(CancellationToken token) => _service.GetVisitFilterOptionsAsync(token);
+    [HttpGet("schedule-options")]
+    [Authorize(Policy = AuthorizationPolicies.CollectionsAssignmentManage)]
+    public Task<FieldVisitScheduleOptionsDto> ScheduleOptions([FromQuery] string? search = null, CancellationToken token = default) => _service.GetVisitScheduleOptionsAsync(search, token);
+    [HttpGet("{id:guid}")]
+    public Task<FieldVisitDetailsDto> Visit(Guid id, CancellationToken token) => _service.GetVisitAsync(id, token);
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.CollectionsAssignmentManage)]
     public async Task<ActionResult<FieldVisitDto>> Create(CreateVisitRequest request, CancellationToken token) { var value = await _service.CreateVisitAsync(request, token); return Created($"/api/collections/visits/{value.Id}", value); }

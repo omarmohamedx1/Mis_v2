@@ -4,6 +4,7 @@ using MIS.Application.Common;
 using MIS.Application.DTOs.Hr;
 using MIS.Application.Interfaces;
 using MIS.Domain.Entities;
+using MIS.Domain.Services;
 using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
@@ -11,6 +12,16 @@ namespace MIS.Infrastructure.Services;
 public sealed class HrEmployeeDocumentService : IHrEmployeeDocumentService
 {
     private const long MaximumFileBytes = 10 * 1024 * 1024;
+    private static readonly (string Code, string Name, string ArabicName)[] RequiredDocuments =
+    [
+        (RequiredEmployeeDocumentCodes.BirthCertificate, "Birth Certificate", "شهادة الميلاد"),
+        (RequiredEmployeeDocumentCodes.GraduationCertificate, "Graduation Certificate", "شهادة التخرج"),
+        (RequiredEmployeeDocumentCodes.NationalIdCopy, "National ID Copy", "صورة البطاقة"),
+        (RequiredEmployeeDocumentCodes.MilitaryStatus, "Military Exemption / Status", "ورق الإعفاء / موقف التجنيد"),
+        (RequiredEmployeeDocumentCodes.CriminalRecord, "Criminal Record", "الفيش الجنائي"),
+        (RequiredEmployeeDocumentCodes.EmploymentAppointmentPaper, "Employment / Appointment Paper", "ورقة التعيين"),
+        (RequiredEmployeeDocumentCodes.LaborOfficeRegistration, "Labor Office Registration (Kaab El Amal)", "كعب العمل")
+    ];
     private readonly ApplicationDbContext _dbContext;
     private readonly IHrFileStorage _fileStorage;
     private readonly ICurrentUserContext _currentUser;
@@ -231,13 +242,13 @@ public sealed class HrEmployeeDocumentService : IHrEmployeeDocumentService
         entity.Delete(_currentUser.UserId, request.Reason, DateTimeOffset.UtcNow);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _audit.WriteAsync(new AuditWriteRequest(
-            "DocumentDeleted",
+            entity.RequiredDocumentCode is null ? "DocumentDeleted" : "EmployeeDocumentDeleted",
             nameof(EmployeeDocument),
             entity.Id.ToString(),
             entity.EmployeeId,
             oldValue,
             null,
-            request.Reason ?? "Deleted employee document."), cancellationToken);
+            request.Reason ?? $"Employee document deleted: {entity.RequiredDocumentCode ?? entity.DocumentType}."), cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         await _fileStorage.DeleteAsync(entity.StorageKey, CancellationToken.None);
     }
@@ -251,6 +262,176 @@ public sealed class HrEmployeeDocumentService : IHrEmployeeDocumentService
             await query.CountAsync(item => item.ExpiryDate >= today && item.ExpiryDate <= today.AddDays(7), cancellationToken),
             await query.CountAsync(item => item.ExpiryDate >= today && item.ExpiryDate <= today.AddDays(15), cancellationToken),
             await query.CountAsync(item => item.ExpiryDate >= today && item.ExpiryDate <= today.AddDays(30), cancellationToken));
+    }
+
+    public async Task<PagedEmployeePersonnelFilesDto> GetPersonnelFilesAsync(
+        PersonnelFileFilterDto filter,
+        CancellationToken cancellationToken)
+    {
+        if (filter.Page < 1 || filter.PageSize is < 1 or > 200) throw new HrValidationException("Pagination values are invalid.");
+        var employeeQuery = _dbContext.Employees.AsNoTracking()
+            .Include(item => item.Department)
+            .Include(item => item.Position)
+            .AsQueryable();
+
+        if (filter.EmployeeId.HasValue) employeeQuery = employeeQuery.Where(item => item.Id == filter.EmployeeId.Value);
+        if (filter.DepartmentId.HasValue) employeeQuery = employeeQuery.Where(item => item.DepartmentId == filter.DepartmentId.Value);
+        if (filter.PositionId.HasValue) employeeQuery = employeeQuery.Where(item => item.PositionId == filter.PositionId.Value);
+        if (!string.IsNullOrWhiteSpace(filter.Gender))
+        {
+            var gender = filter.Gender.Trim().ToLower();
+            employeeQuery = employeeQuery.Where(item => item.Gender != null && item.Gender.ToLower() == gender);
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var term = filter.Search.Trim().ToLower();
+            employeeQuery = employeeQuery.Where(item =>
+                item.EmployeeNumber.ToLower().Contains(term) ||
+                item.FullName.ToLower().Contains(term) ||
+                (item.FullNameArabic != null && item.FullNameArabic.ToLower().Contains(term)) ||
+                (item.FullNameEnglish != null && item.FullNameEnglish.ToLower().Contains(term)) ||
+                (item.NationalId != null && item.NationalId.Contains(term)));
+        }
+
+        var employees = await employeeQuery.OrderBy(item => item.EmployeeNumber).ToListAsync(cancellationToken);
+        var employeeIds = employees.Select(item => item.Id).ToArray();
+        var documents = await _dbContext.EmployeeDocuments.AsNoTracking()
+            .Include(item => item.UploadedByUser)
+            .Where(item => employeeIds.Contains(item.EmployeeId) && !item.IsDeleted && item.RequiredDocumentCode != null)
+            .ToListAsync(cancellationToken);
+        var byEmployee = documents.GroupBy(item => item.EmployeeId).ToDictionary(group => group.Key, group => group.ToArray());
+        var files = employees.Select(employee => MapPersonnelFile(employee, byEmployee.GetValueOrDefault(employee.Id) ?? [], false)).ToList();
+
+        var completion = filter.CompletionStatus?.Trim().ToLowerInvariant();
+        if (completion == "complete") files = files.Where(item => item.MissingDocuments == 0).ToList();
+        else if (completion == "incomplete") files = files.Where(item => item.MissingDocuments > 0).ToList();
+        if (!string.IsNullOrWhiteSpace(filter.MissingDocumentCode))
+        {
+            var code = NormalizeRequiredCode(filter.MissingDocumentCode);
+            files = files.Where(item => item.Documents.Any(document => document.Code == code && document.IsRequired && !document.IsUploaded)).ToList();
+        }
+
+        var total = files.Count;
+        var items = files.Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToArray();
+        return new PagedEmployeePersonnelFilesDto(items, total, filter.Page, filter.PageSize, Pages(total, filter.PageSize));
+    }
+
+    public async Task<EmployeePersonnelFileDto> GetPersonnelFileAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        var employee = await _dbContext.Employees.AsNoTracking()
+            .Include(item => item.Department)
+            .Include(item => item.Position)
+            .SingleOrDefaultAsync(item => item.Id == employeeId, cancellationToken)
+            ?? throw new HrNotFoundException("Employee was not found.");
+        var documents = await _dbContext.EmployeeDocuments.AsNoTracking()
+            .Include(item => item.UploadedByUser)
+            .Where(item => item.EmployeeId == employeeId && !item.IsDeleted && item.RequiredDocumentCode != null)
+            .ToArrayAsync(cancellationToken);
+        return MapPersonnelFile(employee, documents, CanViewNationalId());
+    }
+
+    public async Task<PersonnelFileSummaryDto> GetPersonnelFileSummaryAsync(CancellationToken cancellationToken)
+    {
+        var files = await GetPersonnelFilesAsync(new PersonnelFileFilterDto { Page = 1, PageSize = 200 }, cancellationToken);
+        var all = files.Items.ToList();
+        if (files.TotalPages > 1)
+        {
+            for (var page = 2; page <= files.TotalPages; page++)
+                all.AddRange((await GetPersonnelFilesAsync(new PersonnelFileFilterDto { Page = page, PageSize = 200 }, cancellationToken)).Items);
+        }
+        return new PersonnelFileSummaryDto(all.Count, all.Count(item => item.MissingDocuments == 0), all.Count(item => item.MissingDocuments > 0), all.Sum(item => item.MissingDocuments));
+    }
+
+    public async Task<EmployeeDocumentDetailsDto> UploadRequiredAsync(
+        Guid employeeId,
+        string documentCode,
+        HrUploadFile file,
+        CancellationToken cancellationToken)
+    {
+        var code = NormalizeRequiredCode(documentCode);
+        var employee = await _dbContext.Employees.AsNoTracking().SingleOrDefaultAsync(item => item.Id == employeeId, cancellationToken)
+            ?? throw new HrNotFoundException("Employee was not found.");
+        if (code == RequiredEmployeeDocumentCodes.MilitaryStatus && !EmployeePersonnelFileRules.IsMilitaryDocumentRequired(employee.Gender))
+            throw new HrValidationException("A military-status document is required only for male employees.");
+        var type = await _dbContext.DocumentTypes.AsNoTracking().SingleOrDefaultAsync(item => item.Code == code && item.IsActive, cancellationToken)
+            ?? throw new HrValidationException("The required document type is not configured.");
+
+        await using var validated = await ValidateAndBufferAsync(file, cancellationToken, allowDocx: false);
+        var stored = await _fileStorage.SaveAsync("employee-documents", file.FileName, validated.ContentType, validated.Stream, MaximumFileBytes, cancellationToken);
+        var existing = await _dbContext.EmployeeDocuments.SingleOrDefaultAsync(
+            item => item.EmployeeId == employeeId && item.RequiredDocumentCode == code && !item.IsDeleted,
+            cancellationToken);
+        var oldStorageKey = existing?.StorageKey;
+        try
+        {
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+            if (existing is null)
+            {
+                existing = new EmployeeDocument(employeeId, type.Id, type.Name, stored.OriginalFileName, stored.StorageKey,
+                    validated.ContentType, stored.Length, stored.Sha256Hash, null, null, null, _currentUser.UserId,
+                    DateTimeOffset.UtcNow, code);
+                _dbContext.EmployeeDocuments.Add(existing);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                await _audit.WriteAsync(new AuditWriteRequest("EmployeeDocumentUploaded", nameof(EmployeeDocument), existing.Id.ToString(), employeeId,
+                    null, new { Employee = employee.EmployeeNumber, DocumentType = code, existing.FileName },
+                    $"Employee document uploaded: {code} for {employee.EmployeeNumber}."), cancellationToken);
+            }
+            else
+            {
+                var oldValue = new { Employee = employee.EmployeeNumber, DocumentType = code, existing.FileName, existing.Sha256Hash };
+                existing.ReplaceFile(stored.OriginalFileName, stored.StorageKey, validated.ContentType, stored.Length, stored.Sha256Hash,
+                    _currentUser.UserId, DateTimeOffset.UtcNow);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                await _audit.WriteAsync(new AuditWriteRequest("EmployeeDocumentReplaced", nameof(EmployeeDocument), existing.Id.ToString(), employeeId,
+                    oldValue, new { Employee = employee.EmployeeNumber, DocumentType = code, existing.FileName, existing.Sha256Hash },
+                    $"Employee document replaced: {code} for {employee.EmployeeNumber}."), cancellationToken);
+            }
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await _fileStorage.DeleteAsync(stored.StorageKey, CancellationToken.None);
+            throw;
+        }
+        if (oldStorageKey is not null) await _fileStorage.DeleteAsync(oldStorageKey, CancellationToken.None);
+        return await GetDetailsAsync(existing.Id, cancellationToken);
+    }
+
+    private EmployeePersonnelFileDto MapPersonnelFile(Employee employee, IReadOnlyCollection<EmployeeDocument> documents, bool includeNationalId)
+    {
+        var militaryRequired = EmployeePersonnelFileRules.IsMilitaryDocumentRequired(employee.Gender);
+        var uploaded = documents.Where(item => item.RequiredDocumentCode != null).ToDictionary(item => item.RequiredDocumentCode!, StringComparer.OrdinalIgnoreCase);
+        var checklist = RequiredDocuments
+            .Where(item => item.Code != RequiredEmployeeDocumentCodes.MilitaryStatus || militaryRequired)
+            .Select(item =>
+            {
+                uploaded.TryGetValue(item.Code, out var document);
+                return new PersonnelDocumentChecklistItemDto(item.Code, item.Name, item.ArabicName, true, document is not null,
+                    document?.Id, document?.FileName, document?.MimeType, document?.FileSize, document?.UploadedByUser.FullName,
+                    document?.UploadedAt, document?.UpdatedAt);
+            }).ToArray();
+        var completed = checklist.Count(item => item.IsUploaded);
+        var required = checklist.Length;
+        var isArabic = ApiTextLocalizer.IsArabic;
+        return new EmployeePersonnelFileDto(employee.Id, employee.EmployeeNumber,
+            isArabic ? employee.FullNameArabic ?? employee.FullName : employee.FullNameEnglish ?? employee.FullName,
+            isArabic ? employee.Department.NameArabic ?? employee.Department.Name : employee.Department.Name,
+            employee.DepartmentId,
+            employee.Position is null ? null : isArabic ? employee.Position.NameArabic ?? employee.Position.Name : employee.Position.Name,
+            employee.PositionId, employee.Gender, includeNationalId ? employee.NationalId : null, employee.IsActive, employee.IsArchived,
+            completed, required, required - completed, EmployeePersonnelFileRules.CompletionPercentage(completed, employee.Gender),
+            completed == required ? PersonnelFileCompletionFilters.Complete : PersonnelFileCompletionFilters.Incomplete, checklist);
+    }
+
+    private bool CanViewNationalId() => _currentUser.Roles.Any(role =>
+        string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(role, "HrManager", StringComparison.OrdinalIgnoreCase));
+
+    private static string NormalizeRequiredCode(string value)
+    {
+        var code = value?.Trim().ToUpperInvariant().Replace('-', '_') ?? string.Empty;
+        if (!RequiredEmployeeDocumentCodes.All.Contains(code)) throw new HrValidationException("The required document type is invalid.");
+        return code;
     }
 
     private IQueryable<EmployeeDocument> BaseQuery() => _dbContext.EmployeeDocuments
@@ -352,7 +533,7 @@ public sealed class HrEmployeeDocumentService : IHrEmployeeDocumentService
             throw new HrValidationException("Expiry date cannot be before issue date.");
     }
 
-    private static async Task<ValidatedUpload> ValidateAndBufferAsync(HrUploadFile file, CancellationToken cancellationToken)
+    private static async Task<ValidatedUpload> ValidateAndBufferAsync(HrUploadFile file, CancellationToken cancellationToken, bool allowDocx = true)
     {
         if (string.IsNullOrWhiteSpace(file.FileName) || Path.GetFileName(file.FileName).Length > 255)
             throw new HrValidationException("The document file name is required and cannot exceed 255 characters.");
@@ -386,13 +567,15 @@ public sealed class HrEmployeeDocumentService : IHrEmployeeDocumentService
             "application/pdf" => new[] { ".pdf" },
             "image/jpeg" => new[] { ".jpg", ".jpeg" },
             "image/png" => new[] { ".png" },
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => new[] { ".docx" },
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" when allowDocx => new[] { ".docx" },
             _ => []
         };
         if (expectedExtensions.Length == 0 || !expectedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
         {
             await buffer.DisposeAsync();
-            throw new HrValidationException("Allowed document formats are PDF, JPEG, PNG, and DOCX, and the file extension must match its content.");
+            throw new HrValidationException(allowDocx
+                ? "Allowed document formats are PDF, JPEG, PNG, and DOCX, and the file extension must match its content."
+                : "Allowed personnel-document formats are PDF, JPG, JPEG, and PNG, and the file extension must match its content.");
         }
         buffer.Position = 0;
         return new ValidatedUpload(buffer, contentType);

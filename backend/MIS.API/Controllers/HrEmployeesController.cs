@@ -14,17 +14,18 @@ namespace MIS.API.Controllers;
 public sealed class HrEmployeesController : ControllerBase
 {
     private readonly IHrEmployeeRepository _repository;
+    private readonly IEmployeeCreationService _creation;
     private readonly IHrAuditService _audit;
     private readonly IHrTransactionRunner _transactions;
     private readonly ICurrentUserContext _currentUser;
 
     public HrEmployeesController(
-        IHrEmployeeRepository repository,
+        IHrEmployeeRepository repository, IEmployeeCreationService creation,
         IHrAuditService audit,
         IHrTransactionRunner transactions,
         ICurrentUserContext currentUser)
     {
-        _repository = repository;
+        _repository = repository; _creation = creation;
         _audit = audit;
         _transactions = transactions;
         _currentUser = currentUser;
@@ -75,32 +76,9 @@ public sealed class HrEmployeesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<EmployeeDetailsDto>> CreateEmployee(SaveEmployeeRequest request, CancellationToken cancellationToken)
     {
-        var error = await ValidateRequestAsync(request, null, cancellationToken);
-        if (error is not null) return error;
-
-        var employee = new Employee(request.EmployeeNumber, request.FullName, request.DepartmentId, request.IsActive, DateTimeOffset.UtcNow);
-        employee.SetNationalId(request.NationalId, DateTimeOffset.UtcNow);
-        employee.ApplyEmployeeProfile(request.PositionId!.Value, request.OperationalRole!, request.WorkStartDate!.Value,
-            request.FingerprintEnrollmentDate, request.DateOfBirth, request.Address, request.WorkEndDate, DateTimeOffset.UtcNow);
-        var created = await _transactions.ExecuteAsync(async token =>
-        {
-            _repository.Add(employee);
-            await _repository.SaveChangesAsync(token);
-            var details = await _repository.GetDetailsByIdAsync(employee.Id, token)
-                ?? throw new InvalidOperationException("The created employee could not be reloaded.");
-            await _audit.WriteAsync(new AuditWriteRequest(
-                "EmployeeCreated",
-                nameof(Employee),
-                employee.Id.ToString(),
-                employee.Id,
-                null,
-                details,
-                $"Created employee {request.EmployeeNumber}."), token);
-            return details;
-        }, cancellationToken);
-        return CreatedAtAction(nameof(GetEmployee), new { id = employee.Id }, created);
+        var created = await _creation.CreateAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(GetEmployee), new { id = created.Id }, created);
     }
-
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<EmployeeDetailsDto>> UpdateEmployee(Guid id, SaveEmployeeRequest request, CancellationToken cancellationToken)
     {

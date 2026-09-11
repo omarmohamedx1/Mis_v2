@@ -31,6 +31,39 @@ public sealed class HrEmployeeDocumentsController : ControllerBase
     public async Task<ActionResult<DocumentExpirySummaryDto>> GetExpirySummary(CancellationToken cancellationToken)
         => Ok(await _service.GetExpirySummaryAsync(cancellationToken));
 
+    [HttpGet("personnel-files")]
+    public async Task<ActionResult<PagedEmployeePersonnelFilesDto>> GetPersonnelFiles(
+        [FromQuery] PersonnelFileFilterDto filter,
+        CancellationToken cancellationToken)
+        => Ok(await _service.GetPersonnelFilesAsync(filter, cancellationToken));
+
+    [HttpGet("personnel-files/summary")]
+    public async Task<ActionResult<PersonnelFileSummaryDto>> GetPersonnelFileSummary(CancellationToken cancellationToken)
+        => Ok(await _service.GetPersonnelFileSummaryAsync(cancellationToken));
+
+    [HttpGet("personnel-files/{employeeId:guid}")]
+    public async Task<ActionResult<EmployeePersonnelFileDto>> GetPersonnelFile(Guid employeeId, CancellationToken cancellationToken)
+        => Ok(await _service.GetPersonnelFileAsync(employeeId, cancellationToken));
+
+    [HttpPost("personnel-files/{employeeId:guid}/{documentCode}")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(RequestLimit)]
+    public async Task<ActionResult<EmployeeDocumentDetailsDto>> UploadRequired(
+        Guid employeeId,
+        string documentCode,
+        [FromForm] ReplaceEmployeeDocumentForm form,
+        CancellationToken cancellationToken)
+    {
+        if (form.File is null || form.File.Length == 0) throw new HrValidationException("A document file is required.");
+        await using var stream = form.File.OpenReadStream();
+        var result = await _service.UploadRequiredAsync(
+            employeeId,
+            documentCode,
+            new HrUploadFile(form.File.FileName, form.File.ContentType, form.File.Length, stream),
+            cancellationToken);
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<EmployeeDocumentDetailsDto>> GetDetails(Guid id, CancellationToken cancellationToken)
         => Ok(await _service.GetDetailsAsync(id, cancellationToken));

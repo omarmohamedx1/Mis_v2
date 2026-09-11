@@ -1,5 +1,5 @@
 import { apiClient, downloadApiFile, requestApiFile, requestFormData, type ApiFile } from '../../../services/apiClient';
-import type { DocumentExpirySummary, EmployeeDocumentDetails, EmployeeDocumentQuery, PagedEmployeeDocuments, SaveEmployeeDocumentMetadata } from '../types/document';
+import type { DocumentExpirySummary, EmployeeDocumentDetails, EmployeeDocumentQuery, EmployeePersonnelFile, PagedEmployeeDocuments, PagedEmployeePersonnelFiles, PersonnelFileQuery, PersonnelFileSummary, RequiredDocumentCode, SaveEmployeeDocumentMetadata } from '../types/document';
 
 export const hrEmployeeDocumentService = {
   async getPaged(query: EmployeeDocumentQuery): Promise<PagedEmployeeDocuments> {
@@ -22,4 +22,18 @@ export const hrEmployeeDocumentService = {
   async download(id: string, fileName: string): Promise<void> { await downloadApiFile(`/hr/employee-documents/${id}/download`, fileName); },
   preview(id: string): Promise<ApiFile> { return requestApiFile(`/hr/employee-documents/${id}/preview`); },
   async delete(id: string, reason: string | null): Promise<void> { await apiClient.delete(`/hr/employee-documents/${id}`, { data: { reason } }); },
+  async getPersonnelFiles(query: PersonnelFileQuery): Promise<PagedEmployeePersonnelFiles> {
+    const { data } = await apiClient.get<PagedEmployeePersonnelFiles>('/hr/employee-documents/personnel-files', { params: {
+      page: query.page, pageSize: query.pageSize, search: query.search || undefined, employeeId: query.employeeId || undefined,
+      departmentId: query.departmentId || undefined, positionId: query.positionId || undefined, gender: query.gender || undefined,
+      completionStatus: query.completionStatus, missingDocumentCode: query.missingDocumentCode || undefined,
+    } });
+    return data;
+  },
+  async getPersonnelFile(employeeId: string): Promise<EmployeePersonnelFile> { const { data } = await apiClient.get<EmployeePersonnelFile>(`/hr/employee-documents/personnel-files/${employeeId}`); return data; },
+  async getPersonnelFileSummary(): Promise<PersonnelFileSummary> { const { data } = await apiClient.get<PersonnelFileSummary>('/hr/employee-documents/personnel-files/summary'); return data; },
+  async uploadRequired(employeeId: string, code: RequiredDocumentCode, file: File): Promise<EmployeeDocumentDetails> {
+    const form = new FormData(); form.append('file', file);
+    return requestFormData<EmployeeDocumentDetails>(`/hr/employee-documents/personnel-files/${employeeId}/${code}`, form);
+  },
 };

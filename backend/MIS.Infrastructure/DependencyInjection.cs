@@ -32,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IHrDashboardRepository, HrDashboardRepository>();
         services.AddScoped<IHrEmployeeRepository, HrEmployeeRepository>();
+        services.AddScoped<IEmployeeCreationService, EmployeeCreationService>();
+        services.AddScoped<IEmployeeImportService, EmployeeImportService>();
         services.AddScoped<IHrAbsenceRepository, HrAbsenceRepository>();
         services.AddScoped<IHrTransactionRunner, EfHrTransactionRunner>();
         services.AddScoped<IHrAuditService, HrAuditService>();

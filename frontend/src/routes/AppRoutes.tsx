@@ -14,6 +14,7 @@ const ModuleSelectorPage = lazy(() => import('../pages/modules/ModuleSelectorPag
 
 const HrDashboardPage = lazy(() => import('../pages/hr/HrDashboardPage').then((module) => ({ default: module.HrDashboardPage })));
 const HrEmployeesPage = lazy(() => import('../pages/hr/HrEmployeesPage').then((module) => ({ default: module.HrEmployeesPage })));
+const HrEmployeeImportPage = lazy(() => import('../pages/hr/HrEmployeeImportPage').then((module) => ({ default: module.HrEmployeeImportPage })));
 const HrEmployeeProfilePage = lazy(() => import('../pages/hr/HrEmployeeProfilePage').then((module) => ({ default: module.HrEmployeeProfilePage })));
 const HrAttendancePage = lazy(() => import('../pages/hr/HrAttendancePage').then((module) => ({ default: module.HrAttendancePage })));
 const HrAttendanceImportPage = lazy(() => import('../pages/hr/HrAttendanceImportPage').then((module) => ({ default: module.HrAttendanceImportPage })));
@@ -104,6 +105,7 @@ export function AppRoutes() {
         <Route path="/hr" element={<HrRouteBoundary />}>
           <Route path="dashboard" element={<HrDashboardPage />} />
           <Route path="employees" element={<HrEmployeesPage />} />
+          <Route path="employees/import" element={<HrEmployeeImportPage />} />
           <Route path="employees/:id" element={<HrEmployeeProfilePage />} />
           <Route path="attendance" element={<HrAttendancePage />} />
           <Route path="attendance/import" element={<HrAttendanceImportPage />} />
