@@ -32,8 +32,13 @@ public sealed class BankPortfolioImportsController : ControllerBase
         return Created($"/api/banks/{bankId}/portfolio-imports/{result.Id}", result);
     }
 
+    [HttpPost("{importId:guid}/preview-data")]
+    public Task<BankPortfolioImportDataPreviewDto> PreviewData(Guid bankId, Guid importId, CancellationToken token) =>
+        _imports.PreviewDataAsync(bankId, importId, token);
+
     [HttpPost("{importId:guid}/confirm")]
-    public Task<BankPortfolioImportDto> Confirm(Guid bankId, Guid importId, [FromBody] UpdateBankPortfolioImportRequest? request, CancellationToken token) => _imports.ConfirmAsync(bankId, importId, request?.Notes, token);
+    public Task<BankPortfolioImportConfirmResultDto> Confirm(Guid bankId, Guid importId, [FromBody] UpdateBankPortfolioImportRequest? request, CancellationToken token) =>
+        _imports.ConfirmAsync(bankId, importId, request?.Notes, token);
 
     [HttpPatch("{importId:guid}")]
     public Task<BankPortfolioImportDto> Update(Guid bankId, Guid importId, UpdateBankPortfolioImportRequest request, CancellationToken token) => _imports.UpdateNotesAsync(bankId, importId, request.Notes, token);

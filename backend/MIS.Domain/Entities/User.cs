@@ -28,6 +28,14 @@ public sealed class User
     }
 
     public Guid Id { get; private set; }
+    public Guid? EmployeeId { get; private set; }
+    public Employee? Employee { get; private set; }
+    public void LinkEmployee(Guid employeeId, DateTimeOffset now)
+    {
+        if (employeeId == Guid.Empty) throw new ArgumentException("Employee is required.");
+        if (EmployeeId.HasValue && EmployeeId != employeeId) throw new InvalidOperationException("This user is already linked to a different employee.");
+        EmployeeId = employeeId; UpdatedAt = now;
+    }
 
     public string Username { get; private set; } = string.Empty;
 

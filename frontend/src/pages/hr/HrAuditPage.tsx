@@ -25,6 +25,7 @@ const copy = {
 } as const;
 
 const actionOptions = [
+  'InsuranceRecordCreated', 'InsuranceRecordEdited', 'InsuranceEnded',
   'EmployeeCreated', 'EmployeeUpdated', 'EmployeeStatusChanged', 'EmployeePersonalUpdated', 'EmployeeContactUpdated', 'EmployeeEmploymentUpdated', 'EmployeeContractUpdated', 'EmployeeCompensationUpdated', 'EmployeeEmergencyContactUpdated',
   'AttendanceAdded', 'AttendanceUpdated', 'AttendanceDeleted', 'AttendanceImportUploaded', 'AttendanceImportPreviewed', 'AttendanceImported', 'AttendanceImportCancelled', 'AttendanceDayProcessed',
   'LeaveCreated', 'LeaveUpdated', 'LeaveApproved', 'LeaveRejected', 'LeaveCancelled', 'LeaveEntitlementCreated', 'LeaveEntitlementUpdated',
@@ -34,10 +35,12 @@ const actionOptions = [
 ] as const;
 
 const entityOptions = [
+  'SocialInsuranceRecord',
   'Employee', 'EmployeeContract', 'EmployeeCompensation', 'EmployeeEmergencyContact', 'AttendanceRecord', 'AttendanceImportBatch', 'AttendanceDay', 'LeaveRequest', 'EmployeeLeaveEntitlement', 'EmployeeAbsence', 'EmployeeDocument', 'EmployeeDelegation', 'Department', 'Position', 'Branch', 'EmploymentType', 'ContractType', 'LeaveType', 'DocumentType', 'DelegationType', 'WorkingCalendar', 'CalendarException',
 ] as const;
 
 const arabicActions: Record<string, string> = {
+  InsuranceRecordCreated: 'إنشاء سجل تأمين', InsuranceRecordEdited: 'تعديل سجل تأمين', InsuranceEnded: 'إنهاء التأمين',
   EmployeeCreated: 'إنشاء موظف', EmployeeUpdated: 'تحديث الموظف', EmployeeStatusChanged: 'تغيير حالة الموظف', EmployeePersonalUpdated: 'تحديث البيانات الشخصية', EmployeeContactUpdated: 'تحديث بيانات التواصل', EmployeeEmploymentUpdated: 'تحديث بيانات العمل', EmployeeContractUpdated: 'تحديث عقد الموظف', EmployeeCompensationUpdated: 'تحديث بيانات الراتب', EmployeeEmergencyContactUpdated: 'تحديث جهة اتصال الطوارئ',
   AttendanceAdded: 'إضافة حضور', AttendanceUpdated: 'تحديث الحضور', AttendanceDeleted: 'حذف الحضور', AttendanceImportUploaded: 'رفع ملف حضور', AttendanceImportPreviewed: 'معاينة استيراد الحضور', AttendanceImported: 'استيراد الحضور', AttendanceImportCancelled: 'إلغاء استيراد الحضور', AttendanceDayProcessed: 'معالجة حضور اليوم',
   LeaveCreated: 'إنشاء طلب إجازة', LeaveUpdated: 'تحديث طلب الإجازة', LeaveApproved: 'قبول الإجازة', LeaveRejected: 'رفض الإجازة', LeaveCancelled: 'إلغاء الإجازة', LeaveEntitlementCreated: 'إنشاء استحقاق إجازة', LeaveEntitlementUpdated: 'تحديث استحقاق الإجازة',
@@ -47,10 +50,12 @@ const arabicActions: Record<string, string> = {
 };
 
 const arabicEntities: Record<string, string> = {
+  SocialInsuranceRecord: 'سجل التأمينات الاجتماعية',
   Employee: 'الموظف', EmployeeContract: 'عقد الموظف', EmployeeCompensation: 'راتب الموظف', EmployeeEmergencyContact: 'جهة اتصال الطوارئ', AttendanceRecord: 'سجل الحضور', AttendanceImportBatch: 'دفعة استيراد الحضور', AttendanceDay: 'يوم الحضور', LeaveRequest: 'طلب الإجازة', EmployeeLeaveEntitlement: 'استحقاق الإجازة', EmployeeAbsence: 'غياب الموظف', EmployeeDocument: 'مستند الموظف', EmployeeDelegation: 'تفويض الموظف', Department: 'القسم', Position: 'المسمى الوظيفي', Branch: 'الفرع', EmploymentType: 'نوع التوظيف', ContractType: 'نوع العقد', LeaveType: 'نوع الإجازة', DocumentType: 'نوع المستند', DelegationType: 'نوع التفويض', WorkingCalendar: 'تقويم العمل', CalendarException: 'استثناء التقويم',
 };
 
 const arabicFields: Record<string, string> = {
+  socialInsuranceNumber: 'الرقم التأميني', insuranceStartDate: 'بداية التأمين', insuranceEndDate: 'نهاية التأمين', insurableSalary: 'الأجر التأميني', insuranceStatus: 'حالة التأمين', insuranceOffice: 'مكتب التأمينات', referenceNumber: 'رقم المرجع',
   Id: 'المعرّف', EmployeeId: 'معرّف الموظف', EmployeeNumber: 'رقم الموظف', FullName: 'الاسم الكامل', FullNameArabic: 'الاسم الكامل بالعربية', FullNameEnglish: 'الاسم الكامل بالإنجليزية', NationalId: 'الرقم القومي', DateOfBirth: 'تاريخ الميلاد', Gender: 'النوع', MaritalStatus: 'الحالة الاجتماعية', ProfilePhotoPath: 'الصورة الشخصية', EmployeeStatus: 'حالة الموظف', MobileNumber: 'رقم الهاتف', AlternativeMobile: 'رقم الهاتف البديل', Email: 'البريد الإلكتروني', Address: 'العنوان', City: 'المدينة', DepartmentId: 'القسم', DepartmentName: 'اسم القسم', PositionId: 'المسمى الوظيفي', PositionName: 'اسم المسمى الوظيفي', BranchId: 'الفرع', BranchName: 'اسم الفرع', DirectManagerId: 'المدير المباشر', DirectManagerName: 'اسم المدير المباشر', HireDate: 'تاريخ التعيين', EmploymentTypeId: 'نوع التوظيف', EmploymentTypeName: 'اسم نوع التوظيف', TerminationDate: 'تاريخ إنهاء الخدمة', TerminationReason: 'سبب إنهاء الخدمة', Status: 'الحالة', Notes: 'الملاحظات', StartDate: 'تاريخ البداية', EndDate: 'تاريخ النهاية', ContractTypeId: 'نوع العقد', ContractTypeName: 'اسم نوع العقد', ProbationStartDate: 'بداية فترة الاختبار', ProbationEndDate: 'نهاية فترة الاختبار', BasicSalary: 'الراتب الأساسي', Allowances: 'البدلات', TotalSalary: 'إجمالي الراتب', BankName: 'اسم البنك', BankAccount: 'الحساب البنكي', Iban: 'رقم IBAN', EffectiveFrom: 'ساري من', EffectiveTo: 'ساري إلى', ContactName: 'اسم جهة الاتصال', Relationship: 'صلة القرابة', AlternativeNumber: 'الرقم البديل', AttendanceDate: 'تاريخ الحضور', CheckIn: 'وقت الحضور', CheckOut: 'وقت الانصراف', WorkingHours: 'ساعات العمل', LateMinutes: 'دقائق التأخير', EarlyLeaveMinutes: 'دقائق الانصراف المبكر', OvertimeMinutes: 'دقائق الوقت الإضافي', Source: 'المصدر', Reason: 'السبب', SuggestedDeductionAmount: 'الخصم المقترح', ApprovedDeductionAmount: 'الخصم المعتمد', PayrollImpactStatus: 'التأثير على المرتب', PayrollNotes: 'ملاحظات مراجعة المرتب', PayrollReviewedByUsername: 'مراجع الخصم', PayrollReviewedAt: 'تاريخ مراجعة الخصم', LeaveTypeId: 'نوع الإجازة', NumberOfDays: 'عدد الأيام', RequestDate: 'تاريخ الطلب', DecisionNotes: 'ملاحظات القرار', DecisionAt: 'تاريخ القرار', Entitled: 'المستحق', Used: 'المستخدم', Pending: 'قيد الانتظار', Remaining: 'المتبقي', FileName: 'اسم الملف', FileSize: 'حجم الملف', MimeType: 'نوع الملف', Sha256Hash: 'بصمة الملف', IssueDate: 'تاريخ الإصدار', ExpiryDate: 'تاريخ الانتهاء', DelegationNumber: 'رقم التفويض', Subject: 'موضوع التفويض', AuthorizedEntity: 'جهة التفويض', Purpose: 'الغرض', CancellationReason: 'سبب الإلغاء', CancelledAt: 'تاريخ الإلغاء', IsActive: 'نشط', Name: 'الاسم', NameEnglish: 'الاسم بالإنجليزية', NameArabic: 'الاسم بالعربية', Code: 'الكود', Description: 'الوصف', Date: 'التاريخ', Type: 'النوع', TimeZoneId: 'المنطقة الزمنية', CreatedAt: 'تاريخ الإنشاء', UpdatedAt: 'تاريخ التحديث', CreatedBy: 'أنشأ بواسطة', UpdatedBy: 'حدّث بواسطة',
 };
 

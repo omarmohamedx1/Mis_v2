@@ -43,6 +43,9 @@ public sealed class CollectionPortfolio
         Id = Guid.NewGuid(); OrganizationId = organizationId; Code = code.Trim().ToUpperInvariant(); NameArabic = nameArabic.Trim(); NameEnglish = nameEnglish.Trim();
         CurrencyCode = string.IsNullOrWhiteSpace(currencyCode) ? "EGP" : currencyCode.Trim().ToUpperInvariant(); IsActive = true; CreatedAt = createdAt;
     }
+    public CollectionPortfolio(Guid organizationId, string code, string nameArabic, string nameEnglish, string currencyCode, DateTimeOffset createdAt, string primaryClassification, string subClassification)
+        : this(organizationId, code, nameArabic, nameEnglish, currencyCode, createdAt)
+        => AssignClassification(primaryClassification, subClassification);
     public Guid Id { get; private set; }
     public Guid OrganizationId { get; private set; }
     public ClientOrganization Organization { get; private set; } = null!;
@@ -54,8 +57,18 @@ public sealed class CollectionPortfolio
     public string SettingsJson { get; private set; } = "{}";
     public bool IsActive { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
+    /// <summary>ACT, WO, or CORP. Null for legacy portfolios that predate classification.</summary>
+    public string? PrimaryClassification { get; private set; }
+    /// <summary>LOAN, VISA, or AUTO under ACT and WO; ACT or WO under CORP.</summary>
+    public string? SubClassification { get; private set; }
     public void Update(string nameArabic, string nameEnglish, string currencyCode, decimal? targetAmount, string? settingsJson, bool isActive)
     { ArgumentException.ThrowIfNullOrWhiteSpace(nameArabic); ArgumentException.ThrowIfNullOrWhiteSpace(nameEnglish); if (targetAmount < 0) throw new ArgumentOutOfRangeException(nameof(targetAmount)); NameArabic = nameArabic.Trim(); NameEnglish = nameEnglish.Trim(); CurrencyCode = currencyCode.Trim().ToUpperInvariant(); TargetAmount = targetAmount; SettingsJson = JsonText.NormalizeRequired(settingsJson, nameof(settingsJson), "{}"); IsActive = isActive; }
+    public void AssignClassification(string primary, string sub)
+    {
+        var (normalizedPrimary, normalizedSub) = PortfolioClassification.Require(primary, sub);
+        PrimaryClassification = normalizedPrimary; SubClassification = normalizedSub;
+        if (PortfolioClassification.IsReplaceableCode(Code)) Code = PortfolioClassification.Code(normalizedPrimary, normalizedSub);
+    }
 }
 
 public sealed class CollectionCustomer
@@ -82,11 +95,24 @@ public sealed class CollectionCustomer
     public string? Governorate { get; private set; }
     public string? Area { get; private set; }
     public string? Employer { get; private set; }
+    public string? Feedback { get; private set; }
+    public string? Notes { get; private set; }
+    public string? DataEntrySource { get; private set; }
+    public Guid? CreatedByUserId { get; private set; }
+    public User? CreatedByUser { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public void ApplyImportedContact(string? nameArabic, string? nameEnglish, string? nationalId, string? primaryPhone)
     { FullNameArabic = Normalize(nameArabic) ?? FullNameArabic; FullNameEnglish = Normalize(nameEnglish) ?? FullNameEnglish; NationalId = Normalize(nationalId) ?? NationalId; PrimaryPhone = Normalize(primaryPhone) ?? PrimaryPhone; }
     public void UpdatePortfolioContact(string? primaryPhone, string? alternatePhone, string? address, bool arabic)
     { PrimaryPhone = Normalize(primaryPhone); AlternatePhone = Normalize(alternatePhone); if (arabic) AddressArabic = Normalize(address); else AddressEnglish = Normalize(address); }
+    public void ApplyDataEntryDetails(string? feedback, string? notes, string? source, Guid? createdByUserId)
+    {
+        Feedback = Normalize(feedback) ?? Feedback;
+        Notes = Normalize(notes) ?? Notes;
+        DataEntrySource = Normalize(source)?.ToUpperInvariant() ?? DataEntrySource;
+        if (createdByUserId.HasValue && createdByUserId != Guid.Empty && CreatedByUserId is null)
+            CreatedByUserId = createdByUserId;
+    }
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 

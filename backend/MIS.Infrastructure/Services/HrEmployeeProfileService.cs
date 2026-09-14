@@ -177,7 +177,7 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
         };
 
         employee.UpdateContactInformation(
-            EgyptianHrDataValidator.NormalizePhone(request.MobileNumber, "Mobile number"),
+            EmployeeMobileNumber.Normalize(request.MobileNumber),
             EgyptianHrDataValidator.NormalizePhone(request.AlternativeMobileNumber, "Alternative mobile number"),
             request.Email,
             request.Address,

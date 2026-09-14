@@ -1,6 +1,48 @@
 import { apiClient, downloadApiFile, requestApiFile, requestFormData, type ApiFile } from '../../../services/apiClient';
 import type { DocumentExpirySummary, EmployeeDocumentDetails, EmployeeDocumentQuery, EmployeePersonnelFile, PagedEmployeeDocuments, PagedEmployeePersonnelFiles, PersonnelFileQuery, PersonnelFileSummary, RequiredDocumentCode, SaveEmployeeDocumentMetadata } from '../types/document';
 
+export type EmployeeDocumentBulkStatus =
+  | 'Ready'
+  | 'EmployeeNotFound'
+  | 'AmbiguousEmployee'
+  | 'DocumentTypeNotRecognized'
+  | 'DocumentAlreadyExists'
+  | 'Error';
+
+export interface EmployeeDocumentBulkItem {
+  fileId: string;
+  fileName: string;
+  length: number;
+  contentType: string | null;
+  employeeId: string | null;
+  employeeNumber: string | null;
+  employeeName: string | null;
+  documentCode: RequiredDocumentCode | null;
+  documentName: string | null;
+  status: EmployeeDocumentBulkStatus | string;
+  duplicateAction: 'Skip' | 'Replace' | string;
+  errors: string[];
+}
+
+export interface EmployeeDocumentBulkUpload {
+  id: string;
+  items: EmployeeDocumentBulkItem[];
+}
+
+export interface EmployeeDocumentBulkCorrection {
+  fileId: string;
+  employeeId?: string | null;
+  documentCode?: string | null;
+  duplicateAction: 'Skip' | 'Replace';
+}
+
+export interface EmployeeDocumentBulkResult {
+  uploaded: number;
+  replaced: number;
+  skipped: number;
+  failed: number;
+}
+
 export const hrEmployeeDocumentService = {
   async getPaged(query: EmployeeDocumentQuery): Promise<PagedEmployeeDocuments> {
     const { data } = await apiClient.get<PagedEmployeeDocuments>('/hr/employee-documents', { params: {
@@ -35,5 +77,18 @@ export const hrEmployeeDocumentService = {
   async uploadRequired(employeeId: string, code: RequiredDocumentCode, file: File): Promise<EmployeeDocumentDetails> {
     const form = new FormData(); form.append('file', file);
     return requestFormData<EmployeeDocumentDetails>(`/hr/employee-documents/personnel-files/${employeeId}/${code}`, form);
+  },
+  async bulkUpload(files: File[]): Promise<EmployeeDocumentBulkUpload> {
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file));
+    return requestFormData<EmployeeDocumentBulkUpload>('/hr/employee-documents/bulk/upload', form);
+  },
+  async bulkPreview(id: string, items: EmployeeDocumentBulkCorrection[]): Promise<EmployeeDocumentBulkUpload> {
+    const { data } = await apiClient.put<EmployeeDocumentBulkUpload>(`/hr/employee-documents/bulk/${id}/preview`, { items });
+    return data;
+  },
+  async bulkConfirm(id: string, items: EmployeeDocumentBulkCorrection[]): Promise<EmployeeDocumentBulkResult> {
+    const { data } = await apiClient.post<EmployeeDocumentBulkResult>(`/hr/employee-documents/bulk/${id}/confirm`, { items });
+    return data;
   },
 };

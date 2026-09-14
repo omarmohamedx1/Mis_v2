@@ -106,7 +106,8 @@ public sealed record AttendanceListItemDto(
     int OvertimeMinutes,
     string Status,
     string Source,
-    bool IsManuallyAdjusted);
+    bool IsManuallyAdjusted,
+    IReadOnlyCollection<AttendanceExcuseDto>? ApprovedExcuses = null);
 
 public sealed record AttendanceDetailsDto(
     Guid Id,
@@ -130,7 +131,8 @@ public sealed record AttendanceDetailsDto(
     Guid? ImportBatchId,
     bool IsManuallyAdjusted,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    IReadOnlyCollection<AttendanceExcuseDto>? ApprovedExcuses = null);
 
 public sealed record PagedAttendanceRecordsDto(
     IReadOnlyCollection<AttendanceListItemDto> Items,
@@ -432,3 +434,5 @@ public sealed class AttendanceImportHistoryFilterDto
 
     public DateOnly? UploadedTo { get; init; }
 }
+
+public sealed record AttendanceExcuseDto(Guid Id, string Type, string Source, DateOnly Date, TimeOnly? FromTime, TimeOnly? ToTime, string? Reason, bool FullDay = false);

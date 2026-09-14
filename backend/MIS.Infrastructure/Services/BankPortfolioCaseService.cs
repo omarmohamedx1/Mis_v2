@@ -12,7 +12,7 @@ using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
 
-public sealed class BankPortfolioCaseService(ApplicationDbContext db, ICurrentUserContext user) : IBankPortfolioCaseService
+public sealed class BankPortfolioCaseService(ApplicationDbContext db, ICurrentUserContext user, ICollectionsClassificationContext classification) : IBankPortfolioCaseService
 {
     private static readonly string[] Statuses = [CollectionsValues.CaseStatuses.Active, CollectionsValues.CaseStatuses.OnHold,
         CollectionsValues.CaseStatuses.Settled, CollectionsValues.CaseStatuses.Closed, CollectionsValues.CaseStatuses.Legal, CollectionsValues.CaseStatuses.WriteOff];
@@ -112,7 +112,8 @@ public sealed class BankPortfolioCaseService(ApplicationDbContext db, ICurrentUs
         return new UTF8Encoding(true).GetBytes(csv.ToString());
     }
 
-    private IQueryable<CollectionCase> ScopedCases(Guid bankId)
+    private IQueryable<CollectionCase> ScopedCases(Guid bankId) => ScopedCasesCore(bankId).Apply(classification);
+    private IQueryable<CollectionCase> ScopedCasesCore(Guid bankId)
     {
         var baseQuery = db.CollectionCases.Where(x => x.Portfolio.OrganizationId == bankId && !x.IsArchived); if (Global) return baseQuery;
         if (Collector) return baseQuery.Where(x => x.AssignedCollectorId == user.UserId);

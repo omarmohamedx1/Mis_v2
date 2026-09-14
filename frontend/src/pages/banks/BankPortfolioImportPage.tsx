@@ -60,7 +60,13 @@ export function BankPortfolioImportPage() {
 
   async function confirm() {
     if (!candidate || confirming) return; setConfirming(true);
-    try { setCandidate(await collectionsService.confirmBankPortfolio(bank.id, candidate.id, reviewNotes)); setStage('success'); setRefresh(v => v + 1); toast.success(ct('portfolioImportConfirmed')); }
+    try {
+      const confirmed = await collectionsService.confirmBankPortfolio(bank.id, candidate.id, reviewNotes);
+      setCandidate(confirmed.import);
+      setStage('success');
+      setRefresh(v => v + 1);
+      toast.success(`${ct('portfolioImportConfirmed')} · ${ct('importedCount')}: ${confirmed.imported} · ${ct('skippedCount')}: ${confirmed.skipped} · ${ct('failedCount')}: ${confirmed.invalid}`);
+    }
     catch (error) { toast.error(getApiErrorMessage(error, ct('portfolioUploadFailed'))); } finally { setConfirming(false); }
   }
   function openEdit(item: BankPortfolioImport) { setEditing(item); setEditNotes(item.notes ?? ''); setReplacement(undefined); }

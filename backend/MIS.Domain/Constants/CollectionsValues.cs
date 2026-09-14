@@ -113,4 +113,81 @@ public static class CollectionsValues
         public const string High = "HIGH";
         public const string Critical = "CRITICAL";
     }
+
+    public static class PrimaryClassifications
+    {
+        public const string Act = "ACT";
+        public const string Wo = "WO";
+        public const string Corp = "CORP";
+
+        /// <summary>Write-off is presented as "W.O" but always persisted as "WO".</summary>
+        public const string WoDisplay = "W.O";
+
+        public static readonly string[] All = [Act, Wo, Corp];
+    }
+
+    public static class SubClassifications
+    {
+        public const string Loan = "LOAN";
+        public const string Visa = "VISA";
+        public const string Auto = "AUTO";
+        public const string Act = PrimaryClassifications.Act;
+        public const string Wo = PrimaryClassifications.Wo;
+
+        /// <summary>Products valid under the ACT and WO primary classifications.</summary>
+        public static readonly string[] Products = [Loan, Visa, Auto];
+
+        /// <summary>Segments valid under the CORP primary classification.</summary>
+        public static readonly string[] CorporateSegments = [Act, Wo];
+    }
+}
+
+public static class PortfolioClassification
+{
+    public static string? Normalize(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var normalized = new string(value.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+        return normalized.Length == 0 ? null : normalized;
+    }
+
+    public static string[] SubClassificationsFor(string? primary) => Normalize(primary) switch
+    {
+        CollectionsValues.PrimaryClassifications.Act or CollectionsValues.PrimaryClassifications.Wo => CollectionsValues.SubClassifications.Products,
+        CollectionsValues.PrimaryClassifications.Corp => CollectionsValues.SubClassifications.CorporateSegments,
+        _ => []
+    };
+
+    public static bool IsValid(string? primary, string? sub)
+    {
+        var normalizedSub = Normalize(sub);
+        return normalizedSub is not null && SubClassificationsFor(primary).Contains(normalizedSub);
+    }
+
+    /// <summary>Normalizes a classification pair and fails when the combination is not supported.</summary>
+    public static (string Primary, string Sub) Require(string? primary, string? sub)
+    {
+        var normalizedPrimary = Normalize(primary);
+        var normalizedSub = Normalize(sub);
+        if (normalizedPrimary is null || !CollectionsValues.PrimaryClassifications.All.Contains(normalizedPrimary))
+            throw new ArgumentException("Primary classification must be ACT, WO, or CORP.", nameof(primary));
+        if (normalizedSub is null || !SubClassificationsFor(normalizedPrimary).Contains(normalizedSub))
+            throw new ArgumentException($"Sub classification must be one of {string.Join(", ", SubClassificationsFor(normalizedPrimary))} for {normalizedPrimary}.", nameof(sub));
+        return (normalizedPrimary, normalizedSub);
+    }
+
+    public static string Code(string primary, string sub) => $"{primary}-{sub}";
+
+    public static string Display(string? value) =>
+        Normalize(value) == CollectionsValues.PrimaryClassifications.Wo ? CollectionsValues.PrimaryClassifications.WoDisplay : Normalize(value) ?? string.Empty;
+
+    /// <summary>True when a portfolio code is the seeded default or a code this classification scheme generated.</summary>
+    public static bool IsReplaceableCode(string? code)
+    {
+        var value = code?.Trim().ToUpperInvariant();
+        if (string.IsNullOrEmpty(value)) return true;
+        if (value == "DEFAULT") return true;
+        var parts = value.Split('-');
+        return parts.Length == 2 && IsValid(parts[0], parts[1]);
+    }
 }

@@ -1,8 +1,8 @@
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { DateControl } from '../../components/forms/DateControl';
-import { BadgeDollarSign, Ban, CalendarX2, CheckCircle2, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { BadgeDollarSign, Ban, CalendarX2, CheckCircle2, Eye, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
@@ -271,7 +271,20 @@ export function HrAbsencesPage() {
   return (
     <div className="mx-auto max-w-7xl">
       <PageHeader
-        actions={<Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={() => setFormRecord(null)}>{t('recordAbsence')}</Button>}
+        actions={
+          <>
+            <Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={() => setFormRecord(null)}>
+              {t('recordAbsence')}
+            </Button>
+            <Link
+              to="/hr/absences/import"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-mis-sky/60 bg-mis-pale px-4 text-sm font-semibold text-mis-deep shadow-sm hover:border-mis-primary hover:bg-white"
+            >
+              <Upload className="h-4 w-4" />
+              {t('importAbsenceFile')}
+            </Link>
+          </>
+        }
         description={t('absencesSubtitle')}
         eyebrow={t('hrDepartment')}
         title={t('absencesTitle')}

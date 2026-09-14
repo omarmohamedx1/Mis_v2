@@ -1,6 +1,9 @@
 export interface PagedResult<T> { items: T[]; totalCount: number; page: number; pageSize: number; totalPages: number }
 export interface BankDirectoryItem { id: string; code: string; nameArabic: string; nameEnglish: string; logoUrl?: string }
 export interface BankPortfolioImport { id: string; bankId: string; bankNameArabic: string; bankNameEnglish: string; portfolioName: string; originalFileName: string; fileType: string; fileSize: number; rowCount: number; status: 'READY' | 'COMPLETED'; uploadedByUserId: string; uploadedBy: string; uploadedAt: string; confirmedAt?: string; notes?: string; updatedAt?: string }
+export interface BankPortfolioImportPreviewRow { rowNumber: number; customerName?: string | null; customerCode?: string | null; accountReference?: string | null; outstandingBalance?: number | null; status: string; errors: string[] }
+export interface BankPortfolioImportDataPreview { importId: string; totalRows: number; readyRows: number; existingRows: number; invalidRows: number; rows: BankPortfolioImportPreviewRow[] }
+export interface BankPortfolioImportConfirmResult { import: BankPortfolioImport; imported: number; skipped: number; invalid: number }
 export interface BankPortfolioReplacementPreview { token: string; originalFileName: string; fileType: string; fileSize: number; rowCount: number }
 export interface BankPortfolioImportPage { items: BankPortfolioImport[]; totalCount: number; page: number; pageSize: number; totalPages: number }
 export interface BankPortfolioAccess { isManager: boolean; canEdit: boolean; canAssign: boolean; canExport: boolean; statuses: string[] }
@@ -9,6 +12,52 @@ export interface BankPortfolioCase { id: string; caseNumber: string; customerNam
 export interface BankPortfolioCasePage { items: BankPortfolioCase[]; totalCount: number; page: number; pageSize: number; totalPages: number; access: BankPortfolioAccess }
 export interface BankPortfolioCaseDetails extends BankPortfolioCase { customerCode: string; alternativeMobile?: string; nationalId?: string; address?: string; bankName: string; portfolioName: string; accountReference: string; contractReference?: string; productType?: string; originalAmount: number; paidAmount: number; remainingAmount: number; latestNote?: string; sourceImportId?: string; importedFrom?: string; importDate?: string; createdAt: string; updatedAt: string; access: BankPortfolioAccess }
 export interface BankPortfolioAssignmentPreview { caseCount: number; collectorId: string; collectorName: string }
+
+export interface BankCustomerListItem {
+  id: string;
+  customerName: string;
+  mobile?: string | null;
+  nationalId?: string | null;
+  accountReference?: string | null;
+  contractReference?: string | null;
+  outstandingAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status?: string | null;
+  assignedCollectorName?: string | null;
+  caseCount: number;
+}
+export interface BankCustomerPage { items: BankCustomerListItem[]; totalCount: number; page: number; pageSize: number; totalPages: number }
+export interface BankCustomerCaseSummary {
+  caseId: string; caseNumber: string; accountReference: string; contractReference?: string | null; productType?: string | null;
+  portfolioName: string; originalAmount: number; outstandingAmount: number; overdueAmount: number; paidAmount: number;
+  remainingAmount: number; daysPastDue: number; status: string; assignedCollectorId?: string | null;
+  assignedCollectorName?: string | null; assignmentDate?: string | null; lastPaymentAt?: string | null; nextFollowUpAt?: string | null;
+}
+export interface BankCustomerLinkSummary { module: string; id: string; title: string; status?: string | null; occurredAt: string; amount?: number | null }
+export interface BankCustomerDetails {
+  id: string; customerCode: string; customerName: string; fullNameArabic?: string | null; fullNameEnglish?: string | null;
+  mobile?: string | null; alternativeMobile?: string | null; nationalId?: string | null; address?: string | null;
+  governorate?: string | null; area?: string | null; organizationName: string; organizationType: string;
+  totalOriginalAmount: number; totalOutstandingAmount: number; totalPaidAmount: number; totalRemainingAmount: number; totalOverdueAmount: number;
+  cases: BankCustomerCaseSummary[]; payments: BankCustomerLinkSummary[]; promises: BankCustomerLinkSummary[];
+  visits: BankCustomerLinkSummary[]; complaints: BankCustomerLinkSummary[]; activities: BankCustomerLinkSummary[]; timeline: BankCustomerLinkSummary[];
+}
+export interface BankCustomerImportSheet { sheetName?: string | null; suggestedHeaderRowNumber: number; detectedColumns: string[] }
+export interface BankCustomerImportUpload { id: string; fileName: string; sheets: BankCustomerImportSheet[] }
+export interface BankCustomerImportMapping {
+  sheetName?: string | null; headerRow: number; firstDataRow: number; portfolioId?: string | null; columns: Record<string, string>;
+}
+export interface BankCustomerImportRow {
+  row: number; customerName: string; mobile?: string | null; nationalId?: string | null; accountReference?: string | null;
+  contractReference?: string | null; outstanding?: number | null; paid?: number | null; remaining?: number | null;
+  status: string; errors: string[];
+}
+export interface BankCustomerImportPreview {
+  id: string; previewId: string; portfolioId: string; portfolioName: string; rows: BankCustomerImportRow[];
+}
+export interface BankCustomerImportResult { imported: number; skipped: number; failed: number }
+
 export interface CaseDistributionSummary { totalCases: number; unassignedCases: number; assignedCases: number; collectors: number }
 export interface CaseDistributionItem { id: string; caseNumber: string; customerName: string; mobile?: string; outstandingAmount: number; status: string; collectorId?: string; collectorName?: string; assignedAt?: string; importId?: string; importName?: string }
 export interface CaseDistributionPage { items: CaseDistributionItem[]; totalCount: number; page: number; pageSize: number; totalPages: number }
@@ -18,6 +67,22 @@ export interface DistributionPreview { caseCount: number; totalOutstanding: numb
 export interface DistributionResult { caseCount: number; collectorId?: string; collectorName?: string }
 export interface AutoDistributionCollector { collectorId: string; collectorName: string; caseCount: number; outstandingAmount: number }
 export interface AutoDistributionPreview { method: string; totalCases: number; totalOutstanding: number; collectors: AutoDistributionCollector[] }
+export interface BankDistributionImportSheet { sheetName?: string | null; suggestedHeaderRowNumber: number; detectedColumns: string[] }
+export interface BankDistributionImportUpload { id: string; fileName: string; sheets: BankDistributionImportSheet[] }
+export interface BankDistributionImportMapping {
+  sheetName?: string | null; headerRow: number; firstDataRow: number; mode: 'FILE' | 'AUTO';
+  columns: Record<string, string>; collectorIds?: string[] | null; reassignExisting?: boolean; reason?: string | null;
+}
+export interface BankDistributionImportRow {
+  row: number; caseId?: string | null; caseNumber?: string | null; accountReference?: string | null; customerName?: string | null;
+  currentCollectorName?: string | null; newCollectorId?: string | null; newCollectorName?: string | null;
+  organizationName: string; status: string; errors: string[];
+}
+export interface BankDistributionImportPreview {
+  id: string; previewId: string; mode: string; reassignExisting: boolean; readyRows: number; alreadyAssignedRows: number; invalidRows: number;
+  rows: BankDistributionImportRow[]; autoPlan: AutoDistributionCollector[];
+}
+export interface BankDistributionImportResult { assigned: number; reassigned: number; skipped: number; failed: number }
 export interface BankActivityAccess { isManager: boolean; canCreate: boolean; activityTypes: string[]; callOutcomes: string[]; filterActivityTypes: string[] }
 export interface BankActivitySummary { activitiesToday: number; followUpsToday: number; overdueFollowUps: number; casesContactedToday: number }
 export interface BankActivityItem { id: string; caseId: string; caseNumber: string; customerName: string; activityType: string; outcome?: string; notes?: string; activityAt: string; nextFollowUpAt?: string; performedById: string; performedBy: string; access: BankActivityAccess }

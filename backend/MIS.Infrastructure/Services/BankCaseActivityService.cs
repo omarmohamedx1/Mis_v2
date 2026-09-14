@@ -9,7 +9,7 @@ using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
 
-public sealed class BankCaseActivityService(ApplicationDbContext db, ICurrentUserContext user) : IBankCaseActivityService
+public sealed class BankCaseActivityService(ApplicationDbContext db, ICurrentUserContext user, ICollectionsClassificationContext classification) : IBankCaseActivityService
 {
     private static readonly string[] Types = [CollectionsValues.ActivityTypes.Call, CollectionsValues.ActivityTypes.Sms,
         CollectionsValues.ActivityTypes.Email, CollectionsValues.ActivityTypes.Note, CollectionsValues.ActivityTypes.FollowUp];
@@ -92,7 +92,8 @@ public sealed class BankCaseActivityService(ApplicationDbContext db, ICurrentUse
         await db.SaveChangesAsync(token); return await GetDetailsAsync(bankId, activity.Id, token);
     }
 
-    private IQueryable<CollectionCase> ScopedCases(Guid bankId) { var q = db.CollectionCases.Where(x => x.Portfolio.OrganizationId == bankId && !x.IsArchived); if (Global) return q; if (Collector) return q.Where(x => x.AssignedCollectorId == user.UserId); if (Manager) return q.Where(x => (x.AssignedTeam != null && x.AssignedTeam.SupervisorId == user.UserId) || (x.AssignedTeamId == null && db.CollectionUserAccess.Any(a => a.UserId == user.UserId && a.OrganizationId == bankId && (a.PortfolioId == null || a.PortfolioId == x.PortfolioId)))); return q.Where(_ => false); }
+    private IQueryable<CollectionCase> ScopedCases(Guid bankId) => ScopedCasesCore(bankId).Apply(classification);
+    private IQueryable<CollectionCase> ScopedCasesCore(Guid bankId) { var q = db.CollectionCases.Where(x => x.Portfolio.OrganizationId == bankId && !x.IsArchived); if (Global) return q; if (Collector) return q.Where(x => x.AssignedCollectorId == user.UserId); if (Manager) return q.Where(x => (x.AssignedTeam != null && x.AssignedTeam.SupervisorId == user.UserId) || (x.AssignedTeamId == null && db.CollectionUserAccess.Any(a => a.UserId == user.UserId && a.OrganizationId == bankId && (a.PortfolioId == null || a.PortfolioId == x.PortfolioId)))); return q.Where(_ => false); }
     private IQueryable<CollectionActivity> ScopedActivities(Guid bankId) { var cases = ScopedCases(bankId); return db.CollectionActivities.Where(x => cases.Any(c => c.Id == x.CaseId)); }
     private IQueryable<User> AuthorizedCollectors() { var q = db.Users.Where(x => x.IsActive && x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.CollectionsCollector)); return Global ? q : q.Where(x => db.CollectionTeamMembers.Any(m => m.UserId == x.Id && m.IsActive && m.Team.IsActive && m.Team.SupervisorId == user.UserId)); }
     private async Task RequireBankAsync(Guid bankId, CancellationToken token) { var exists = await db.CollectionClientOrganizations.AsNoTracking().AnyAsync(x => x.Id == bankId && x.IsActive && (x.OrganizationType == CollectionsValues.OrganizationTypes.Bank || x.OrganizationType == CollectionsValues.OrganizationTypes.ConsumerFinance), token); if (!exists || (!Global && !await db.CollectionUserAccess.AnyAsync(x => x.UserId == user.UserId && x.OrganizationId == bankId, token) && !await ScopedCases(bankId).AnyAsync(token))) throw new HrNotFoundException("Organization was not found or is outside your authorized scope."); }

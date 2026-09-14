@@ -6,7 +6,7 @@ namespace MIS.Infrastructure.Services;
 
 internal static class EmployeeImportMapper
 {
-    internal static readonly string[] Fields = ["EmployeeNumber", "FullName", "Gender", "Department", "Position", "OperationalRole", "NationalId", "DateOfBirth", "WorkStartDate", "FingerprintEnrollmentDate", "WorkEndDate", "Address", "Status"];
+    internal static readonly string[] Fields = ["MobileNumber", "EmployeeNumber", "FullName", "Gender", "Department", "Position", "OperationalRole", "NationalId", "DateOfBirth", "WorkStartDate", "FingerprintEnrollmentDate", "WorkEndDate", "Address", "Status"];
     internal sealed record Lookup(Guid Id, string Name, string Code, string? Arabic);
 
     internal static SaveEmployeeRequest Map(Dictionary<string, string> values, string? dateFormat,
@@ -24,10 +24,20 @@ internal static class EmployeeImportMapper
         Guid LookupId(string field, IReadOnlyCollection<Lookup> options)
         {
             var value = Value(field);
-            var matches = options.Where(option => value.Length > 0 && new[] { option.Name, option.Code, option.Arabic, option.Id.ToString() }
-                .Any(name => string.Equals(name?.Trim(), value, StringComparison.OrdinalIgnoreCase))).ToArray();
+            if (value.Length == 0)
+            {
+                errors.Add($"{field}: must match one existing lookup value.");
+                return Guid.Empty;
+            }
+
+            static string Norm(string? text) => string.Join(' ', (text ?? string.Empty).Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            var normalized = Norm(value);
+            var matches = options.Where(option => new[] { option.Name, option.Code, option.Arabic, option.Id.ToString() }
+                .Any(name => string.Equals(Norm(name), normalized, StringComparison.OrdinalIgnoreCase))).ToArray();
             if (matches.Length == 1) return matches[0].Id;
-            errors.Add($"{field}: must match one existing lookup value.");
+            errors.Add(field is "Department" or "Position"
+                ? $"{field} not found: {value}"
+                : $"{field}: must match one existing lookup value.");
             return Guid.Empty;
         }
         var gender = Value("Gender").ToLowerInvariant() switch { "" => null, "male" or "m" or "ذكر" => "Male", "female" or "f" or "أنثى" or "انثى" => "Female", _ => "Invalid" };
@@ -39,10 +49,24 @@ internal static class EmployeeImportMapper
             "terminated" or "منتهي" => "Terminated", _ => "Invalid"
         };
         if (status == "Invalid") errors.Add("Status: invalid value.");
-        var role = Value("OperationalRole").ToUpperInvariant() switch { "محصل" => "COLLECTOR", "إداري" or "اداري" => "ADMIN", "مشرف" => "SUPERVISOR", var value => value };
+        var roleRaw = Value("OperationalRole").Trim();
+        var roleKey = string.Join(' ', roleRaw.ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        // Title/Position is a separate field. Sheets often omit Role; default to ADMIN (not a login User role).
+        var role = roleKey switch
+        {
+            "" => "ADMIN",
+            "محصل" or "collector" or "collections collector" => "COLLECTOR",
+            "مشرف" or "supervisor" or "collections supervisor" => "SUPERVISOR",
+            "إداري" or "اداري" or "admin" or "administrator"
+                or "data entry" or "dataentry" or "إدخال البيانات" or "ادخال البيانات"
+                or "accounting" or "accountant" or "الحسابات" or "محاسب"
+                or "hr" or "hr officer" or "hr manager" or "human resources" or "الموارد البشرية"
+                or "legal" or "الشؤون القانونية" => "ADMIN",
+            _ => roleRaw.ToUpperInvariant()
+        };
         return new SaveEmployeeRequest
         {
-            EmployeeNumber = Value("EmployeeNumber"), FullName = Value("FullName"), NationalId = Value("NationalId"),
+            MobileNumber = Value("MobileNumber"), EmployeeNumber = Value("EmployeeNumber"), FullName = Value("FullName"), NationalId = Value("NationalId"),
             Gender = gender, DepartmentId = LookupId("Department", departments), PositionId = LookupId("Position", positions),
             OperationalRole = role, WorkStartDate = Date("WorkStartDate"), DateOfBirth = Date("DateOfBirth"),
             FingerprintEnrollmentDate = Date("FingerprintEnrollmentDate"), WorkEndDate = Date("WorkEndDate"),

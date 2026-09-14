@@ -1,6 +1,6 @@
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { DateControl } from '../../components/forms/DateControl';
-import { Download, ExternalLink, RefreshCw, Search, SlidersHorizontal, UserRoundCheck } from 'lucide-react';
+import { Download, ExternalLink, RefreshCw, Search, SlidersHorizontal, Upload, UserRoundCheck } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -11,14 +11,19 @@ import { Modal } from '../../components/common/Modal';
 import { Pagination } from '../../components/common/Pagination';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { useToast } from '../../components/common/Toast';
+import { useAuth } from '../../context/AuthContext';
 import { useCollectionsLocalization } from '../../features/collections/localization/collectionsTranslations';
 import { collectionsService } from '../../features/collections/services/collectionsService';
 import type { BankPortfolioAssignmentPreview, BankPortfolioCase, BankPortfolioCaseDetails, BankPortfolioCasePage, BankPortfolioCollector } from '../../features/collections/types/collections';
 import { getApiErrorMessage } from '../../services/apiClient';
 import type { BankWorkspaceContext } from './BankWorkspaceLayout';
+import { BankPortfolioUploadModal } from './BankPortfolioUploadModal';
 
 export function BankPortfolioManagementPage() {
   const { bank, organizationKind } = useOutletContext<BankWorkspaceContext>(); const workspaceBase = organizationKind === 'installment' ? '/installment-companies' : '/banks'; const { language, ct } = useCollectionsLocalization(); const toast = useToast();
+  const { user } = useAuth();
+  const canImportPortfolio = Boolean(user?.roles.some((role) => ['Admin', 'CollectionsOperationsManager'].includes(role)));
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [data, setData] = useState<BankPortfolioCasePage>(), [collectors, setCollectors] = useState<BankPortfolioCollector[]>([]);
   const [searchInput, setSearchInput] = useState(''), [search, setSearch] = useState(''), [status, setStatus] = useState(''), [collectorId, setCollectorId] = useState('');
   const [sortBy, setSortBy] = useState(''), [sortDirection, setSortDirection] = useState('desc'), [page, setPage] = useState(1), [pageSize, setPageSize] = useState(20), [reload, setReload] = useState(0);
@@ -39,7 +44,7 @@ export function BankPortfolioManagementPage() {
   const from = data?.totalCount ? (data.page - 1) * data.pageSize + 1 : 0, to = data ? Math.min(data.page * data.pageSize, data.totalCount) : 0;
   const allChecked = Boolean(data?.items.length) && data!.items.every(x => selected.includes(x.id));
   return <div>
-    <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-2xl font-bold text-mis-navy">{ct('portfolioManagement')}</h2><p className="mt-2 text-sm text-slate-500">{ct('portfolioManagementDescription')}</p></div><div className="flex gap-2">{data?.access.canExport ? <Button fullWidth={false} leftIcon={<Download className="h-4 w-4" />} onClick={() => void collectionsService.exportBankPortfolioCases(bank.id, query)} size="sm" variant="outline">{ct('export')}</Button> : null}<Button fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} onClick={() => setReload(v => v + 1)} size="sm" variant="outline">{ct('refresh')}</Button></div></header>
+    <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-2xl font-bold text-mis-navy">{ct('portfolioManagement')}</h2><p className="mt-2 text-sm text-slate-500">{ct('portfolioManagementDescription')}</p></div><div className="flex flex-wrap gap-2">{canImportPortfolio ? <Button fullWidth={false} leftIcon={<Upload className="h-4 w-4" />} onClick={() => setUploadOpen(true)} size="sm">{ct('uploadPortfolioFile')}</Button> : null}{data?.access.canExport ? <Button fullWidth={false} leftIcon={<Download className="h-4 w-4" />} onClick={() => void collectionsService.exportBankPortfolioCases(bank.id, query)} size="sm" variant="outline">{ct('export')}</Button> : null}<Button fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} onClick={() => setReload(v => v + 1)} size="sm" variant="outline">{ct('refresh')}</Button></div></header>
     <section className="mb-4 grid gap-3 rounded-2xl border border-mis-border bg-white p-4 lg:grid-cols-[minmax(260px,1fr)_180px_210px_180px_150px_auto]">
       <label className="relative"><Search className="absolute top-3.5 h-4 w-4 text-slate-400" style={{ insetInlineStart: '.85rem' }} /><input className="field h-11 py-2 ps-10 leading-normal" placeholder={ct('searchPortfolioCases')} value={searchInput} onChange={e => setSearchInput(e.target.value)} /></label>
       <ProfessionalSelect className="field h-11 py-2 leading-normal" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}><option value="">{ct('allPortfolioStatuses')}</option>{data?.access.statuses.map(x => <option key={x} value={x}>{ct(x)}</option>)}</ProfessionalSelect>
@@ -55,8 +60,18 @@ export function BankPortfolioManagementPage() {
       {details && !editing ? <div className="mt-5 flex flex-wrap justify-end gap-2">{details.access.canAssign?<Link className="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700" to={`${workspaceBase}/${bank.id}/archive?caseId=${details.id}`}>{ct('archiveCase')}</Link>:null}<Link className="inline-flex items-center rounded-xl border border-mis-primary px-4 py-2.5 text-sm font-bold text-mis-primary" to={`${workspaceBase}/${bank.id}/complaints?create=1&caseId=${details.id}`}>{ct('createComplaint')}</Link><Link className="inline-flex items-center rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white" to={`${workspaceBase}/${bank.id}/visits?create=1&caseId=${details.id}&caseSearch=${encodeURIComponent(details.caseNumber)}`}>{ct('createVisit')}</Link></div> : null}
     </Modal>
     <Modal footer={<><Button fullWidth={false} onClick={() => { setAssignmentOpen(false); setAssignmentPreview(undefined); }} size="md" variant="outline">{ct('cancel')}</Button><Button disabled={!assignmentCollector || assignmentReason.trim().length < 2} fullWidth={false} isLoading={saving} onClick={() => void assignmentAction()} size="md">{assignmentPreview ? ct('confirmPortfolioAssignment') : ct('review')}</Button></>} onClose={() => { setAssignmentOpen(false); setAssignmentPreview(undefined); }} open={assignmentOpen} title={assignmentPreview ? `${ct('assignCollector')} Â· ${assignmentPreview.caseCount}` : ct('assignCollector')}>
-      {assignmentPreview ? <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm text-slate-500">{ct('assignedTo')}</p><p className="mt-1 font-bold text-mis-navy">{assignmentPreview.collectorName}</p><p className="mt-3 text-sm text-slate-500">{assignmentPreview.caseCount} {ct('casesSelected')}</p></div> : <div className="space-y-4"><label className="block text-sm font-semibold">{ct('selectPortfolioCollector')}<ProfessionalSelect className="field mt-2" value={assignmentCollector} onChange={e => setAssignmentCollector(e.target.value)}><option value="">â€”</option>{collectors.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</ProfessionalSelect></label><label className="block text-sm font-semibold">{ct('assignmentReasonLabel')}<textarea className="field mt-2" maxLength={500} rows={3} value={assignmentReason} onChange={e => setAssignmentReason(e.target.value)} /></label></div>}
+      {assignmentPreview ? <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm text-slate-500">{ct('assignedTo')}</p><p className="mt-1 font-bold text-mis-navy">{assignmentPreview.collectorName}</p><p className="mt-3 text-sm text-slate-500">{assignmentPreview.caseCount} {ct('casesSelected')}</p></div> : <div className="space-y-4"><label className="block text-sm font-semibold">{ct('selectPortfolioCollector')}<ProfessionalSelect className="field mt-2" value={assignmentCollector} onChange={e => setAssignmentCollector(e.target.value)}><option value="">—</option>{collectors.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</ProfessionalSelect></label><label className="block text-sm font-semibold">{ct('assignmentReasonLabel')}<textarea className="field mt-2" maxLength={500} rows={3} value={assignmentReason} onChange={e => setAssignmentReason(e.target.value)} /></label></div>}
     </Modal>
+    <BankPortfolioUploadModal
+      bankId={bank.id}
+      bankName={language === 'ar' ? bank.nameArabic : bank.nameEnglish}
+      open={uploadOpen}
+      onClose={() => setUploadOpen(false)}
+      onImported={(result) => {
+        setReload((value) => value + 1);
+        toast.success(`${ct('importedCount')}: ${result.imported} · ${ct('skippedCount')}: ${result.skipped} · ${ct('failedCount')}: ${result.invalid}`);
+      }}
+    />
   </div>;
 }
 

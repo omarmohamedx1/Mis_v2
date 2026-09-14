@@ -29,4 +29,13 @@ public static class SystemPermissionCodes
     public const string FinanceCollectionReview = "finance.collection.review";
     public const string FinanceCustodyView = "finance.custody.view";
     public const string FinanceCustodyReconcile = "finance.custody.reconcile";
+    public const string AccountingAccess = "accounting.access";
+    public const string AccountingPayrollManage = "accounting.payroll.manage";
+    public const string AccountingPayrollApprove = "accounting.payroll.approve";
+    public const string AccountingTransportationManage = "accounting.transportation.manage";
+    public const string AccountingCommissionManage = "accounting.commission.manage";
+    public const string AccountingCommissionApprove = "accounting.commission.approve";
+    public const string DataEntryAccess = "data_entry.access";
+    public const string DataEntryManage = "data_entry.manage";
+    public const string DataEntryBatchReview = "collections.data_batch.review";
 }

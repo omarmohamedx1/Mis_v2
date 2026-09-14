@@ -29,7 +29,9 @@ public sealed class CollectionsImportService : ICollectionsImportService
     public async Task<CollectionImportBatchDto> UploadAsync(Guid organizationId, Guid portfolioId, string fileName, string contentType, long length, Stream content, CancellationToken token)
     {
         EnsureImportPermission(); var portfolio = await _db.CollectionPortfolios.AsNoTracking().SingleOrDefaultAsync(x => x.Id == portfolioId && x.OrganizationId == organizationId && x.IsActive, token) ?? throw new HrValidationException("A valid active client portfolio is required.");
-        if (length <= 0 || length > MaximumBytes) throw new HrValidationException("Collection import files must be between 1 byte and 20 MB."); var extension = Path.GetExtension(fileName).ToLowerInvariant(); if (extension is not (".csv" or ".xlsx")) throw new HrValidationException("Only CSV and XLSX collection imports are supported.");
+        if (length <= 0 || length > MaximumBytes) throw new HrValidationException("Collection import files must be between 1 byte and 20 MB.");
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (extension is not (".csv" or ".xlsx" or ".xls")) throw new HrValidationException("Only CSV, XLSX, and XLS collection imports are supported.");
         var stored = await _files.SaveAsync("collections-imports", fileName, contentType, content, MaximumBytes, token); if (await _db.CollectionImportBatches.AnyAsync(x => x.PortfolioId == portfolioId && x.FileHash == stored.Sha256Hash && x.Status == "COMPLETED", token)) { await _files.DeleteAsync(stored.StorageKey, token); throw new HrConflictException("This file was already imported into the selected portfolio."); }
         var now = DateTimeOffset.UtcNow; var batch = new CollectionImportBatch(organizationId, portfolioId, stored.OriginalFileName, stored.ContentType, stored.Length, stored.Sha256Hash, stored.StorageKey, _user.UserId, now); _db.CollectionImportBatches.Add(batch); await _db.SaveChangesAsync(token);
         try

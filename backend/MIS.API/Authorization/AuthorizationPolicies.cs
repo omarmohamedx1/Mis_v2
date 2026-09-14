@@ -24,4 +24,13 @@ public static class AuthorizationPolicies
     public const string FinanceCollectionReview = "FinanceCollectionReview";
     public const string FinanceCustodyView = "FinanceCustodyView";
     public const string FinanceCustodyReconcile = "FinanceCustodyReconcile";
+    public const string AccountingAccess = "AccountingAccess";
+    public const string AccountingPayrollManage = "AccountingPayrollManage";
+    public const string AccountingPayrollApprove = "AccountingPayrollApprove";
+    public const string AccountingTransportationManage = "AccountingTransportationManage";
+    public const string AccountingCommissionManage = "AccountingCommissionManage";
+    public const string AccountingCommissionApprove = "AccountingCommissionApprove";
+    public const string DataEntryAccess = "DataEntryAccess";
+    public const string DataEntryManage = "DataEntryManage";
+    public const string DataEntryBatchReview = "DataEntryBatchReview";
 }

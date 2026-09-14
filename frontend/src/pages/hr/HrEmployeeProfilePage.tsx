@@ -1,3 +1,6 @@
+import { HrExcusesPage } from './HrExcusesPage';
+import { HrSocialInsurancePage } from './HrSocialInsurancePage';
+import { useAuth } from '../../context/AuthContext';
 import {
   ArrowLeft, BadgeDollarSign, BriefcaseBusiness, CalendarCheck2, CalendarDays,
   ContactRound, ExternalLink, FileSignature, Files, HeartHandshake, History,
@@ -47,7 +50,7 @@ import type { MasterDataLookup } from '../../features/hr/types/masterData';
 import type { TranslationKey } from '../../localization/translations';
 import { getApiErrorMessage } from '../../services/apiClient';
 
-type ProfileTab = 'overview' | 'personal' | 'employment' | 'contract' | 'compensation' | 'emergency' | 'documents' | 'attendance' | 'leaves' | 'absences' | 'delegations' | 'audit';
+type ProfileTab = 'overview' | 'personal' | 'employment' | 'contract' | 'compensation' | 'emergency' | 'documents' | 'attendance' | 'leaves' | 'absences' | 'delegations' | 'socialInsurance' | 'excusesMissions' | 'audit';
 
 interface ProfileLookups {
   contractTypes: MasterDataLookup[];
@@ -56,7 +59,7 @@ interface ProfileLookups {
   positions: MasterDataLookup[];
 }
 
-const profileTabs: ProfileTab[] = ['overview', 'personal', 'employment', 'contract', 'compensation', 'emergency', 'documents', 'attendance', 'leaves', 'absences', 'delegations', 'audit'];
+const profileTabs: ProfileTab[] = ['overview', 'personal', 'employment', 'contract', 'compensation', 'emergency', 'documents', 'attendance', 'leaves', 'absences', 'delegations', 'socialInsurance', 'excusesMissions', 'audit'];
 const tabLabels: Record<ProfileTab, TranslationKey> = {
   overview: 'profileOverview',
   personal: 'profilePersonal',
@@ -69,6 +72,8 @@ const tabLabels: Record<ProfileTab, TranslationKey> = {
   leaves: 'leaves',
   absences: 'companyAbsences',
   delegations: 'delegations',
+  socialInsurance: 'socialInsurance',
+  excusesMissions: 'excusesMissions',
   audit: 'profileAudit',
 };
 
@@ -84,6 +89,8 @@ const tabIcons: Record<ProfileTab, ReactNode> = {
   leaves: <CalendarDays aria-hidden="true" className="h-4 w-4" />,
   absences: <UserRoundX aria-hidden="true" className="h-4 w-4" />,
   delegations: <ScrollText aria-hidden="true" className="h-4 w-4" />,
+  excusesMissions: <ShieldAlert aria-hidden="true" className="h-4 w-4" />,
+  socialInsurance: <ShieldAlert aria-hidden="true" className="h-4 w-4" />,
   audit: <History aria-hidden="true" className="h-4 w-4" />,
 };
 
@@ -175,6 +182,7 @@ function OverviewTab({ profile, reportingLine }: { profile: EmployeeProfile; rep
             <InfoItem label={labels.start} value={formatDate(profile.employment.hireDate, language)} />
             <InfoItem label={labels.end} value={formatDate(profile.employment.terminationDate, language)} />
             <InfoItem label={labels.birth} value={formatDate(profile.personal.dateOfBirth, language)} />
+            <InfoItem label={t('mobileNumber')} value={profile.contact.mobileNumber ? <bdi dir="ltr">{profile.contact.mobileNumber}</bdi> : null} />
             <InfoItem label={labels.address} value={profile.contact.address} />
           </dl>
         </Section>
@@ -310,7 +318,7 @@ function PersonalTab({ onUpdated, profile }: { onUpdated: (profile: EmployeeProf
       <Section title={t('contactInformation')}>
         <form className="space-y-5" noValidate onSubmit={saveContact}>
           <FormError message={contactError} />
-          <TextInput label={t('mobileNumber')} maxLength={32} name="mobileNumber" onChange={(event) => setContact((current) => ({ ...current, mobileNumber: event.target.value }))} type="tel" value={contact.mobileNumber ?? ''} />
+          <TextInput dir="ltr" label={t('mobileNumber')} maxLength={32} name="mobileNumber" onChange={(event) => setContact((current) => ({ ...current, mobileNumber: event.target.value }))} type="tel" value={contact.mobileNumber ?? ''} />
           <TextInput label={t('alternativeMobile')} maxLength={32} name="alternativeMobile" onChange={(event) => setContact((current) => ({ ...current, alternativeMobileNumber: event.target.value }))} type="tel" value={contact.alternativeMobileNumber ?? ''} />
           <TextInput label={t('email')} maxLength={256} name="email" onChange={(event) => setContact((current) => ({ ...current, email: event.target.value }))} type="email" value={contact.email ?? ''} />
           <TextInput label={t('city')} maxLength={100} name="city" onChange={(event) => setContact((current) => ({ ...current, city: event.target.value }))} value={contact.city ?? ''} />
@@ -652,6 +660,9 @@ function StatusChangeModal({ onClose, onUpdated, profile }: { onClose: () => voi
 }
 
 export function HrEmployeeProfilePage() {
+  const { user } = useAuth();
+  const canViewExcuses = !!(user?.roles.some(r => ['HrManager', 'HrOfficer'].includes(r)) || user?.permissions.some(p => ['hr.excuses.view', 'hr.excuses.manage', 'hr.excuses.approve'].includes(p)));
+  const canViewInsurance = !!(user?.roles.some(r => ['HrManager', 'HrOfficer'].includes(r)) || user?.permissions.some(p => ['hr.social_insurance.view', 'hr.social_insurance.manage'].includes(p)));
   const { id = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useLocalization();
@@ -663,7 +674,7 @@ export function HrEmployeeProfilePage() {
   const [statusOpen, setStatusOpen] = useState(false);
 
   const requestedTab = searchParams.get('tab');
-  const requestedTabAllowed = requestedTab !== 'compensation' || profile?.canManageCompensation === true;
+  const requestedTabAllowed = (requestedTab !== 'compensation' || profile?.canManageCompensation === true) && (requestedTab !== 'socialInsurance' || canViewInsurance) && (requestedTab !== 'excusesMissions' || canViewExcuses);
   const activeTab: ProfileTab = profileTabs.includes(requestedTab as ProfileTab) && requestedTabAllowed ? requestedTab as ProfileTab : 'overview';
 
   const load = useCallback(async () => {
@@ -686,9 +697,11 @@ export function HrEmployeeProfilePage() {
 
   const tabs = useMemo(
     () => profileTabs
+      .filter((tab) => tab !== 'socialInsurance' || canViewInsurance)
+      .filter((tab) => tab !== 'excusesMissions' || canViewExcuses)
       .filter((tab) => tab !== 'compensation' || profile?.canManageCompensation)
       .map((tab) => ({ icon: tabIcons[tab], id: tab, label: t(tabLabels[tab]) })),
-    [profile?.canManageCompensation, t],
+    [profile?.canManageCompensation, canViewInsurance, canViewExcuses, t],
   );
   function changeTab(tab: string) { setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true }); }
 
@@ -723,6 +736,8 @@ export function HrEmployeeProfilePage() {
       {activeTab === 'leaves' ? <LinkedRecordsTab profile={profile} tab="leaves" /> : null}
       {activeTab === 'absences' ? <LinkedRecordsTab profile={profile} tab="absences" /> : null}
       {activeTab === 'delegations' ? <LinkedRecordsTab profile={profile} tab="delegations" /> : null}
+      {activeTab === 'excusesMissions' ? <HrExcusesPage employeeId={profile.id} /> : null}
+      {activeTab === 'socialInsurance' ? <HrSocialInsurancePage employeeId={profile.id} /> : null}
       {activeTab === 'audit' ? <AuditTab employeeId={profile.id} /> : null}
 
       {statusOpen ? <StatusChangeModal onClose={() => setStatusOpen(false)} onUpdated={(updated) => void updateProfile(updated)} profile={profile} /> : null}

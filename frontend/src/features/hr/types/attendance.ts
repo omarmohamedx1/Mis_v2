@@ -5,6 +5,7 @@ export const attendanceSources = ['ExcelImport', 'Manual', 'DeviceIntegration', 
 export type AttendanceSource = (typeof attendanceSources)[number];
 
 export interface AttendanceListItem {
+  approvedExcuses?: { id: string; type: string; source: string; date: string; fromTime: string | null; toTime: string | null; reason: string | null; fullDay?: boolean }[];
   id: string;
   employeeId: string;
   employeeNumber: string;

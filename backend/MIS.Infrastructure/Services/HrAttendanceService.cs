@@ -28,6 +28,12 @@ public sealed class HrAttendanceService : IHrAttendanceService
         _audit = audit;
     }
 
+    // Explain approved time periods without changing punches, attendance status, or payroll policy.
+    // Check the live visit as well so a worker delay cannot expose a stale approval.
+    private IQueryable<HrExcuseMission> ApprovedExcuses() => _dbContext.HrExcuseMissions.AsNoTracking().Where(m => m.Status == "Approved" && m.EmployeeId != null &&
+        (m.SourceVisitId == null || (m.SourceVisit!.ScheduledAt == m.SourceScheduledAt && m.SourceVisit.CollectorId == m.SourceCollectorId && m.SourceVisit.Collector.EmployeeId == m.EmployeeId && m.SourceVisit.Status != "CANCELLED" && m.SourceVisit.Status != "MISSED" && m.SourceVisit.Status != "FAILED")));
+    private static AttendanceExcuseDto MapExcuse(HrExcuseMission m) => new(m.Id, m.Type, m.SourceType, m.Date, m.FromTime, m.ToTime, m.Reason, m.FullDay);
+
     public async Task<PagedAttendanceRecordsDto> GetPagedAsync(
         AttendanceFilterDto filter,
         CancellationToken cancellationToken)
@@ -94,8 +100,11 @@ public sealed class HrAttendanceService : IHrAttendanceService
                 item.UpdatedAt))
             .ToListAsync(cancellationToken);
 
+        var employees = records.Select(r => r.EmployeeId).Distinct().ToArray();
+        var dates = records.Select(r => r.AttendanceDate).Distinct().ToArray();
+        var excuses = await ApprovedExcuses().Where(m => employees.Contains(m.EmployeeId!.Value) && dates.Contains(m.Date)).ToListAsync(cancellationToken);
         return new PagedAttendanceRecordsDto(
-            records.Select(MapListItem).ToArray(),
+            records.Select(r => MapListItem(r) with { ApprovedExcuses = excuses.Where(m => m.EmployeeId == r.EmployeeId && m.Date == r.AttendanceDate).Select(MapExcuse).ToArray() }).ToArray(),
             totalCount,
             filter.Page,
             filter.PageSize,
@@ -106,7 +115,8 @@ public sealed class HrAttendanceService : IHrAttendanceService
     {
         var projection = await QueryProjection(attendanceId).SingleOrDefaultAsync(cancellationToken)
             ?? throw new HrNotFoundException("Attendance record was not found.");
-        return MapDetails(projection);
+        var excuses = await ApprovedExcuses().Where(m => m.EmployeeId == projection.EmployeeId && m.Date == projection.AttendanceDate).ToListAsync(cancellationToken);
+        return MapDetails(projection) with { ApprovedExcuses = excuses.Select(MapExcuse).ToArray() };
     }
 
     public async Task<AttendanceDetailsDto> CreateManualAsync(

@@ -12,3 +12,27 @@ public sealed record BankPortfolioImportPageDto(
 public sealed record UpdateBankPortfolioImportRequest(string? Notes);
 public sealed record BankPortfolioReplacementPreviewDto(string Token, string OriginalFileName, string FileType, long FileSize, int RowCount);
 public sealed record ConfirmBankPortfolioReplacementRequest(string Token);
+
+public sealed record BankPortfolioImportDataPreviewDto(
+    Guid ImportId,
+    int TotalRows,
+    int ReadyRows,
+    int ExistingRows,
+    int InvalidRows,
+    IReadOnlyCollection<BankPortfolioImportPreviewRowDto> Rows);
+
+public sealed record BankPortfolioImportPreviewRowDto(
+    int RowNumber,
+    string? CustomerName,
+    string? CustomerCode,
+    string? AccountReference,
+    decimal? OutstandingBalance,
+    string Status,
+    IReadOnlyCollection<string> Errors);
+
+public sealed record BankPortfolioImportConfirmResultDto(
+    BankPortfolioImportDto Import,
+    int Imported,
+    int Skipped,
+    int Invalid);
+

@@ -1,5 +1,5 @@
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
-import { Eye, RefreshCw, Search, SlidersHorizontal, Sparkles, UserMinus, UserRoundCheck } from 'lucide-react';
+import { Eye, RefreshCw, Search, SlidersHorizontal, Sparkles, Upload, UserMinus, UserRoundCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -15,6 +15,7 @@ import { collectionsService } from '../../features/collections/services/collecti
 import type { AutoDistributionPreview, BankPortfolioCaseDetails, CaseDistributionPage, CaseDistributionSummary, DistributionCollector, DistributionImport, DistributionPreview } from '../../features/collections/types/collections';
 import { getApiErrorMessage } from '../../services/apiClient';
 import type { BankWorkspaceContext } from './BankWorkspaceLayout';
+import { BankDistributionUploadModal } from './BankDistributionUploadModal';
 
 type Action = 'assign' | 'reassign' | 'unassign';
 
@@ -27,6 +28,7 @@ export function BankCaseDistributionPage() {
   const [dialog, setDialog] = useState<Action>(), [targetCollector, setTargetCollector] = useState(''), [reason, setReason] = useState('Distribution assignment'), [preview, setPreview] = useState<DistributionPreview>(), [saving, setSaving] = useState(false);
   const [autoOpen, setAutoOpen] = useState(false), [autoCollectors, setAutoCollectors] = useState<string[]>([]), [method, setMethod] = useState('EQUAL_COUNT'), [autoPreview, setAutoPreview] = useState<AutoDistributionPreview>();
   const [details, setDetails] = useState<BankPortfolioCaseDetails>();
+  const [uploadOpen, setUploadOpen] = useState(false);
   useEffect(() => { const id = window.setTimeout(() => { setSearch(searchInput.trim()); setPage(1); }, 350); return () => window.clearTimeout(id); }, [searchInput]);
   useEffect(() => { let active = true; setLoading(true); setError(''); const query = { page, pageSize, search, status, collectorId: assigned ? collectorId : undefined, importId, sortBy };
     void Promise.all([collectionsService.distributionSummary(bank.id), collectionsService.distributionCases(bank.id, assigned, query), collectionsService.distributionCollectors(bank.id), collectionsService.distributionImports(bank.id)])
@@ -40,7 +42,7 @@ export function BankCaseDistributionPage() {
   async function nextAction() { if (!dialog || reason.trim().length < 2 || (dialog !== 'unassign' && !targetCollector)) return; const value = { caseIds: selected, collectorId: dialog === 'unassign' ? undefined : targetCollector, reason: reason.trim() }; setSaving(true); try { if (!preview) setPreview(await collectionsService.previewDistribution(bank.id, dialog, value)); else { const result = await collectionsService.applyDistribution(bank.id, dialog, value); toast.success(dialog === 'unassign' ? ct('unassignmentCompleted') : `${result.caseCount} ${ct('assignmentCompletedTo')} ${result.collectorName}`); setDialog(undefined); setPreview(undefined); setSelected([]); setReload(v => v + 1); } } catch (e) { toast.error(getApiErrorMessage(e, ct('distributionActionError'))); } finally { setSaving(false); } }
   async function nextAuto() { if (!autoCollectors.length || reason.trim().length < 2) return; const value = { caseIds: selected, collectorIds: autoCollectors, method, reason: reason.trim() }; setSaving(true); try { if (!autoPreview) setAutoPreview(await collectionsService.previewAutoDistribution(bank.id, value)); else { await collectionsService.confirmAutoDistribution(bank.id, value); toast.success(ct('autoDistributionCompleted')); setAutoOpen(false); setAutoPreview(undefined); setSelected([]); setReload(v => v + 1); } } catch (e) { toast.error(getApiErrorMessage(e, ct('distributionActionError'))); } finally { setSaving(false); } }
   return <div>
-    <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-2xl font-bold text-mis-navy">{ct('caseDistribution')}</h2><p className="mt-2 text-sm text-slate-500">{ct('caseDistributionDescription')}</p></div><Button fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} onClick={() => setReload(v => v + 1)} size="sm" variant="outline">{ct('refresh')}</Button></header>
+    <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-2xl font-bold text-mis-navy">{ct('caseDistribution')}</h2><p className="mt-2 text-sm text-slate-500">{ct('caseDistributionDescription')}</p></div><div className="flex flex-wrap gap-2"><Button fullWidth={false} leftIcon={<Upload className="h-4 w-4" />} onClick={() => setUploadOpen(true)} size="sm">{ct('uploadDistributionFile')}</Button><Button fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} onClick={() => setReload(v => v + 1)} size="sm" variant="outline">{ct('refresh')}</Button></div></header>
     <section className="mb-4 grid grid-cols-2 divide-x divide-mis-border rounded-2xl border border-mis-border bg-white p-4 shadow-sm rtl:divide-x-reverse md:grid-cols-4">{[[ct('totalCases'), summary?.totalCases], [ct('unassignedCases'), summary?.unassignedCases], [ct('assignedCases'), summary?.assignedCases], [ct('collectorsLabel'), summary?.collectors]].map(([label,value]) => <div className="px-4 py-2" key={String(label)}><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-1 text-xl font-bold text-mis-navy">{value ?? '—'}</p></div>)}</section>
     <div className="mb-4 flex gap-2 border-b border-mis-border"><button className={`px-4 py-3 text-sm font-bold ${!assigned ? 'border-b-2 border-mis-primary text-mis-primary' : 'text-slate-500'}`} onClick={() => { setAssigned(false); setSelected([]); setPage(1); }}>{ct('unassignedCases')} ({summary?.unassignedCases ?? 0})</button><button className={`px-4 py-3 text-sm font-bold ${assigned ? 'border-b-2 border-mis-primary text-mis-primary' : 'text-slate-500'}`} onClick={() => { setAssigned(true); setSelected([]); setPage(1); }}>{ct('assignedCases')} ({summary?.assignedCases ?? 0})</button></div>
     <section className="mb-4 grid gap-3 rounded-2xl border border-mis-border bg-white p-4 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_170px_200px_180px_170px_auto]">
@@ -60,6 +62,15 @@ export function BankCaseDistributionPage() {
       {autoPreview ? <div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr><Th>{ct('collector')}</Th><Th>{ct('casesCount')}</Th><Th>{ct('totalOutstanding')}</Th></tr></thead><tbody>{autoPreview.collectors.map(x => <tr key={x.collectorId}><Td>{x.collectorName}</Td><Td>{x.caseCount}</Td><Td bidi>{money(x.outstandingAmount)}</Td></tr>)}</tbody></table></div><p className="mt-4 font-bold">{ct('totalCases')}: {autoPreview.totalCases} · {money(autoPreview.totalOutstanding)}</p></div> : <div className="space-y-4"><label className="block text-sm font-semibold">{ct('distributionMethod')}<ProfessionalSelect className="field mt-2" value={method} onChange={e => setMethod(e.target.value)}><option value="EQUAL_COUNT">{ct('equalByCaseCount')}</option><option value="BALANCED_AMOUNT">{ct('balancedByOutstanding')}</option></ProfessionalSelect></label><fieldset><legend className="mb-2 text-sm font-semibold">{ct('collectorsLabel')}</legend><div className="grid gap-2 sm:grid-cols-2">{collectors.map(x => <label className="flex items-center gap-3 rounded-xl border border-mis-border p-3" key={x.id}><input type="checkbox" checked={autoCollectors.includes(x.id)} onChange={e => setAutoCollectors(v => e.target.checked ? [...v,x.id] : v.filter(id => id !== x.id))} /><span><strong className="block text-sm">{x.name}</strong><small className="text-slate-500">{x.assignedCases} · {money(x.totalOutstanding)}</small></span></label>)}</div></fieldset><label className="block text-sm font-semibold">{ct('assignmentReasonLabel')}<textarea className="field mt-2" maxLength={500} rows={2} value={reason} onChange={e => setReason(e.target.value)} /></label></div>}
     </Modal>
     <Modal open={Boolean(details)} onClose={() => setDetails(undefined)} size="lg" title={details?.customerName || ct('openPortfolioCase')}>{details && <div className="grid gap-4 sm:grid-cols-2"><Info label={ct('caseId')} value={details.caseNumber} /><Info label={ct('status')} value={ct(details.status)} /><Info label={ct('mobile')} value={details.mobile} /><Info label={ct('outstandingAmount')} value={money(details.outstandingAmount)} /><Info label={ct('assignedTo')} value={details.assignedCollectorName} /><Info label={ct('importedFrom')} value={details.importedFrom} /></div>}</Modal>
+    <BankDistributionUploadModal
+      bankId={bank.id}
+      open={uploadOpen}
+      onClose={() => setUploadOpen(false)}
+      onCompleted={(result) => {
+        setReload((value) => value + 1);
+        toast.success(`${ct('assignedCount')}: ${result.assigned} · ${ct('reassignedCount')}: ${result.reassigned} · ${ct('skippedCount')}: ${result.skipped} · ${ct('failedCount')}: ${result.failed}`);
+      }}
+    />
   </div>;
 }
 

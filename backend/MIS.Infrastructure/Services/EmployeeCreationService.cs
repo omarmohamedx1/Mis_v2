@@ -39,6 +39,7 @@ public sealed class EmployeeCreationService(IHrEmployeeRepository repository, IH
             request.FingerprintEnrollmentDate, request.DateOfBirth, request.Address, request.WorkEndDate, now);
         if (request.Gender is not null)
             employee.UpdatePersonalInformation(null, null, request.NationalId, request.DateOfBirth, request.Gender, null, null, now);
+        employee.UpdateContactInformation(EmployeeMobileNumber.Normalize(request.MobileNumber), null, null, employee.Address, null, now);
         return employee;
     }
 

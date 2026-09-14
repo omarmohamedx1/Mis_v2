@@ -1,6 +1,7 @@
 import { apiClient, downloadApiFile, requestFormData } from '../../../services/apiClient';
-import type { Activity, AssignmentPreview, AutoAssignmentPreview, BankDirectoryItem, BankPortfolioImport, BankPortfolioImportPage, BankPortfolioReplacementPreview, BucketConfiguration, CaseDetails, CaseFilters, ClientCard, ClientConfiguration, CollectionAttachment, CollectionCase, CollectionDashboard, CollectorLookup, CollectionAudit, CollectionReport, CollectionsConfiguration, Complaint, FieldVisit, FieldVisitDetails, FieldVisitFilterOptions, FieldVisitScheduleOptions, FieldVisitSummary, ImportBatch, ImportPreview, PagedResult, PaymentDetails, PaymentFilterOptions, PaymentItem, PaymentSummary, PortfolioConfiguration, PortfolioLookup, PromiseItem, WorkQueue } from '../types/collections';
+import type { Activity, AssignmentPreview, AutoAssignmentPreview, BankCustomerDetails, BankCustomerImportMapping, BankCustomerImportPreview, BankCustomerImportResult, BankCustomerImportUpload, BankCustomerPage, BankDirectoryItem, BankDistributionImportMapping, BankDistributionImportPreview, BankDistributionImportResult, BankDistributionImportUpload, BankPortfolioImport, BankPortfolioImportConfirmResult, BankPortfolioImportDataPreview, BankPortfolioImportPage, BankPortfolioReplacementPreview, BucketConfiguration, CaseDetails, CaseFilters, ClientCard, ClientConfiguration, CollectionAttachment, CollectionCase, CollectionDashboard, CollectorLookup, CollectionAudit, CollectionReport, CollectionsConfiguration, Complaint, FieldVisit, FieldVisitDetails, FieldVisitFilterOptions, FieldVisitScheduleOptions, FieldVisitSummary, ImportBatch, ImportPreview, PagedResult, PaymentDetails, PaymentFilterOptions, PaymentItem, PaymentSummary, PortfolioConfiguration, PortfolioLookup, PromiseItem, WorkQueue } from '../types/collections';
 import type { ArchiveCaseDetails, ArchiveCasePage, ArchivePortfolioPage, ArchiveSummary, AutoDistributionPreview, BankActivityCaseLookup, BankActivityDetails, BankActivityItem, BankActivityPage, BankActivitySummary, BankComplaintCase, BankComplaintDetails, BankComplaintEmployee, BankComplaintPage, BankComplaintSummary, BankDcrCollector, BankDcrItem, BankDcrPage, BankPortfolioAssignmentPreview, BankPortfolioCaseDetails, BankPortfolioCasePage, BankPortfolioCollector, BankPtpDetails, BankPtpPage, BankPtpSummary, BankVisitCaseLookup, BankVisitDetails, BankVisitPage, BankVisitSummary, CaseDistributionPage, CaseDistributionSummary, DistributionCollector, DistributionImport, DistributionPreview, DistributionResult } from '../types/collections';
+import { classificationFromPathname, classificationQuery } from '../organizationClassification';
 
 function params(values: Record<string, unknown>) {
   const query = new URLSearchParams();
@@ -10,9 +11,18 @@ function params(values: Record<string, unknown>) {
 
 // Bank workspace screens are organization-scoped. Reuse their API calls for the
 // sibling installment-company route while keeping strict server-side type routes.
+// When the URL carries ACT/WO/CORP context, append classification query params so
+// portfolio/case modules stay isolated server-side.
 apiClient.interceptors.request.use(config => {
-  if (window.location.pathname.startsWith('/installment-companies/') && config.url?.startsWith('/banks/'))
+  const path = window.location.pathname;
+  if (path.startsWith('/installment-companies/') && config.url?.startsWith('/banks/'))
     config.url = config.url.replace('/banks/', '/installment-companies/');
+
+  const classification = classificationFromPathname(path);
+  if (classification && config.url && (config.url.startsWith('/banks/') || config.url.startsWith('/installment-companies/'))) {
+    const query = classificationQuery(classification);
+    config.params = { ...query, ...(config.params as Record<string, unknown> | undefined) };
+  }
   return config;
 });
 
@@ -23,7 +33,8 @@ export const collectionsService = {
   async installmentCompany(id: string) { return (await apiClient.get<BankDirectoryItem>(`/installment-companies/${id}`)).data; },
   async bankPortfolioImports(bankId: string, values: { page?: number; pageSize?: number; search?: string } = {}) { return (await apiClient.get<BankPortfolioImportPage>(`/banks/${bankId}/portfolio-imports`, { params: values })).data; },
   async uploadBankPortfolio(bankId: string, file: File) { const form = new FormData(); form.append('file', file); return requestFormData<BankPortfolioImport>(`/banks/${bankId}/portfolio-imports`, form); },
-  async confirmBankPortfolio(bankId: string, importId: string, notes?: string) { return (await apiClient.post<BankPortfolioImport>(`/banks/${bankId}/portfolio-imports/${importId}/confirm`, { notes: notes || null })).data; },
+  async previewBankPortfolioData(bankId: string, importId: string) { return (await apiClient.post<BankPortfolioImportDataPreview>(`/banks/${bankId}/portfolio-imports/${importId}/preview-data`)).data; },
+  async confirmBankPortfolio(bankId: string, importId: string, notes?: string) { return (await apiClient.post<BankPortfolioImportConfirmResult>(`/banks/${bankId}/portfolio-imports/${importId}/confirm`, { notes: notes || null })).data; },
   async updateBankPortfolio(bankId: string, importId: string, notes?: string) { return (await apiClient.patch<BankPortfolioImport>(`/banks/${bankId}/portfolio-imports/${importId}`, { notes: notes || null })).data; },
   async previewBankPortfolioReplacement(bankId: string, importId: string, file: File) { const form = new FormData(); form.append('file', file); return requestFormData<BankPortfolioReplacementPreview>(`/banks/${bankId}/portfolio-imports/${importId}/replacement`, form); },
   async confirmBankPortfolioReplacement(bankId: string, importId: string, token: string) { return (await apiClient.post<BankPortfolioImport>(`/banks/${bankId}/portfolio-imports/${importId}/replacement/confirm`, { token })).data; },
@@ -35,6 +46,12 @@ export const collectionsService = {
   async previewBankPortfolioAssignment(bankId: string, value: { caseIds: string[]; collectorId: string; reason: string }) { return (await apiClient.post<BankPortfolioAssignmentPreview>(`/banks/${bankId}/portfolio-cases/assignment/preview`, value)).data; },
   async assignBankPortfolioCases(bankId: string, value: { caseIds: string[]; collectorId: string; reason: string }) { return (await apiClient.post<BankPortfolioAssignmentPreview>(`/banks/${bankId}/portfolio-cases/assignment`, value)).data; },
   async exportBankPortfolioCases(bankId: string, values: Record<string, unknown> = {}) { return downloadApiFile(`/banks/${bankId}/portfolio-cases/export.csv?${params(values)}`, `portfolio-${bankId}.csv`); },
+  async bankCustomers(bankId: string, values: Record<string, unknown> = {}) { return (await apiClient.get<BankCustomerPage>(`/banks/${bankId}/customers`, { params: values })).data; },
+  async bankCustomer(bankId: string, customerId: string) { return (await apiClient.get<BankCustomerDetails>(`/banks/${bankId}/customers/${customerId}`)).data; },
+  async bankCustomerImportPortfolios(bankId: string) { return (await apiClient.get<PortfolioLookup[]>(`/banks/${bankId}/customers/import/portfolios`)).data; },
+  async uploadBankCustomerImport(bankId: string, file: File) { const form = new FormData(); form.append('file', file); return requestFormData<BankCustomerImportUpload>(`/banks/${bankId}/customers/import/upload`, form); },
+  async previewBankCustomerImport(bankId: string, id: string, mapping: BankCustomerImportMapping) { return (await apiClient.post<BankCustomerImportPreview>(`/banks/${bankId}/customers/import/${id}/preview`, mapping)).data; },
+  async confirmBankCustomerImport(bankId: string, id: string, previewId: string) { return (await apiClient.post<BankCustomerImportResult>(`/banks/${bankId}/customers/import/${id}/confirm`, { previewId })).data; },
   async distributionSummary(bankId: string) { return (await apiClient.get<CaseDistributionSummary>(`/banks/${bankId}/distribution/summary`)).data; },
   async distributionCases(bankId: string, assigned: boolean, values: Record<string, unknown> = {}) { return (await apiClient.get<CaseDistributionPage>(`/banks/${bankId}/distribution/${assigned ? 'assigned' : 'unassigned'}`, { params: values })).data; },
   async distributionCollectors(bankId: string) { return (await apiClient.get<DistributionCollector[]>(`/banks/${bankId}/distribution/collectors`)).data; },
@@ -43,6 +60,10 @@ export const collectionsService = {
   async applyDistribution(bankId: string, action: 'assign' | 'reassign' | 'unassign', value: { caseIds: string[]; collectorId?: string; reason: string }) { return (await apiClient.post<DistributionResult>(`/banks/${bankId}/distribution/${action}`, value)).data; },
   async previewAutoDistribution(bankId: string, value: { caseIds: string[]; collectorIds: string[]; method: string; reason: string }) { return (await apiClient.post<AutoDistributionPreview>(`/banks/${bankId}/distribution/auto/preview`, value)).data; },
   async confirmAutoDistribution(bankId: string, value: { caseIds: string[]; collectorIds: string[]; method: string; reason: string }) { return (await apiClient.post<DistributionResult>(`/banks/${bankId}/distribution/auto/confirm`, value)).data; },
+  async uploadDistributionImport(bankId: string, file: File) { const form = new FormData(); form.append('file', file); return requestFormData<BankDistributionImportUpload>(`/banks/${bankId}/distribution/import/upload`, form); },
+  async previewDistributionImport(bankId: string, id: string, mapping: BankDistributionImportMapping) { return (await apiClient.post<BankDistributionImportPreview>(`/banks/${bankId}/distribution/import/${id}/preview`, mapping)).data; },
+  async confirmDistributionImport(bankId: string, id: string, previewId: string, reassignExisting = false) { return (await apiClient.post<BankDistributionImportResult>(`/banks/${bankId}/distribution/import/${id}/confirm`, { previewId, reassignExisting })).data; },
+  async distributionImportCollectors(bankId: string) { return (await apiClient.get<DistributionCollector[]>(`/banks/${bankId}/distribution/import/collectors`)).data; },
   async bankActivities(bankId: string, values: Record<string, unknown> = {}) { return (await apiClient.get<BankActivityPage>(`/banks/${bankId}/activities`, { params: values })).data; },
   async bankActivitySummary(bankId: string) { return (await apiClient.get<BankActivitySummary>(`/banks/${bankId}/activities/summary`)).data; },
   async bankActivity(bankId: string, activityId: string) { return (await apiClient.get<BankActivityDetails>(`/banks/${bankId}/activities/${activityId}`)).data; },

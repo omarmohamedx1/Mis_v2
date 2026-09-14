@@ -92,6 +92,7 @@ public sealed class HrEmployeesController : ControllerBase
         employee.SetNationalId(request.NationalId, DateTimeOffset.UtcNow);
         employee.ApplyEmployeeProfile(request.PositionId!.Value, request.OperationalRole!, request.WorkStartDate!.Value,
             request.FingerprintEnrollmentDate, request.DateOfBirth, request.Address, request.WorkEndDate, DateTimeOffset.UtcNow);
+        employee.UpdateContactInformation(EmployeeMobileNumber.Normalize(request.MobileNumber), employee.AlternativeMobileNumber, employee.Email, employee.Address, employee.City, DateTimeOffset.UtcNow);
         var updated = await _transactions.ExecuteAsync(async token =>
         {
             await _repository.SaveChangesAsync(token);

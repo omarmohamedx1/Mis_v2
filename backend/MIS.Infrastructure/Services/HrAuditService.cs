@@ -60,6 +60,14 @@ public sealed class HrAuditService : IHrAuditService
             .Include(item => item.Employee)
             .AsQueryable();
 
+        var canViewExcuses = _currentUser.Roles.Any(r => r is "HrManager" or "HrOfficer") ||
+            _currentUser.Permissions.Any(p => p is "hr.excuses.view" or "hr.excuses.manage" or "hr.excuses.approve");
+        if (!canViewExcuses) query = query.Where(item => item.EntityType != "HrExcuseMission");
+
+        var canViewInsurance = _currentUser.Roles.Any(r => r is "HrManager" or "HrOfficer") ||
+            _currentUser.Permissions.Any(p => p is "hr.social_insurance.view" or "hr.social_insurance.manage");
+        if (!canViewInsurance) query = query.Where(item => item.EntityType != "SocialInsuranceRecord" && item.EntityType != "SocialInsuranceImport");
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();

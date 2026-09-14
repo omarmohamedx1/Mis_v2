@@ -29,6 +29,6 @@ public sealed class CollectionImportParserTests
     public async Task Parser_RejectsUnsupportedFormats()
     {
         await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("x"));
-        await Assert.ThrowsAsync<HrValidationException>(() => CollectionImportParser.ParseAsync(stream, ".xls", CancellationToken.None));
+        await Assert.ThrowsAsync<HrValidationException>(() => CollectionImportParser.ParseAsync(stream, ".txt", CancellationToken.None));
     }
 }

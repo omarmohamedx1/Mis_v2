@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -120,10 +121,44 @@ public static class ApiServiceCollectionExtensions
             options.AddPolicy(AuthorizationPolicies.FinanceCollectionReview, policy => policy.RequireAuthenticatedUser().RequireAssertion(context => context.User.IsInRole(SystemRoleNames.Admin) || HasPermission(context.User, SystemPermissionCodes.FinanceCollectionReview) || HasPermission(context.User, "accounting.transaction.manage")));
             options.AddPolicy(AuthorizationPolicies.FinanceCustodyView, policy => policy.RequireAuthenticatedUser().RequireAssertion(context => context.User.IsInRole(SystemRoleNames.Admin) || HasPermission(context.User, SystemPermissionCodes.FinanceCustodyView) || HasPermission(context.User, "accounting.access")));
             options.AddPolicy(AuthorizationPolicies.FinanceCustodyReconcile, policy => policy.RequireAuthenticatedUser().RequireAssertion(context => context.User.IsInRole(SystemRoleNames.Admin) || HasPermission(context.User, SystemPermissionCodes.FinanceCustodyReconcile) || HasPermission(context.User, "accounting.approve")));
+            options.AddPolicy(AuthorizationPolicies.AccountingAccess, policy => policy.RequireAuthenticatedUser().RequireAssertion(AccountingUser));
+            options.AddPolicy(AuthorizationPolicies.AccountingPayrollManage, policy => policy.RequireAuthenticatedUser().RequireAssertion(context => AccountingUser(context) || HasPermission(context.User, SystemPermissionCodes.AccountingPayrollManage)));
+            options.AddPolicy(AuthorizationPolicies.AccountingPayrollApprove, policy => policy.RequireAuthenticatedUser().RequireAssertion(context => AccountingUser(context) || HasPermission(context.User, SystemPermissionCodes.AccountingPayrollApprove) || HasPermission(context.User, "accounting.approve")));
+            options.AddPolicy(AuthorizationPolicies.AccountingTransportationManage, policy => policy.RequireAuthenticatedUser().RequireAssertion(context => AccountingUser(context) || HasPermission(context.User, SystemPermissionCodes.AccountingTransportationManage)));
+            options.AddPolicy(AuthorizationPolicies.AccountingCommissionManage, policy => policy.RequireAuthenticatedUser().RequireAssertion(context => AccountingUser(context) || HasPermission(context.User, SystemPermissionCodes.AccountingCommissionManage)));
+            options.AddPolicy(AuthorizationPolicies.AccountingCommissionApprove, policy => policy.RequireAuthenticatedUser().RequireAssertion(context => AccountingUser(context) || HasPermission(context.User, SystemPermissionCodes.AccountingCommissionApprove) || HasPermission(context.User, "accounting.approve")));
+            options.AddPolicy(AuthorizationPolicies.DataEntryAccess, policy => policy.RequireAuthenticatedUser().RequireAssertion(DataEntryUser));
+            options.AddPolicy(AuthorizationPolicies.DataEntryManage, policy => policy.RequireAuthenticatedUser().RequireAssertion(context =>
+                DataEntryUser(context)
+                || HasPermission(context.User, SystemPermissionCodes.DataEntryManage)
+                || HasPermission(context.User, SystemPermissionCodes.DataEntryAccess)
+                || context.User.IsInRole(SystemRoleNames.DataEntry)));
+            options.AddPolicy(AuthorizationPolicies.DataEntryBatchReview, policy => policy.RequireAuthenticatedUser().RequireAssertion(context =>
+                context.User.IsInRole(SystemRoleNames.Admin)
+                || HasPermission(context.User, SystemPermissionCodes.DataEntryBatchReview)
+                || context.User.IsInRole(SystemRoleNames.CollectionsSupervisor)
+                || context.User.IsInRole(SystemRoleNames.CollectionsOperationsManager)));
         });
 
         return services;
     }
+
+    private static bool AccountingUser(AuthorizationHandlerContext context) =>
+        context.User.IsInRole(SystemRoleNames.Admin)
+        || HasPermission(context.User, SystemPermissionCodes.AccountingAccess)
+        || HasPermission(context.User, "accounting.access")
+        || HasPermission(context.User, SystemPermissionCodes.FinanceAccess)
+        || context.User.HasClaim("department", DepartmentCodes.Accounting);
+
+    private static bool DataEntryUser(AuthorizationHandlerContext context) =>
+        context.User.IsInRole(SystemRoleNames.Admin)
+        || HasPermission(context.User, SystemPermissionCodes.DataEntryAccess)
+        || HasPermission(context.User, SystemPermissionCodes.DataEntryManage)
+        || context.User.IsInRole(SystemRoleNames.DataEntry)
+        || context.User.HasClaim("department", DepartmentCodes.DataEntry)
+        || HasPermission(context.User, SystemPermissionCodes.DataEntryBatchReview)
+        || context.User.IsInRole(SystemRoleNames.CollectionsSupervisor)
+        || context.User.IsInRole(SystemRoleNames.CollectionsOperationsManager);
 
     private static bool HasPermission(System.Security.Claims.ClaimsPrincipal user, string permission) =>
         user.HasClaim(SystemPermissionCodes.ClaimType, "*") || user.HasClaim(SystemPermissionCodes.ClaimType, permission);

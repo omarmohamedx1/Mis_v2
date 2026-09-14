@@ -49,7 +49,7 @@ public sealed class EmployeeImportService(ApplicationDbContext db, IHrFileStorag
         if (mapping.Columns.Count > EmployeeImportMapper.Fields.Length || mapping.Columns.Keys.Except(EmployeeImportMapper.Fields).Any())
             throw new HrValidationException("Unsupported employee field mapping.");
         await using var stream = await storage.OpenReadAsync(upload.StorageKey, cancellationToken);
-        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, cancellationToken);
+        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, cancellationToken, mapping.Columns.GetValueOrDefault("MobileNumber"));
         var indexes = new Dictionary<string, int>();
         foreach (var pair in mapping.Columns.Where(pair => !string.IsNullOrWhiteSpace(pair.Value)))
         {

@@ -1,3 +1,7 @@
+import { HrExcusesPage } from '../pages/hr/HrExcusesPage';
+import { HrOriginalVisitPage } from '../pages/hr/HrOriginalVisitPage';
+import { HrSocialInsuranceImportPage } from '../pages/hr/HrSocialInsuranceImportPage';
+import { HrSocialInsurancePage } from '../pages/hr/HrSocialInsurancePage';
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../pages/auth/LoginPage';
@@ -5,6 +9,8 @@ import { HrLayout } from '../components/layout/HrLayout';
 import { CollectionsLayout } from '../components/layout/CollectionsLayout';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { FinanceLayout } from '../components/layout/FinanceLayout';
+import { AccountingLayout } from '../components/layout/AccountingLayout';
+import { DataEntryLayout } from '../components/layout/DataEntryLayout';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { UnauthorizedPage } from '../pages/UnauthorizedPage';
 import { DepartmentHome } from './DepartmentHome';
@@ -23,6 +29,7 @@ const HrCalendarPage = lazy(() => import('../pages/hr/HrCalendarPage').then((mod
 const HrReportsPage = lazy(() => import('../pages/hr/HrReportsPage').then((module) => ({ default: module.HrReportsPage })));
 const HrDelegationsPage = lazy(() => import('../pages/hr/HrDelegationsPage').then((module) => ({ default: module.HrDelegationsPage })));
 const HrAbsencesPage = lazy(() => import('../pages/hr/HrAbsencesPage').then((module) => ({ default: module.HrAbsencesPage })));
+const HrAbsenceImportPage = lazy(() => import('../pages/hr/HrAbsenceImportPage').then((module) => ({ default: module.HrAbsenceImportPage })));
 const HrEmployeeDocumentsPage = lazy(() => import('../pages/hr/HrEmployeeDocumentsPage').then((module) => ({ default: module.HrEmployeeDocumentsPage })));
 const HrMasterPage = lazy(() => import('../pages/hr/HrMasterPage').then((module) => ({ default: module.HrMasterPage })));
 const HrAuditPage = lazy(() => import('../pages/hr/HrAuditPage').then((module) => ({ default: module.HrAuditPage })));
@@ -42,6 +49,10 @@ const CollectionsSettingsPage = lazy(() => import('../pages/collections/Collecti
 const CollectionsReportsPage = lazy(() => import('../pages/collections/CollectionsReportsPage').then((module) => ({ default: module.CollectionsReportsPage })));
 const CollectionsBrandingPage = lazy(() => import('../pages/collections/CollectionsBrandingPage').then((module) => ({ default: module.CollectionsBrandingPage })));
 const BanksPage = lazy(() => import('../pages/banks/BanksPage').then((module) => ({ default: module.BanksPage })));
+const BankClassificationSecondaryPage = lazy(() => import('../pages/banks/ClassifiedOrganizationPages').then((module) => ({ default: module.BankClassificationSecondaryPage })));
+const InstallmentClassificationSecondaryPage = lazy(() => import('../pages/banks/ClassifiedOrganizationPages').then((module) => ({ default: module.InstallmentClassificationSecondaryPage })));
+const BankClassifiedDirectoryPage = lazy(() => import('../pages/banks/ClassifiedOrganizationPages').then((module) => ({ default: module.BankClassifiedDirectoryPage })));
+const InstallmentClassifiedDirectoryPage = lazy(() => import('../pages/banks/ClassifiedOrganizationPages').then((module) => ({ default: module.InstallmentClassifiedDirectoryPage })));
 const InstallmentCompaniesPage = lazy(() => import('../pages/banks/InstallmentCompaniesPage').then((module) => ({ default: module.InstallmentCompaniesPage })));
 const BankWorkspaceLayout = lazy(() => import('../pages/banks/BankWorkspaceLayout').then((module) => ({ default: module.BankWorkspaceLayout })));
 const BankWorkspaceSectionPage = lazy(() => import('../pages/banks/BankWorkspaceSectionPage').then((module) => ({ default: module.BankWorkspaceSectionPage })));
@@ -54,6 +65,9 @@ const BankVisitsManagementPage = lazy(() => import('../pages/banks/BankVisitsMan
 const BankDcrPage = lazy(() => import('../pages/banks/BankDcrPage').then((module) => ({ default: module.BankDcrPage })));
 const BankComplaintsManagementPage = lazy(() => import('../pages/banks/BankComplaintsManagementPage').then((module) => ({ default: module.BankComplaintsManagementPage })));
 const BankArchivePage = lazy(() => import('../pages/banks/BankArchivePage').then((module) => ({ default: module.BankArchivePage })));
+const BankCustomersPage = lazy(() => import('../pages/banks/BankCustomersPage').then((module) => ({ default: module.BankCustomersPage })));
+const BankCustomerDetailsPage = lazy(() => import('../pages/banks/BankCustomerDetailsPage').then((module) => ({ default: module.BankCustomerDetailsPage })));
+const BankCustomerImportPage = lazy(() => import('../pages/banks/BankCustomerImportPage').then((module) => ({ default: module.BankCustomerImportPage })));
 const AccountProfilePage = lazy(() => import('../pages/profile/AccountProfilePage').then((module) => ({ default: module.AccountProfilePage })));
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })));
 const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
@@ -66,6 +80,17 @@ const FinancePeriodsPage = lazy(() => import('../pages/finance/FinancePeriodsPag
 const FinanceReportsPage = lazy(() => import('../pages/finance/FinanceReportsPage').then((module) => ({ default: module.FinanceReportsPage })));
 const FinanceCollectionsPage = lazy(() => import('../pages/finance/FinanceCollectionsPage').then((module) => ({ default: module.FinanceCollectionsPage })));
 const FinanceCustodyPage = lazy(() => import('../pages/finance/FinanceCustodyPage').then((module) => ({ default: module.FinanceCustodyPage })));
+const AccountingDashboardPage = lazy(() => import('../pages/accounting/AccountingDashboardPage').then((module) => ({ default: module.AccountingDashboardPage })));
+const AccountingSalariesPage = lazy(() => import('../pages/accounting/AccountingSalariesPage').then((module) => ({ default: module.AccountingSalariesPage })));
+const AccountingTransportationPage = lazy(() => import('../pages/accounting/AccountingTransportationPage').then((module) => ({ default: module.AccountingTransportationPage })));
+const AccountingCollectorCommissionsPage = lazy(() => import('../pages/accounting/AccountingCollectorCommissionsPage').then((module) => ({ default: module.AccountingCollectorCommissionsPage })));
+const AccountingSupervisorCommissionsPage = lazy(() => import('../pages/accounting/AccountingSupervisorCommissionsPage').then((module) => ({ default: module.AccountingSupervisorCommissionsPage })));
+const DataEntryDashboardPage = lazy(() => import('../pages/data-entry/DataEntryDashboardPage').then((module) => ({ default: module.DataEntryDashboardPage })));
+const DataEntryClientsPage = lazy(() => import('../pages/data-entry/DataEntryClientsPage').then((module) => ({ default: module.DataEntryClientsPage })));
+const DataEntryClientDetailsPage = lazy(() => import('../pages/data-entry/DataEntryClientDetailsPage').then((module) => ({ default: module.DataEntryClientDetailsPage })));
+const DataEntryImportPage = lazy(() => import('../pages/data-entry/DataEntryImportPage').then((module) => ({ default: module.DataEntryImportPage })));
+const DataEntryHistoryPage = lazy(() => import('../pages/data-entry/DataEntryHistoryPage').then((module) => ({ default: module.DataEntryHistoryPage })));
+const CollectionsDataBatchesPage = lazy(() => import('../pages/collections/CollectionsDataBatchesPage').then((module) => ({ default: module.CollectionsDataBatchesPage })));
 
 function HrRouteBoundary() {
   return <Suspense fallback={<div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>}><HrLayout /></Suspense>;
@@ -81,6 +106,14 @@ function AdminRouteBoundary() {
 
 function FinanceRouteBoundary() {
   return <Suspense fallback={<div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>}><FinanceLayout /></Suspense>;
+}
+
+function AccountingRouteBoundary() {
+  return <Suspense fallback={<div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>}><AccountingLayout /></Suspense>;
+}
+
+function DataEntryRouteBoundary() {
+  return <Suspense fallback={<div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>}><DataEntryLayout /></Suspense>;
 }
 
 export function AppRoutes() {
@@ -103,6 +136,10 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute department="HR" />}>
         <Route path="/hr" element={<Navigate to="/hr/dashboard" replace />} />
         <Route path="/hr" element={<HrRouteBoundary />}>
+          <Route path="social-insurance/import" element={<HrSocialInsuranceImportPage />} />
+          <Route path="excuses" element={<HrExcusesPage />} />
+          <Route path="excuses/visits/:visitId" element={<HrOriginalVisitPage />} />
+          <Route path="social-insurance" element={<HrSocialInsurancePage />} />
           <Route path="dashboard" element={<HrDashboardPage />} />
           <Route path="employees" element={<HrEmployeesPage />} />
           <Route path="employees/import" element={<HrEmployeeImportPage />} />
@@ -114,6 +151,7 @@ export function AppRoutes() {
           <Route path="reports" element={<HrReportsPage />} />
           <Route path="delegations" element={<HrDelegationsPage />} />
           <Route path="absences" element={<HrAbsencesPage />} />
+          <Route path="absences/import" element={<HrAbsenceImportPage />} />
           <Route path="employee-documents" element={<HrEmployeeDocumentsPage />} />
           <Route path="audit" element={<HrAuditPage />} />
           <Route path="master" element={<HrMasterPage />} />
@@ -121,6 +159,15 @@ export function AppRoutes() {
         </Route>
       </Route>
       <Route element={<ProtectedRoute department="ACCOUNTING" />}>
+        <Route path="/accounting" element={<Navigate to="/accounting/dashboard" replace />} />
+        <Route path="/accounting" element={<AccountingRouteBoundary />}>
+          <Route path="dashboard" element={<AccountingDashboardPage />} />
+          <Route path="salaries" element={<AccountingSalariesPage />} />
+          <Route path="transportation" element={<AccountingTransportationPage />} />
+          <Route path="collector-commissions" element={<AccountingCollectorCommissionsPage />} />
+          <Route path="supervisor-commissions" element={<AccountingSupervisorCommissionsPage />} />
+          <Route path="profile" element={<AccountProfilePage />} />
+        </Route>
         <Route path="/finance" element={<Navigate to="/finance/dashboard" replace />} />
         <Route path="/finance" element={<FinanceRouteBoundary />}>
           <Route path="dashboard" element={<FinanceDashboardPage />} />
@@ -134,12 +181,28 @@ export function AppRoutes() {
           <Route path="profile" element={<AccountProfilePage />} />
         </Route>
       </Route>
+      <Route element={<ProtectedRoute department="DATA_ENTRY" />}>
+        <Route path="/data-entry" element={<Navigate to="/data-entry/dashboard" replace />} />
+        <Route path="/data-entry" element={<DataEntryRouteBoundary />}>
+          <Route path="dashboard" element={<DataEntryDashboardPage />} />
+          <Route path="clients" element={<DataEntryClientsPage />} />
+          <Route path="clients/:id" element={<DataEntryClientDetailsPage />} />
+          <Route path="import" element={<DataEntryImportPage />} />
+          <Route path="history" element={<DataEntryHistoryPage />} />
+          <Route path="profile" element={<AccountProfilePage />} />
+        </Route>
+      </Route>
       <Route element={<ProtectedRoute department="COLLECTIONS" />}>
         <Route element={<CollectionsRouteBoundary />}>
           <Route path="/banks" element={<BanksPage />} />
-          <Route path="/installment-companies/:companyId" element={<BankWorkspaceLayout />}>
+          <Route path="/banks/:primary" element={<BankClassificationSecondaryPage />} />
+          <Route path="/banks/:primary/:secondary" element={<BankClassifiedDirectoryPage />} />
+          <Route path="/banks/:primary/:secondary/:bankId" element={<BankWorkspaceLayout />}>
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="import" element={<BankPortfolioImportPage />} />
+            <Route path="customers/import" element={<BankCustomerImportPage />} />
+            <Route path="customers/:customerId" element={<BankCustomerDetailsPage />} />
+            <Route path="customers" element={<BankCustomersPage />} />
             <Route path="portfolio" element={<BankPortfolioManagementPage />} />
             <Route path="distribution" element={<BankCaseDistributionPage />} />
             <Route path="activity" element={<BankCaseActivityCenterPage />} />
@@ -151,9 +214,15 @@ export function AppRoutes() {
             <Route path="overview" element={<BankWorkspaceSectionPage />} />
             <Route path="*" element={<Navigate to="overview" replace />} />
           </Route>
-          <Route path="/banks/:bankId" element={<BankWorkspaceLayout />}>
+          <Route path="/installment-companies" element={<InstallmentCompaniesPage />} />
+          <Route path="/installment-companies/:primary" element={<InstallmentClassificationSecondaryPage />} />
+          <Route path="/installment-companies/:primary/:secondary" element={<InstallmentClassifiedDirectoryPage />} />
+          <Route path="/installment-companies/:primary/:secondary/:companyId" element={<BankWorkspaceLayout />}>
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="import" element={<BankPortfolioImportPage />} />
+            <Route path="customers/import" element={<BankCustomerImportPage />} />
+            <Route path="customers/:customerId" element={<BankCustomerDetailsPage />} />
+            <Route path="customers" element={<BankCustomersPage />} />
             <Route path="portfolio" element={<BankPortfolioManagementPage />} />
             <Route path="distribution" element={<BankCaseDistributionPage />} />
             <Route path="activity" element={<BankCaseActivityCenterPage />} />
@@ -162,16 +231,14 @@ export function AppRoutes() {
             <Route path="dcr" element={<BankDcrPage />} />
             <Route path="complaints" element={<BankComplaintsManagementPage />} />
             <Route path="archive" element={<BankArchivePage />} />
-            {['overview'].map(section => (
-              <Route key={section} path={section} element={<BankWorkspaceSectionPage />} />
-            ))}
+            <Route path="overview" element={<BankWorkspaceSectionPage />} />
             <Route path="*" element={<Navigate to="overview" replace />} />
           </Route>
         </Route>
         <Route path="/collections" element={<Navigate to="/collections/dashboard" replace />} />
         <Route path="/collections" element={<CollectionsRouteBoundary />}>
           <Route path="dashboard" element={<CollectionsDashboardPage />} />
-          <Route path="installment-companies" element={<InstallmentCompaniesPage />} />
+          <Route path="installment-companies" element={<Navigate to="/installment-companies" replace />} />
           <Route path="clients" element={<CollectionsClientsPage />} />
           <Route path="clients/:id" element={<CollectionClientWorkspacePage />} />
           <Route path="cases" element={<CollectionCasesPage />} />
@@ -183,6 +250,7 @@ export function AppRoutes() {
           <Route path="complaints" element={<CollectionComplaintsPage />} />
           <Route path="audit" element={<CollectionAuditPage />} />
           <Route path="imports" element={<CollectionImportsPage />} />
+          <Route path="data-batches" element={<CollectionsDataBatchesPage />} />
           <Route path="settings" element={<CollectionsSettingsPage />} />
           <Route path="reports" element={<CollectionsReportsPage />} />
           <Route path="branding" element={<CollectionsBrandingPage />} />

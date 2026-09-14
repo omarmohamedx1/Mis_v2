@@ -14,6 +14,8 @@ builder.Logging.AddDebug();
 
 builder.Services.AddApiServices(builder.Configuration);
 
+builder.Services.AddHostedService<MIS.API.Configuration.HrMissionNotificationWorker>();
+
 var app = builder.Build();
 
 // Every response uses the language requested by the web client (Accept-Language: ar|en).
@@ -31,6 +33,7 @@ app.UseCors(ApiServiceCollectionExtensions.FrontendCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<CollectionOrganizationTypeMiddleware>();
+app.UseMiddleware<CollectionsClassificationMiddleware>();
 
 app.MapControllers();
 app.MapGet("/api/health", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();

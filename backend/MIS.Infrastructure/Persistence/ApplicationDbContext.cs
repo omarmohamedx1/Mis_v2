@@ -11,6 +11,8 @@ public sealed class ApplicationDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<HrExcuseMission> HrExcuseMissions => Set<HrExcuseMission>();
+    public DbSet<HrExcuseAttachment> HrExcuseAttachments => Set<HrExcuseAttachment>();
 
     public DbSet<Role> Roles => Set<Role>();
 
@@ -25,6 +27,7 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
     public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
     public DbSet<DelegationType> DelegationTypes => Set<DelegationType>();
+    public DbSet<SocialInsuranceRecord> SocialInsuranceRecords => Set<SocialInsuranceRecord>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<EmployeeContract> EmployeeContracts => Set<EmployeeContract>();
     public DbSet<EmployeeCompensation> EmployeeCompensations => Set<EmployeeCompensation>();
@@ -78,6 +81,15 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<CollectorCustodyAccount> CollectorCustodyAccounts => Set<CollectorCustodyAccount>();
     public DbSet<CollectorCustodyTransaction> CollectorCustodyTransactions => Set<CollectorCustodyTransaction>();
     public DbSet<CollectionClearingEvent> CollectionClearingEvents => Set<CollectionClearingEvent>();
+    public DbSet<AccountingPayrollPeriod> AccountingPayrollPeriods => Set<AccountingPayrollPeriod>();
+    public DbSet<AccountingEmployeePayroll> AccountingEmployeePayrolls => Set<AccountingEmployeePayroll>();
+    public DbSet<AccountingTransportationClaim> AccountingTransportationClaims => Set<AccountingTransportationClaim>();
+    public DbSet<AccountingCommissionRule> AccountingCommissionRules => Set<AccountingCommissionRule>();
+    public DbSet<AccountingCollectorCommission> AccountingCollectorCommissions => Set<AccountingCollectorCommission>();
+    public DbSet<AccountingSupervisorCommission> AccountingSupervisorCommissions => Set<AccountingSupervisorCommission>();
+    public DbSet<DataEntryBatch> DataEntryBatches => Set<DataEntryBatch>();
+    public DbSet<DataEntryRow> DataEntryRows => Set<DataEntryRow>();
+    public DbSet<DataEntryNotification> DataEntryNotifications => Set<DataEntryNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

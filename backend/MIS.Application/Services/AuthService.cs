@@ -93,15 +93,28 @@ public sealed class AuthService : IAuthService
         if (roles.Contains(SystemRoleNames.CollectionsCollector, StringComparer.OrdinalIgnoreCase))
             result.UnionWith(["collections.dashboard.view", "collections.case.view", "collections.activity.manage", "collections.ptp.manage", "collections.payment.submit", "collections.visit.manage"]);
         if (roles.Contains(SystemRoleNames.CollectionsSupervisor, StringComparer.OrdinalIgnoreCase))
-            result.UnionWith(["collections.dashboard.view", "collections.case.view", SystemPermissionCodes.CollectionsSensitiveView, "collections.activity.manage", SystemPermissionCodes.CollectionsAssignmentManage, "collections.ptp.manage", "collections.visit.manage", "collections.complaint.manage", "collections.report.view", SystemPermissionCodes.CollectionsReportExport]);
+            result.UnionWith(["collections.dashboard.view", "collections.case.view", SystemPermissionCodes.CollectionsSensitiveView, "collections.activity.manage", SystemPermissionCodes.CollectionsAssignmentManage, "collections.ptp.manage", "collections.visit.manage", "collections.complaint.manage", "collections.report.view", SystemPermissionCodes.CollectionsReportExport, SystemPermissionCodes.DataEntryBatchReview]);
         if (roles.Contains(SystemRoleNames.CollectionsReviewer, StringComparer.OrdinalIgnoreCase))
             result.UnionWith(["collections.dashboard.view", "collections.case.view", SystemPermissionCodes.CollectionsPaymentApprove, "collections.report.view"]);
         if (roles.Contains(SystemRoleNames.CollectionsOperationsManager, StringComparer.OrdinalIgnoreCase))
-            result.UnionWith(["collections.dashboard.view", "collections.case.view", SystemPermissionCodes.CollectionsSensitiveView, "collections.activity.manage", SystemPermissionCodes.CollectionsAssignmentManage, "collections.ptp.manage", "collections.payment.submit", SystemPermissionCodes.CollectionsPaymentApprove, "collections.visit.manage", "collections.complaint.manage", SystemPermissionCodes.CollectionsImportManage, "collections.report.view", SystemPermissionCodes.CollectionsReportExport, SystemPermissionCodes.CollectionsConfigurationManage, SystemPermissionCodes.CollectionsAuditView]);
+            result.UnionWith(["collections.dashboard.view", "collections.case.view", SystemPermissionCodes.CollectionsSensitiveView, "collections.activity.manage", SystemPermissionCodes.CollectionsAssignmentManage, "collections.ptp.manage", "collections.payment.submit", SystemPermissionCodes.CollectionsPaymentApprove, "collections.visit.manage", "collections.complaint.manage", SystemPermissionCodes.CollectionsImportManage, "collections.report.view", SystemPermissionCodes.CollectionsReportExport, SystemPermissionCodes.CollectionsConfigurationManage, SystemPermissionCodes.CollectionsAuditView, SystemPermissionCodes.DataEntryBatchReview]);
         if (roles.Contains(SystemRoleNames.CollectionsAuditor, StringComparer.OrdinalIgnoreCase))
             result.UnionWith(["collections.dashboard.view", "collections.case.view", "collections.report.view", SystemPermissionCodes.CollectionsAuditView]);
         if (roles.Contains(SystemRoleNames.CollectionsClientViewer, StringComparer.OrdinalIgnoreCase))
             result.UnionWith(["collections.dashboard.view", "collections.case.view", "collections.report.view"]);
+        if (roles.Contains(SystemRoleNames.DataEntry, StringComparer.OrdinalIgnoreCase)
+            || string.Equals(user.Department.Code, DepartmentCodes.DataEntry, StringComparison.OrdinalIgnoreCase))
+            result.UnionWith([SystemPermissionCodes.DataEntryAccess, SystemPermissionCodes.DataEntryManage]);
+        if (string.Equals(user.Department.Code, DepartmentCodes.Accounting, StringComparison.OrdinalIgnoreCase))
+            result.UnionWith([
+                SystemPermissionCodes.AccountingAccess,
+                SystemPermissionCodes.AccountingPayrollManage,
+                SystemPermissionCodes.AccountingPayrollApprove,
+                SystemPermissionCodes.AccountingTransportationManage,
+                SystemPermissionCodes.AccountingCommissionManage,
+                SystemPermissionCodes.AccountingCommissionApprove,
+                SystemPermissionCodes.FinanceAccess,
+            ]);
         return result.Order(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 }

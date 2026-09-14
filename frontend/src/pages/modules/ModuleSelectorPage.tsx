@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpenText, Building2, CheckCircle2, Languages, LayoutGrid, LogOut, ShieldCheck, UsersRound } from 'lucide-react';
+import { ArrowUpRight, BookOpenText, Building2, Calculator, CheckCircle2, ClipboardList, Languages, LayoutGrid, LogOut, ShieldCheck, UsersRound } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import misLogo from '../../assets/mis-logo.svg';
 import { useAuth } from '../../context/AuthContext';
@@ -28,6 +28,28 @@ const modulePresentation: Record<ModuleId, {
     featuresEn: ['General ledger', 'Periods', 'Reports'],
     accent: 'from-cyan-500 to-blue-700',
     iconStyle: 'bg-cyan-50 text-cyan-700 ring-cyan-100',
+  },
+  accounting: {
+    icon: Calculator,
+    titleAr: 'الحسابات',
+    titleEn: 'Accounting',
+    descriptionAr: 'المرتبات والانتقالات وعمولات المحصلين والمشرفين.',
+    descriptionEn: 'Payroll, transportation, and collector/supervisor commissions.',
+    featuresAr: ['المرتبات', 'الانتقالات', 'العمولات'],
+    featuresEn: ['Salaries', 'Transport', 'Commissions'],
+    accent: 'from-teal-500 to-cyan-700',
+    iconStyle: 'bg-teal-50 text-teal-700 ring-teal-100',
+  },
+  'data-entry': {
+    icon: ClipboardList,
+    titleAr: 'إدخال البيانات',
+    titleEn: 'Data Entry',
+    descriptionAr: 'إدخال العملاء ورفع الملفات وإرسال الدفعات للمراجعة.',
+    descriptionEn: 'Enter clients, upload files, and submit batches for review.',
+    featuresAr: ['العملاء', 'الرفع', 'السجل'],
+    featuresEn: ['Clients', 'Import', 'History'],
+    accent: 'from-indigo-500 to-sky-700',
+    iconStyle: 'bg-indigo-50 text-indigo-700 ring-indigo-100',
   },
   collections: {
     icon: Building2,

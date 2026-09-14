@@ -533,7 +533,7 @@ public sealed class HrEmployeeDocumentService : IHrEmployeeDocumentService
             throw new HrValidationException("Expiry date cannot be before issue date.");
     }
 
-    private static async Task<ValidatedUpload> ValidateAndBufferAsync(HrUploadFile file, CancellationToken cancellationToken, bool allowDocx = true)
+    internal static async Task<ValidatedUpload> ValidateAndBufferAsync(HrUploadFile file, CancellationToken cancellationToken, bool allowDocx = true)
     {
         if (string.IsNullOrWhiteSpace(file.FileName) || Path.GetFileName(file.FileName).Length > 255)
             throw new HrValidationException("The document file name is required and cannot exceed 255 characters.");
@@ -611,7 +611,7 @@ public sealed class HrEmployeeDocumentService : IHrEmployeeDocumentService
 
     private static int Pages(int total, int pageSize) => total == 0 ? 0 : (int)Math.Ceiling(total / (double)pageSize);
 
-    private sealed class ValidatedUpload(MemoryStream stream, string contentType) : IAsyncDisposable
+    internal sealed class ValidatedUpload(MemoryStream stream, string contentType) : IAsyncDisposable
     {
         public MemoryStream Stream { get; } = stream;
         public string ContentType { get; } = contentType;

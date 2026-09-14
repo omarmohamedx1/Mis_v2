@@ -3,7 +3,7 @@ import type { AttendanceImportSheet } from '../types/attendance';
 
 export interface EmployeeImportMapping { sheetName: string | null; headerRow: number; firstDataRow: number; dateFormat: string | null; columns: Record<string, string> }
 export interface EmployeeImportUpload { id: string; fileName: string; sheets: AttendanceImportSheet[] }
-export interface EmployeeImportRow { row: number; employee: { employeeNumber: string; fullName: string; gender: string | null; nationalId: string; workStartDate: string | null; workEndDate: string | null; status: string | null; isActive: boolean }; department: string; position: string; status: 'Ready' | 'Warning' | 'Error' | 'Existing'; errors: string[] }
+export interface EmployeeImportRow { row: number; employee: { employeeNumber: string; fullName: string; gender: string | null; nationalId: string; mobileNumber: string | null; workStartDate: string | null; workEndDate: string | null; status: string | null; isActive: boolean }; department: string; position: string; status: 'Ready' | 'Warning' | 'Error' | 'Existing'; errors: string[] }
 export interface EmployeeImportPreview { id: string; previewId: string; rows: EmployeeImportRow[] }
 export interface EmployeeImportResult { imported: number; skipped: number; failed: number }
 export interface EmployeeImportHistory { id: string; fileName: string; uploadedBy: string; uploadedAt: string; totalRows: number | null; result: EmployeeImportResult | null }

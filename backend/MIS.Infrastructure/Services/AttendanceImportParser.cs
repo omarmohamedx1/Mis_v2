@@ -149,7 +149,7 @@ internal sealed class AttendanceImportParser
     }
 
     internal static async Task<(string[] Headers, List<string[]> Rows)> ReadTableAsync(Stream stream, string extension,
-        string? sheetName, int headerRow, int firstDataRow, CancellationToken cancellationToken)
+        string? sheetName, int headerRow, int firstDataRow, CancellationToken cancellationToken, string? preserveZeroPaddingColumn = null)
     {
         if (headerRow < 1 || headerRow > 1000 || firstDataRow <= headerRow || firstDataRow > 2000)
             throw new HrValidationException("Invalid header or first data row.");
@@ -178,7 +178,20 @@ internal sealed class AttendanceImportParser
                 if (!string.IsNullOrWhiteSpace(sheetName) && !string.Equals(reader.Name, sheetName, StringComparison.OrdinalIgnoreCase)) continue;
                 found = true;
                 var number = 0;
-                while (reader.Read()) { cancellationToken.ThrowIfCancellationRequested(); Add(++number, ReadExcelCells(reader)); }
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var cells = ReadExcelCells(reader);
+                    // Employee phone imports opt in; other imports retain their existing conversions.
+                    var phoneIndex = headers is null || string.IsNullOrEmpty(preserveZeroPaddingColumn) ? -1 : Array.IndexOf(headers, preserveZeroPaddingColumn);
+                    if (phoneIndex >= 0 && phoneIndex < cells.Length && reader.GetValue(phoneIndex) is double phone)
+                    {
+                        var format = reader.GetNumberFormatString(phoneIndex);
+                        if (format is { Length: > 1 and <= 32 } && format.All(c => c == '0') && phone >= 0 && Math.Truncate(phone) == phone)
+                            cells[phoneIndex] = phone.ToString(format, CultureInfo.InvariantCulture);
+                    }
+                    Add(++number, cells);
+                }
                 break;
             } while (reader.NextResult());
             if (!found) throw new HrValidationException("The selected worksheet was not found.");
@@ -244,9 +257,70 @@ internal sealed class AttendanceImportParser
     private static (int HeaderRow, IReadOnlyCollection<string> Columns) SelectHeader(IReadOnlyList<string[]> rows)
     {
         if (rows.Count == 0) throw new HrValidationException("The uploaded file does not contain any rows.");
+
+        static string NormalizeHeader(string value)
+        {
+            var text = value.Normalize(NormalizationForm.FormKC)
+                .Replace("\uFEFF", string.Empty, StringComparison.Ordinal)
+                .Replace('\u00A0', ' ')
+                .Replace('\u2007', ' ')
+                .Replace('\u202F', ' ');
+            foreach (var ch in new[] { '\u200B', '\u200C', '\u200D', '\u2060' })
+                text = text.Replace(ch.ToString(), string.Empty, StringComparison.Ordinal);
+            text = Regex.Replace(text, @"[_\./\\:|()]+", " ");
+            text = Regex.Replace(text, @"[\-–—−]+", " ");
+            return Regex.Replace(text, @"\s+", " ").Trim().ToLowerInvariant();
+        }
+
+        static int HeaderLikeness(string[] cells)
+        {
+            string[] hints =
+            [
+                "code", "employee code", "employee number",
+                "name in arabic", "arabic name", "employee name", "name",
+                "male female", "gender",
+                "title", "position", "job title",
+                "card number", "national id",
+                "date of employment", "employment date",
+                "fingerprint date",
+                "birth of day", "date of birth", "birth date",
+                "address",
+                "date out of work employer", "end work date",
+                "department", "mobile", "phone", "status"
+            ];
+            var score = 0;
+            foreach (var cell in cells)
+            {
+                if (string.IsNullOrWhiteSpace(cell)) continue;
+                var text = NormalizeHeader(cell);
+                if (text.Any(char.IsLetter)) score += 2;
+                if (hints.Any(hint => text == hint || text.Replace(" ", string.Empty, StringComparison.Ordinal) == hint.Replace(" ", string.Empty, StringComparison.Ordinal)))
+                    score += 30;
+                else if (text.Contains("name", StringComparison.Ordinal)
+                    || text.Contains("date", StringComparison.Ordinal)
+                    || text.Contains("card", StringComparison.Ordinal)
+                    || text.Contains("fingerprint", StringComparison.Ordinal)
+                    || text.Contains("employee", StringComparison.Ordinal)
+                    || text.Contains("اسم", StringComparison.Ordinal)
+                    || text.Contains("موظف", StringComparison.Ordinal)
+                    || text.Contains("تاريخ", StringComparison.Ordinal)
+                    || text.Contains("بطاقة", StringComparison.Ordinal))
+                    score += 8;
+                if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out _)) score -= 3;
+            }
+            return score;
+        }
+
         var selected = rows
-            .Select((cells, index) => new { Cells = cells, Row = index + 1, Count = cells.Count(cell => !string.IsNullOrWhiteSpace(cell)) })
-            .OrderByDescending(item => item.Count)
+            .Select((cells, index) => new
+            {
+                Cells = cells,
+                Row = index + 1,
+                Count = cells.Count(cell => !string.IsNullOrWhiteSpace(cell)),
+                Likeness = HeaderLikeness(cells)
+            })
+            .OrderByDescending(item => item.Likeness)
+            .ThenByDescending(item => item.Count)
             .ThenBy(item => item.Row)
             .First();
         if (selected.Count == 0) throw new HrValidationException("No usable header row was detected.");

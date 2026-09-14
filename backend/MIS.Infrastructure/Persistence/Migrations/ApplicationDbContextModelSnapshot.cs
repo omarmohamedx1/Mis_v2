@@ -22,6 +22,250 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingCollectorCommission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Adjustments")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("AssignedCasesCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CalculationSnapshotJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]");
+
+                    b.Property<decimal>("CollectedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("CollectorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CommissionAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("CommissionRuleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("EligibleAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("FinalCommission")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("PeriodMonth")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PeriodYear")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("RateApplied")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<int>("RuleVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommissionRuleId");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("CollectorUserId", "PeriodYear", "PeriodMonth")
+                        .IsUnique()
+                        .HasFilter("\"Status\" <> 'CANCELLED'");
+
+                    b.ToTable("AccountingCollectorCommissions", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingCommissionRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Basis")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("EffectiveTo")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("FixedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NameArabic")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameEnglish")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("Percentage")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code", "Version")
+                        .IsUnique();
+
+                    b.HasIndex("Scope", "IsActive", "EffectiveFrom");
+
+                    b.ToTable("AccountingCommissionRules", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingEmployeePayroll", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Allowances")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("BasicSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Bonuses")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Commissions")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("CompensationSnapshotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Deductions")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("DepartmentName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EmployeeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("EmployeeNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal>("NetSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal>("OtherAdjustments")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("PeriodId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PositionName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("Transportation")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompensationSnapshotId");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("PeriodId", "EmployeeId")
+                        .IsUnique();
+
+                    b.ToTable("AccountingEmployeePayrolls", (string)null);
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.AccountingEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -81,6 +325,54 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("accounting_events", "finance");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingPayrollPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedByUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("AccountingPayrollPeriods", (string)null);
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.AccountingPeriod", b =>
                 {
                     b.Property<Guid>("Id")
@@ -130,6 +422,179 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("accounting_periods", "finance");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingSupervisorCommission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Adjustments")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("CalculationSnapshotJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]");
+
+                    b.Property<int>("CollectorCount")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("CommissionAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("CommissionRuleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("EligibleAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("FinalCommission")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("PeriodMonth")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PeriodYear")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("RateApplied")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<int>("RuleVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("SupervisorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TeamCollectedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("TeamSummary")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommissionRuleId");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("SupervisorUserId", "PeriodYear", "PeriodMonth")
+                        .IsUnique()
+                        .HasFilter("\"Status\" <> 'CANCELLED'");
+
+                    b.ToTable("AccountingSupervisorCommissions", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingTransportationClaim", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AttachmentContentType")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("AttachmentFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<long?>("AttachmentLength")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("AttachmentSha256")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("AttachmentStorageKey")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<Guid?>("CaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("ClaimDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("FieldVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("SubmittedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedByUserId");
+
+                    b.HasIndex("CaseId");
+
+                    b.HasIndex("FieldVisitId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SubmittedByUserId");
+
+                    b.HasIndex("EmployeeId", "ClaimDate");
+
+                    b.ToTable("AccountingTransportationClaims", (string)null);
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.AdminAuditLog", b =>
@@ -1541,14 +2006,25 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("CustomerCode")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("DataEntrySource")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<string>("Employer")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<string>("FullNameArabic")
                         .HasMaxLength(200)
@@ -1566,6 +2042,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
@@ -1574,6 +2054,8 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(32)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("PrimaryPhone");
 
@@ -2121,11 +2603,19 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("PrimaryClassification")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<string>("SettingsJson")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("jsonb")
                         .HasDefaultValue("{}");
+
+                    b.Property<string>("SubClassification")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<decimal?>("TargetAmount")
                         .HasPrecision(18, 2)
@@ -2135,6 +2625,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("OrganizationId", "Code")
                         .IsUnique();
+
+                    b.HasIndex("OrganizationId", "PrimaryClassification", "SubClassification")
+                        .IsUnique()
+                        .HasFilter("\"PrimaryClassification\" IS NOT NULL AND \"SubClassification\" IS NOT NULL");
 
                     b.ToTable("CollectionPortfolios", (string)null);
                 });
@@ -2381,6 +2875,244 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("ContractTypes", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CreatedCaseCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CreatedCustomerCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("DistributedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<int>("InvalidRows")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PortfolioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PrimaryClassification")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("StorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("SubClassification")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TotalRows")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ValidRows")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchNumber")
+                        .IsUnique();
+
+                    b.HasIndex("PortfolioId");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("UploadedByUserId", "CreatedAt");
+
+                    b.HasIndex("OrganizationId", "Status", "CreatedAt");
+
+                    b.ToTable("DataEntryBatches", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("MessageArabic")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("MessageEnglish")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId", "RecipientUserId", "Kind")
+                        .IsUnique();
+
+                    b.HasIndex("RecipientUserId", "IsRead", "CreatedAt");
+
+                    b.ToTable("DataEntryNotifications", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AccountNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CollectionCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CollectionCustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContractNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomerCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("DaysPastDue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("IsValid")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MobileNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("NationalId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal?>("OutstandingBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("OverdueBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("RowNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollectionCaseId");
+
+                    b.HasIndex("CollectionCustomerId");
+
+                    b.HasIndex("BatchId", "RowNumber")
+                        .IsUnique();
+
+                    b.ToTable("DataEntryRows", (string)null);
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.DelegationType", b =>
@@ -3876,6 +4608,164 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("HrAuditLogs", (string)null);
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.HrExcuseAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid>("ExcuseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("Length")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Sha256Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExcuseId");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.ToTable("HrExcuseAttachments", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.HrExcuseMission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeOnly?>("FromTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<bool>("FullDay")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(3000)
+                        .HasColumnType("character varying(3000)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RejectedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("SourceChanged")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("SourceCollectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("SourceScheduledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("SourceUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SourceVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<TimeOnly?>("ToTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedByUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("RejectedByUserId");
+
+                    b.HasIndex("SourceCollectorId");
+
+                    b.HasIndex("SourceVisitId")
+                        .IsUnique()
+                        .HasFilter("\"SourceVisitId\" IS NOT NULL");
+
+                    b.HasIndex("EmployeeId", "Date", "Status");
+
+                    b.ToTable("HrExcuseMissions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_HrMission_Source", "(\"SourceType\" = 'FieldVisit' AND \"SourceVisitId\" IS NOT NULL) OR (\"SourceType\" = 'Manual' AND \"SourceVisitId\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_HrMission_Status", "\"Status\" IN ('PendingApproval','Approved','Rejected','Cancelled')");
+
+                            t.HasCheckConstraint("CK_HrMission_Times", "\"ToTime\" IS NULL OR (\"FromTime\" IS NOT NULL AND \"ToTime\" > \"FromTime\")");
+                        });
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.JournalEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4341,6 +5231,83 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("Roles", (string)null);
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.SocialInsuranceRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("InsurableSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateOnly?>("InsuranceEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("InsuranceOffice")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateOnly?>("InsuranceStartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("InsuranceStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SocialInsuranceNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId")
+                        .IsUnique()
+                        .HasFilter("\"InsuranceStatus\" <> 'Ended'");
+
+                    b.HasIndex("SocialInsuranceNumber")
+                        .IsUnique()
+                        .HasFilter("\"InsuranceStatus\" <> 'Ended'");
+
+                    b.ToTable("SocialInsuranceRecords", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SocialInsurance_Dates", "\"InsuranceEndDate\" IS NULL OR \"InsuranceStartDate\" IS NULL OR \"InsuranceEndDate\" >= \"InsuranceStartDate\"");
+
+                            t.HasCheckConstraint("CK_SocialInsurance_End", "(\"InsuranceStatus\" = 'Ended') = (\"InsuranceEndDate\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_SocialInsurance_Salary", "\"InsurableSalary\" > 0");
+
+                            t.HasCheckConstraint("CK_SocialInsurance_Start", "\"InsuranceStatus\" NOT IN ('Insured','Suspended') OR \"InsuranceStartDate\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_SocialInsurance_Status", "\"InsuranceStatus\" IN ('Insured','NotInsured','Suspended','Ended')");
+                        });
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4362,6 +5329,9 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -4400,6 +5370,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("EmployeeId")
+                        .IsUnique()
+                        .HasFilter("\"EmployeeId\" IS NOT NULL");
 
                     b.HasIndex("LoginCode")
                         .IsUnique();
@@ -4583,6 +5557,76 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingCollectorCommission", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "CollectorUser")
+                        .WithMany()
+                        .HasForeignKey("CollectorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.AccountingCommissionRule", "CommissionRule")
+                        .WithMany()
+                        .HasForeignKey("CommissionRuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CollectorUser");
+
+                    b.Navigation("CommissionRule");
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingEmployeePayroll", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.EmployeeCompensation", "CompensationSnapshot")
+                        .WithMany()
+                        .HasForeignKey("CompensationSnapshotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.AccountingPayrollPeriod", "Period")
+                        .WithMany("Payrolls")
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CompensationSnapshot");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Period");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingPayrollPeriod", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ApprovedByUser");
+
+                    b.Navigation("CreatedByUser");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.AccountingPeriod", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.FinanceLegalEntity", "LegalEntity")
@@ -4592,6 +5636,72 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("LegalEntity");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingSupervisorCommission", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.AccountingCommissionRule", "CommissionRule")
+                        .WithMany()
+                        .HasForeignKey("CommissionRuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", "SupervisorUser")
+                        .WithMany()
+                        .HasForeignKey("SupervisorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CommissionRule");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("SupervisorUser");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingTransportationClaim", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.CollectionCase", "Case")
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.FieldVisit", "FieldVisit")
+                        .WithMany()
+                        .HasForeignKey("FieldVisitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", "SubmittedByUser")
+                        .WithMany()
+                        .HasForeignKey("SubmittedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ApprovedByUser");
+
+                    b.Navigation("Case");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("FieldVisit");
+
+                    b.Navigation("SubmittedByUser");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.AttendanceImportBatch", b =>
@@ -5056,11 +6166,18 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MIS.Domain.Entities.CollectionCustomer", b =>
                 {
+                    b.HasOne("MIS.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MIS.Domain.Entities.ClientOrganization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CreatedByUser");
 
                     b.Navigation("Organization");
                 });
@@ -5362,6 +6479,84 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("JournalEntryLine");
 
                     b.Navigation("Receipt");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryBatch", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionPortfolio", "Portfolio")
+                        .WithMany()
+                        .HasForeignKey("PortfolioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", "ReviewedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", "UploadedByUser")
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Portfolio");
+
+                    b.Navigation("ReviewedByUser");
+
+                    b.Navigation("UploadedByUser");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryNotification", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.DataEntryBatch", "Batch")
+                        .WithMany("Notifications")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", "RecipientUser")
+                        .WithMany()
+                        .HasForeignKey("RecipientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("RecipientUser");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryRow", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.DataEntryBatch", "Batch")
+                        .WithMany("Rows")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionCase", "CollectionCase")
+                        .WithMany()
+                        .HasForeignKey("CollectionCaseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.CollectionCustomer", "CollectionCustomer")
+                        .WithMany()
+                        .HasForeignKey("CollectionCustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("CollectionCase");
+
+                    b.Navigation("CollectionCustomer");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.DelinquencyBucketDefinition", b =>
@@ -5681,6 +6876,63 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.HrExcuseAttachment", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.HrExcuseMission", "Excuse")
+                        .WithMany()
+                        .HasForeignKey("ExcuseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Excuse");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.HrExcuseMission", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RejectedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("SourceCollectorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.FieldVisit", "SourceVisit")
+                        .WithMany()
+                        .HasForeignKey("SourceVisitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ApprovedByUser");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("SourceVisit");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.JournalEntry", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.AccountingEvent", "AccountingEvent")
@@ -5842,6 +7094,17 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("Collector");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.SocialInsuranceRecord", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.User", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.Department", "Department")
@@ -5850,7 +7113,14 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Department");
+
+                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.UserAccessGrant", b =>
@@ -5901,9 +7171,21 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("WorkingCalendar");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingPayrollPeriod", b =>
+                {
+                    b.Navigation("Payrolls");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.CollectionFinancialReceipt", b =>
                 {
                     b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryBatch", b =>
+                {
+                    b.Navigation("Notifications");
+
+                    b.Navigation("Rows");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.JournalEntry", b =>

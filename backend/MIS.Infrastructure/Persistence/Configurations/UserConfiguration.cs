@@ -11,6 +11,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.ToTable("Users");
 
         builder.HasKey(user => user.Id);
+        builder.HasOne(user => user.Employee).WithMany().HasForeignKey(user => user.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(user => user.EmployeeId).IsUnique().HasFilter("\"EmployeeId\" IS NOT NULL");
 
         builder.Property(user => user.Username)
             .HasMaxLength(100)

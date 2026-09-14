@@ -30,6 +30,9 @@ public sealed class CollectionPortfolioConfiguration : IEntityTypeConfiguration<
         b.ToTable("CollectionPortfolios"); b.HasKey(x => x.Id); b.Property(x => x.Code).HasMaxLength(60).IsRequired();
         b.Property(x => x.NameArabic).HasMaxLength(200).IsRequired(); b.Property(x => x.NameEnglish).HasMaxLength(200).IsRequired(); b.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
         b.Property(x => x.TargetAmount).Money(); b.Property(x => x.SettingsJson).HasColumnType("jsonb").HasDefaultValue("{}"); b.HasIndex(x => new { x.OrganizationId, x.Code }).IsUnique();
+        b.Property(x => x.PrimaryClassification).HasMaxLength(20); b.Property(x => x.SubClassification).HasMaxLength(20);
+        b.HasIndex(x => new { x.OrganizationId, x.PrimaryClassification, x.SubClassification }).IsUnique()
+            .HasFilter("\"PrimaryClassification\" IS NOT NULL AND \"SubClassification\" IS NOT NULL");
         b.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -42,8 +45,10 @@ public sealed class CollectionCustomerConfiguration : IEntityTypeConfiguration<C
         b.Property(x => x.FullNameArabic).HasMaxLength(200); b.Property(x => x.FullNameEnglish).HasMaxLength(200); b.Property(x => x.NationalId).HasMaxLength(32);
         b.Property(x => x.PrimaryPhone).HasMaxLength(32); b.Property(x => x.AlternatePhone).HasMaxLength(32); b.Property(x => x.AddressArabic).HasMaxLength(600); b.Property(x => x.AddressEnglish).HasMaxLength(600);
         b.Property(x => x.Governorate).HasMaxLength(100); b.Property(x => x.Area).HasMaxLength(100); b.Property(x => x.Employer).HasMaxLength(200);
+        b.Property(x => x.Feedback).HasMaxLength(2000); b.Property(x => x.Notes).HasMaxLength(2000); b.Property(x => x.DataEntrySource).HasMaxLength(20);
         b.HasIndex(x => new { x.OrganizationId, x.CustomerCode }).IsUnique(); b.HasIndex(x => new { x.OrganizationId, x.NationalId }).IsUnique().HasFilter("\"NationalId\" IS NOT NULL"); b.HasIndex(x => x.PrimaryPhone);
         b.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

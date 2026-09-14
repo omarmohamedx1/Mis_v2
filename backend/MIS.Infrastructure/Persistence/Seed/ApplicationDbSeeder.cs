@@ -76,7 +76,8 @@ public static class ApplicationDbSeeder
             (SystemRoleNames.CollectionsReviewer, "Independent collection payment reviewer"),
             (SystemRoleNames.CollectionsOperationsManager, "Collections operations manager"),
             (SystemRoleNames.CollectionsClientViewer, "Restricted client portfolio viewer"),
-            (SystemRoleNames.CollectionsAuditor, "Read-only collections audit and compliance user")
+            (SystemRoleNames.CollectionsAuditor, "Read-only collections audit and compliance user"),
+            (SystemRoleNames.DataEntry, "Data entry operator for client capture and batch submission")
         })
         {
             var role = await dbContext.Roles.SingleOrDefaultAsync(x => x.Name == name);
@@ -86,6 +87,17 @@ public static class ApplicationDbSeeder
                 dbContext.Roles.Add(role);
             }
             collectionsRoles[name] = role;
+        }
+
+        var dataEntryDepartment = await dbContext.Departments.SingleAsync(x => x.Code == DepartmentCodes.DataEntry);
+        var dataEntryRole = collectionsRoles[SystemRoleNames.DataEntry];
+        if (!await dbContext.Users.AnyAsync(x => x.Username == "nada"))
+        {
+            var dataEntryPassword = configuration["Seed:DataEntryPassword"] ?? "DataEntry!2026";
+            var dataEntryUser = new User("nada", "nada@mis.local", "temporary-seed-hash", "Nada", dataEntryDepartment.Id, now);
+            dataEntryUser.SetPasswordHash(new PasswordHasher<User>().HashPassword(dataEntryUser, dataEntryPassword), now);
+            dataEntryUser.AssignRole(dataEntryRole, now);
+            dbContext.Users.Add(dataEntryUser);
         }
 
         var adminPassword = configuration["Seed:AdminPassword"];
@@ -138,17 +150,22 @@ public static class ApplicationDbSeeder
         var collectionsPassword = configuration["Seed:CollectionsPassword"];
         var collectionsUsername = configuration["Seed:CollectionsUsername"] ?? "collections.user";
         var collectionsUser = await dbContext.Users.Include(x => x.UserRoles).SingleOrDefaultAsync(x => x.Username == collectionsUsername);
-        if (collectionsUser is null && !string.IsNullOrWhiteSpace(collectionsPassword))
+        if (!string.IsNullOrWhiteSpace(collectionsPassword))
         {
-            collectionsUser = new User(
-                collectionsUsername,
-                configuration["Seed:CollectionsEmail"] ?? "collections@mis.local",
-                "temporary-seed-hash",
-                configuration["Seed:CollectionsFullName"] ?? "Collections User",
-                collectionsDepartment.Id,
-                now);
+            if (collectionsUser is null)
+            {
+                collectionsUser = new User(
+                    collectionsUsername,
+                    configuration["Seed:CollectionsEmail"] ?? "collections@mis.local",
+                    "temporary-seed-hash",
+                    configuration["Seed:CollectionsFullName"] ?? "Collections User",
+                    collectionsDepartment.Id,
+                    now);
+                dbContext.Users.Add(collectionsUser);
+            }
+
             collectionsUser.SetPasswordHash(new PasswordHasher<User>().HashPassword(collectionsUser, collectionsPassword), now);
-            dbContext.Users.Add(collectionsUser);
+            if (!collectionsUser.IsActive) collectionsUser.SetActive(true, now);
         }
         if (collectionsUser is not null)
         {
