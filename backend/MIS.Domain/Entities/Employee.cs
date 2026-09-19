@@ -1,3 +1,5 @@
+using MIS.Domain.Hr;
+
 namespace MIS.Domain.Entities;
 
 public sealed class Employee
@@ -46,6 +48,8 @@ public sealed class Employee
     public DateOnly? HireDate { get; private set; }
     public string? OperationalRole { get; private set; }
     public DateOnly? FingerprintEnrollmentDate { get; private set; }
+    public string? WorkNumber { get; private set; }
+    public string? PackageType { get; private set; }
     public string Status { get; private set; } = ActiveStatus;
     public DateOnly? TerminationDate { get; private set; }
     public string? TerminationReason { get; private set; }
@@ -78,13 +82,26 @@ public sealed class Employee
         if (dateOfBirth > DateOnly.FromDateTime(updatedAt.UtcDateTime))
             throw new ArgumentException("Date of birth cannot be in the future.", nameof(dateOfBirth));
 
-        FullNameArabic = NormalizeOptional(fullNameArabic);
-        FullNameEnglish = NormalizeOptional(fullNameEnglish);
+        ApplyLocalizedNames(FullName, fullNameArabic, fullNameEnglish);
         NationalId = NormalizeOptional(nationalId);
         DateOfBirth = dateOfBirth;
         Gender = NormalizeOptional(gender);
         MaritalStatus = NormalizeOptional(maritalStatus);
         ProfilePhotoStorageKey = NormalizeOptional(profilePhotoStorageKey);
+        UpdatedAt = updatedAt;
+    }
+
+    public void UpdateLocalizedNames(string? fullNameArabic, string? fullNameEnglish, DateTimeOffset updatedAt)
+    {
+        EnsureTimestamp(updatedAt, nameof(updatedAt));
+        ApplyLocalizedNames(FullName, fullNameArabic, fullNameEnglish);
+        UpdatedAt = updatedAt;
+    }
+
+    public void RepairLocalizedNames(DateTimeOffset updatedAt)
+    {
+        EnsureTimestamp(updatedAt, nameof(updatedAt));
+        ApplyLocalizedNames(FullName, FullNameArabic, FullNameEnglish);
         UpdatedAt = updatedAt;
     }
 
@@ -184,6 +201,20 @@ public sealed class Employee
         UpdatedAt = updatedAt;
     }
 
+    public void UpdateWorkAssignment(string? workNumber, string? packageType, DateTimeOffset updatedAt)
+    {
+        EnsureTimestamp(updatedAt, nameof(updatedAt));
+        var normalizedWorkNumber = NormalizeOptional(workNumber);
+        var normalizedPackageType = NormalizeOptional(packageType);
+        if (normalizedWorkNumber is { Length: > 50 })
+            throw new ArgumentException("Work number cannot exceed 50 characters.", nameof(workNumber));
+        if (normalizedPackageType is { Length: > 80 })
+            throw new ArgumentException("Package type cannot exceed 80 characters.", nameof(packageType));
+        WorkNumber = normalizedWorkNumber;
+        PackageType = normalizedPackageType;
+        UpdatedAt = updatedAt;
+    }
+
     public void Archive(string reason, Guid archivedByUserId, DateTimeOffset archivedAt)
     {
         if (IsArchived) throw new InvalidOperationException("The employee is already archived.");
@@ -207,7 +238,7 @@ public sealed class Employee
         var wasActive = IsActive;
 
         EmployeeNumber = employeeNumber.Trim().ToUpperInvariant();
-        FullName = fullName.Trim();
+        ApplyLocalizedNames(fullName, FullNameArabic, FullNameEnglish);
         DepartmentId = departmentId;
         IsActive = isActive;
 
@@ -222,8 +253,17 @@ public sealed class Employee
         }
     }
 
-    private static string? NormalizeOptional(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private void ApplyLocalizedNames(string? fullName, string? arabic, string? english)
+    {
+        var resolved = EmployeeName.Resolve(fullName, arabic, english);
+        if (string.IsNullOrWhiteSpace(resolved.Canonical))
+            throw new ArgumentException("Full name is required.", nameof(fullName));
+        FullName = resolved.Canonical;
+        FullNameArabic = resolved.Arabic;
+        FullNameEnglish = resolved.English;
+    }
+
+    private static string? NormalizeOptional(string? value) => EmployeeName.Normalize(value);
 
     private static string NormalizeStatus(string value) => value.Trim().ToLowerInvariant() switch
     {
@@ -237,8 +277,8 @@ public sealed class Employee
 
     private static string NormalizeOperationalRole(string value) => value?.Trim().ToUpperInvariant() switch
     {
-        "COLLECTOR" => "COLLECTOR", "ADMIN" => "ADMIN", "SUPERVISOR" => "SUPERVISOR",
-        _ => throw new ArgumentException("Employee role must be COLLECTOR, ADMIN, or SUPERVISOR.", nameof(value))
+        "COLLECTOR" => "COLLECTOR", "ADMIN" => "ADMIN", "SUPERVISOR" => "SUPERVISOR", "OFFICE" => "OFFICE",
+        _ => throw new ArgumentException("Employee role must be COLLECTOR, ADMIN, SUPERVISOR, or OFFICE.", nameof(value))
     };
 
     private static void EnsureTimestamp(DateTimeOffset timestamp, string parameterName)

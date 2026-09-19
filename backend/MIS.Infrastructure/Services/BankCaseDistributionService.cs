@@ -44,9 +44,10 @@ public sealed class BankCaseDistributionService(ApplicationDbContext db, ICurren
     public async Task<IReadOnlyCollection<DistributionCollectorDto>> CollectorsAsync(Guid bankId, CancellationToken token)
     {
         await RequireAccessAsync(bankId, token); var scoped = ScopedCases(bankId);
-        return await AuthorizedCollectors(bankId).AsNoTracking().OrderBy(x => x.FullName).Select(x => new DistributionCollectorDto(
+        var rows = await AuthorizedCollectors(bankId).AsNoTracking().OrderBy(x => x.FullName).Select(x => new DistributionCollectorDto(
             x.Id, x.FullName, scoped.Count(c => c.AssignedCollectorId == x.Id),
             scoped.Where(c => c.AssignedCollectorId == x.Id).Sum(c => (decimal?)c.OutstandingBalance) ?? 0)).ToArrayAsync(token);
+        return rows.GroupBy(x => x.Id).Select(group => group.First()).ToArray();
     }
 
     public async Task<IReadOnlyCollection<DistributionImportDto>> ImportsAsync(Guid bankId, CancellationToken token)
@@ -105,12 +106,23 @@ public sealed class BankCaseDistributionService(ApplicationDbContext db, ICurren
 
     private async Task<List<PlanRow>> BuildAutoPlanAsync(Guid bankId, AutoDistributionRequest request, CancellationToken token)
     {
-        EnsureReason(request.Reason); await RequireAccessAsync(bankId, token); var ids = Ids(request.CaseIds);
+        EnsureReason(request.Reason); await RequireAccessAsync(bankId, token);
         var collectorIds = request.CollectorIds.Where(x => x != Guid.Empty).Distinct().ToArray(); if (collectorIds.Length is < 1 or > 100) throw new HrValidationException("Select between 1 and 100 collectors.");
         var collectors = await AuthorizedCollectors(bankId).Where(x => collectorIds.Contains(x.Id)).OrderBy(x => x.FullName).ToArrayAsync(token);
         if (collectors.Length != collectorIds.Length) throw new HrForbiddenException("One or more selected collectors are outside your authorized scope.");
-        var cases = await ScopedCases(bankId).Where(x => ids.Contains(x.Id) && x.AssignedCollectorId == null).OrderByDescending(x => x.OutstandingBalance).ThenBy(x => x.Id).ToArrayAsync(token);
-        if (cases.Length != ids.Length) throw new HrConflictException("Some selected cases are no longer available for assignment. Refresh and try again.");
+        var requestedIds = (request.CaseIds ?? []).Where(x => x != Guid.Empty).Distinct().ToArray();
+        CollectionCase[] cases;
+        if (requestedIds.Length == 0)
+        {
+            cases = await ScopedCases(bankId).Where(x => x.AssignedCollectorId == null).OrderByDescending(x => x.OutstandingBalance).ThenBy(x => x.Id).Take(500).ToArrayAsync(token);
+            if (cases.Length == 0) throw new HrValidationException("No unassigned cases are available for automatic distribution.");
+        }
+        else
+        {
+            if (requestedIds.Length > 500) throw new HrValidationException("Select between 1 and 500 cases.");
+            cases = await ScopedCases(bankId).Where(x => requestedIds.Contains(x.Id) && x.AssignedCollectorId == null).OrderByDescending(x => x.OutstandingBalance).ThenBy(x => x.Id).ToArrayAsync(token);
+            if (cases.Length != requestedIds.Length) throw new HrConflictException("Some selected cases are no longer available for assignment. Refresh and try again.");
+        }
         var method = NormalizeMethod(request.Method); var rows = new List<PlanRow>(cases.Length); var counts = collectors.ToDictionary(x => x.Id, _ => 0); var totals = collectors.ToDictionary(x => x.Id, _ => 0m);
         IEnumerable<CollectionCase> orderedCases = method == "EQUAL_COUNT" ? cases.OrderBy(x => x.Id) : cases;
         foreach (var item in orderedCases)
@@ -136,7 +148,7 @@ public sealed class BankCaseDistributionService(ApplicationDbContext db, ICurren
     private void Audit(string action, Guid caseId, Guid? before, Guid? after, string reason) => db.CollectionAuditLogs.Add(new(user.UserId, action, nameof(CollectionCase), caseId, caseId, JsonSerializer.Serialize(new { AssignedCollectorId = before }), JsonSerializer.Serialize(new { AssignedCollectorId = after, Reason = reason }), "WEB", DateTimeOffset.UtcNow));
     private IQueryable<CollectionCase> ScopedCases(Guid bankId) => ScopedCasesCore(bankId).Apply(classification);
     private IQueryable<CollectionCase> ScopedCasesCore(Guid bankId) { var q = db.CollectionCases.Where(x => x.Portfolio.OrganizationId == bankId && !x.IsArchived); if (Global) return q; return q.Where(x => (x.AssignedTeam != null && x.AssignedTeam.SupervisorId == user.UserId) || (x.AssignedTeamId == null && db.CollectionUserAccess.Any(a => a.UserId == user.UserId && a.OrganizationId == bankId && (a.PortfolioId == null || a.PortfolioId == x.PortfolioId)))); }
-    private IQueryable<User> AuthorizedCollectors(Guid bankId) { var q = db.Users.Where(x => x.IsActive && x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.CollectionsCollector)); return Global ? q : q.Where(x => db.CollectionTeamMembers.Any(m => m.UserId == x.Id && m.IsActive && m.Team.IsActive && m.Team.SupervisorId == user.UserId)); }
+    private IQueryable<User> AuthorizedCollectors(Guid bankId) => db.Users.EligibleCollectors().ForSupervisorScope(db, user.UserId, Global);
     private async Task RequireAccessAsync(Guid bankId, CancellationToken token) { if (!Manager) throw new HrForbiddenException("Case Distribution is available only to authorized Collections managers."); var bank = await db.CollectionClientOrganizations.AsNoTracking().AnyAsync(x => x.Id == bankId && x.IsActive && (x.OrganizationType == CollectionsValues.OrganizationTypes.Bank || x.OrganizationType == CollectionsValues.OrganizationTypes.ConsumerFinance), token); if (!bank || (!Global && !await db.CollectionUserAccess.AnyAsync(x => x.UserId == user.UserId && x.OrganizationId == bankId, token) && !await ScopedCases(bankId).AnyAsync(token))) throw new HrNotFoundException("Organization was not found or is outside your authorized scope."); }
     private async Task<User> GetCollectorAsync(Guid bankId, Guid id, CancellationToken token) => await AuthorizedCollectors(bankId).SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrForbiddenException("The selected collector is outside your authorized scope.");
     private async Task<Guid?> TeamIdAsync(Guid collectorId, CancellationToken token) => Global ? null : await db.CollectionTeamMembers.Where(x => x.UserId == collectorId && x.IsActive && x.Team.IsActive && x.Team.SupervisorId == user.UserId).Select(x => (Guid?)x.TeamId).FirstOrDefaultAsync(token);

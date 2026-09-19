@@ -149,7 +149,8 @@ internal sealed class AttendanceImportParser
     }
 
     internal static async Task<(string[] Headers, List<string[]> Rows)> ReadTableAsync(Stream stream, string extension,
-        string? sheetName, int headerRow, int firstDataRow, CancellationToken cancellationToken, string? preserveZeroPaddingColumn = null)
+        string? sheetName, int headerRow, int firstDataRow, CancellationToken cancellationToken,
+        IReadOnlyCollection<string>? preserveZeroPaddingColumns = null)
     {
         if (headerRow < 1 || headerRow > 1000 || firstDataRow <= headerRow || firstDataRow > 2000)
             throw new HrValidationException("Invalid header or first data row.");
@@ -182,13 +183,16 @@ internal sealed class AttendanceImportParser
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var cells = ReadExcelCells(reader);
-                    // Employee phone imports opt in; other imports retain their existing conversions.
-                    var phoneIndex = headers is null || string.IsNullOrEmpty(preserveZeroPaddingColumn) ? -1 : Array.IndexOf(headers, preserveZeroPaddingColumn);
-                    if (phoneIndex >= 0 && phoneIndex < cells.Length && reader.GetValue(phoneIndex) is double phone)
+                    // Employee identity columns opt in; other imports retain their existing conversions.
+                    var preservedIndexes = headers is null || preserveZeroPaddingColumns is null
+                        ? []
+                        : preserveZeroPaddingColumns.Select(column => Array.IndexOf(headers, column)).Where(index => index >= 0).Distinct();
+                    foreach (var preservedIndex in preservedIndexes)
                     {
-                        var format = reader.GetNumberFormatString(phoneIndex);
-                        if (format is { Length: > 1 and <= 32 } && format.All(c => c == '0') && phone >= 0 && Math.Truncate(phone) == phone)
-                            cells[phoneIndex] = phone.ToString(format, CultureInfo.InvariantCulture);
+                        if (preservedIndex >= cells.Length || reader.GetValue(preservedIndex) is not double numericValue) continue;
+                        var format = reader.GetNumberFormatString(preservedIndex);
+                        if (format is { Length: > 1 and <= 32 } && format.All(c => c == '0') && numericValue >= 0 && Math.Truncate(numericValue) == numericValue)
+                            cells[preservedIndex] = numericValue.ToString(format, CultureInfo.InvariantCulture);
                     }
                     Add(++number, cells);
                 }
@@ -276,17 +280,20 @@ internal sealed class AttendanceImportParser
         {
             string[] hints =
             [
-                "code", "employee code", "employee number",
-                "name in arabic", "arabic name", "employee name", "name",
+                "code", "employee code", "employee number", "رقم الموظف", "رقم المظف",
+                "name in arabic", "arabic name", "employee name", "name", "اسم الموظف", "اسم المظف",
                 "male female", "gender",
                 "title", "position", "job title",
                 "card number", "national id",
-                "date of employment", "employment date",
+                "date of employment", "date of empoloyment", "employment date", "empoloyment date",
                 "fingerprint date",
                 "birth of day", "date of birth", "birth date",
                 "address",
                 "date out of work employer", "end work date",
-                "department", "mobile", "phone", "status"
+                "department", "assigned bank / company", "assigned bank", "assigned bank company",
+                "work number", "package type", "رقم الشغل", "نوع الباقة", "نوع الباقه",
+                "position / job title", "position job title", "employee role",
+                "basic salary", "allowances", "mobile", "phone", "status"
             ];
             var score = 0;
             foreach (var cell in cells)

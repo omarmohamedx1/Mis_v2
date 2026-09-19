@@ -54,7 +54,10 @@ public sealed record EmployeeEmploymentInformationDto(
     string? OperationalRole,
     DateOnly? FingerprintEnrollmentDate,
     DateOnly? TerminationDate,
-    string Status);
+    string Status,
+    IReadOnlyList<EmployeeOrganizationAssignmentDto> Organizations,
+    string? WorkNumber = null,
+    string? PackageType = null);
 
 public sealed record EmployeeContractInformationDto(
     Guid Id,
@@ -118,7 +121,7 @@ public sealed class UpdateEmployeePersonalRequest
 
     public DateOnly? DateOfBirth { get; init; }
 
-    [StringLength(32)]
+    [RegularExpression("^(Male|Female)$")]
     public string? Gender { get; init; }
 
     [StringLength(32)]
@@ -157,6 +160,10 @@ public sealed class UpdateEmployeeEmploymentRequest
     public Guid? DirectManagerId { get; init; }
 
     public DateOnly? HireDate { get; init; }
+
+    public IReadOnlyCollection<Guid> OrganizationIds { get; init; } = Array.Empty<Guid>();
+    [StringLength(50)] public string? WorkNumber { get; init; }
+    [StringLength(80)] public string? PackageType { get; init; }
 }
 
 public sealed class UpdateEmployeeContractRequest

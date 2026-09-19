@@ -12,6 +12,13 @@ namespace MIS.API.Controllers;
 [Authorize(Policy = AuthorizationPolicies.HrDepartment)]
 public sealed class HrSocialInsuranceImportsController(ISocialInsuranceImportService service) : ControllerBase
 {
+    [HttpGet("template")]
+    public async Task<IActionResult> DownloadTemplate(CancellationToken cancellationToken)
+    {
+        var template = await service.BuildTemplateAsync(cancellationToken);
+        return File(template.Content, template.ContentType, template.FileName);
+    }
+
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(21 * 1024 * 1024)]

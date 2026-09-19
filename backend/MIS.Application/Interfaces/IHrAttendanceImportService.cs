@@ -4,6 +4,7 @@ namespace MIS.Application.Interfaces;
 
 public interface IHrAttendanceImportService
 {
+    Task<HrImportFileTemplate> BuildTemplateAsync(CancellationToken cancellationToken);
     Task<AttendanceImportUploadDto> UploadAsync(AttendanceImportFile file, CancellationToken cancellationToken);
 
     Task<AttendanceImportBatchDto> BuildPreviewAsync(Guid batchId, AttendanceImportColumnMappingRequest mapping, CancellationToken cancellationToken);

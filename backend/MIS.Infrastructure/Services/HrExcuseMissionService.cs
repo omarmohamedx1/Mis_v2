@@ -10,7 +10,8 @@ namespace MIS.Infrastructure.Services;
 
 public sealed class HrExcuseMissionService(ApplicationDbContext db, ICurrentUserContext user, HrMissionSynchronizer sync, IHrFileStorage storage) : IHrExcuseMissionService
 {
-    private bool CanApprove => user.Roles.Contains("HrManager") || user.Permissions.Contains("hr.excuses.approve");
+    private bool IsAdmin => user.Roles.Contains("Admin") || user.Permissions.Contains("*");
+    private bool CanApprove => IsAdmin || user.Roles.Contains("HrManager") || user.Permissions.Contains("hr.excuses.approve");
     private bool CanManage => CanApprove || user.Roles.Contains("HrOfficer") || user.Permissions.Contains("hr.excuses.manage");
     private void ReadAccess() { if (!CanManage && !user.Permissions.Contains("hr.excuses.view")) throw new HrForbiddenException("Excuse access is required."); }
     private void WriteAccess() { if (!CanManage) throw new HrForbiddenException("Excuse management permission is required."); }
@@ -182,11 +183,10 @@ public sealed class HrExcuseMissionService(ApplicationDbContext db, ICurrentUser
     public async Task LinkEmployeeAsync(Guid collectorId, Guid employeeId, CancellationToken ct)
     {
         if (!CanApprove) throw new HrForbiddenException("Approval permission is required to link an employee.");
-        if (!await db.Employees.AnyAsync(e => e.Id == employeeId, ct)) throw new HrNotFoundException("Employee not found.");
-        if (await db.Users.AnyAsync(u => u.EmployeeId == employeeId && u.Id != collectorId, ct)) throw new HrConflictException("Employee is already linked.");
+        var employee = await db.Employees.Include(e => e.Department).SingleOrDefaultAsync(e => e.Id == employeeId, ct) ?? throw new HrNotFoundException("Employee not found.");
         var collector = await db.Users.SingleOrDefaultAsync(u => u.Id == collectorId, ct) ?? throw new HrNotFoundException("Collector not found.");
-        try { collector.LinkEmployee(employeeId, DateTimeOffset.UtcNow); } catch (InvalidOperationException ex) { throw new HrValidationException(ex.Message); }
-        sync.Audit("CollectorEmployeeLinked", "User", collectorId, employeeId, null, new { employeeId }, user.UserId); await db.SaveChangesAsync(ct);
+        await UserEmployeeLinker.LinkAsync(db, collector, employee, DateTimeOffset.UtcNow, ct);
+        sync.Audit("CollectorEmployeeLinked", "User", collectorId, employeeId, null, new { employeeId, employee.EmployeeNumber, employee.OperationalRole }, user.UserId); await db.SaveChangesAsync(ct);
     }
     public async Task UploadAsync(Guid id, Guid? attachmentId, HrUploadFile file, CancellationToken ct)
     {

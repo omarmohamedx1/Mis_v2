@@ -1,4 +1,3 @@
-import { LogIn } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/common/Button';
@@ -49,14 +48,15 @@ export function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      await login(
+      const signedIn = await login(
         {
           username: values.username.trim(),
           password: values.password,
         },
         values.rememberMe,
       );
-      navigate(redirectTo, { replace: true });
+      const blockedReturn = redirectTo === '/login' || redirectTo === '/change-password' || redirectTo === '/unauthorized';
+      navigate(signedIn.mustChangePassword ? '/change-password' : blockedReturn ? '/' : redirectTo, { replace: true });
     } catch (error) {
       setFormError(getApiErrorMessage(error, t('invalidCredentials')));
     } finally {
@@ -97,12 +97,12 @@ export function LoginForm() {
           name="rememberMe"
           onChange={(event) => setValues((current) => ({ ...current, rememberMe: event.target.checked }))}
         />
-        <a className="text-sm font-semibold text-mis-primary transition hover:text-mis-deep" href="/login">
+        <a className="text-sm font-medium text-slate-500 transition hover:text-mis-primary" href="/login">
           {t('forgotPassword')}
         </a>
       </div>
 
-      <Button isLoading={isSubmitting} leftIcon={<LogIn className="h-4 w-4" aria-hidden="true" />} type="submit">
+      <Button className="mt-1 !rounded-lg !bg-[#0a1e36] hover:!bg-[#071627]" isLoading={isSubmitting} size="lg" type="submit">
         {isSubmitting ? t('signingIn') : t('signIn')}
       </Button>
     </form>

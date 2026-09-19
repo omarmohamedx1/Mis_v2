@@ -3,6 +3,7 @@ using MIS.Application.Common;
 using MIS.Application.DTOs.Hr;
 using MIS.Application.Interfaces;
 using MIS.Domain.Entities;
+using MIS.Domain.Hr;
 using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
@@ -27,7 +28,7 @@ public sealed class HrMasterDataService : IHrMasterDataService
         CancellationToken cancellationToken)
     {
         var normalizedCategory = NormalizeCategory(category);
-        var query = Query(normalizedCategory);
+        var query = await VisibleQueryAsync(normalizedCategory, cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -62,13 +63,13 @@ public sealed class HrMasterDataService : IHrMasterDataService
         bool includeInactive,
         CancellationToken cancellationToken)
     {
-        var query = Query(NormalizeCategory(category));
+        var query = await VisibleQueryAsync(NormalizeCategory(category), cancellationToken);
         if (!includeInactive) query = query.Where(item => item.IsActive);
 
         var isArabic = ApiTextLocalizer.IsArabic;
         return await query
             .OrderBy(item => isArabic ? item.NameArabic ?? item.NameEnglish : item.NameEnglish)
-            .Select(item => new MasterDataLookupDto(item.Id, item.Code, item.NameEnglish, item.NameArabic, item.IsActive))
+            .Select(item => new MasterDataLookupDto(item.Id, item.Code, item.NameEnglish, item.NameArabic, item.IsActive, item.DepartmentId))
             .ToArrayAsync(cancellationToken);
     }
 
@@ -160,6 +161,90 @@ public sealed class HrMasterDataService : IHrMasterDataService
         return await UpdateAsync(normalizedCategory, id, request, cancellationToken);
     }
 
+    public async Task DeleteAsync(string category, Guid id, CancellationToken cancellationToken)
+    {
+        var normalizedCategory = NormalizeCategory(category);
+        var current = await GetByIdAsync(normalizedCategory, id, cancellationToken);
+        if (await IsInUseAsync(normalizedCategory, id, cancellationToken))
+            throw new HrConflictException("This master-data record is in use and cannot be deleted. Deactivate it instead.");
+
+        var entity = await FindTrackedAsync(normalizedCategory, id, cancellationToken);
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        _dbContext.Remove(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _audit.WriteAsync(new AuditWriteRequest(
+            "MasterDataDeleted",
+            GetEntityType(normalizedCategory),
+            id.ToString(),
+            null,
+            current,
+            null,
+            $"Deleted {current.NameEnglish} from {normalizedCategory}."), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task<bool> IsInUseAsync(string category, Guid id, CancellationToken cancellationToken) => category switch
+    {
+        HrMasterDataCategories.Departments =>
+            await _dbContext.Employees.AnyAsync(item => item.DepartmentId == id, cancellationToken)
+            || await _dbContext.Users.AnyAsync(item => item.DepartmentId == id, cancellationToken)
+            || await _dbContext.Positions.AnyAsync(item => item.DepartmentId == id, cancellationToken),
+        HrMasterDataCategories.Positions =>
+            await _dbContext.Employees.AnyAsync(item => item.PositionId == id, cancellationToken),
+        HrMasterDataCategories.Branches =>
+            await _dbContext.Employees.AnyAsync(item => item.BranchId == id, cancellationToken),
+        HrMasterDataCategories.EmploymentTypes =>
+            await _dbContext.Employees.AnyAsync(item => item.EmploymentTypeId == id, cancellationToken),
+        HrMasterDataCategories.ContractTypes =>
+            await _dbContext.EmployeeContracts.AnyAsync(item => item.ContractTypeId == id, cancellationToken),
+        HrMasterDataCategories.LeaveTypes =>
+            await _dbContext.LeaveRequests.AnyAsync(item => item.LeaveTypeId == id, cancellationToken)
+            || await _dbContext.EmployeeLeaveEntitlements.AnyAsync(item => item.LeaveTypeId == id, cancellationToken),
+        HrMasterDataCategories.DocumentTypes =>
+            await _dbContext.EmployeeDocuments.AnyAsync(item => item.DocumentTypeId == id, cancellationToken),
+        HrMasterDataCategories.DelegationTypes =>
+            await _dbContext.EmployeeDelegations.AnyAsync(item => item.DelegationTypeId == id, cancellationToken),
+        _ => true
+    };
+
+    private async Task<IQueryable<MasterRow>> VisibleQueryAsync(string category, CancellationToken cancellationToken)
+    {
+        var query = Query(category);
+        if (category != HrMasterDataCategories.Departments) return query;
+
+        var hiddenIds = await HiddenDepartmentIdsAsync(cancellationToken);
+        return hiddenIds.Length == 0 ? query : query.Where(item => !hiddenIds.Contains(item.Id));
+    }
+
+    private async Task<Guid[]> HiddenDepartmentIdsAsync(CancellationToken cancellationToken)
+    {
+        var organizations = await LoadOrganizationLookupsAsync(cancellationToken);
+        var departments = await _dbContext.Departments.AsNoTracking()
+            .Select(department => new { department.Id, department.Code, Name = department.Name, department.NameArabic })
+            .ToListAsync(cancellationToken);
+        return departments
+            .Where(department => HrDepartmentCatalog.IsClientOrLegacyDepartment(
+                department.Code, department.Name, department.NameArabic, organizations))
+            .Select(department => department.Id)
+            .ToArray();
+    }
+
+    private async Task EnsureInternalDepartmentAsync(SaveMasterDataRequest request, CancellationToken cancellationToken)
+    {
+        var organizations = await LoadOrganizationLookupsAsync(cancellationToken);
+        if (HrDepartmentCatalog.IsClientOrLegacyDepartment(request.Code, request.NameEnglish, request.NameArabic, organizations))
+            throw new HrValidationException("Banks and companies are not HR departments.");
+    }
+
+    private async Task<IReadOnlyList<(string Code, string NameEnglish, string NameArabic)>> LoadOrganizationLookupsAsync(
+        CancellationToken cancellationToken)
+    {
+        var rows = await _dbContext.CollectionClientOrganizations.AsNoTracking()
+            .Select(organization => new { organization.Code, organization.NameEnglish, organization.NameArabic })
+            .ToListAsync(cancellationToken);
+        return rows.Select(row => (row.Code, row.NameEnglish, row.NameArabic)).ToList();
+    }
+
     private IQueryable<MasterRow> Query(string category)
     {
         var isArabic = ApiTextLocalizer.IsArabic;
@@ -240,6 +325,9 @@ public sealed class HrMasterDataService : IHrMasterDataService
         {
             throw new HrValidationException("Default annual entitlement is required for leave types.");
         }
+
+        if (category == HrMasterDataCategories.Departments)
+            await EnsureInternalDepartmentAsync(request, cancellationToken);
     }
 
     private static object CreateEntity(string category, SaveMasterDataRequest request, DateTimeOffset now) => category switch

@@ -54,6 +54,9 @@ public sealed class HrAttendanceService : IHrAttendanceService
         }
         if (filter.EmployeeId.HasValue) query = query.Where(item => item.EmployeeId == filter.EmployeeId.Value);
         if (filter.DepartmentId.HasValue) query = query.Where(item => item.Employee.DepartmentId == filter.DepartmentId.Value);
+        if (filter.OrganizationId.HasValue)
+            query = query.Where(item => _dbContext.EmployeeOrganizationAssignments.Any(assignment =>
+                assignment.EmployeeId == item.EmployeeId && assignment.OrganizationId == filter.OrganizationId.Value));
         if (filter.BranchId.HasValue) query = query.Where(item => item.Employee.BranchId == filter.BranchId.Value);
         if (filter.DateFrom.HasValue) query = query.Where(item => item.AttendanceDate >= filter.DateFrom.Value);
         if (filter.DateTo.HasValue) query = query.Where(item => item.AttendanceDate <= filter.DateTo.Value);

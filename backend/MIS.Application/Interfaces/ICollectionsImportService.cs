@@ -10,4 +10,5 @@ public interface ICollectionsImportService
     Task<CollectionImportPreviewDto> GetPreviewAsync(Guid batchId, int page, int pageSize, bool? valid, CancellationToken cancellationToken);
     Task<CollectionImportBatchDto> ConfirmAsync(Guid batchId, ConfirmCollectionImportRequest request, CancellationToken cancellationToken);
     Task<byte[]> ExportErrorsAsync(Guid batchId, CancellationToken cancellationToken);
+    Task DeleteAsync(Guid batchId, CancellationToken cancellationToken);
 }

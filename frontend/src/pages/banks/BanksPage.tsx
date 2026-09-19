@@ -1,6 +1,5 @@
 import { Building2, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -9,21 +8,12 @@ import { BankDirectoryCard } from '../../features/collections/components/BankDir
 import { useCollectionsLocalization } from '../../features/collections/localization/collectionsTranslations';
 import { collectionsService } from '../../features/collections/services/collectionsService';
 import type { BankDirectoryItem } from '../../features/collections/types/collections';
-import {
-  classificationPath,
-  displayPrimary,
-  organizationRoot,
-  parseClassification,
-  type OrganizationKind,
-} from '../../features/collections/organizationClassification';
-import { OrganizationClassificationBreadcrumb, OrganizationClassificationPrimaryPage } from './OrganizationClassificationPages';
+import { organizationRoot, type OrganizationKind } from '../../features/collections/organizationClassification';
 
 export function OrganizationDirectoryPage({ kind }: { kind: OrganizationKind }) {
   const { ct } = useCollectionsLocalization();
-  const { primary, secondary } = useParams();
-  const classification = parseClassification(primary, secondary);
-  const root = organizationRoot(kind);
   const installment = kind === 'installment';
+  const root = organizationRoot(kind);
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [organizations, setOrganizations] = useState<BankDirectoryItem[]>();
@@ -35,27 +25,20 @@ export function OrganizationDirectoryPage({ kind }: { kind: OrganizationKind }) 
   }, [search]);
 
   useEffect(() => {
-    if (!classification) return;
     let active = true;
     setError(false);
     const request = installment ? collectionsService.installmentCompanies(query) : collectionsService.banks(query);
     void request.then((value) => { if (active) setOrganizations(value); }).catch(() => { if (active) setError(true); });
     return () => { active = false; };
-  }, [classification, installment, query]);
-
-  if (!classification) return <Navigate to={root} replace />;
+  }, [installment, query]);
 
   const title = installment ? ct('installmentCompanies') : ct('banks');
   const searchLabel = installment ? ct('searchInstallmentCompanies') : ct('searchBanks');
-  const contextBase = classificationPath(kind, classification.primary, classification.secondary);
 
   return (
     <div className="mx-auto max-w-[1480px]">
-      <Link className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-mis-primary hover:text-mis-deep" to={classificationPath(kind, classification.primary)}>
-        ← {displayPrimary(classification.primary)}
-      </Link>
       <PageHeader
-        eyebrow={<OrganizationClassificationBreadcrumb kind={kind} primary={classification.primary} secondary={classification.secondary} />}
+        eyebrow={ct('collections')}
         title={title}
         description={installment ? ct('installmentCompaniesDescription') : ct('banksDescription')}
       />
@@ -75,7 +58,7 @@ export function OrganizationDirectoryPage({ kind }: { kind: OrganizationKind }) 
           {organizations.map((item) => (
             <BankDirectoryCard
               bank={item}
-              basePath={contextBase}
+              basePath={root}
               key={item.id}
               openLabel={installment ? ct('openInstallmentCompany') : undefined}
             />
@@ -87,5 +70,5 @@ export function OrganizationDirectoryPage({ kind }: { kind: OrganizationKind }) 
 }
 
 export function BanksPage() {
-  return <OrganizationClassificationPrimaryPage kind="bank" />;
+  return <OrganizationDirectoryPage kind="bank" />;
 }

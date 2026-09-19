@@ -105,6 +105,7 @@ export interface PersonnelFileQuery {
   search: string;
   employeeId: string;
   departmentId: string;
+  organizationId: string;
   positionId: string;
   gender: string;
   completionStatus: PersonnelFileStatus;

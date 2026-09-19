@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 0 440 420" role="img" aria-labelledby="title desc">
   <title id="title">MIS Collection Firm</title>
   <desc id="desc">MIS Collection Firm logo with upward financial growth mark.</desc>
-  <rect x="-60" width="440" height="420" fill="#ffffff"/>
+  <rect x="-60" width="440" height="420" fill="none"/>
   <g transform="translate(36 8)">
     <path d="M24 170 C68 264 121 312 179 282 C226 258 265 176 296 0 C232 143 175 216 107 235 C67 246 38 222 24 170Z" fill="#074D73"/>
     <rect x="73" y="132" width="36" height="116" rx="1" fill="#7DB8DB"/>

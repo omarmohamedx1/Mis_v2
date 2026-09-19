@@ -12,4 +12,5 @@ public static class SystemRoleNames
     public const string CollectionsClientViewer = "CollectionsClientViewer";
     public const string CollectionsAuditor = "CollectionsAuditor";
     public const string DataEntry = "DataEntry";
+    public const string LegalOfficer = "LegalOfficer";
 }

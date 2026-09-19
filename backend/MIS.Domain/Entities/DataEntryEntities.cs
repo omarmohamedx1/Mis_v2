@@ -69,6 +69,7 @@ public sealed class DataEntryBatch
     public DateTimeOffset UpdatedAt { get; private set; }
     public ICollection<DataEntryRow> Rows { get; private set; } = new List<DataEntryRow>();
     public ICollection<DataEntryNotification> Notifications { get; private set; } = new List<DataEntryNotification>();
+    public ICollection<DataEntryDocument> Documents { get; private set; } = new List<DataEntryDocument>();
 
     public void SetCounts(int total, int valid, int invalid, DateTimeOffset now)
     {
@@ -253,5 +254,74 @@ public sealed class DataEntryNotification
         if (IsRead) return;
         IsRead = true;
         ReadAt = now;
+    }
+}
+
+public sealed class DataEntryDocument
+{
+    private DataEntryDocument() { }
+
+    public DataEntryDocument(
+        Guid customerId,
+        Guid? batchId,
+        Guid? caseId,
+        string originalFileName,
+        string contentType,
+        long fileSize,
+        string sha256Hash,
+        string storageKey,
+        Guid uploadedByUserId,
+        DateTimeOffset uploadedAt,
+        string? note = null)
+    {
+        if (customerId == Guid.Empty) throw new ArgumentException("Customer is required.", nameof(customerId));
+        if (uploadedByUserId == Guid.Empty) throw new ArgumentException("Uploader is required.", nameof(uploadedByUserId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(originalFileName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sha256Hash);
+        ArgumentException.ThrowIfNullOrWhiteSpace(storageKey);
+        if (fileSize <= 0) throw new ArgumentOutOfRangeException(nameof(fileSize));
+
+        Id = Guid.NewGuid();
+        CustomerId = customerId;
+        BatchId = batchId;
+        CaseId = caseId;
+        OriginalFileName = originalFileName.Trim();
+        ContentType = contentType.Trim();
+        FileSize = fileSize;
+        Sha256Hash = sha256Hash.Trim();
+        StorageKey = storageKey.Trim();
+        Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        UploadedByUserId = uploadedByUserId;
+        UploadedAt = uploadedAt;
+    }
+
+    public Guid Id { get; private set; }
+    public Guid CustomerId { get; private set; }
+    public CollectionCustomer Customer { get; private set; } = null!;
+    public Guid? BatchId { get; private set; }
+    public DataEntryBatch? Batch { get; private set; }
+    public Guid? CaseId { get; private set; }
+    public CollectionCase? Case { get; private set; }
+    public string OriginalFileName { get; private set; } = string.Empty;
+    public string ContentType { get; private set; } = string.Empty;
+    public long FileSize { get; private set; }
+    public string Sha256Hash { get; private set; } = string.Empty;
+    public string StorageKey { get; private set; } = string.Empty;
+    public string? Note { get; private set; }
+    public Guid UploadedByUserId { get; private set; }
+    public User UploadedByUser { get; private set; } = null!;
+    public DateTimeOffset UploadedAt { get; private set; }
+
+    public void AttachBatch(Guid batchId)
+    {
+        if (batchId == Guid.Empty) throw new ArgumentException("Batch is required.", nameof(batchId));
+        BatchId ??= batchId;
+    }
+
+    public void AttachCase(Guid caseId)
+    {
+        if (caseId == Guid.Empty) throw new ArgumentException("Case is required.", nameof(caseId));
+        CaseId ??= caseId;
     }
 }

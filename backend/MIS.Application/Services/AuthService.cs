@@ -34,9 +34,14 @@ public sealed class AuthService : IAuthService
 
         var user = await _userRepository.FindByLoginIdentifierAsync(usernameOrEmail, cancellationToken);
 
-        if (user is null || !user.IsActive)
+        if (user is null)
         {
             return AuthResult.Failure(InvalidCredentialsMessage);
+        }
+
+        if (!user.IsActive)
+        {
+            return AuthResult.Failure("This account is inactive.");
         }
 
         var passwordStatus = _passwordHashService.VerifyPassword(user, request.Password);
@@ -75,7 +80,8 @@ public sealed class AuthService : IAuthService
             user.Department.Code,
             primaryRole,
             roles,
-            permissions);
+            permissions,
+            user.MustChangePassword);
 
         return AuthResult.Success(new AuthResponse(accessToken, authenticatedUser));
     }
@@ -105,6 +111,9 @@ public sealed class AuthService : IAuthService
         if (roles.Contains(SystemRoleNames.DataEntry, StringComparer.OrdinalIgnoreCase)
             || string.Equals(user.Department.Code, DepartmentCodes.DataEntry, StringComparison.OrdinalIgnoreCase))
             result.UnionWith([SystemPermissionCodes.DataEntryAccess, SystemPermissionCodes.DataEntryManage]);
+        if (roles.Contains(SystemRoleNames.LegalOfficer, StringComparer.OrdinalIgnoreCase)
+            || string.Equals(user.Department.Code, DepartmentCodes.Legal, StringComparison.OrdinalIgnoreCase))
+            result.UnionWith([SystemPermissionCodes.LegalAccess, SystemPermissionCodes.LegalCaseManage]);
         if (string.Equals(user.Department.Code, DepartmentCodes.Accounting, StringComparison.OrdinalIgnoreCase))
             result.UnionWith([
                 SystemPermissionCodes.AccountingAccess,

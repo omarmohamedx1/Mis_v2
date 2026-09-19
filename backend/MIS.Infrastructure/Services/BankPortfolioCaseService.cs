@@ -41,20 +41,36 @@ public sealed class BankPortfolioCaseService(ApplicationDbContext db, ICurrentUs
     public async Task<BankPortfolioCaseDetailsDto> GetCaseAsync(Guid bankId, Guid caseId, CancellationToken token)
     {
         await RequireBankAsync(bankId, token); var ar = ApiTextLocalizer.IsArabic;
-        return await ScopedCases(bankId).AsNoTracking().Where(x => x.Id == caseId).Select(x => new BankPortfolioCaseDetailsDto(
-            x.Id, x.CaseNumber, ar ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!,
+        var access = Access();
+        var item = await ScopedCases(bankId).AsNoTracking().Where(x => x.Id == caseId).Select(x => new
+        {
+            x.Id, x.CaseNumber,
+            CustomerName = ar ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!,
             x.Customer.CustomerCode, x.Customer.PrimaryPhone, x.Customer.AlternatePhone, x.Customer.NationalId,
-            ar ? x.Customer.AddressArabic ?? x.Customer.AddressEnglish : x.Customer.AddressEnglish ?? x.Customer.AddressArabic,
-            ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish,
-            ar ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish, x.AccountReference, x.ContractReference, x.ProductType,
-            x.OriginalAmount, x.OutstandingBalance,
-            db.CollectionPayments.Where(p => p.CaseId == x.Id && p.Status == CollectionsValues.PaymentStatuses.Approved).Sum(p => (decimal?)p.Amount) ?? 0,
-            x.OutstandingBalance, x.Status, x.AssignedCollectorId, x.AssignedCollector == null ? null : x.AssignedCollector.FullName,
-            db.CollectionActivities.Where(a => a.CaseId == x.Id).Max(a => (DateTimeOffset?)a.CreatedAt), x.NextFollowUpAt,
-            db.CollectionActivities.Where(a => a.CaseId == x.Id).OrderByDescending(a => a.CreatedAt).Select(a => a.Notes).FirstOrDefault(),
-            x.SourceImportId, x.SourceImport == null ? null : x.SourceImport.OriginalFileName,
-            x.SourceImport == null ? null : x.SourceImport.UploadedAt, x.CreatedAt, x.UpdatedAt, Access())).SingleOrDefaultAsync(token)
+            Address = ar ? x.Customer.AddressArabic ?? x.Customer.AddressEnglish : x.Customer.AddressEnglish ?? x.Customer.AddressArabic,
+            x.Customer.SecondaryAddress,
+            BankName = ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish,
+            PortfolioName = ar ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish,
+            x.AccountReference, x.ContractReference, x.ProductType, x.OriginalAmount, x.OutstandingBalance,
+            PaidAmount = db.CollectionPayments.Where(p => p.CaseId == x.Id && p.Status == CollectionsValues.PaymentStatuses.Approved).Sum(p => (decimal?)p.Amount) ?? 0,
+            x.Status, x.AssignedCollectorId,
+            AssignedCollectorName = x.AssignedCollector == null ? null : x.AssignedCollector.FullName,
+            LastActivityAt = db.CollectionActivities.Where(a => a.CaseId == x.Id).Max(a => (DateTimeOffset?)a.CreatedAt),
+            x.NextFollowUpAt,
+            LatestNote = db.CollectionActivities.Where(a => a.CaseId == x.Id).OrderByDescending(a => a.CreatedAt).Select(a => a.Notes).FirstOrDefault(),
+            x.SourceImportId,
+            ImportedFrom = x.SourceImport == null ? null : x.SourceImport.OriginalFileName,
+            ImportDate = x.SourceImport == null ? (DateTimeOffset?)null : x.SourceImport.UploadedAt,
+            x.CreatedAt, x.UpdatedAt
+        }).SingleOrDefaultAsync(token)
             ?? throw new HrNotFoundException("Portfolio case was not found for this bank.");
+        var (address1, address2) = CollectionFileRowMapper.SeparateAddresses(item.Address, item.SecondaryAddress);
+        return new BankPortfolioCaseDetailsDto(
+            item.Id, item.CaseNumber, item.CustomerName, item.CustomerCode, item.PrimaryPhone, item.AlternatePhone, item.NationalId,
+            address1, address2, item.BankName, item.PortfolioName, item.AccountReference, item.ContractReference, item.ProductType,
+            item.OriginalAmount, item.OutstandingBalance, item.PaidAmount, item.OutstandingBalance, item.Status, item.AssignedCollectorId,
+            item.AssignedCollectorName, item.LastActivityAt, item.NextFollowUpAt, item.LatestNote, item.SourceImportId, item.ImportedFrom,
+            item.ImportDate, item.CreatedAt, item.UpdatedAt, access);
     }
 
     public async Task<BankPortfolioCaseDetailsDto> UpdateAsync(Guid bankId, Guid caseId, UpdateBankPortfolioCaseRequest request, CancellationToken token)
@@ -65,8 +81,15 @@ public sealed class BankPortfolioCaseService(ApplicationDbContext db, ICurrentUs
         var status = request.Status.Trim().ToUpperInvariant(); if (!Statuses.Contains(status)) throw new HrValidationException("Case status is invalid.");
         ValidateText(request.Mobile, 40, "Mobile"); ValidateText(request.AlternativeMobile, 40, "Alternative mobile"); ValidateText(request.Address, 500, "Address");
         var before = new { item.Status, item.NextFollowUpAt, item.Customer.PrimaryPhone, item.Customer.AlternatePhone, item.Customer.AddressArabic, item.Customer.AddressEnglish };
+        var previousStatus = item.Status;
         item.Customer.UpdatePortfolioContact(request.Mobile, request.AlternativeMobile, request.Address, ApiTextLocalizer.IsArabic);
         item.UpdatePortfolioCase(status, request.NextFollowUpAt, DateTimeOffset.UtcNow);
+        if (status == CollectionsValues.CaseStatuses.Legal && previousStatus != CollectionsValues.CaseStatuses.Legal)
+        {
+            db.CollectionActivities.Add(new CollectionActivity(item.Id, CollectionsValues.ActivityTypes.Legal, "REFERRED",
+                "Case referred to legal affairs.", "LEGAL", user.UserId, DateTimeOffset.UtcNow, null));
+            AddAudit("PortfolioCaseReferredToLegal", item.Id, new { Status = previousStatus }, new { Status = status });
+        }
         AddAudit("PortfolioCaseUpdated", item.Id, before, request); await db.SaveChangesAsync(token);
         return await GetCaseAsync(bankId, caseId, token);
     }
@@ -127,11 +150,7 @@ public sealed class BankPortfolioCaseService(ApplicationDbContext db, ICurrentUs
             (Global || db.CollectionUserAccess.Any(a => a.UserId == user.UserId && a.OrganizationId == bankId) || ScopedCases(bankId).Any()), token);
         if (!accessible) throw new HrNotFoundException("Bank was not found or is outside your authorized scope.");
     }
-    private IQueryable<User> AuthorizedCollectorUsers(Guid bankId)
-    {
-        var collectors = db.Users.Where(x => x.IsActive && x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.CollectionsCollector));
-        return Global ? collectors : collectors.Where(x => db.CollectionTeamMembers.Any(m => m.UserId == x.Id && m.IsActive && m.Team.IsActive && m.Team.SupervisorId == user.UserId));
-    }
+    private IQueryable<User> AuthorizedCollectorUsers(Guid bankId) => db.Users.EligibleCollectors().ForSupervisorScope(db, user.UserId, Global);
     private async Task<(Guid[] Ids, User Collector)> ValidateAssignmentAsync(Guid bankId, AssignBankPortfolioCasesRequest request, CancellationToken token)
     {
         if (!Manager) throw new HrForbiddenException("You do not have permission to assign portfolio cases."); await RequireBankAsync(bankId, token);

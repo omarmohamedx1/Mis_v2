@@ -16,7 +16,6 @@ const today = () => new Date().toISOString().slice(0, 10);
 export function FinanceCollectionsPage() {
   const f = useFinanceText();
   const [params, setParams] = useSearchParams();
-  const page = Number(params.get('page') ?? 1);
   const status = params.get('status') ?? '';
   const channel = params.get('channel') ?? '';
   const [data, setData] = useState<FinancePagedResult<CollectionFinanceListItem>>();
@@ -27,9 +26,9 @@ export function FinanceCollectionsPage() {
 
   const load = useCallback(() => {
     setError('');
-    financeService.collections(page, status, channel).then(setData).catch((reason) =>
+    financeService.collections(status, channel).then(setData).catch((reason) =>
       setError(getApiErrorMessage(reason, loadErrorText)));
-  }, [page, status, channel, loadErrorText]);
+  }, [status, channel, loadErrorText]);
 
   useEffect(load, [load]);
 
@@ -53,7 +52,7 @@ export function FinanceCollectionsPage() {
 
   return <div>
     <header>
-      <p className="text-xs font-bold uppercase tracking-[.18em] text-mis-primary">COLLECTION FINANCE</p>
+      <p className="text-xs font-bold tracking-[.18em] text-mis-primary">{f.text('مالية التحصيل', 'Collection finance')}</p>
       <h1 className="mt-2 text-3xl font-bold text-mis-navy">{f.text('التحصيلات المالية', 'Financial Collections')}</h1>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{f.text(
         'متابعة كل إيصال مع توزيعاته، موقع الأموال، قيد الإثبات، قيد التسوية، وأي عكس مرتبط به.',
@@ -78,11 +77,11 @@ export function FinanceCollectionsPage() {
     {error ? <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
     <div className="mt-5 overflow-hidden rounded-2xl border border-mis-border bg-white shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1080px] text-sm">
+        <table className="w-full min-w-[48rem] text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>
             <th className="px-5 py-4 text-start">{f.text('مرجع الإيصال', 'Receipt reference')}</th>
             <th className="px-5 py-4 text-start">{f.text('التاريخ', 'Date')}</th>
-            <th className="px-5 py-4 text-start">{f.text('العميل', 'Client')}</th>
+            <th className="px-5 py-4 text-start">{f.text('البنك / الشركة', 'Bank / company')}</th>
             <th className="px-5 py-4 text-start">{f.text('القناة', 'Channel')}</th>
             <th className="px-5 py-4 text-start">{f.text('المحصل', 'Collector')}</th>
             <th className="px-5 py-4 text-end">{f.text('الإجمالي', 'Gross amount')}</th>
@@ -154,7 +153,7 @@ function CollectionDetailsDialog({ value, close, changed }: { value: CollectionF
       <section className="p-6" aria-labelledby="allocations-title"><h3 id="allocations-title" className="font-bold text-mis-navy">{f.text('توزيعات الإيصال', 'Receipt allocations')}</h3>
         <div className="mt-3 overflow-hidden rounded-xl border border-mis-border"><table className="w-full min-w-[650px] text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-3 text-start">#</th><th className="px-4 py-3 text-start">{f.text('رقم الحالة', 'Case no.')}</th><th className="px-4 py-3 text-end">{f.text('المبلغ الموزع', 'Allocated')}</th><th className="px-4 py-3 text-end">{f.text('الرصيد قبل التحصيل', 'Outstanding before')}</th><th className="px-4 py-3 text-end">{f.text('المتأخر قبل التحصيل', 'Overdue before')}</th></tr></thead><tbody className="divide-y divide-mis-border">{value.allocations.map((line) => <tr key={line.id}><td className="px-4 py-3">{line.lineNumber}</td><td className="px-4 py-3 font-mono text-xs font-bold text-mis-primary">{line.caseNumber}</td><td className="px-4 py-3 text-end" data-bidi="ltr">{f.money(line.amount, value.currencyCode)}</td><td className="px-4 py-3 text-end" data-bidi="ltr">{f.money(line.outstandingBefore, value.currencyCode)}</td><td className="px-4 py-3 text-end" data-bidi="ltr">{f.money(line.overdueBefore, value.currencyCode)}</td></tr>)}</tbody></table></div>
       </section>
-      {mode ? <form onSubmit={submit} className="mx-6 mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"><h3 className="font-bold text-amber-900">{mode === 'clear' ? f.text('تأكيد تسوية التحصيل', 'Confirm collection clearing') : f.text('تأكيد عكس التحصيل', 'Confirm collection reversal')}</h3><p className="mt-1 text-xs leading-5 text-amber-800">{mode === 'clear' ? f.text('سيتم نقل الأموال إلى البنك وإعادة تصنيف التزام العميل في قيد واحد متوازن.', 'This posts one balanced journal moving cash to bank and reclassifying the client liability.') : f.text('سيتم عكس جميع القيود المرتبطة وإعادة رصيد الحالة من الـsnapshot المحفوظ.', 'All linked journals will be reversed and the case balance restored from its saved snapshot.')}</p><div className="mt-4 grid gap-4 sm:grid-cols-2">{mode === 'clear' ? <label><span className="mb-2 block text-sm font-semibold">{f.text('تاريخ التسوية', 'Clearing date')}</span><DateControl required  className="field" value={date} onChange={(event) => setDate(event.target.value)} /></label> : null}<label className={mode === 'reverse' ? 'sm:col-span-2' : ''}><span className="mb-2 block text-sm font-semibold">{mode === 'clear' ? f.text('مرجع البنك / التوريد', 'Bank / handover reference') : f.text('سبب العكس', 'Reversal reason')}</span><input required maxLength={200} className="field" value={reason} onChange={(event) => setReason(event.target.value)} /></label></div>{error ? <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p> : null}<div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setMode(undefined)} className="rounded-xl border border-mis-border bg-white px-4 py-2 text-sm font-bold">{f.text('إلغاء', 'Cancel')}</button><button disabled={busy} className={`rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-50 ${mode === 'reverse' ? 'bg-rose-700' : 'bg-mis-primary'}`}>{busy ? f.text('جارٍ التنفيذ…', 'Processing…') : f.text('تأكيد التنفيذ', 'Confirm action')}</button></div></form> : null}
+      {mode ? <form onSubmit={submit} className="mx-6 mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"><h3 className="font-bold text-amber-900">{mode === 'clear' ? f.text('تأكيد تسوية التحصيل', 'Confirm collection clearing') : f.text('تأكيد عكس التحصيل', 'Confirm collection reversal')}</h3><p className="mt-1 text-xs leading-5 text-amber-800">{mode === 'clear' ? f.text('سيتم نقل الأموال إلى البنك وإعادة تصنيف التزام البنك / الشركة في قيد واحد متوازن.', 'This posts one balanced journal moving cash to bank and reclassifying the bank / company liability.') : f.text('سيتم عكس جميع القيود المرتبطة وإعادة رصيد الحالة من الـsnapshot المحفوظ.', 'All linked journals will be reversed and the case balance restored from its saved snapshot.')}</p><div className="mt-4 grid gap-4 sm:grid-cols-2">{mode === 'clear' ? <label><span className="mb-2 block text-sm font-semibold">{f.text('تاريخ التسوية', 'Clearing date')}</span><DateControl required  className="field" value={date} onChange={(event) => setDate(event.target.value)} /></label> : null}<label className={mode === 'reverse' ? 'sm:col-span-2' : ''}><span className="mb-2 block text-sm font-semibold">{mode === 'clear' ? f.text('مرجع البنك / التوريد', 'Bank / handover reference') : f.text('سبب العكس', 'Reversal reason')}</span><input required maxLength={200} className="field" value={reason} onChange={(event) => setReason(event.target.value)} /></label></div>{error ? <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p> : null}<div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setMode(undefined)} className="rounded-xl border border-mis-border bg-white px-4 py-2 text-sm font-bold">{f.text('إلغاء', 'Cancel')}</button><button disabled={busy} className={`rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-50 ${mode === 'reverse' ? 'bg-rose-700' : 'bg-mis-primary'}`}>{busy ? f.text('جارٍ التنفيذ…', 'Processing…') : f.text('تأكيد التنفيذ', 'Confirm action')}</button></div></form> : null}
       <footer className="sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-mis-border bg-white px-6 py-4">{value.status === 'POSTED' ? <button type="button" onClick={() => setMode('clear')} className="inline-flex items-center gap-2 rounded-xl bg-mis-primary px-5 py-2.5 text-sm font-bold text-white"><ArrowRightLeft className="h-4 w-4" />{f.text('تسوية / توريد', 'Clear / hand over')}</button> : null}{value.status !== 'REVERSED' ? <button type="button" onClick={() => setMode('reverse')} className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-5 py-2.5 text-sm font-bold text-rose-700"><RotateCcw className="h-4 w-4" />{f.text('عكس التحصيل', 'Reverse collection')}</button> : null}</footer>
     </div>
   </div>;

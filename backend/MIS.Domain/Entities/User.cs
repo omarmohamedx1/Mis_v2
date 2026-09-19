@@ -37,6 +37,12 @@ public sealed class User
         EmployeeId = employeeId; UpdatedAt = now;
     }
 
+    public void UnlinkEmployee(DateTimeOffset now)
+    {
+        EmployeeId = null;
+        UpdatedAt = now;
+    }
+
     public string Username { get; private set; } = string.Empty;
 
     public string LoginCode { get; private set; } = string.Empty;
@@ -61,6 +67,8 @@ public sealed class User
 
     public DateTimeOffset? LastLoginAt { get; private set; }
 
+    public bool MustChangePassword { get; private set; }
+
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles.AsReadOnly();
 
     public IReadOnlyCollection<UserAccessGrant> AccessGrants => _accessGrants.AsReadOnly();
@@ -70,6 +78,18 @@ public sealed class User
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
 
         PasswordHash = passwordHash;
+        UpdatedAt = updatedAt;
+    }
+
+    public void RequirePasswordChange(DateTimeOffset updatedAt)
+    {
+        MustChangePassword = true;
+        UpdatedAt = updatedAt;
+    }
+
+    public void ClearMustChangePassword(DateTimeOffset updatedAt)
+    {
+        MustChangePassword = false;
         UpdatedAt = updatedAt;
     }
 

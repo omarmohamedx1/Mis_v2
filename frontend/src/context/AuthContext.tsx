@@ -7,7 +7,7 @@ interface AuthContextValue {
   accessToken: string | null;
   user: AuthenticatedUser | null;
   isAuthenticated: boolean;
-  login: (credentials: LoginRequest, rememberMe: boolean) => Promise<void>;
+  login: (credentials: LoginRequest, rememberMe: boolean) => Promise<AuthenticatedUser>;
   logout: () => void;
   updateUser: (user: AuthenticatedUser) => void;
 }
@@ -25,6 +25,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const response = await authService.login(credentials);
     persistAuth(response, rememberMe);
     setAuth(response);
+    return response.user;
   }, []);
 
   const logout = useCallback(() => {

@@ -1,5 +1,5 @@
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
-import { Database, Pencil, Plus, Power, PowerOff, Search } from 'lucide-react';
+import { Database, Pencil, Plus, Power, PowerOff, Search, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
@@ -190,14 +190,16 @@ export function HrMasterPage() {
   const [openingEditId, setOpeningEditId] = useState('');
   const [activationTarget, setActivationTarget] = useState<MasterDataItem | null>(null);
   const [changingActive, setChangingActive] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MasterDataItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     hrMasterDataService.getCategories().then((result) => {
       const visibleCategories = result.filter((item) => item !== 'branches');
       if (visibleCategories.length) setCategories(visibleCategories);
-    }).catch(() => undefined);
-    hrMasterDataService.getLookup('departments', true).then(setDepartments).catch(() => undefined);
-  }, []);
+    }).catch((reason) => toast.error(getApiErrorMessage(reason, t('loadMasterDataError'))));
+    hrMasterDataService.getLookup('departments', true).then(setDepartments).catch((reason) => toast.error(getApiErrorMessage(reason, t('loadDepartmentsError'))));
+  }, [t, toast]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -261,10 +263,25 @@ export function HrMasterPage() {
     }
   }
 
+  async function deleteItem() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await hrMasterDataService.delete(category, deleteTarget.id);
+      toast.success(t('masterDeletedSuccess'));
+      setDeleteTarget(null);
+      await load();
+    } catch (requestError) {
+      toast.error(getApiErrorMessage(requestError, t('deleteMasterError')));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const hasExtraColumn = category === 'positions' || category === 'branches' || category === 'leave-types' || category === 'document-types';
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div>
       <PageHeader
         actions={<Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setFormItem(null)} size="md">{t('addMasterRecord')}</Button>}
         description={t('masterSubtitle')}
@@ -274,7 +291,7 @@ export function HrMasterPage() {
 
       <section className="overflow-hidden rounded-2xl border border-mis-border bg-white shadow-sm">
         <Tabs ariaLabel={t('masterCategories')} items={tabs} onChange={selectCategory} value={category} />
-        <div className="grid gap-3 border-b border-mis-border p-4 md:grid-cols-[minmax(240px,1fr)_200px]">
+        <div className="module-filter-grid border-b border-mis-border p-4">
           <label className="relative">
             <span className="sr-only">{t('searchMasterData')}</span>
             <Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" aria-hidden="true" />
@@ -322,6 +339,7 @@ export function HrMasterPage() {
                         <div className="flex justify-end gap-1">
                           <Button disabled={openingEditId === item.id} fullWidth={false} leftIcon={<Pencil className="h-4 w-4" aria-hidden="true" />} onClick={() => void editItem(item)} size="sm" variant="ghost">{t('edit')}</Button>
                           <Button className={item.isActive ? 'text-red-600 hover:bg-red-50 hover:text-red-700' : ''} fullWidth={false} leftIcon={item.isActive ? <PowerOff className="h-4 w-4" aria-hidden="true" /> : <Power className="h-4 w-4" aria-hidden="true" />} onClick={() => setActivationTarget(item)} size="sm" variant="ghost">{t(item.isActive ? 'deactivate' : 'activate')}</Button>
+                          <Button className="text-red-600 hover:bg-red-50 hover:text-red-700" fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />} onClick={() => setDeleteTarget(item)} size="sm" variant="ghost">{t('delete')}</Button>
                         </div>
                       </td>
                     </tr>
@@ -352,6 +370,17 @@ export function HrMasterPage() {
         onConfirm={() => void changeActive()}
         open={Boolean(activationTarget)}
         title={t(activationTarget?.isActive ? 'deactivateRecord' : 'activateRecord')}
+      />
+      <ConfirmDialog
+        cancelLabel={t('cancel')}
+        confirmLabel={t('deleteMasterRecord')}
+        confirmVariant="danger"
+        isConfirming={deleting}
+        message={deleteTarget ? t('deleteMasterConfirm', { name: displayName(deleteTarget) }) : ''}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void deleteItem()}
+        open={Boolean(deleteTarget)}
+        title={t('deleteMasterRecord')}
       />
     </div>
   );

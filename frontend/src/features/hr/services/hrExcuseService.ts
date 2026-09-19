@@ -1,4 +1,5 @@
 import { apiClient } from '../../../services/apiClient';
+import { loadAllHrPages } from './hrPaging';
 
 export interface ExcuseAttachment {
   id: string;
@@ -84,9 +85,9 @@ export const hrExcuseService = {
     return (await apiClient.get<ExcuseTypeOption[]>(`${base}/types`)).data;
   },
   async list(params: Record<string, string | number | undefined>) {
-    return (await apiClient.get<ExcusePage>(base, {
-      params: Object.fromEntries(Object.entries(params).filter(([, value]) => value !== '' && value !== undefined)),
-    })).data;
+    return loadAllHrPages(async (page, pageSize) => (await apiClient.get<ExcusePage>(base, {
+      params: Object.fromEntries(Object.entries({ ...params, page, pageSize }).filter(([, value]) => value !== undefined && (typeof value !== 'string' || value !== ''))),
+    })).data);
   },
   async details(id: string) {
     return (await apiClient.get<ExcuseItem>(`${base}/${id}`)).data;

@@ -31,7 +31,7 @@ export function DataEntryLayout() {
       isRtl={isRtl}
       languageLabel={ar ? 'English' : 'العربية'}
       moduleName={ar ? 'إدخال البيانات' : 'MIS Data Entry'}
-      moduleSubtitle={ar ? 'إدخال العملاء ورفع الملفات' : 'Client entry and file uploads'}
+      moduleSubtitle={ar ? 'العملاء يصلون للتحصيل بعد المراجعة' : 'Clients reach collections after review'}
       navigation={navigation}
       navigationLabel={ar ? 'قائمة إدخال البيانات' : 'Data entry navigation'}
       onLanguageToggle={() => setLanguage(ar ? 'en' : 'ar')}

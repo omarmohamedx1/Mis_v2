@@ -9,8 +9,19 @@ import type {
   PagedAttendanceImportHistory,
   PagedAttendanceImportPreview,
 } from '../types/attendance';
+import { loadAllHrPages } from './hrPaging';
 
 export const hrAttendanceImportService = {
+  async downloadTemplate() {
+    const response = await apiClient.get<Blob>('/hr/attendance/imports/template', { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Attendance_Import_Template.xlsx';
+    link.click();
+    URL.revokeObjectURL(url);
+  },
+
   async upload(file: File): Promise<AttendanceImportUpload> {
     const formData = new FormData();
     formData.append('file', file);
@@ -28,15 +39,17 @@ export const hrAttendanceImportService = {
   },
 
   async getPreview(batchId: string, query: AttendanceImportPreviewQuery): Promise<PagedAttendanceImportPreview> {
-    const { data } = await apiClient.get<PagedAttendanceImportPreview>(`/hr/attendance/imports/${batchId}/preview`, {
+    return loadAllHrPages(async (page, pageSize) => {
+      const { data } = await apiClient.get<PagedAttendanceImportPreview>(`/hr/attendance/imports/${batchId}/preview`, {
       params: {
         category: query.category || undefined,
-        page: query.page,
-        pageSize: query.pageSize,
+        page,
+        pageSize,
         search: query.search || undefined,
       },
     });
-    return data;
+      return data;
+    });
   },
 
   async confirm(batchId: string, includeRowsWithWarnings: boolean, notes?: string): Promise<AttendanceImportConfirmResult> {
@@ -55,16 +68,18 @@ export const hrAttendanceImportService = {
   },
 
   async getHistory(query: AttendanceImportHistoryQuery): Promise<PagedAttendanceImportHistory> {
-    const { data } = await apiClient.get<PagedAttendanceImportHistory>('/hr/attendance/imports', {
+    return loadAllHrPages(async (page, pageSize) => {
+      const { data } = await apiClient.get<PagedAttendanceImportHistory>('/hr/attendance/imports', {
       params: {
-        page: query.page,
-        pageSize: query.pageSize,
+        page,
+        pageSize,
         search: query.search || undefined,
         status: query.status || undefined,
         uploadedFrom: query.uploadedFrom || undefined,
         uploadedTo: query.uploadedTo || undefined,
       },
     });
-    return data;
+      return data;
+    });
   },
 };

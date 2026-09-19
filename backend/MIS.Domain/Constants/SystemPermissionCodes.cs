@@ -38,4 +38,6 @@ public static class SystemPermissionCodes
     public const string DataEntryAccess = "data_entry.access";
     public const string DataEntryManage = "data_entry.manage";
     public const string DataEntryBatchReview = "collections.data_batch.review";
+    public const string LegalAccess = "legal.access";
+    public const string LegalCaseManage = "legal.case.manage";
 }

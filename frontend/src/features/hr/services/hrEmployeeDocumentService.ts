@@ -1,5 +1,6 @@
 import { apiClient, downloadApiFile, requestApiFile, requestFormData, type ApiFile } from '../../../services/apiClient';
 import type { DocumentExpirySummary, EmployeeDocumentDetails, EmployeeDocumentQuery, EmployeePersonnelFile, PagedEmployeeDocuments, PagedEmployeePersonnelFiles, PersonnelFileQuery, PersonnelFileSummary, RequiredDocumentCode, SaveEmployeeDocumentMetadata } from '../types/document';
+import { loadAllHrPages } from './hrPaging';
 
 export type EmployeeDocumentBulkStatus =
   | 'Ready'
@@ -45,12 +46,12 @@ export interface EmployeeDocumentBulkResult {
 
 export const hrEmployeeDocumentService = {
   async getPaged(query: EmployeeDocumentQuery): Promise<PagedEmployeeDocuments> {
-    const { data } = await apiClient.get<PagedEmployeeDocuments>('/hr/employee-documents', { params: {
-      page: query.page, pageSize: query.pageSize, search: query.search || undefined, employeeId: query.employeeId || undefined,
+    return loadAllHrPages(async (page, pageSize) => { const { data } = await apiClient.get<PagedEmployeeDocuments>('/hr/employee-documents', { params: {
+      page, pageSize, search: query.search || undefined, employeeId: query.employeeId || undefined,
       departmentId: query.departmentId || undefined, documentTypeId: query.documentTypeId || undefined,
       expiryStatus: query.expiryStatus, expiringWithinDays: query.expiringWithinDays, sortBy: query.sortBy, sortDirection: query.sortDirection,
     } });
-    return data;
+    return data; });
   },
   async getSummary(): Promise<DocumentExpirySummary> { const { data } = await apiClient.get<DocumentExpirySummary>('/hr/employee-documents/expiry-summary'); return data; },
   async getDetails(id: string): Promise<EmployeeDocumentDetails> { const { data } = await apiClient.get<EmployeeDocumentDetails>(`/hr/employee-documents/${id}`); return data; },
@@ -65,12 +66,12 @@ export const hrEmployeeDocumentService = {
   preview(id: string): Promise<ApiFile> { return requestApiFile(`/hr/employee-documents/${id}/preview`); },
   async delete(id: string, reason: string | null): Promise<void> { await apiClient.delete(`/hr/employee-documents/${id}`, { data: { reason } }); },
   async getPersonnelFiles(query: PersonnelFileQuery): Promise<PagedEmployeePersonnelFiles> {
-    const { data } = await apiClient.get<PagedEmployeePersonnelFiles>('/hr/employee-documents/personnel-files', { params: {
-      page: query.page, pageSize: query.pageSize, search: query.search || undefined, employeeId: query.employeeId || undefined,
-      departmentId: query.departmentId || undefined, positionId: query.positionId || undefined, gender: query.gender || undefined,
+    return loadAllHrPages(async (page, pageSize) => { const { data } = await apiClient.get<PagedEmployeePersonnelFiles>('/hr/employee-documents/personnel-files', { params: {
+      page, pageSize, search: query.search || undefined, employeeId: query.employeeId || undefined,
+      departmentId: query.departmentId || undefined, organizationId: query.organizationId || undefined, positionId: query.positionId || undefined, gender: query.gender || undefined,
       completionStatus: query.completionStatus, missingDocumentCode: query.missingDocumentCode || undefined,
     } });
-    return data;
+    return data; });
   },
   async getPersonnelFile(employeeId: string): Promise<EmployeePersonnelFile> { const { data } = await apiClient.get<EmployeePersonnelFile>(`/hr/employee-documents/personnel-files/${employeeId}`); return data; },
   async getPersonnelFileSummary(): Promise<PersonnelFileSummary> { const { data } = await apiClient.get<PersonnelFileSummary>('/hr/employee-documents/personnel-files/summary'); return data; },

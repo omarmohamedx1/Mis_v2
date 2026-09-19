@@ -47,6 +47,7 @@ export interface AttendanceQuery {
   search?: string;
   employeeId?: string;
   departmentId?: string;
+  organizationId?: string;
   branchId?: string;
   dateFrom?: string;
   dateTo?: string;

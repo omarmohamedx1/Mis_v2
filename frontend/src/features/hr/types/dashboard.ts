@@ -5,6 +5,13 @@ export interface DepartmentEmployeeCount {
   employeeCount: number;
 }
 
+export interface OrganizationEmployeeCount {
+  organizationId: string;
+  organizationName: string;
+  organizationCode: string;
+  employeeCount: number;
+}
+
 export interface BranchEmployeeCount {
   branchId: string | null;
   branchName: string;
@@ -65,6 +72,7 @@ export interface HrDashboardSummary {
   documentAttentionAvailable: boolean;
   totalDocuments: number;
   employeesByDepartment: DepartmentEmployeeCount[];
+  employeesByOrganization: OrganizationEmployeeCount[];
   employeesByBranch: BranchEmployeeCount[];
   todayAttendance: TodayAttendanceSummary;
   alerts: HrDashboardAlert[];

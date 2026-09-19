@@ -17,6 +17,7 @@ export interface AuthenticatedUser {
   role: string;
   roles: string[];
   permissions: string[];
+  mustChangePassword?: boolean;
 }
 
 export interface UserProfile { id: string; loginCode: string; username: string; email: string; fullName: string; department: string; roles: string[]; lastLoginAt?: string }

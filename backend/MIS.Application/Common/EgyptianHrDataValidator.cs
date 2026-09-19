@@ -3,44 +3,72 @@ using System.Text;
 
 namespace MIS.Application.Common;
 
+public readonly record struct ParsedEgyptianNationalId(string NationalId, DateOnly DateOfBirth, string Gender);
+
 public static class EgyptianHrDataValidator
 {
-    public static string? NormalizeNationalId(string? value, DateOnly? dateOfBirth, string? gender)
+    public static bool TryParseNationalId(string? value, out ParsedEgyptianNationalId parsed, out string error)
     {
+        parsed = default;
         var normalized = NormalizeDigits(value, allowLeadingPlus: false);
-        if (normalized is null) return null;
-        if (normalized.Length != 14 || normalized.Any(character => !char.IsAsciiDigit(character)))
-            throw new HrValidationException("Egyptian national ID must contain exactly 14 digits.");
+        if (normalized is null || normalized.Length != 14 || normalized.Any(character => !char.IsAsciiDigit(character)))
+        {
+            error = "Egyptian national ID must contain exactly 14 digits.";
+            return false;
+        }
 
         var century = normalized[0] switch
         {
             '2' => 1900,
             '3' => 2000,
-            _ => throw new HrValidationException("Egyptian national ID has an invalid century digit.")
+            _ => 0
         };
+        if (century == 0)
+        {
+            error = "Egyptian national ID has an invalid century digit.";
+            return false;
+        }
+
         if (!int.TryParse(normalized.AsSpan(1, 2), out var year) ||
             !int.TryParse(normalized.AsSpan(3, 2), out var month) ||
             !int.TryParse(normalized.AsSpan(5, 2), out var day))
-            throw new HrValidationException("Egyptian national ID contains an invalid birth date.");
+        {
+            error = "Egyptian national ID contains an invalid birth date.";
+            return false;
+        }
 
         DateOnly encodedBirthDate;
         try { encodedBirthDate = new DateOnly(century + year, month, day); }
         catch (ArgumentOutOfRangeException)
         {
-            throw new HrValidationException("Egyptian national ID contains an invalid birth date.");
+            error = "Egyptian national ID contains an invalid birth date.";
+            return false;
         }
 
         if (encodedBirthDate > DateOnly.FromDateTime(DateTime.UtcNow))
-            throw new HrValidationException("Egyptian national ID cannot contain a future birth date.");
-        if (dateOfBirth.HasValue && dateOfBirth.Value != encodedBirthDate)
+        {
+            error = "Egyptian national ID cannot contain a future birth date.";
+            return false;
+        }
+
+        parsed = new ParsedEgyptianNationalId(normalized, encodedBirthDate, (normalized[12] - '0') % 2 == 0 ? "female" : "male");
+        error = string.Empty;
+        return true;
+    }
+
+    public static string? NormalizeNationalId(string? value, DateOnly? dateOfBirth, string? gender)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        if (!TryParseNationalId(value, out var parsed, out var error))
+            throw new HrValidationException(error);
+        if (dateOfBirth.HasValue && dateOfBirth.Value != parsed.DateOfBirth)
             throw new HrValidationException("Date of birth does not match the Egyptian national ID.");
 
         var normalizedGender = gender?.Trim().ToLowerInvariant();
-        var encodedGender = (normalized[12] - '0') % 2 == 0 ? "female" : "male";
-        if (normalizedGender is "male" or "female" && normalizedGender != encodedGender)
+        if (normalizedGender is "male" or "female" && normalizedGender != parsed.Gender)
             throw new HrValidationException("Gender does not match the Egyptian national ID.");
 
-        return normalized;
+        return parsed.NationalId;
     }
 
     public static string? NormalizePhone(string? value, string fieldName, bool required = false)

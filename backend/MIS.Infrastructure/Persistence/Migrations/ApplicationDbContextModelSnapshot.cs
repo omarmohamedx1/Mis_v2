@@ -1645,6 +1645,9 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<DateOnly?>("ActivationDate")
+                        .HasColumnType("date");
+
                     b.Property<string>("ArchiveNotes")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -1665,6 +1668,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("AssignedTeamId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CardNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("CaseNumber")
                         .IsRequired()
                         .HasMaxLength(80)
@@ -1676,6 +1683,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("CreditLimit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<Guid>("CurrentBucketId")
                         .HasColumnType("uuid");
@@ -1690,14 +1701,43 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("FileCollectorName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("FileCollectorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ImportBucketLabel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ImportRawJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ImportStatusText")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset?>("LastContactAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal?>("LastPaymentAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<DateTimeOffset?>("LastPaymentAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("LastTransactionAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateOnly?>("LastTransactionDate")
+                        .HasColumnType("date");
 
                     b.Property<DateTimeOffset?>("NextFollowUpAt")
                         .HasColumnType("timestamp with time zone");
@@ -1721,6 +1761,13 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("PortfolioId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("PreviousCollectorName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("PreviousCollectorUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("PrincipalAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -1742,6 +1789,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<decimal?>("PurchaseAvailableLimit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("RestoreReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -1754,6 +1805,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("SourceImportId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Stage")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1777,12 +1832,18 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AssignedTeamId");
 
+                    b.HasIndex("CardNumber");
+
                     b.HasIndex("CaseNumber")
                         .IsUnique();
 
                     b.HasIndex("CustomerId");
 
+                    b.HasIndex("FileCollectorUserId");
+
                     b.HasIndex("NextFollowUpAt");
+
+                    b.HasIndex("PreviousCollectorUserId");
 
                     b.HasIndex("RestoredById");
 
@@ -2003,6 +2064,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2038,6 +2103,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("JobTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("NationalId")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
@@ -2053,9 +2122,19 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("SecondaryAddress")
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
+                    b.Property<string>("TertiaryPhone")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("NationalId");
 
                     b.HasIndex("PrimaryPhone");
 
@@ -2976,6 +3055,67 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("DataEntryBatches", (string)null);
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<string>("Sha256Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("CaseId");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("CustomerId", "UploadedAt");
+
+                    b.ToTable("DataEntryDocuments", (string)null);
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.DataEntryNotification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3420,6 +3560,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)");
 
+                    b.Property<string>("PackageType")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<Guid?>("PositionId")
                         .HasColumnType("uuid");
 
@@ -3443,6 +3587,10 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WorkNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
 
@@ -4048,6 +4196,27 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("CK_EmployeeLeaveEntitlements_Year", "\"Year\" BETWEEN 1900 AND 9999");
                         });
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.EmployeeOrganizationAssignment", b =>
+                {
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("EmployeeId", "OrganizationId");
+
+                    b.HasIndex("OrganizationId", "EmployeeId");
+
+                    b.ToTable("EmployeeOrganizationAssignments", (string)null);
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.EmploymentType", b =>
@@ -5090,6 +5259,109 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.LegalCaseAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("HappenedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Result")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FileId", "CreatedAt");
+
+                    b.ToTable("LegalCaseActions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LegalCaseActions_ActionType", "\"ActionType\" IN ('NOTE','NOTICE','HEARING','JUDGMENT','SETTLEMENT','RETURN')");
+                        });
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.LegalCaseFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CollectionCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CourtCaseNumber")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("CourtName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("LawyerName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateOnly?>("NextHearingOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ReceivedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollectionCaseId")
+                        .IsUnique();
+
+                    b.HasIndex("NextHearingOn");
+
+                    b.HasIndex("ReceivedByUserId");
+
+                    b.HasIndex("Stage");
+
+                    b.ToTable("LegalCaseFiles", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LegalCaseFiles_Stage", "\"Stage\" IN ('INTAKE','NOTICE','COURT','HEARING','JUDGMENT','SETTLEMENT','RETURNED')");
+                        });
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.Position", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5231,6 +5503,25 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("Roles", (string)null);
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.RuntimeSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("RuntimeSettings", (string)null);
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.SocialInsuranceRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5350,6 +5641,11 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -6036,11 +6332,21 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MIS.Domain.Entities.User", "FileCollectorUser")
+                        .WithMany()
+                        .HasForeignKey("FileCollectorUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MIS.Domain.Entities.CollectionPortfolio", "Portfolio")
                         .WithMany()
                         .HasForeignKey("PortfolioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", "PreviousCollectorUser")
+                        .WithMany()
+                        .HasForeignKey("PreviousCollectorUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MIS.Domain.Entities.User", "RestoredBy")
                         .WithMany()
@@ -6062,7 +6368,11 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Customer");
 
+                    b.Navigation("FileCollectorUser");
+
                     b.Navigation("Portfolio");
+
+                    b.Navigation("PreviousCollectorUser");
 
                     b.Navigation("RestoredBy");
 
@@ -6515,6 +6825,39 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("UploadedByUser");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.DataEntryDocument", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.DataEntryBatch", "Batch")
+                        .WithMany("Documents")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MIS.Domain.Entities.CollectionCase", "Case")
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MIS.Domain.Entities.CollectionCustomer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", "UploadedByUser")
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("Case");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("UploadedByUser");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.DataEntryNotification", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.DataEntryBatch", "Batch")
@@ -6804,6 +7147,25 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("UpdatedByUser");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.EmployeeOrganizationAssignment", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.FieldVisit", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.CollectionCase", "Case")
@@ -7065,6 +7427,44 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("LeaveType");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.LegalCaseAction", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.LegalCaseFile", "File")
+                        .WithMany("Actions")
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("File");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.LegalCaseFile", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.CollectionCase", "CollectionCase")
+                        .WithMany()
+                        .HasForeignKey("CollectionCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", "ReceivedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReceivedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CollectionCase");
+
+                    b.Navigation("ReceivedByUser");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.Position", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.Department", "Department")
@@ -7183,6 +7583,8 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MIS.Domain.Entities.DataEntryBatch", b =>
                 {
+                    b.Navigation("Documents");
+
                     b.Navigation("Notifications");
 
                     b.Navigation("Rows");
@@ -7191,6 +7593,11 @@ namespace MIS.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("MIS.Domain.Entities.JournalEntry", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.LegalCaseFile", b =>
+                {
+                    b.Navigation("Actions");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.Role", b =>

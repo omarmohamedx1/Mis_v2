@@ -138,6 +138,7 @@ public sealed class PersonnelFileFilterDto
     public Guid? EmployeeId { get; init; }
     public Guid? DepartmentId { get; init; }
     public Guid? PositionId { get; init; }
+    public Guid? OrganizationId { get; init; }
     [StringLength(32)] public string? Gender { get; init; }
     [StringLength(40)] public string? CompletionStatus { get; init; }
     [StringLength(40)] public string? MissingDocumentCode { get; init; }

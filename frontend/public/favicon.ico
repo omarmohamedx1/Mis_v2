@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 0 440 420" role="img" aria-labelledby="title desc">
+  <title id="title">MIS Collection Firm</title>
+  <desc id="desc">MIS Collection Firm logo with upward financial growth mark.</desc>
+  <rect x="-60" width="440" height="420" fill="#ffffff"/>
+  <g transform="translate(36 8)">
+    <path d="M24 170 C68 264 121 312 179 282 C226 258 265 176 296 0 C232 143 175 216 107 235 C67 246 38 222 24 170Z" fill="#074D73"/>
+    <rect x="73" y="132" width="36" height="116" rx="1" fill="#7DB8DB"/>
+    <rect x="128" y="106" width="37" height="135" rx="1" fill="#3998C7"/>
+    <rect x="184" y="78" width="38" height="143" rx="1" fill="#0E6A9C"/>
+    <path d="M77 101 C119 94 150 75 156 40 L134 25 L195 12 L207 72 L180 59 C158 91 126 105 77 101Z" fill="#7DB8DB"/>
+  </g>
+  <text x="160" y="348" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="86" font-weight="700" letter-spacing="22" fill="#10255C">MIS</text>
+  <text x="160" y="402" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" font-weight="700" letter-spacing="4" fill="#1788B8">COLLECTION FIRM</text>
+</svg>

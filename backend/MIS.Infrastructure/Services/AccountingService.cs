@@ -14,7 +14,8 @@ public sealed class AccountingService(
     ApplicationDbContext db,
     ICurrentUserContext user,
     IHrFileStorage storage,
-    IHrAuditService audit) : IAccountingService
+    IHrAuditService audit,
+    IHrNetSalaryService hrPayroll) : IAccountingService
 {
     private const long MaxAttachmentBytes = 10 * 1024 * 1024;
     private static readonly HashSet<string> AttachmentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -102,12 +103,16 @@ public sealed class AccountingService(
         }
         await WriteAudit("AccountingPayrollGenerated", nameof(AccountingPayrollPeriod), period.Id.ToString(), null, null, new { added }, $"Generated {added} salary rows.", token);
         await db.SaveChangesAsync(token);
+        await hrPayroll.GetSheetAsync(request.Year, request.Month, token);
         return await MapPeriod(period.Id, token);
     }
 
     public async Task<AccountingPayrollPageDto> ListPayrollsAsync(Guid periodId, string? search, string? status, int page, int pageSize, CancellationToken token)
     {
         EnsureAccess(); ValidatePage(page, pageSize);
+        var period = await db.AccountingPayrollPeriods.AsNoTracking().SingleOrDefaultAsync(x => x.Id == periodId, token)
+            ?? throw new HrNotFoundException("Payroll period was not found.");
+        await hrPayroll.GetSheetAsync(period.Year, period.Month, token);
         var q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.PeriodId == periodId);
         if (!string.IsNullOrWhiteSpace(status)) q = q.Where(x => x.Status == status.Trim().ToUpperInvariant());
         if (!string.IsNullOrWhiteSpace(search))
@@ -293,6 +298,35 @@ public sealed class AccountingService(
         await WriteAudit("AccountingCommissionRuleCreated", nameof(AccountingCommissionRule), rule.Id.ToString(), null, null, new { rule.Code, rule.Percentage }, "Commission rule created.", token);
         await db.SaveChangesAsync(token);
         return new AccountingCommissionRuleDto(rule.Id, rule.Code, rule.NameArabic, rule.NameEnglish, rule.Scope, rule.Basis, rule.Percentage, rule.FixedAmount, rule.EffectiveFrom, rule.IsActive, rule.Version);
+    }
+
+    public async Task<AccountingCommissionRuleDto> SetRuleActiveAsync(Guid id, bool isActive, CancellationToken token)
+    {
+        EnsureManage();
+        var rule = await db.AccountingCommissionRules.SingleOrDefaultAsync(x => x.Id == id, token)
+            ?? throw new HrNotFoundException("Commission rule was not found.");
+        if (rule.IsActive == isActive)
+            return new AccountingCommissionRuleDto(rule.Id, rule.Code, rule.NameArabic, rule.NameEnglish, rule.Scope, rule.Basis, rule.Percentage, rule.FixedAmount, rule.EffectiveFrom, rule.IsActive, rule.Version);
+        if (!isActive)
+            rule.Deactivate(DateOnly.FromDateTime(DateTime.UtcNow));
+        else
+            throw new HrValidationException("Inactive commission rules cannot be reactivated. Create a new rule instead.");
+        await WriteAudit("AccountingCommissionRuleDeactivated", nameof(AccountingCommissionRule), rule.Id.ToString(), null, new { rule.Code, Active = true }, new { rule.Code, Active = false }, "Commission rule deactivated.", token);
+        await db.SaveChangesAsync(token);
+        return new AccountingCommissionRuleDto(rule.Id, rule.Code, rule.NameArabic, rule.NameEnglish, rule.Scope, rule.Basis, rule.Percentage, rule.FixedAmount, rule.EffectiveFrom, rule.IsActive, rule.Version);
+    }
+
+    public async Task DeleteRuleAsync(Guid id, CancellationToken token)
+    {
+        EnsureManage();
+        var rule = await db.AccountingCommissionRules.SingleOrDefaultAsync(x => x.Id == id, token)
+            ?? throw new HrNotFoundException("Commission rule was not found.");
+        if (await db.AccountingCollectorCommissions.AnyAsync(x => x.CommissionRuleId == id, token)
+            || await db.AccountingSupervisorCommissions.AnyAsync(x => x.CommissionRuleId == id, token))
+            throw new HrConflictException("This commission rule has been used in calculations and cannot be deleted. Deactivate it instead.");
+        db.AccountingCommissionRules.Remove(rule);
+        await WriteAudit("AccountingCommissionRuleDeleted", nameof(AccountingCommissionRule), rule.Id.ToString(), null, new { rule.Code, rule.Scope }, null, "Commission rule deleted.", token);
+        await db.SaveChangesAsync(token);
     }
 
     public async Task<int> CalculateCollectorCommissionsAsync(CalculateCommissionsRequest request, CancellationToken token)

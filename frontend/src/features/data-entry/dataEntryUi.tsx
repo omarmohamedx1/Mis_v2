@@ -36,7 +36,14 @@ export function useDataEntryText() {
       IMPORTED: text('مستورد', 'Imported'),
     }[value] ?? value.replaceAll('_', ' '));
 
-  return { ar, text, money, number, dateTime, batchStatus, rowStatus, source };
+  const caseStatus = (value: string) =>
+    ({
+      ACTIVE: text('نشطة', 'Active'),
+      CLOSED: text('مغلقة', 'Closed'),
+      LEGAL: text('قانونية', 'Legal'),
+    }[value] ?? value.replaceAll('_', ' '));
+
+  return { ar, text, money, number, dateTime, batchStatus, rowStatus, source, caseStatus };
 }
 
 export function DataEntryBatchStatus({ value }: { value: string }) {
@@ -89,5 +96,29 @@ export function DataEntryKpi({ label, value, hint, tone = 'blue' }: { label: str
       </p>
       {hint ? <p className="mt-2 text-xs text-slate-400">{hint}</p> : null}
     </article>
+  );
+}
+
+export function DataEntryPipeline({ current }: { current?: string | null }) {
+  const d = useDataEntryText();
+  const steps = [
+    { key: 'enter', label: d.text('إدخال', 'Enter') },
+    { key: 'SUBMITTED', label: d.text('مراجعة التحصيل', 'Collections review') },
+    { key: 'ACCEPTED', label: d.text('حالات التحصيل', 'Collection cases') },
+    { key: 'DISTRIBUTED', label: d.text('التوزيع', 'Distribution') },
+  ];
+  const order = current === 'REJECTED' ? 1 : current === 'DISTRIBUTED' ? 3 : current === 'ACCEPTED' ? 2 : current === 'SUBMITTED' ? 1 : current ? 0 : -1;
+  return (
+    <ol className="grid gap-2 sm:grid-cols-4">
+      {steps.map((step, index) => {
+        const active = order >= index;
+        return (
+          <li key={step.key} className={`rounded-2xl border px-3 py-3 text-sm font-bold ${active ? 'border-mis-blue bg-mis-pale text-mis-navy' : 'border-mis-border bg-white text-slate-400'}`}>
+            <span className="me-2 text-xs" data-bidi="ltr">{index + 1}</span>
+            {step.label}
+          </li>
+        );
+      })}
+    </ol>
   );
 }

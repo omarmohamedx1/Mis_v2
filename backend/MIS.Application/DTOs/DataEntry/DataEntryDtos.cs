@@ -4,7 +4,17 @@ namespace MIS.Application.DTOs.DataEntry;
 
 public sealed record DataEntryDashboardDto(int DraftBatches, int SubmittedBatches, int AcceptedBatches, int DistributedBatches, int RejectedBatches, int MyClients, int UnreadNotifications);
 
-public sealed record DataEntryClientListItemDto(Guid Id, string CustomerNumber, string CustomerName, string? MobileNumber);
+public sealed record DataEntryClientListItemDto(
+    Guid Id,
+    string CustomerNumber,
+    string CustomerName,
+    string? MobileNumber,
+    string OrganizationName,
+    string? Source,
+    string? CaseNumber,
+    Guid? CaseId,
+    string? CaseStatus,
+    string? BatchStatus);
 public sealed record DataEntryClientPageDto(IReadOnlyList<DataEntryClientListItemDto> Items, int Page, int PageSize, int TotalCount);
 
 public sealed record DataEntryClientDetailsDto(
@@ -29,6 +39,7 @@ public sealed record DataEntryClientDetailsDto(
     string? PrimaryClassification,
     string? SubClassification,
     string? CaseNumber,
+    Guid? CaseId,
     string? AccountNumber,
     string? ContractNumber,
     decimal? OutstandingBalance,
@@ -85,7 +96,9 @@ public sealed record DataEntryImportPreviewRowDto(
     string? NationalId,
     string? MobileNumber,
     string Status,
-    string? ErrorMessage);
+    string? ErrorMessage,
+    Guid? CollectionCustomerId = null,
+    Guid? CollectionCaseId = null);
 
 public sealed record ConfirmDataEntryImportRequest(Guid UploadId, Guid PreviewId);
 
@@ -114,7 +127,23 @@ public sealed record DataEntryBatchDetailsDto(
     string? ReviewedBy,
     DateTimeOffset? ReviewedAt,
     DateTimeOffset? DistributedAt,
-    IReadOnlyList<DataEntryImportPreviewRowDto> Rows);
+    IReadOnlyList<DataEntryImportPreviewRowDto> Rows,
+    IReadOnlyList<DataEntryDocumentDto> Documents);
+
+public sealed record DataEntryDocumentDto(
+    Guid Id,
+    Guid CustomerId,
+    Guid? BatchId,
+    Guid? CaseId,
+    string OriginalFileName,
+    string ContentType,
+    long FileSize,
+    string? Note,
+    string UploadedBy,
+    DateTimeOffset UploadedAt,
+    bool CanDownload);
+
+public sealed record DataEntryDocumentDownloadDto(Stream Content, string ContentType, string FileName);
 
 public sealed record RejectDataEntryBatchRequest(string Reason);
 public sealed record DataEntryNotificationDto(Guid Id, Guid BatchId, string BatchNumber, string Kind, string MessageArabic, string MessageEnglish, bool IsRead, DateTimeOffset CreatedAt);

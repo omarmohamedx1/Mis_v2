@@ -156,6 +156,8 @@ public sealed class AttendanceFilterDto
 
     public Guid? DepartmentId { get; init; }
 
+    public Guid? OrganizationId { get; init; }
+
     public Guid? BranchId { get; init; }
 
     public DateOnly? DateFrom { get; init; }

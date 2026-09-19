@@ -27,6 +27,9 @@ backend/.env.*
 .vscode/
 .idea/
 .runtime/
+.tmp-api-build-*/
+backend/.buildcheck/
+**/appsettings.Local.json
 
 # OS files
 Thumbs.db

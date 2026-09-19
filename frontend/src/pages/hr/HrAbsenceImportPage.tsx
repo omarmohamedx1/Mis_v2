@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Eye, CheckCircle2 } from 'lucide-react';
+import { Upload, Eye, CheckCircle2, Download, FileSpreadsheet } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { Pagination } from '../../components/common/Pagination';
 import { FileInput } from '../../components/forms/FileInput';
 import { TextInput } from '../../components/forms/TextInput';
 import { SelectInput } from '../../components/forms/SelectInput';
 import { useLocalization } from '../../context/LocalizationContext';
 import { getApiErrorMessage } from '../../services/apiClient';
+import { preferredHrImportSheetIndex } from '../../features/hr/preferredHrImportSheet';
 import {
   absenceImportService,
   type AbsenceImportHistory,
@@ -57,7 +57,7 @@ export function HrAbsenceImportPage() {
   const [preview, setPreview] = useState<AbsenceImportPreview | null>(null);
   const [result, setResult] = useState<AbsenceImportResult | null>(null);
   const [history, setHistory] = useState<AbsenceImportHistory[]>([]);
-  const [page, setPage] = useState(1);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
   useEffect(() => {
     void absenceImportService
@@ -86,11 +86,24 @@ export function HrAbsenceImportPage() {
     }
     await run(async () => {
       const data = await absenceImportService.upload(file);
+      const index = preferredHrImportSheetIndex(data.sheets);
       setUpload(data);
-      setMapping(mappingFor(data, 0));
-      setSheetIndex(0);
+      setSheetIndex(index);
+      setMapping(mappingFor(data, index));
       setStep(1);
     });
+  }
+
+  async function downloadTemplate() {
+    setDownloadingTemplate(true);
+    setError('');
+    try {
+      await absenceImportService.downloadTemplate();
+    } catch (reason) {
+      setError(getApiErrorMessage(reason, text('Unable to download the absence template.', 'تعذر تنزيل قالب الغياب.')));
+    } finally {
+      setDownloadingTemplate(false);
+    }
   }
 
   const labels = [
@@ -113,22 +126,29 @@ export function HrAbsenceImportPage() {
       Unexcused: text('Unexcused', 'بدون عذر'),
     })[status] ?? status;
   const link = (
-    <Link className="inline-flex h-10 items-center rounded-xl border border-mis-border px-4 text-sm font-semibold text-mis-primary" to="/hr/absences">
+    <Link className="inline-flex h-10 items-center rounded-xl border border-mis-border px-4 text-sm font-semibold text-mis-primary" to="/hr/attendance?tab=absences">
       {text('View Absences', 'عرض الغيابات')}
     </Link>
   );
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-5">
+    <div className="space-y-5">
       <PageHeader
         title={text('Import Absence File', 'استيراد ملف الغياب')}
         description={text(
           'Upload, map, review, then confirm. Duplicate absences and conflicting leave/excuse/attendance rows are skipped.',
           'ارفع الملف وعيّن الأعمدة وراجع المعاينة ثم أكد. يتم تجاوز الغيابات المكررة والتعارض مع الإجازة أو العذر أو الحضور.',
         )}
-        actions={link}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button fullWidth={false} isLoading={downloadingTemplate} leftIcon={<Download className="h-4 w-4" />} onClick={() => void downloadTemplate()} variant="outline">
+              {text('Download Excel template', 'تنزيل قالب Excel')}
+            </Button>
+            {link}
+          </div>
+        }
       />
-      <div className="grid grid-cols-4 overflow-hidden rounded-2xl border border-mis-border bg-white">
+      <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-mis-border bg-white sm:grid-cols-4">
         {labels.map((label, index) => (
           <div key={label} className={`p-4 text-center text-sm font-semibold ${step === index ? 'bg-mis-pale text-mis-primary' : 'text-slate-500'}`}>
             {index + 1}. {label}
@@ -142,26 +162,41 @@ export function HrAbsenceImportPage() {
       ) : null}
 
       {step === 0 ? (
-        <Card padding="lg">
-          <form
-            className="mx-auto max-w-2xl space-y-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void sendFile();
-            }}
-          >
-            <FileInput
-              accept=".xlsx,.xls,.csv"
-              label={text('Absence Excel / CSV file', 'ملف الغياب Excel / CSV')}
-              hint={text('Maximum 20 MB. Uploading does not save absence records.', 'بحد أقصى 20 ميجابايت. رفع الملف لا يحفظ سجلات الغياب.')}
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              required
-            />
-            <Button isLoading={busy} type="submit" leftIcon={<Upload className="h-4 w-4" />}>
-              {text('Upload and Continue', 'رفع ومتابعة')}
+        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+          <Card padding="lg">
+            <form
+              className="mx-auto max-w-2xl space-y-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void sendFile();
+              }}
+            >
+              <FileInput
+                accept=".xlsx,.xls,.csv"
+                label={text('Absence Excel / CSV file', 'ملف الغياب Excel / CSV')}
+                hint={text('Maximum 20 MB. Uploading does not save absence records.', 'بحد أقصى 20 ميجابايت. رفع الملف لا يحفظ سجلات الغياب.')}
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                required
+              />
+              <Button isLoading={busy} type="submit" leftIcon={<Upload className="h-4 w-4" />}>
+                {text('Upload and Continue', 'رفع ومتابعة')}
+              </Button>
+            </form>
+          </Card>
+          <Card className="border-sky-200 bg-sky-50/60" padding="lg">
+            <FileSpreadsheet className="h-9 w-9 text-mis-primary" />
+            <h2 className="mt-4 font-bold text-mis-navy">{text('Start with the official template', 'ابدأ بالقالب الرسمي')}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {text(
+                'It includes the absence columns and bilingual instructions so the file maps automatically after upload.',
+                'يحتوي على أعمدة الغياب وتعليمات بالعربية والإنجليزية حتى يتعرّف الملف تلقائيًا بعد الرفع.',
+              )}
+            </p>
+            <Button className="mt-5" isLoading={downloadingTemplate} leftIcon={<Download className="h-4 w-4" />} onClick={() => void downloadTemplate()} variant="secondary">
+              {text('Download template', 'تنزيل القالب')}
             </Button>
-          </form>
-        </Card>
+          </Card>
+        </div>
       ) : null}
 
       {step === 1 && upload && mapping ? (
@@ -172,7 +207,6 @@ export function HrAbsenceImportPage() {
               event.preventDefault();
               void run(async () => {
                 setPreview(await absenceImportService.preview(upload.id, mapping));
-                setPage(1);
                 setStep(2);
               });
             }}
@@ -258,7 +292,7 @@ export function HrAbsenceImportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.rows.slice((page - 1) * 50, page * 50).map((row) => (
+                  {preview.rows.map((row) => (
                     <tr key={row.row} className="border-t border-mis-border">
                       <td className="p-3">{row.employeeNumber || '—'}</td>
                       <td className="p-3">
@@ -287,7 +321,6 @@ export function HrAbsenceImportPage() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={page} pageSize={50} totalCount={preview.rows.length} totalPages={Math.ceil(preview.rows.length / 50)} onPageChange={setPage} />
           </Card>
           <div className="flex justify-end gap-3">
             <Button fullWidth={false} variant="outline" disabled={busy} onClick={() => setStep(1)}>

@@ -28,6 +28,8 @@ public interface IAccountingService
 
     Task<IReadOnlyList<AccountingCommissionRuleDto>> ListRulesAsync(string? scope, CancellationToken token);
     Task<AccountingCommissionRuleDto> CreateRuleAsync(CreateCommissionRuleRequest request, CancellationToken token);
+    Task<AccountingCommissionRuleDto> SetRuleActiveAsync(Guid id, bool isActive, CancellationToken token);
+    Task DeleteRuleAsync(Guid id, CancellationToken token);
 
     Task<int> CalculateCollectorCommissionsAsync(CalculateCommissionsRequest request, CancellationToken token);
     Task<AccountingCommissionPageDto<AccountingCollectorCommissionDto>> ListCollectorCommissionsAsync(int? year, int? month, string? search, string? status, int page, int pageSize, CancellationToken token);

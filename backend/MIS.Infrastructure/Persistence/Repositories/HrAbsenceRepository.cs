@@ -12,7 +12,7 @@ public sealed class HrAbsenceRepository : IHrAbsenceRepository
     private readonly ApplicationDbContext _dbContext;
     public HrAbsenceRepository(ApplicationDbContext dbContext) => _dbContext = dbContext;
 
-    public async Task<PagedAbsencesDto> GetPagedAsync(int page, int pageSize, string? search, Guid? departmentId, DateOnly? date, string? status, CancellationToken cancellationToken)
+    public async Task<PagedAbsencesDto> GetPagedAsync(int page, int pageSize, string? search, Guid? departmentId, Guid? organizationId, Guid? employeeId, DateOnly? date, string? status, CancellationToken cancellationToken)
     {
         var isArabic = ApiTextLocalizer.IsArabic;
         var query = _dbContext.EmployeeAbsences.AsNoTracking().AsQueryable();
@@ -25,7 +25,11 @@ public sealed class HrAbsenceRepository : IHrAbsenceRepository
                 (x.Employee.FullNameArabic != null && EF.Functions.ILike(x.Employee.FullNameArabic, pattern)) ||
                 (x.Employee.FullNameEnglish != null && EF.Functions.ILike(x.Employee.FullNameEnglish, pattern)));
         }
+        if (employeeId.HasValue) query = query.Where(x => x.EmployeeId == employeeId.Value);
         if (departmentId.HasValue) query = query.Where(x => x.Employee.DepartmentId == departmentId.Value);
+        if (organizationId.HasValue)
+            query = query.Where(x => _dbContext.EmployeeOrganizationAssignments.Any(assignment =>
+                assignment.EmployeeId == x.EmployeeId && assignment.OrganizationId == organizationId.Value));
         if (date.HasValue) query = query.Where(x => x.AbsenceDate == date.Value);
         if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status);
         var totalCount = await query.CountAsync(cancellationToken);

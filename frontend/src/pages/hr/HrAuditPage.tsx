@@ -10,6 +10,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Pagination } from '../../components/common/Pagination';
 import { StatusBadge } from '../../components/common/StatusBadge';
+import { useToast } from '../../components/common/Toast';
 import { useLocalization } from '../../context/LocalizationContext';
 import { EmployeeSearchSelect } from '../../features/hr/components/EmployeeSearchSelect';
 import { hrAuditService } from '../../features/hr/services/hrAuditService';
@@ -30,13 +31,13 @@ const actionOptions = [
   'AttendanceAdded', 'AttendanceUpdated', 'AttendanceDeleted', 'AttendanceImportUploaded', 'AttendanceImportPreviewed', 'AttendanceImported', 'AttendanceImportCancelled', 'AttendanceDayProcessed',
   'LeaveCreated', 'LeaveUpdated', 'LeaveApproved', 'LeaveRejected', 'LeaveCancelled', 'LeaveEntitlementCreated', 'LeaveEntitlementUpdated',
   'AbsenceCreated', 'AbsenceUpdated', 'AbsenceDeleted', 'AbsencePayrollDeductionApproved', 'AbsencePayrollDeductionExcluded', 'DocumentUploaded', 'DocumentUpdated', 'DocumentReplaced', 'DocumentDeleted',
-  'DelegationCreated', 'DelegationUpdated', 'DelegationCancelled', 'MasterDataCreated', 'MasterDataUpdated',
+  'ExcuseRequestCreated', 'ExcuseEdited', 'ExcuseApproved', 'ExcuseRejected', 'ExcuseCancelled', 'ExcuseAttachmentUploaded', 'ExcuseAttachmentReplaced', 'ExcuseAttachmentDeleted', 'VisitRequestSubmitted', 'VisitExcuseUpdated', 'CollectorEmployeeLinked',
   'WorkingCalendarUpdated', 'CalendarExceptionCreated', 'CalendarExceptionUpdated', 'CalendarExceptionStatusChanged', 'CalendarExceptionDeleted',
 ] as const;
 
 const entityOptions = [
   'SocialInsuranceRecord',
-  'Employee', 'EmployeeContract', 'EmployeeCompensation', 'EmployeeEmergencyContact', 'AttendanceRecord', 'AttendanceImportBatch', 'AttendanceDay', 'LeaveRequest', 'EmployeeLeaveEntitlement', 'EmployeeAbsence', 'EmployeeDocument', 'EmployeeDelegation', 'Department', 'Position', 'Branch', 'EmploymentType', 'ContractType', 'LeaveType', 'DocumentType', 'DelegationType', 'WorkingCalendar', 'CalendarException',
+  'Employee', 'EmployeeContract', 'EmployeeCompensation', 'EmployeeEmergencyContact', 'AttendanceRecord', 'AttendanceImportBatch', 'AttendanceDay', 'LeaveRequest', 'EmployeeLeaveEntitlement', 'EmployeeAbsence', 'EmployeeDocument', 'EmployeeDelegation', 'HrExcuseMission', 'Department', 'Position', 'Branch', 'EmploymentType', 'ContractType', 'LeaveType', 'DocumentType', 'DelegationType', 'WorkingCalendar', 'CalendarException',
 ] as const;
 
 const arabicActions: Record<string, string> = {
@@ -45,13 +46,14 @@ const arabicActions: Record<string, string> = {
   AttendanceAdded: 'إضافة حضور', AttendanceUpdated: 'تحديث الحضور', AttendanceDeleted: 'حذف الحضور', AttendanceImportUploaded: 'رفع ملف حضور', AttendanceImportPreviewed: 'معاينة استيراد الحضور', AttendanceImported: 'استيراد الحضور', AttendanceImportCancelled: 'إلغاء استيراد الحضور', AttendanceDayProcessed: 'معالجة حضور اليوم',
   LeaveCreated: 'إنشاء طلب إجازة', LeaveUpdated: 'تحديث طلب الإجازة', LeaveApproved: 'قبول الإجازة', LeaveRejected: 'رفض الإجازة', LeaveCancelled: 'إلغاء الإجازة', LeaveEntitlementCreated: 'إنشاء استحقاق إجازة', LeaveEntitlementUpdated: 'تحديث استحقاق الإجازة',
   AbsenceCreated: 'تسجيل غياب', AbsenceUpdated: 'تحديث الغياب', AbsenceDeleted: 'حذف الغياب', AbsencePayrollDeductionApproved: 'اعتماد خصم الغياب من المرتب', AbsencePayrollDeductionExcluded: 'استبعاد الغياب من خصومات المرتب', DocumentUploaded: 'رفع مستند', DocumentUpdated: 'تحديث المستند', DocumentReplaced: 'استبدال المستند', DocumentDeleted: 'حذف المستند',
-  DelegationCreated: 'إنشاء تفويض', DelegationUpdated: 'تحديث التفويض', DelegationCancelled: 'إلغاء التفويض', MasterDataCreated: 'إنشاء بيانات أساسية', MasterDataUpdated: 'تحديث البيانات الأساسية',
+  DelegationCreated: 'إنشاء تفويض', DelegationUpdated: 'تحديث تفويض', DelegationCancelled: 'إلغاء تفويض', MasterDataCreated: 'إنشاء بيانات أساسية', MasterDataUpdated: 'تحديث البيانات الأساسية',
+  ExcuseRequestCreated: 'إنشاء طلب عذر', ExcuseEdited: 'تعديل عذر', ExcuseApproved: 'اعتماد عذر', ExcuseRejected: 'رفض عذر', ExcuseCancelled: 'إلغاء عذر', ExcuseAttachmentUploaded: 'رفع مرفق عذر', ExcuseAttachmentReplaced: 'استبدال مرفق عذر', ExcuseAttachmentDeleted: 'حذف مرفق عذر', VisitRequestSubmitted: 'إرسال طلب اعتماد زيارة', VisitExcuseUpdated: 'تحديث عذر مرتبط بزيارة', CollectorEmployeeLinked: 'ربط المحصل بموظف',
   WorkingCalendarUpdated: 'تحديث تقويم العمل', CalendarExceptionCreated: 'إنشاء استثناء تقويم', CalendarExceptionUpdated: 'تحديث استثناء التقويم', CalendarExceptionStatusChanged: 'تغيير حالة استثناء التقويم', CalendarExceptionDeleted: 'حذف استثناء التقويم',
 };
 
 const arabicEntities: Record<string, string> = {
   SocialInsuranceRecord: 'سجل التأمينات الاجتماعية',
-  Employee: 'الموظف', EmployeeContract: 'عقد الموظف', EmployeeCompensation: 'راتب الموظف', EmployeeEmergencyContact: 'جهة اتصال الطوارئ', AttendanceRecord: 'سجل الحضور', AttendanceImportBatch: 'دفعة استيراد الحضور', AttendanceDay: 'يوم الحضور', LeaveRequest: 'طلب الإجازة', EmployeeLeaveEntitlement: 'استحقاق الإجازة', EmployeeAbsence: 'غياب الموظف', EmployeeDocument: 'مستند الموظف', EmployeeDelegation: 'تفويض الموظف', Department: 'القسم', Position: 'المسمى الوظيفي', Branch: 'الفرع', EmploymentType: 'نوع التوظيف', ContractType: 'نوع العقد', LeaveType: 'نوع الإجازة', DocumentType: 'نوع المستند', DelegationType: 'نوع التفويض', WorkingCalendar: 'تقويم العمل', CalendarException: 'استثناء التقويم',
+  Employee: 'الموظف', EmployeeContract: 'عقد الموظف', EmployeeCompensation: 'راتب الموظف', EmployeeEmergencyContact: 'جهة اتصال الطوارئ', AttendanceRecord: 'سجل الحضور', AttendanceImportBatch: 'دفعة استيراد الحضور', AttendanceDay: 'يوم الحضور', LeaveRequest: 'طلب الإجازة', EmployeeLeaveEntitlement: 'استحقاق الإجازة', EmployeeAbsence: 'غياب الموظف', EmployeeDocument: 'مستند الموظف', EmployeeDelegation: 'تفويض الموظف', HrExcuseMission: 'الأعذار والمأموريات', Department: 'القسم', Position: 'المسمى الوظيفي', Branch: 'الفرع', EmploymentType: 'نوع التوظيف', ContractType: 'نوع العقد', LeaveType: 'نوع الإجازة', DocumentType: 'نوع المستند', DelegationType: 'نوع التفويض', WorkingCalendar: 'تقويم العمل', CalendarException: 'استثناء التقويم',
 };
 
 const arabicFields: Record<string, string> = {
@@ -138,6 +140,7 @@ export function HrAuditPage() {
   const { language, t } = useLocalization();
   const text = copy[language];
   const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const initialEmployeeId = searchParams.get('employeeId') ?? '';
   const [query, setQuery] = useState({ page: 1, pageSize: 20, search: '', action: '', entityType: '', employeeId: initialEmployeeId, from: '', to: '' });
@@ -154,8 +157,8 @@ export function HrAuditPage() {
 
   useEffect(() => {
     if (!initialEmployeeId) return;
-    void hrEmployeeService.getEmployee(initialEmployeeId).then(setEmployee).catch(() => undefined);
-  }, [initialEmployeeId]);
+    void hrEmployeeService.getEmployee(initialEmployeeId).then(setEmployee).catch((reason) => toast.error(getApiErrorMessage(reason, t('loadEmployeeError'))));
+  }, [initialEmployeeId, t, toast]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,18 +175,16 @@ export function HrAuditPage() {
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div>
       <PageHeader description={text.subtitle} eyebrow={t('hrDepartment')} title={text.title} />
       <Card padding="none">
-        <div className="grid gap-4 border-b border-slate-200 bg-slate-50/60 p-4 md:grid-cols-2 lg:p-5">
-          <label className="relative self-end"><span className="mb-2 block text-sm font-bold text-slate-700">{language === 'ar' ? 'البحث' : 'Search'}</span><Search className="absolute start-3 bottom-3 h-5 w-5 text-mis-primary" /><input aria-label={text.search} className="h-11 w-full rounded-xl border border-slate-300 bg-white pe-3 ps-10 text-sm shadow-sm" onChange={(event) => setSearch(event.target.value)} placeholder={text.search} value={search} /></label>
+        <div className="module-filter-grid border-b border-slate-200 bg-slate-50/60 p-4 lg:p-5">
+          <label className="relative self-end sm:col-span-2"><span className="mb-2 block text-sm font-bold text-slate-700">{t('searchLabel')}</span><Search className="absolute start-3 bottom-3 h-5 w-5 text-mis-primary" /><input aria-label={text.search} className="h-11 w-full rounded-xl border border-slate-300 bg-white pe-3 ps-10 text-sm shadow-sm" onChange={(event) => setSearch(event.target.value)} placeholder={text.search} value={search} /></label>
           <EmployeeSearchSelect initialSelection={employee} label={text.employee} onChange={(id, item) => { setEmployee(item); setQuery((current) => ({ ...current, employeeId: id, page: 1 })); }} value={query.employeeId} />
-          <div className="grid gap-3 md:col-span-2 sm:grid-cols-2 xl:grid-cols-4">
-            <label><span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><Filter className="h-4 w-4 text-mis-primary" />{language === 'ar' ? 'الإجراء' : 'Action'}</span><ProfessionalSelect aria-label={text.allActions} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm" onChange={(event) => setQuery((current) => ({ ...current, action: event.target.value, page: 1 }))} value={query.action}><option value="">{text.allActions}</option>{actionOptions.map((action) => <option key={action} value={action}>{labelAction(action, language)}</option>)}</ProfessionalSelect></label>
-            <label><span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><Filter className="h-4 w-4 text-mis-primary" />{language === 'ar' ? 'نوع السجل' : 'Record type'}</span><ProfessionalSelect aria-label={text.allEntities} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm" onChange={(event) => setQuery((current) => ({ ...current, entityType: event.target.value, page: 1 }))} value={query.entityType}><option value="">{text.allEntities}</option>{entityOptions.map((entity) => <option key={entity} value={entity}>{labelEntity(entity, language)}</option>)}</ProfessionalSelect></label>
-            <label><span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><CalendarRange className="h-4 w-4 text-mis-primary" />{text.from}</span><DateControl aria-label={text.from} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm" onChange={(event) => setQuery((current) => ({ ...current, from: event.target.value, page: 1 }))}  value={query.from} /></label>
-            <label><span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><CalendarRange className="h-4 w-4 text-mis-primary" />{text.to}</span><DateControl aria-label={text.to} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm" min={query.from || undefined} onChange={(event) => setQuery((current) => ({ ...current, to: event.target.value, page: 1 }))}  value={query.to} /></label>
-          </div>
+          <label><span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><Filter className="h-4 w-4 text-mis-primary" />{t('action')}</span><ProfessionalSelect aria-label={text.allActions} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm" onChange={(event) => setQuery((current) => ({ ...current, action: event.target.value, page: 1 }))} value={query.action}><option value="">{text.allActions}</option>{actionOptions.map((action) => <option key={action} value={action}>{labelAction(action, language)}</option>)}</ProfessionalSelect></label>
+          <label><span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><Filter className="h-4 w-4 text-mis-primary" />{t('recordType')}</span><ProfessionalSelect aria-label={text.allEntities} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm" onChange={(event) => setQuery((current) => ({ ...current, entityType: event.target.value, page: 1 }))} value={query.entityType}><option value="">{text.allEntities}</option>{entityOptions.map((entity) => <option key={entity} value={entity}>{labelEntity(entity, language)}</option>)}</ProfessionalSelect></label>
+          <label><span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><CalendarRange className="h-4 w-4 text-mis-primary" />{text.from}</span><DateControl aria-label={text.from} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm" onChange={(event) => setQuery((current) => ({ ...current, from: event.target.value, page: 1 }))}  value={query.from} /></label>
+          <label><span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><CalendarRange className="h-4 w-4 text-mis-primary" />{text.to}</span><DateControl aria-label={text.to} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm shadow-sm" min={query.from || undefined} onChange={(event) => setQuery((current) => ({ ...current, to: event.target.value, page: 1 }))}  value={query.to} /></label>
         </div>
         {error ? <div className="p-5"><ErrorState compact message={error} onRetry={() => void load()} title={text.loadError} /></div> : loading ? <div className="flex min-h-72 items-center justify-center"><LoadingSpinner /></div> : !data.items.length ? <EmptyState description={text.noRowsHelp} icon={<UserRound />} title={text.noRows} /> : <><div className="divide-y divide-mis-border">{data.items.map((item) => <AuditRecord item={item} key={item.id} language={language} locale={locale} />)}</div><Pagination onPageChange={(page) => setQuery((current) => ({ ...current, page }))} page={data.page} pageSize={data.pageSize} totalCount={data.totalCount} totalPages={data.totalPages} /></>}
       </Card>

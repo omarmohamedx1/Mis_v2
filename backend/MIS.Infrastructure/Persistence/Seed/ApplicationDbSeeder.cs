@@ -1,19 +1,16 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
+using MIS.Domain.Hr;
 
 namespace MIS.Infrastructure.Persistence.Seed;
 
 public static class ApplicationDbSeeder
 {
-    public static async Task SeedDevelopmentDataAsync(IServiceProvider serviceProvider, IConfiguration configuration)
+    public static async Task SeedDevelopmentDataAsync(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
-        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("MIS.Seed");
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         await dbContext.Database.MigrateAsync();
@@ -24,6 +21,7 @@ public static class ApplicationDbSeeder
             ("Human Resources", "الموارد البشرية", DepartmentCodes.Hr),
             ("Legal", "الشؤون القانونية", DepartmentCodes.Legal),
             ("Administration", "الإدارة", DepartmentCodes.Admin),
+            ("Office", "الأوفيس", DepartmentCodes.Office),
             ("Data Entry", "إدخال البيانات", DepartmentCodes.DataEntry),
             ("Accounting", "الحسابات", DepartmentCodes.Accounting)
         };
@@ -46,8 +44,13 @@ public static class ApplicationDbSeeder
         var adminDepartment = await dbContext.Departments.SingleAsync(x => x.Code == DepartmentCodes.Admin);
         var hrDepartment = await dbContext.Departments.SingleAsync(x => x.Code == DepartmentCodes.Hr);
         var collectionsDepartment = await dbContext.Departments.SingleAsync(x => x.Code == DepartmentCodes.Collections);
-        await SeedHrMasterDataAsync(dbContext, hrDepartment.Id, now);
+        var accountingDepartment = await dbContext.Departments.SingleAsync(x => x.Code == DepartmentCodes.Accounting);
+        var dataEntryDepartment = await dbContext.Departments.SingleAsync(x => x.Code == DepartmentCodes.DataEntry);
+        var officeDepartment = await dbContext.Departments.SingleAsync(x => x.Code == DepartmentCodes.Office);
+        await SeedHrMasterDataAsync(dbContext, hrDepartment.Id, adminDepartment.Id, officeDepartment.Id, accountingDepartment.Id,
+            collectionsDepartment.Id, dataEntryDepartment.Id, now);
         await SeedCollectionsMasterDataAsync(dbContext, now);
+        await RepairEmployeeDirectoryAsync(dbContext, now);
         var adminRole = await dbContext.Roles.SingleOrDefaultAsync(role => role.Name == SystemRoleNames.Admin);
         var hrManagerRole = await dbContext.Roles.SingleOrDefaultAsync(role => role.Name == SystemRoleNames.HrManager);
         var hrOfficerRole = await dbContext.Roles.SingleOrDefaultAsync(role => role.Name == SystemRoleNames.HrOfficer);
@@ -68,7 +71,6 @@ public static class ApplicationDbSeeder
             dbContext.Roles.Add(hrOfficerRole);
         }
 
-        var collectionsRoles = new Dictionary<string, Role>(StringComparer.OrdinalIgnoreCase);
         foreach (var (name, description) in new[]
         {
             (SystemRoleNames.CollectionsCollector, "Collector with access to assigned collection cases"),
@@ -77,109 +79,15 @@ public static class ApplicationDbSeeder
             (SystemRoleNames.CollectionsOperationsManager, "Collections operations manager"),
             (SystemRoleNames.CollectionsClientViewer, "Restricted client portfolio viewer"),
             (SystemRoleNames.CollectionsAuditor, "Read-only collections audit and compliance user"),
-            (SystemRoleNames.DataEntry, "Data entry operator for client capture and batch submission")
+            (SystemRoleNames.DataEntry, "Data entry operator for client capture and batch submission"),
+            (SystemRoleNames.LegalOfficer, "Legal officer with firm-wide access to collection cases referred to legal")
         })
         {
-            var role = await dbContext.Roles.SingleOrDefaultAsync(x => x.Name == name);
-            if (role is null)
-            {
-                role = new Role(name, description, true, now);
-                dbContext.Roles.Add(role);
-            }
-            collectionsRoles[name] = role;
-        }
-
-        var dataEntryDepartment = await dbContext.Departments.SingleAsync(x => x.Code == DepartmentCodes.DataEntry);
-        var dataEntryRole = collectionsRoles[SystemRoleNames.DataEntry];
-        if (!await dbContext.Users.AnyAsync(x => x.Username == "nada"))
-        {
-            var dataEntryPassword = configuration["Seed:DataEntryPassword"] ?? "DataEntry!2026";
-            var dataEntryUser = new User("nada", "nada@mis.local", "temporary-seed-hash", "Nada", dataEntryDepartment.Id, now);
-            dataEntryUser.SetPasswordHash(new PasswordHasher<User>().HashPassword(dataEntryUser, dataEntryPassword), now);
-            dataEntryUser.AssignRole(dataEntryRole, now);
-            dbContext.Users.Add(dataEntryUser);
-        }
-
-        var adminPassword = configuration["Seed:AdminPassword"];
-        var username = configuration["Seed:AdminUsername"] ?? "admin";
-        var email = configuration["Seed:AdminEmail"] ?? "admin@mis.local";
-        var fullName = configuration["Seed:AdminFullName"] ?? "MIS Administrator";
-
-        var adminUser = await dbContext.Users
-            .Include(user => user.UserRoles)
-            .SingleOrDefaultAsync(user => user.Username == username);
-
-        if (adminUser is null && !string.IsNullOrWhiteSpace(adminPassword))
-        {
-            adminUser = new User(username, email, "temporary-seed-hash", fullName, adminDepartment.Id, now);
-            adminUser.SetPasswordHash(new PasswordHasher<User>().HashPassword(adminUser, adminPassword), now);
-            dbContext.Users.Add(adminUser);
-        }
-
-        if (adminUser is not null)
-        {
-            adminUser.AssignRole(adminRole, now);
-        }
-
-        var hrPassword = configuration["Seed:HrPassword"];
-        var hrUsername = configuration["Seed:HrUsername"] ?? "hr.user";
-        var hrUser = await dbContext.Users.Include(x => x.UserRoles).SingleOrDefaultAsync(x => x.Username == hrUsername);
-        if (hrUser is null && !string.IsNullOrWhiteSpace(hrPassword))
-        {
-            hrUser = new User(
-                hrUsername,
-                configuration["Seed:HrEmail"] ?? "hr@mis.local",
-                "temporary-seed-hash",
-                configuration["Seed:HrFullName"] ?? "HR User",
-                hrDepartment.Id,
-                now);
-            hrUser.SetPasswordHash(new PasswordHasher<User>().HashPassword(hrUser, hrPassword), now);
-            dbContext.Users.Add(hrUser);
-        }
-
-        if (hrUser is not null)
-        {
-            var configuredRole = configuration["Seed:HrRole"];
-            hrUser.AssignRole(
-                string.Equals(configuredRole, SystemRoleNames.HrOfficer, StringComparison.OrdinalIgnoreCase)
-                    ? hrOfficerRole
-                    : hrManagerRole,
-                now);
-        }
-
-        var collectionsPassword = configuration["Seed:CollectionsPassword"];
-        var collectionsUsername = configuration["Seed:CollectionsUsername"] ?? "collections.user";
-        var collectionsUser = await dbContext.Users.Include(x => x.UserRoles).SingleOrDefaultAsync(x => x.Username == collectionsUsername);
-        if (!string.IsNullOrWhiteSpace(collectionsPassword))
-        {
-            if (collectionsUser is null)
-            {
-                collectionsUser = new User(
-                    collectionsUsername,
-                    configuration["Seed:CollectionsEmail"] ?? "collections@mis.local",
-                    "temporary-seed-hash",
-                    configuration["Seed:CollectionsFullName"] ?? "Collections User",
-                    collectionsDepartment.Id,
-                    now);
-                dbContext.Users.Add(collectionsUser);
-            }
-
-            collectionsUser.SetPasswordHash(new PasswordHasher<User>().HashPassword(collectionsUser, collectionsPassword), now);
-            if (!collectionsUser.IsActive) collectionsUser.SetActive(true, now);
-        }
-        if (collectionsUser is not null)
-        {
-            var configured = configuration["Seed:CollectionsRole"] ?? SystemRoleNames.CollectionsOperationsManager;
-            collectionsUser.AssignRole(collectionsRoles.GetValueOrDefault(configured) ?? collectionsRoles[SystemRoleNames.CollectionsOperationsManager], now);
+            if (await dbContext.Roles.AnyAsync(x => x.Name == name)) continue;
+            dbContext.Roles.Add(new Role(name, description, true, now));
         }
 
         await SeedProvisionedUserDirectoryAsync(dbContext, now);
-
-        if (string.IsNullOrWhiteSpace(adminPassword) && string.IsNullOrWhiteSpace(hrPassword) && string.IsNullOrWhiteSpace(collectionsPassword))
-        {
-            logger.LogWarning("No development users were seeded because seed passwords are not configured.");
-        }
-
         await dbContext.SaveChangesAsync();
     }
 
@@ -200,8 +108,9 @@ public static class ApplicationDbSeeder
         };
         foreach (var (username, fullName, departmentCode) in directory)
         {
-            if (await dbContext.Users.AnyAsync(x => x.Username == username)) continue;
-            var user = new User(username, $"{username.Replace('.', '_')}@mis.local", "PROVISIONED-NO-LOGIN", fullName, departmentIds[departmentCode], now);
+            var email = $"{username.Replace('.', '_')}@mis.local";
+            if (await dbContext.Users.AnyAsync(x => x.Username == username || x.Email == email)) continue;
+            var user = new User(username, email, "PROVISIONED-NO-LOGIN", fullName, departmentIds[departmentCode], now);
             user.SetActive(false, now);
             dbContext.Users.Add(user);
         }
@@ -219,7 +128,8 @@ public static class ApplicationDbSeeder
         foreach (var username in new[] { "manar", "ahmed", "duaa" }) await Propose(username, "admin.dashboard.view", "ALL", null, "Proposed from the approved initial administration directory; does not grant administrator role.");
         await Propose("fatma", "hr.access", "DEPARTMENT", null, "Proposed from the approved initial HR directory; requires administrator review.");
         await Propose("fatma", "data_entry.access", "DEPARTMENT", null, "Proposed from the approved initial data-entry directory; module is planned.");
-        await Propose("samah", "legal.access", "DEPARTMENT", null, "Proposed from the approved initial legal directory; module is planned.");
+        await Propose("samah", "legal.access", "DEPARTMENT", null, "Proposed from the approved initial legal directory.");
+        await Propose("samah", "legal.case.manage", "DEPARTMENT", null, "Proposed from the approved initial legal directory.");
 
         var assignments = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
@@ -278,7 +188,133 @@ public static class ApplicationDbSeeder
         await dbContext.SaveChangesAsync();
     }
 
-    private static async Task SeedHrMasterDataAsync(ApplicationDbContext dbContext, Guid hrDepartmentId, DateTimeOffset now)
+    private static async Task RepairEmployeeDirectoryAsync(ApplicationDbContext dbContext, DateTimeOffset now)
+    {
+        var departments = await dbContext.Departments.ToListAsync();
+        var organizations = await dbContext.CollectionClientOrganizations.ToListAsync();
+        var organizationLookups = organizations
+            .Select(organization => (organization.Code, organization.NameEnglish, organization.NameArabic))
+            .ToList();
+        foreach (var fake in departments.Where(department => department.IsActive
+            && !DepartmentCodes.IsOperationalUnit(department.Code)
+            && (DepartmentCodes.IsLegacyTitleUnit(department.Code)
+                || EmployeeDirectoryDepartmentFilter.IsClientNamedDepartment(
+                    department.Code, department.Name, department.NameArabic, organizationLookups))))
+            fake.Update(fake.Name, fake.Code, fake.NameArabic, fake.Description, false, now);
+
+        var byCode = departments.ToDictionary(department => department.Code, StringComparer.OrdinalIgnoreCase);
+        if (!byCode.TryGetValue(DepartmentCodes.Collections, out var collections)
+            || !byCode.TryGetValue(DepartmentCodes.Admin, out var administration))
+            return;
+        byCode.TryGetValue(DepartmentCodes.Office, out var office);
+        office ??= administration;
+        var assignments = await dbContext.EmployeeOrganizationAssignments.ToListAsync();
+        var employees = await dbContext.Employees
+            .Include(employee => employee.Department)
+            .Include(employee => employee.Position)
+            .ToListAsync();
+
+        foreach (var employee in employees)
+        {
+            var names = EmployeeName.Resolve(employee.FullName, employee.FullNameArabic, employee.FullNameEnglish);
+            if (!string.Equals(employee.FullNameArabic, names.Arabic, StringComparison.Ordinal)
+                || !string.Equals(employee.FullNameEnglish, names.English, StringComparison.Ordinal))
+                employee.RepairLocalizedNames(now);
+            var department = employee.Department;
+            var position = employee.Position;
+            var matchedOrganizations = organizations.Where(organization =>
+                HrOrganizationLookup.Mentions(department.Name, organization.Code, organization.NameEnglish, organization.NameArabic)
+                || HrOrganizationLookup.Mentions(department.Code, organization.Code, organization.NameEnglish, organization.NameArabic)
+                || HrOrganizationLookup.Mentions(department.NameArabic, organization.Code, organization.NameEnglish, organization.NameArabic)
+                || (position is not null && (
+                    HrOrganizationLookup.Mentions(position.Code, organization.Code, organization.NameEnglish, organization.NameArabic)
+                    || HrOrganizationLookup.Mentions(position.Name, organization.Code, organization.NameEnglish, organization.NameArabic)
+                    || HrOrganizationLookup.Mentions(position.NameArabic, organization.Code, organization.NameEnglish, organization.NameArabic))))
+                .ToList();
+
+            foreach (var matchedOrganization in matchedOrganizations)
+            {
+                if (!assignments.Any(assignment => assignment.EmployeeId == employee.Id && assignment.OrganizationId == matchedOrganization.Id))
+                {
+                    var assignment = new EmployeeOrganizationAssignment(
+                        employee.Id,
+                        matchedOrganization.Id,
+                        isPrimary: assignments.All(existing => existing.EmployeeId != employee.Id),
+                        now);
+                    dbContext.EmployeeOrganizationAssignments.Add(assignment);
+                    assignments.Add(assignment);
+                }
+            }
+
+            if (matchedOrganizations.Count > 0)
+            {
+                if (EmployeeDirectoryDepartmentFilter.IsClientNamedDepartment(
+                        department.Code, department.Name, department.NameArabic, organizationLookups)
+                    && employee.DepartmentId != collections.Id)
+                    employee.Update(employee.EmployeeNumber, employee.FullName, collections.Id, employee.IsActive, now);
+                continue;
+            }
+
+            if (!DepartmentCodes.IsLegacyTitleUnit(department.Code)) continue;
+            var target = department.Code.ToUpperInvariant() switch
+            {
+                "COLLECTION_MANAGER_UNIT" or "LOWER" => collections,
+                "OFFICE_GIRL_UNIT" => office,
+                _ => administration
+            };
+            if (employee.DepartmentId != target.Id)
+                employee.Update(employee.EmployeeNumber, employee.FullName, target.Id, employee.IsActive, now);
+        }
+
+        void EnsureAssignment(Guid employeeId, Guid organizationId)
+        {
+            if (assignments.Any(assignment => assignment.EmployeeId == employeeId && assignment.OrganizationId == organizationId))
+                return;
+            var assignment = new EmployeeOrganizationAssignment(
+                employeeId,
+                organizationId,
+                isPrimary: assignments.All(existing => existing.EmployeeId != employeeId),
+                now);
+            dbContext.EmployeeOrganizationAssignments.Add(assignment);
+            assignments.Add(assignment);
+        }
+
+        var userEmployees = await dbContext.Users
+            .Where(user => user.EmployeeId != null)
+            .Select(user => new { user.Id, EmployeeId = user.EmployeeId!.Value })
+            .ToListAsync();
+        var employeeIdByUserId = userEmployees.ToDictionary(item => item.Id, item => item.EmployeeId);
+
+        foreach (var access in await dbContext.CollectionUserAccess.AsNoTracking().ToListAsync())
+        {
+            if (employeeIdByUserId.TryGetValue(access.UserId, out var employeeId))
+                EnsureAssignment(employeeId, access.OrganizationId);
+        }
+
+        foreach (var grant in await dbContext.UserAccessGrants.AsNoTracking()
+            .Where(grant => grant.Status == "ACTIVE" && grant.ClientOrganizationId != null)
+            .ToListAsync())
+        {
+            if (employeeIdByUserId.TryGetValue(grant.UserId, out var employeeId))
+                EnsureAssignment(employeeId, grant.ClientOrganizationId!.Value);
+        }
+
+        var caseAssignments = await (
+            from collectionCase in dbContext.CollectionCases.AsNoTracking()
+            where !collectionCase.IsArchived && collectionCase.AssignedCollectorId != null
+            join user in dbContext.Users.AsNoTracking() on collectionCase.AssignedCollectorId equals user.Id
+            where user.EmployeeId != null
+            select new { EmployeeId = user.EmployeeId!.Value, collectionCase.Portfolio.OrganizationId }
+        ).Distinct().ToListAsync();
+        foreach (var link in caseAssignments)
+            EnsureAssignment(link.EmployeeId, link.OrganizationId);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task SeedHrMasterDataAsync(ApplicationDbContext dbContext, Guid hrDepartmentId,
+        Guid adminDepartmentId, Guid officeDepartmentId, Guid accountingDepartmentId, Guid collectionsDepartmentId,
+        Guid dataEntryDepartmentId, DateTimeOffset now)
     {
         var mainBranch = await dbContext.Branches.SingleOrDefaultAsync(item => item.Code == "MAIN");
         if (mainBranch is null)
@@ -378,18 +414,28 @@ public static class ApplicationDbSeeder
                 item.Update(item.Name, item.Code, nameArabic, item.Description, item.IsActive, now);
         }
 
-        var positions = new[]
+        var positions = new (string Name, string NameArabic, string Code, Guid? DepartmentId)[]
         {
-            ("HR Manager", "مدير الموارد البشرية", "HR_MANAGER"),
-            ("HR Officer", "مسؤول موارد بشرية", "HR_OFFICER")
+            ("HR Manager", "مدير الموارد البشرية", "HR_MANAGER", hrDepartmentId),
+            ("HR Officer", "مسؤول موارد بشرية", "HR_OFFICER", hrDepartmentId),
+            ("Financial & Administrative Director", "المدير المالي والإداري", "FIN_ADMIN_DIRECTOR", null),
+            ("Director", "مدير", "DIRECTOR", null),
+            ("Collection Manager", "مدير تحصيل", "COLLECTION_MANAGER", null),
+            ("Collector", "محصل", "COLLECTOR", null),
+            ("Supervisor", "مشرف", "SUPERVISOR", null),
+            ("Admin", "إداري", "ADMIN", null),
+            ("Accounting", "حسابات", "ACCOUNTING", null),
+            ("Data Entry", "إدخال بيانات", "DATA_ENTRY", null),
+            ("Office Boy", "عامل خدمات", "OFFICE_BOY", officeDepartmentId),
+            ("Office Girl", "عاملة خدمات", "OFFICE_GIRL", officeDepartmentId)
         };
-        foreach (var (name, nameArabic, code) in positions)
+        foreach (var (name, nameArabic, code, departmentId) in positions)
         {
             var item = await dbContext.Positions.SingleOrDefaultAsync(value => value.Code == code);
             if (item is null)
-                dbContext.Positions.Add(new Position(name, code, nameArabic, null, hrDepartmentId, true, now));
-            else if (string.IsNullOrWhiteSpace(item.NameArabic))
-                item.Update(item.Name, item.Code, nameArabic, item.Description, item.DepartmentId, item.IsActive, now);
+                dbContext.Positions.Add(new Position(name, code, nameArabic, null, departmentId, true, now));
+            else if (string.IsNullOrWhiteSpace(item.NameArabic) || item.DepartmentId != departmentId)
+                item.Update(item.Name, item.Code, nameArabic, item.Description, departmentId, item.IsActive, now);
         }
 
         if (!await dbContext.WorkingCalendars.AnyAsync())

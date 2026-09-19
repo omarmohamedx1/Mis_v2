@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpenText, Building2, Calculator, CheckCircle2, ClipboardList, Languages, LayoutGrid, LogOut, ShieldCheck, UsersRound } from 'lucide-react';
+import { ArrowUpRight, BookOpenText, Building2, CheckCircle2, ClipboardList, Languages, LayoutGrid, LogOut, Scale, ShieldCheck, UsersRound } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import misLogo from '../../assets/mis-logo.svg';
 import { useAuth } from '../../context/AuthContext';
@@ -22,32 +22,21 @@ const modulePresentation: Record<ModuleId, {
     icon: BookOpenText,
     titleAr: 'المحاسبة والمالية',
     titleEn: 'Accounting & Finance',
-    descriptionAr: 'القيود، دليل الحسابات، الفترات والتقارير المالية من مصدر موحّد.',
-    descriptionEn: 'Controlled journals, chart of accounts, periods, and financial reporting.',
-    featuresAr: ['دفتر الأستاذ', 'الفترات', 'التقارير'],
-    featuresEn: ['General ledger', 'Periods', 'Reports'],
+    descriptionAr: 'القيود، المرتبات، الانتقالات، العمولات، ودليل الحسابات من مصدر موحّد.',
+    descriptionEn: 'Journals, payroll, transportation, commissions, and the chart of accounts.',
+    featuresAr: ['القيود', 'المرتبات', 'العمولات'],
+    featuresEn: ['Journals', 'Payroll', 'Commissions'],
     accent: 'from-cyan-500 to-blue-700',
     iconStyle: 'bg-cyan-50 text-cyan-700 ring-cyan-100',
-  },
-  accounting: {
-    icon: Calculator,
-    titleAr: 'الحسابات',
-    titleEn: 'Accounting',
-    descriptionAr: 'المرتبات والانتقالات وعمولات المحصلين والمشرفين.',
-    descriptionEn: 'Payroll, transportation, and collector/supervisor commissions.',
-    featuresAr: ['المرتبات', 'الانتقالات', 'العمولات'],
-    featuresEn: ['Salaries', 'Transport', 'Commissions'],
-    accent: 'from-teal-500 to-cyan-700',
-    iconStyle: 'bg-teal-50 text-teal-700 ring-teal-100',
   },
   'data-entry': {
     icon: ClipboardList,
     titleAr: 'إدخال البيانات',
     titleEn: 'Data Entry',
-    descriptionAr: 'إدخال العملاء ورفع الملفات وإرسال الدفعات للمراجعة.',
-    descriptionEn: 'Enter clients, upload files, and submit batches for review.',
-    featuresAr: ['العملاء', 'الرفع', 'السجل'],
-    featuresEn: ['Clients', 'Import', 'History'],
+    descriptionAr: 'إدخال العملاء ورفع الملفات، ثم إرسال الدفعات لمراجعة التحصيل.',
+    descriptionEn: 'Enter clients, upload files, then send batches for collections review.',
+    featuresAr: ['عملاء', 'رفع', 'للتحصيل'],
+    featuresEn: ['Clients', 'Import', 'Collections'],
     accent: 'from-indigo-500 to-sky-700',
     iconStyle: 'bg-indigo-50 text-indigo-700 ring-indigo-100',
   },
@@ -55,12 +44,23 @@ const modulePresentation: Record<ModuleId, {
     icon: Building2,
     titleAr: 'التحصيل والبنوك',
     titleEn: 'Collections & Banks',
-    descriptionAr: 'إدارة المحافظ والحالات والتحصيلات والمتابعات والبنوك والعملاء.',
-    descriptionEn: 'Manage portfolios, cases, collections, follow-ups, banks, and clients.',
-    featuresAr: ['الحالات', 'التحصيلات', 'البنوك'],
-    featuresEn: ['Cases', 'Payments', 'Banks'],
+    descriptionAr: 'مكاتب البنوك والشركات، استلام المحفظة، التوزيع، ثم التحصيل اليومي.',
+    descriptionEn: 'Bank and company desks, portfolio intake, distribution, then collection.',
+    featuresAr: ['البنوك', 'المحفظة', 'التحصيل'],
+    featuresEn: ['Banks', 'Portfolio', 'Collection'],
     accent: 'from-sky-500 to-indigo-700',
     iconStyle: 'bg-blue-50 text-blue-700 ring-blue-100',
+  },
+  legal: {
+    icon: Scale,
+    titleAr: 'الشؤون القانونية',
+    titleEn: 'Legal Affairs',
+    descriptionAr: 'قضايا LEGAL: الإنذارات، الجلسات، الأحكام، والتسويات.',
+    descriptionEn: 'LEGAL cases: notices, hearings, judgments, and settlements.',
+    featuresAr: ['القضايا', 'الجلسات', 'التسوية'],
+    featuresEn: ['Cases', 'Hearings', 'Settlement'],
+    accent: 'from-amber-600 to-stone-800',
+    iconStyle: 'bg-amber-50 text-amber-800 ring-amber-100',
   },
   hr: {
     icon: UsersRound,
@@ -95,7 +95,6 @@ export function ModuleSelectorPage() {
   const modules = getAccessibleModules(user);
   if (!modules.length) return <Navigate to="/unauthorized" replace />;
   const ar = language === 'ar';
-  const lastModule = localStorage.getItem(LAST_MODULE_KEY);
   const signOut = () => { logout(); navigate('/login', { replace: true }); };
 
   return (
@@ -107,7 +106,7 @@ export function ModuleSelectorPage() {
       <header className="relative z-10 border-b border-white/10">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-5 sm:px-8">
           <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-lg shadow-slate-950/15"><img src={misLogo} alt="MIS" className="h-10 w-auto" /></span>
-          <div className="text-white"><p className="font-bold tracking-wide">MIS Collection Firm</p><p className="mt-0.5 text-xs text-cyan-100/75">Enterprise Operations Platform</p></div>
+          <div className="text-white"><p className="font-bold tracking-wide">{ar ? 'شركة MIS للتحصيل' : 'MIS Collection Firm'}</p><p className="mt-0.5 text-xs text-cyan-100/75">{ar ? 'منصة العمليات المؤسسية' : 'Enterprise Operations Platform'}</p></div>
           <div className="ms-auto flex items-center gap-2">
             <button type="button" onClick={() => setLanguage(ar ? 'en' : 'ar')} className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 text-sm font-semibold text-white backdrop-blur hover:bg-white/15"><Languages className="h-4 w-4" /><span className="hidden sm:inline">{ar ? 'English' : 'العربية'}</span></button>
             <button type="button" onClick={signOut} className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/15 px-3 text-sm font-semibold text-white/80 hover:bg-white/10 hover:text-white"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">{ar ? 'خروج' : 'Sign out'}</span></button>
@@ -122,23 +121,25 @@ export function ModuleSelectorPage() {
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">{ar ? 'اختر الموديول الذي تريد العمل عليه. تظهر هنا فقط مساحات العمل المصرّح لك باستخدامها، ويمكنك التبديل بينها في أي وقت.' : 'Choose where you want to work. Only authorized modules appear here, and you can switch between them at any time.'}</p>
         </section>
 
-        <section className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4" aria-label={ar ? 'الموديولات المتاحة' : 'Available modules'}>
+        <section className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-label={ar ? 'الموديولات المتاحة' : 'Available modules'}>
           {modules.map(module => {
             const presentation = modulePresentation[module.id];
             const Icon = presentation.icon;
-            const isLast = lastModule === module.id;
             const features = ar ? presentation.featuresAr : presentation.featuresEn;
             return (
-              <Link key={module.id} to={module.homePath} onClick={() => localStorage.setItem(LAST_MODULE_KEY, module.id)} className="group relative flex min-h-[330px] flex-col overflow-hidden rounded-3xl border border-white/70 bg-white p-6 shadow-[0_20px_55px_rgba(15,23,42,.12)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_26px_70px_rgba(15,23,42,.18)]">
+              <Link key={module.id} to={module.homePath} onClick={() => localStorage.setItem(LAST_MODULE_KEY, module.id)} className="group relative flex h-full min-h-[300px] flex-col overflow-hidden rounded-3xl border border-white/70 bg-white p-6 shadow-[0_20px_55px_rgba(15,23,42,.12)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_26px_70px_rgba(15,23,42,.18)]">
                 <span className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${presentation.accent}`} />
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <span className={`grid h-14 w-14 place-items-center rounded-2xl ring-1 ${presentation.iconStyle}`}><Icon className="h-7 w-7" /></span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />{ar ? 'متاح' : 'Available'}</span>
                 </div>
-                <h2 className="mt-6 text-xl font-black text-[#0b2b45]">{ar ? presentation.titleAr : presentation.titleEn}</h2>
-                <p className="mt-3 min-h-[72px] text-sm leading-6 text-slate-500">{ar ? presentation.descriptionAr : presentation.descriptionEn}</p>
-                <div className="mt-4 flex flex-wrap gap-2">{features.map(feature => <span key={feature} className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">{feature}</span>)}</div>
-                <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-5"><span className="text-sm font-bold text-mis-primary">{isLast ? (ar ? 'آخر موديول مستخدم' : 'Last used module') : (ar ? 'فتح الموديول' : 'Open module')}</span><span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 transition group-hover:bg-mis-primary group-hover:text-white"><ArrowUpRight className={`h-4 w-4 ${ar ? '-rotate-90' : ''}`} /></span></div>
+                <h2 className="mt-5 min-h-[3.25rem] text-xl font-black leading-snug text-[#0b2b45]">{ar ? presentation.titleAr : presentation.titleEn}</h2>
+                <p className="mt-2 line-clamp-3 min-h-[4.5rem] text-sm leading-6 text-slate-500">{ar ? presentation.descriptionAr : presentation.descriptionEn}</p>
+                <div className="mt-4 flex gap-2">{features.map(feature => <span key={feature} className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">{feature}</span>)}</div>
+                <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-5">
+                  <span className="text-sm font-bold text-mis-primary">{ar ? 'فتح الموديول' : 'Open module'}</span>
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 transition group-hover:bg-mis-primary group-hover:text-white"><ArrowUpRight className={`h-4 w-4 ${ar ? '-rotate-90' : ''}`} /></span>
+                </div>
               </Link>
             );
           })}

@@ -39,6 +39,7 @@ export interface MasterDataLookup {
   nameEnglish: string;
   nameArabic: string | null;
   isActive: boolean;
+  departmentId?: string | null;
 }
 
 export interface PagedMasterData {

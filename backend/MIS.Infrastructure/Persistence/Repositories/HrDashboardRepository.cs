@@ -22,36 +22,56 @@ public sealed class HrDashboardRepository : IHrDashboardRepository
     {
         var isArabic = ApiTextLocalizer.IsArabic;
         var today = await GetCompanyDateAsync(cancellationToken);
-        var totalEmployees = await _dbContext.Employees.AsNoTracking().CountAsync(cancellationToken);
-        var activeEmployees = await _dbContext.Employees.AsNoTracking().CountAsync(item => item.IsActive, cancellationToken);
+        var totalEmployees = await _dbContext.Employees.AsNoTracking().CountAsync(item => !item.IsArchived, cancellationToken);
+        var activeEmployees = await _dbContext.Employees.AsNoTracking().CountAsync(item => !item.IsArchived && item.IsActive, cancellationToken);
         var inactiveEmployees = totalEmployees - activeEmployees;
-        var totalDocuments = await _dbContext.EmployeeDocuments.AsNoTracking().CountAsync(item => !item.IsDeleted, cancellationToken);
+        var totalDocuments = await _dbContext.EmployeeDocuments.AsNoTracking().CountAsync(item => !item.IsDeleted && !item.Employee.IsArchived, cancellationToken);
         var attentionThrough = today.AddDays(AlertHorizonDays);
         var documentsRequiringAttention = await _dbContext.EmployeeDocuments.AsNoTracking().CountAsync(
-            item => !item.IsDeleted && item.Employee.IsActive && item.ExpiryDate.HasValue && item.ExpiryDate.Value <= attentionThrough,
+            item => !item.IsDeleted && !item.Employee.IsArchived && item.Employee.IsActive && item.ExpiryDate.HasValue && item.ExpiryDate.Value <= attentionThrough,
             cancellationToken);
 
         var employeesByDepartment = await _dbContext.Departments.AsNoTracking()
-            .OrderByDescending(department => _dbContext.Employees.Count(employee => employee.DepartmentId == department.Id))
+            .Where(department => department.IsActive && DepartmentCodes.OperationalUnits.Contains(department.Code))
+            .OrderByDescending(department => _dbContext.Employees.Count(employee => !employee.IsArchived && employee.DepartmentId == department.Id))
             .ThenBy(department => department.Name)
             .Select(department => new DepartmentEmployeeCountDto(
                 department.Id,
                 isArabic ? department.NameArabic ?? department.Name : department.Name,
                 department.Code,
-                _dbContext.Employees.Count(employee => employee.DepartmentId == department.Id)))
+                _dbContext.Employees.Count(employee => !employee.IsArchived && employee.DepartmentId == department.Id)))
             .ToArrayAsync(cancellationToken);
 
+        var assignmentCounts = await _dbContext.EmployeeOrganizationAssignments.AsNoTracking()
+            .Where(assignment => !assignment.Employee.IsArchived)
+            .GroupBy(assignment => assignment.OrganizationId)
+            .Select(group => new { OrganizationId = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+        var assignmentCountLookup = assignmentCounts.ToDictionary(item => item.OrganizationId, item => item.Count);
+        var employeesByOrganization = (await _dbContext.CollectionClientOrganizations.AsNoTracking()
+                .Where(organization => organization.IsActive)
+                .Select(organization => new { organization.Id, organization.NameArabic, organization.NameEnglish, organization.Code })
+                .ToListAsync(cancellationToken))
+            .Select(organization => new OrganizationEmployeeCountDto(
+                organization.Id,
+                isArabic ? organization.NameArabic : organization.NameEnglish,
+                organization.Code,
+                assignmentCountLookup.GetValueOrDefault(organization.Id)))
+            .OrderByDescending(item => item.EmployeeCount)
+            .ThenBy(item => item.OrganizationName)
+            .ToArray();
+
         var employeesByBranch = (await _dbContext.Branches.AsNoTracking()
-                .OrderByDescending(branch => _dbContext.Employees.Count(employee => employee.BranchId == branch.Id))
+                .OrderByDescending(branch => _dbContext.Employees.Count(employee => !employee.IsArchived && employee.BranchId == branch.Id))
                 .ThenBy(branch => branch.Name)
                 .Select(branch => new BranchEmployeeCountDto(
                     branch.Id,
                     isArabic ? branch.NameArabic ?? branch.Name : branch.Name,
                     branch.Code,
-                    _dbContext.Employees.Count(employee => employee.BranchId == branch.Id)))
+                    _dbContext.Employees.Count(employee => !employee.IsArchived && employee.BranchId == branch.Id)))
                 .ToListAsync(cancellationToken))
             .ToList();
-        var unassignedBranchCount = await _dbContext.Employees.AsNoTracking().CountAsync(item => item.BranchId == null, cancellationToken);
+        var unassignedBranchCount = await _dbContext.Employees.AsNoTracking().CountAsync(item => !item.IsArchived && item.BranchId == null, cancellationToken);
         if (unassignedBranchCount > 0)
             employeesByBranch.Add(new BranchEmployeeCountDto(null, ApiTextLocalizer.Localize("Unassigned"), null, unassignedBranchCount));
 
@@ -69,6 +89,7 @@ public sealed class HrDashboardRepository : IHrDashboardRepository
             true,
             totalDocuments,
             employeesByDepartment,
+            employeesByOrganization,
             inactiveEmployees,
             employeesByBranch,
             todayAttendance,
@@ -83,17 +104,17 @@ public sealed class HrDashboardRepository : IHrDashboardRepository
         CancellationToken cancellationToken)
     {
         var rows = await _dbContext.AttendanceRecords.AsNoTracking()
-            .Where(item => !item.IsDeleted && item.Employee.IsActive && item.AttendanceDate == today)
+            .Where(item => !item.IsDeleted && !item.Employee.IsArchived && item.Employee.IsActive && item.AttendanceDate == today)
             .Select(item => new { item.EmployeeId, item.Status, item.CheckIn, item.CheckOut })
             .ToListAsync(cancellationToken);
         var approvedLeaveEmployees = await _dbContext.LeaveRequests.AsNoTracking()
-            .Where(item => item.Employee.IsActive && item.Status == LeaveRequestStatuses.Approved &&
+            .Where(item => !item.Employee.IsArchived && item.Employee.IsActive && item.Status == LeaveRequestStatuses.Approved &&
                            item.StartDate <= today && item.EndDate >= today)
             .Select(item => item.EmployeeId)
             .Distinct()
             .ToListAsync(cancellationToken);
         var absenceEmployees = await _dbContext.EmployeeAbsences.AsNoTracking()
-            .Where(item => item.Employee.IsActive && item.AbsenceDate == today)
+            .Where(item => !item.Employee.IsArchived && item.Employee.IsActive && item.AbsenceDate == today)
             .Select(item => item.EmployeeId)
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -125,7 +146,7 @@ public sealed class HrDashboardRepository : IHrDashboardRepository
         var alerts = new List<HrDashboardAlertDto>();
 
         var contracts = await _dbContext.EmployeeContracts.AsNoTracking()
-            .Where(item => item.Employee.IsActive && item.ContractEndDate.HasValue &&
+            .Where(item => !item.Employee.IsArchived && item.Employee.IsActive && item.ContractEndDate.HasValue &&
                            item.ContractEndDate.Value >= recentExpiryFloor && item.ContractEndDate.Value <= through &&
                            item.Status != EmployeeContract.TerminatedStatus)
             .Select(item => new
@@ -149,7 +170,7 @@ public sealed class HrDashboardRepository : IHrDashboardRepository
             today)));
 
         var documents = await _dbContext.EmployeeDocuments.AsNoTracking()
-            .Where(item => !item.IsDeleted && item.Employee.IsActive && item.ExpiryDate.HasValue &&
+            .Where(item => !item.IsDeleted && !item.Employee.IsArchived && item.Employee.IsActive && item.ExpiryDate.HasValue &&
                            item.ExpiryDate.Value >= recentExpiryFloor && item.ExpiryDate.Value <= through)
             .Select(item => new
             {
@@ -176,7 +197,7 @@ public sealed class HrDashboardRepository : IHrDashboardRepository
             today)));
 
         var probations = await _dbContext.EmployeeContracts.AsNoTracking()
-            .Where(item => item.Employee.IsActive && item.ProbationEndDate.HasValue &&
+            .Where(item => !item.Employee.IsArchived && item.Employee.IsActive && item.ProbationEndDate.HasValue &&
                            item.ProbationEndDate.Value >= today.AddDays(-7) && item.ProbationEndDate.Value <= through)
             .Select(item => new
             {
@@ -196,33 +217,6 @@ public sealed class HrDashboardRepository : IHrDashboardRepository
             ApiTextLocalizer.Localize("Probation period"),
             item.DueDate,
             today)));
-
-        var birthdays = await _dbContext.Employees.AsNoTracking()
-            .Where(item => item.IsActive && item.DateOfBirth.HasValue)
-            .Select(item => new
-            {
-                item.Id,
-                item.EmployeeNumber,
-                EmployeeName = isArabic ? item.FullNameArabic ?? item.FullName : item.FullNameEnglish ?? item.FullName,
-                DateOfBirth = item.DateOfBirth!.Value
-            })
-            .ToListAsync(cancellationToken);
-        foreach (var employee in birthdays)
-        {
-            var nextBirthday = NextBirthday(employee.DateOfBirth, today);
-            var days = nextBirthday.DayNumber - today.DayNumber;
-            if (days is < 0 or > AlertHorizonDays) continue;
-            alerts.Add(new HrDashboardAlertDto(
-                "Birthday",
-                employee.Id,
-                employee.Id,
-                employee.EmployeeNumber,
-                employee.EmployeeName,
-                ApiTextLocalizer.Localize("Employee birthday"),
-                nextBirthday,
-                days,
-                days <= 7 ? "Upcoming" : "Info"));
-        }
 
         return alerts
             .OrderBy(item => item.DaysRemaining < 0 ? 0 : 1)
@@ -344,17 +338,6 @@ public sealed class HrDashboardRepository : IHrDashboardRepository
             days,
             severity);
     }
-
-    private static DateOnly NextBirthday(DateOnly birthDate, DateOnly today)
-    {
-        var birthday = BirthdayInYear(birthDate, today.Year);
-        return birthday < today ? BirthdayInYear(birthDate, today.Year + 1) : birthday;
-    }
-
-    private static DateOnly BirthdayInYear(DateOnly birthDate, int year) =>
-        birthDate.Month == 2 && birthDate.Day == 29 && !DateTime.IsLeapYear(year)
-            ? new DateOnly(year, 2, 28)
-            : new DateOnly(year, birthDate.Month, birthDate.Day);
 
     private static string BuildActivityMessage(string action, string? employeeName)
     {

@@ -28,7 +28,12 @@ public sealed record BankPortfolioImportPreviewRowDto(
     string? AccountReference,
     decimal? OutstandingBalance,
     string Status,
-    IReadOnlyCollection<string> Errors);
+    IReadOnlyCollection<string> Errors,
+    string? NationalId = null,
+    string? CardNumber = null,
+    string? Bucket = null,
+    string? ImportStatus = null,
+    decimal? TotalDues = null);
 
 public sealed record BankPortfolioImportConfirmResultDto(
     BankPortfolioImportDto Import,

@@ -11,8 +11,12 @@ namespace MIS.Infrastructure.Services;
 
 public sealed class SocialInsuranceService(ApplicationDbContext db, ICurrentUserContext user, IHrAuditService audit) : ISocialInsuranceService
 {
-    private bool CanManage => user.Roles.Any(r => r is SystemRoleNames.HrManager or SystemRoleNames.HrOfficer) || user.Permissions.Contains("hr.social_insurance.manage");
-    private void ReadAccess() { if (!CanManage && !user.Permissions.Contains("hr.social_insurance.view")) throw new HrForbiddenException("Social insurance access is required."); }
+    private bool Has(string permission) =>
+        user.Roles.Contains(SystemRoleNames.Admin) ||
+        user.Permissions.Contains("*") ||
+        user.Permissions.Contains(permission);
+    private bool CanManage => Has("hr.social_insurance.manage") || user.Roles.Any(r => r is SystemRoleNames.HrManager or SystemRoleNames.HrOfficer);
+    private void ReadAccess() { if (!CanManage && !Has("hr.social_insurance.view")) throw new HrForbiddenException("Social insurance access is required."); }
     private void WriteAccess() { if (!CanManage) throw new HrForbiddenException("Social insurance management permission is required."); }
     public async Task<SocialInsurancePageDto> ListAsync(string? search, Guid? departmentId, string? status, Guid? employeeId, int page, int pageSize, CancellationToken ct)
     {
@@ -35,7 +39,7 @@ public sealed class SocialInsuranceService(ApplicationDbContext db, ICurrentUser
         if (!string.IsNullOrEmpty(status)) query = query.Where(x => (x.Record == null ? "NotInsured" : x.Record.InsuranceStatus) == status);
         var count = await query.CountAsync(ct);
         var arabic = ApiTextLocalizer.IsArabic;
-        var sensitive = user.Roles.Contains(SystemRoleNames.HrManager) || user.Permissions.Contains(SystemPermissionCodes.HrSensitiveView);
+        var sensitive = Has(SystemPermissionCodes.HrSensitiveView) || user.Roles.Contains(SystemRoleNames.HrManager);
         var rows = await query.OrderBy(x => x.Employee.EmployeeNumber).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new {
             x.Employee.Id, x.Employee.EmployeeNumber,
             Name = arabic ? x.Employee.FullNameArabic ?? x.Employee.FullName : x.Employee.FullNameEnglish ?? x.Employee.FullName,

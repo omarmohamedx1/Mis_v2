@@ -12,7 +12,7 @@ internal sealed record ParsedCollectionRow(int RowNumber, IReadOnlyDictionary<st
 internal static class CollectionImportParser
 {
     public const int MaximumRows = 20_000;
-    public const int MaximumColumns = 40;
+    public const int MaximumColumns = 100;
     static CollectionImportParser() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
     public static async Task<IReadOnlyCollection<ParsedCollectionRow>> ParseAsync(Stream stream, string extension, CancellationToken token)

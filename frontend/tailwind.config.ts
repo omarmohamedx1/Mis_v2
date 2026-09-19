@@ -25,7 +25,7 @@ export default {
         input: '0 0 0 4px rgba(23, 136, 184, 0.14)',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Arial', 'sans-serif'],
+        sans: ['"IBM Plex Sans"', '"IBM Plex Sans Arabic"', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Arial', 'sans-serif'],
       },
     },
   },

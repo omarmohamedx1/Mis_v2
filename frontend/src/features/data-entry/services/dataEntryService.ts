@@ -1,4 +1,5 @@
-import { apiClient, requestFormData } from '../../../services/apiClient';
+import { apiClient, downloadApiFile, requestFormData } from '../../../services/apiClient';
+import { loadAllPages } from '../../../utils/loadAllPages';
 import type {
   ConfirmDataEntryImportInput,
   CreateDataEntryClientInput,
@@ -14,6 +15,7 @@ import type {
   DataEntryOrganization,
   DataEntryPagedResult,
   DataEntryPortfolio,
+  DataEntryDocument,
 } from '../types/dataEntry';
 
 export const dataEntryService = {
@@ -29,10 +31,10 @@ export const dataEntryService = {
     return (await apiClient.get<DataEntryPortfolio[]>(`/data-entry/organizations/${organizationId}/portfolios`)).data;
   },
 
-  async clients(search?: string, page = 1, pageSize = 20) {
-    return (await apiClient.get<DataEntryPagedResult<DataEntryClientListItem>>('/data-entry/clients', {
+  async clients(search?: string) {
+    return loadAllPages((page, pageSize) => apiClient.get<DataEntryPagedResult<DataEntryClientListItem>>('/data-entry/clients', {
       params: { search: search || undefined, page, pageSize },
-    })).data;
+    }).then((r) => r.data), 200);
   },
 
   async client(customerId: string) {
@@ -41,6 +43,10 @@ export const dataEntryService = {
 
   async createClient(input: CreateDataEntryClientInput) {
     return (await apiClient.post<DataEntryClientDetails>('/data-entry/clients', input)).data;
+  },
+
+  async deleteClient(customerId: string) {
+    await apiClient.delete(`/data-entry/clients/${customerId}`);
   },
 
   async uploadImport(file: File) {
@@ -57,10 +63,10 @@ export const dataEntryService = {
     return (await apiClient.post<DataEntryBatchListItem>('/data-entry/import/confirm', input)).data;
   },
 
-  async myBatches(status?: string, page = 1, pageSize = 20) {
-    return (await apiClient.get<DataEntryPagedResult<DataEntryBatchListItem>>('/data-entry/batches', {
+  async myBatches(status?: string) {
+    return loadAllPages((page, pageSize) => apiClient.get<DataEntryPagedResult<DataEntryBatchListItem>>('/data-entry/batches', {
       params: { status: status || undefined, page, pageSize },
-    })).data;
+    }).then((r) => r.data), 200);
   },
 
   async batch(batchId: string) {
@@ -75,10 +81,10 @@ export const dataEntryService = {
     await apiClient.post(`/data-entry/notifications/${notificationId}/read`);
   },
 
-  async supervisorBatches(status?: string, page = 1, pageSize = 20) {
-    return (await apiClient.get<DataEntryPagedResult<DataEntryBatchListItem>>('/data-entry/supervisor/batches', {
+  async supervisorBatches(status?: string) {
+    return loadAllPages((page, pageSize) => apiClient.get<DataEntryPagedResult<DataEntryBatchListItem>>('/data-entry/supervisor/batches', {
       params: { status: status || undefined, page, pageSize },
-    })).data;
+    }).then((r) => r.data), 200);
   },
 
   async supervisorBatch(batchId: string) {
@@ -95,5 +101,28 @@ export const dataEntryService = {
 
   async sendToDistribution(batchId: string) {
     return (await apiClient.post<DataEntryBatchListItem>(`/data-entry/supervisor/batches/${batchId}/send-to-distribution`)).data;
+  },
+
+  async clientDocuments(customerId: string) {
+    return (await apiClient.get<DataEntryDocument[]>(`/data-entry/clients/${customerId}/documents`)).data;
+  },
+
+  async uploadClientDocument(customerId: string, file: File, note?: string) {
+    const form = new FormData();
+    form.append('file', file);
+    if (note?.trim()) form.append('note', note.trim());
+    return requestFormData<DataEntryDocument>(`/data-entry/clients/${customerId}/documents`, form);
+  },
+
+  async caseDocuments(caseId: string) {
+    return (await apiClient.get<DataEntryDocument[]>(`/data-entry/cases/${caseId}/documents`)).data;
+  },
+
+  async downloadDocument(documentId: string, fileName: string) {
+    return downloadApiFile(`/data-entry/documents/${documentId}/download`, fileName);
+  },
+
+  async deleteDocument(documentId: string) {
+    await apiClient.delete(`/data-entry/documents/${documentId}`);
   },
 };

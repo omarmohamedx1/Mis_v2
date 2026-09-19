@@ -1,4 +1,5 @@
 using MIS.Application.Common;
+using MIS.Application.DTOs.Hr;
 using Xunit;
 
 namespace MIS.Domain.Tests;
@@ -14,6 +15,13 @@ public sealed class EgyptianHrDataValidatorTests
             "Male");
 
         Assert.Equal("29801010123456", result);
+        Assert.True(EgyptianHrDataValidator.TryParseNationalId("٢٩٨٠١٠١٠١٢٣٤٥٦", out var parsed, out var error));
+        Assert.Equal("29801010123456", parsed.NationalId);
+        Assert.Equal(new DateOnly(1998, 1, 1), parsed.DateOfBirth);
+        Assert.Equal("male", parsed.Gender);
+        Assert.Equal(string.Empty, error);
+        Assert.False(EgyptianHrDataValidator.TryParseNationalId("19801010123456", out _, out var centuryError));
+        Assert.Equal("Egyptian national ID has an invalid century digit.", centuryError);
         Assert.Throws<HrValidationException>(() => EgyptianHrDataValidator.NormalizeNationalId(
             "29801010123456",
             new DateOnly(1998, 1, 2),
@@ -48,5 +56,51 @@ public sealed class EgyptianHrDataValidatorTests
             EgyptianHrDataValidator.NormalizeIban("EG17 0001 0000 0000 0012 3456 7890 1"));
         Assert.Throws<HrValidationException>(() =>
             EgyptianHrDataValidator.NormalizeIban("EG180001000000000012345678901"));
+    }
+
+    [Fact]
+    public void Employee_save_fills_birth_date_from_national_id_and_rejects_mismatch()
+    {
+        var request = new SaveEmployeeRequest
+        {
+            EmployeeNumber = "E-1",
+            FullName = "Test Employee",
+            NationalId = "28712010111213",
+            DepartmentId = Guid.NewGuid(),
+        };
+
+        var normalized = EmployeeSaveIdentity.Normalize(request);
+        Assert.Equal(new DateOnly(1987, 12, 1), normalized.DateOfBirth);
+        Assert.Equal("Male", normalized.Gender);
+        Assert.Equal("28712010111213", normalized.NationalId);
+
+        var mismatch = new SaveEmployeeRequest
+        {
+            EmployeeNumber = "E-1",
+            FullName = "Test Employee",
+            NationalId = "28712010111213",
+            DateOfBirth = new DateOnly(1987, 12, 2),
+            DepartmentId = Guid.NewGuid(),
+        };
+        var error = Assert.Throws<HrValidationException>(() => EmployeeSaveIdentity.Normalize(mismatch));
+        Assert.Equal("Date of birth does not match the Egyptian national ID.", error.Message);
+    }
+
+    [Theory]
+    [InlineData("55")]
+    [InlineData("01312345678")]
+    [InlineData("+15551234567")]
+    public void Employee_save_rejects_non_egyptian_mobile_numbers(string mobile)
+    {
+        var request = new SaveEmployeeRequest
+        {
+            EmployeeNumber = "E-1",
+            FullName = "Test Employee",
+            NationalId = "28712010111213",
+            MobileNumber = mobile,
+            DepartmentId = Guid.NewGuid(),
+        };
+        var error = Assert.Throws<HrValidationException>(() => EmployeeSaveIdentity.Normalize(request));
+        Assert.Equal("Phone number must be a valid Egyptian mobile number (010, 011, 012, or 015).", error.Message);
     }
 }

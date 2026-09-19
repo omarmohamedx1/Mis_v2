@@ -6,6 +6,7 @@ using MIS.Application.DTOs.Collections;
 using MIS.Application.Interfaces;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
+using MIS.Domain.Hr;
 using MIS.Domain.Services;
 using MIS.Infrastructure.Persistence;
 
@@ -45,8 +46,134 @@ public sealed class CollectionsService : ICollectionsService
         var visits = await _db.CollectionFieldVisits.AsNoTracking().CountAsync(x => cases.Any(c => c.Id == x.CaseId) && x.ScheduledAt >= todayUtcStart && x.ScheduledAt < todayUtcEnd, token);
         var pendingReviews = await _db.CollectionPayments.AsNoTracking().CountAsync(x => cases.Any(c => c.Id == x.CaseId) && (x.Status == CollectionsValues.PaymentStatuses.Submitted || x.Status == CollectionsValues.PaymentStatuses.UnderReview), token);
         var complaints = await _db.CollectionComplaints.AsNoTracking().CountAsync(x => cases.Any(c => c.Id == x.CaseId) && x.Status != CollectionsValues.ComplaintStatuses.Closed && x.Status != CollectionsValues.ComplaintStatuses.Resolved, token);
+        var now = DateTimeOffset.UtcNow;
+        var overdueFollowUps = await cases.CountAsync(x => x.NextFollowUpAt != null && x.NextFollowUpAt < now, token);
+        var isArabic = ApiTextLocalizer.IsArabic;
+        var byClientRows = await cases.GroupBy(x => new { x.Portfolio.OrganizationId, Code = x.Portfolio.Organization.Code, Name = isArabic ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish, Type = x.Portfolio.Organization.OrganizationType, LogoKey = x.Portfolio.Organization.LogoStorageKey }).Select(g => new
+        {
+            g.Key.OrganizationId, g.Key.Code, g.Key.Name, g.Key.Type, g.Key.LogoKey, Cases = g.Count(),
+            Assigned = g.Count(x => x.AssignedCollectorId != null), Unassigned = g.Count(x => x.AssignedCollectorId == null),
+            Legal = g.Count(x => x.Status == CollectionsValues.CaseStatuses.Legal),
+            Outstanding = g.Sum(x => x.OutstandingBalance), Overdue = g.Sum(x => x.OverdueBalance)
+        }).OrderByDescending(x => x.Outstanding).ThenByDescending(x => x.Cases).ToArrayAsync(token);
+        var byBucketRows = await cases.GroupBy(x => new { x.CurrentBucket.Code, Name = isArabic ? x.CurrentBucket.NameArabic : x.CurrentBucket.NameEnglish }).Select(g => new { g.Key.Code, g.Key.Name, Cases = g.Count(), Outstanding = g.Sum(x => x.OutstandingBalance), Overdue = g.Sum(x => x.OverdueBalance) }).OrderByDescending(x => x.Overdue).ThenByDescending(x => x.Outstanding).ToArrayAsync(token);
+        var byStatusRows = await cases.GroupBy(x => x.Status).Select(g => new { Status = g.Key, Cases = g.Count(), Outstanding = g.Sum(x => x.OutstandingBalance) }).OrderByDescending(x => x.Cases).ToArrayAsync(token);
+        var trendStart = today.AddDays(-6);
+        var dailyCollected = await payments.Where(x => x.PaymentDate >= trendStart && x.PaymentDate <= today).GroupBy(x => x.PaymentDate).Select(g => new { Date = g.Key, Amount = g.Sum(x => x.Amount) }).ToDictionaryAsync(x => x.Date, x => x.Amount, token);
+        var trend = Enumerable.Range(0, 7).Select(offset =>
+        {
+            var date = trendStart.AddDays(offset);
+            dailyCollected.TryGetValue(date, out var amount);
+            return new CollectionDashboardTrendPointDto(date, amount);
+        }).ToArray();
         return new CollectionDashboardDto(caseMetrics?.Count ?? 0, caseMetrics?.Outstanding ?? 0, caseMetrics?.Overdue ?? 0, caseMetrics?.Assigned ?? 0, caseMetrics?.Unassigned ?? 0,
-            caseMetrics?.Collectors ?? 0, collectedToday, collectedMtd, target <= 0 ? 0 : Math.Round(collectedMtd / target * 100, 2), activePromises, dueToday, broken, visits, pendingReviews, complaints, caseMetrics?.HighRisk ?? 0);
+            caseMetrics?.Collectors ?? 0, collectedToday, collectedMtd, target <= 0 ? 0 : Math.Round(collectedMtd / target * 100, 2), activePromises, dueToday, broken, visits, pendingReviews, complaints, caseMetrics?.HighRisk ?? 0, overdueFollowUps,
+            byClientRows.Select(x => new CollectionDashboardClientSliceDto(x.OrganizationId, x.Name, x.Type, x.Cases, x.Assigned, x.Unassigned, x.Legal, x.Outstanding, x.Overdue, x.Code, OrganizationLogo(x.OrganizationId, x.LogoKey))).ToArray(),
+            byBucketRows.Select(x => new CollectionDashboardBucketSliceDto(x.Code, x.Name, x.Cases, x.Outstanding, x.Overdue)).ToArray(),
+            trend,
+            byStatusRows.Select(x => new CollectionDashboardStatusSliceDto(x.Status, x.Cases, x.Outstanding)).ToArray());
+    }
+
+    public async Task<CollectionCreditorDashboardDto> GetCreditorDashboardAsync(CancellationToken token)
+    {
+        var ar = ApiTextLocalizer.IsArabic;
+        var cases = AccessibleCases().AsNoTracking();
+        var deskRows = await cases.GroupBy(x => new
+        {
+            x.Portfolio.OrganizationId,
+            OrgCode = x.Portfolio.Organization.Code,
+            OrgName = ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish,
+            OrgType = x.Portfolio.Organization.OrganizationType,
+            LogoKey = x.Portfolio.Organization.LogoStorageKey,
+            x.PortfolioId,
+            DeskName = ar ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish,
+            x.Portfolio.PrimaryClassification,
+            x.Portfolio.SubClassification
+        }).Select(g => new
+        {
+            g.Key.OrganizationId, g.Key.OrgCode, g.Key.OrgName, g.Key.OrgType, g.Key.LogoKey,
+            g.Key.PortfolioId, g.Key.DeskName, g.Key.PrimaryClassification, g.Key.SubClassification,
+            Cases = g.Count(),
+            Assigned = g.Count(x => x.AssignedCollectorId != null),
+            Unassigned = g.Count(x => x.AssignedCollectorId == null),
+            Legal = g.Count(x => x.Status == CollectionsValues.CaseStatuses.Legal),
+            Outstanding = g.Sum(x => x.OutstandingBalance),
+            Overdue = g.Sum(x => x.OverdueBalance)
+        }).ToArrayAsync(token);
+
+        var books = deskRows.GroupBy(x => x.OrganizationId).Select(g =>
+        {
+            var first = g.First();
+            return new CollectionCreditorBookDto(
+                first.OrganizationId, first.OrgCode, first.OrgName, OrganizationLogo(first.OrganizationId, first.LogoKey), first.OrgType,
+                g.Sum(x => x.Cases), g.Sum(x => x.Assigned), g.Sum(x => x.Unassigned), g.Sum(x => x.Legal),
+                g.Sum(x => x.Outstanding), g.Sum(x => x.Overdue),
+                g.OrderBy(x => x.PrimaryClassification).ThenBy(x => x.SubClassification).ThenBy(x => x.DeskName).Select(x => new CollectionCreditorDeskDto(
+                    x.PortfolioId, x.DeskName, x.PrimaryClassification, x.SubClassification,
+                    x.Cases, x.Assigned, x.Unassigned, x.Legal, x.Outstanding, x.Overdue)).ToArray());
+        }).OrderByDescending(x => x.Outstanding).ThenBy(x => x.Name).ToArray();
+
+        return new CollectionCreditorDashboardDto(
+            books.Where(x => x.OrganizationType == CollectionsValues.OrganizationTypes.Bank).ToArray(),
+            books.Where(x => x.OrganizationType != CollectionsValues.OrganizationTypes.Bank).ToArray());
+    }
+
+    public async Task<CollectionCollectorDashboardDto> GetCollectorDashboardAsync(CancellationToken token)
+    {
+        var ar = ApiTextLocalizer.IsArabic;
+        var cases = AccessibleCases().AsNoTracking();
+        var unassigned = cases.Where(x => x.AssignedCollectorId == null);
+        var unassignedCases = await unassigned.CountAsync(token);
+        var unassignedOutstanding = await unassigned.SumAsync(x => (decimal?)x.OutstandingBalance, token) ?? 0;
+        var unassignedOverdue = await unassigned.SumAsync(x => (decimal?)x.OverdueBalance, token) ?? 0;
+        var unassignedByOrgRows = await unassigned.GroupBy(x => new
+        {
+            x.Portfolio.OrganizationId,
+            Code = x.Portfolio.Organization.Code,
+            Name = ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish,
+            Type = x.Portfolio.Organization.OrganizationType,
+            LogoKey = x.Portfolio.Organization.LogoStorageKey
+        }).Select(g => new
+        {
+            g.Key.OrganizationId, g.Key.Code, g.Key.Name, g.Key.Type, g.Key.LogoKey, Cases = g.Count(),
+            Outstanding = g.Sum(x => x.OutstandingBalance), Overdue = g.Sum(x => x.OverdueBalance),
+            Legal = g.Count(x => x.Status == CollectionsValues.CaseStatuses.Legal)
+        }).OrderByDescending(x => x.Outstanding).ThenByDescending(x => x.Cases).ToArrayAsync(token);
+
+        var assignedRows = await cases.Where(x => x.AssignedCollectorId != null).GroupBy(x => new
+        {
+            Id = x.AssignedCollectorId!.Value,
+            Name = x.AssignedCollector!.FullName,
+            Code = x.AssignedCollector.LoginCode,
+            OrgId = x.Portfolio.OrganizationId,
+            OrgCode = x.Portfolio.Organization.Code,
+            OrgName = ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish,
+            OrgType = x.Portfolio.Organization.OrganizationType,
+            LogoKey = x.Portfolio.Organization.LogoStorageKey
+        }).Select(g => new
+        {
+            g.Key.Id, g.Key.Name, g.Key.Code, g.Key.OrgId, g.Key.OrgCode, g.Key.OrgName, g.Key.OrgType, g.Key.LogoKey,
+            Cases = g.Count(),
+            Outstanding = g.Sum(x => x.OutstandingBalance),
+            Overdue = g.Sum(x => x.OverdueBalance),
+            Legal = g.Count(x => x.Status == CollectionsValues.CaseStatuses.Legal),
+            HighRisk = g.Count(x => x.PriorityScore >= 70)
+        }).ToArrayAsync(token);
+
+        var collectors = assignedRows.GroupBy(x => x.Id).Select(g =>
+        {
+            var first = g.First();
+            return new CollectionCollectorBookDto(
+                first.Id, first.Name, first.Code,
+                g.Sum(x => x.Cases), g.Sum(x => x.Outstanding), g.Sum(x => x.Overdue), g.Sum(x => x.Legal), g.Sum(x => x.HighRisk),
+                g.OrderByDescending(x => x.Outstanding).ThenByDescending(x => x.Cases).Select(x => new CollectionCollectorOrgSliceDto(
+                    x.OrgId, x.OrgCode, x.OrgName, OrganizationLogo(x.OrgId, x.LogoKey), x.OrgType, x.Cases, x.Outstanding, x.Overdue, x.Legal)).ToArray());
+        }).OrderByDescending(x => x.Outstanding).ThenBy(x => x.Name).ToArray();
+
+        return new CollectionCollectorDashboardDto(
+            unassignedCases, unassignedOutstanding, unassignedOverdue,
+            unassignedByOrgRows.Select(x => new CollectionCollectorOrgSliceDto(x.OrganizationId, x.Code, x.Name, OrganizationLogo(x.OrganizationId, x.LogoKey), x.Type, x.Cases, x.Outstanding, x.Overdue, x.Legal)).ToArray(),
+            collectors);
     }
 
     public async Task<PagedResultDto<ClientOrganizationCardDto>> GetClientsAsync(int page, int pageSize, string? search, string? type, bool? active, CancellationToken token)
@@ -72,7 +199,7 @@ public sealed class CollectionsService : ICollectionsService
     {
         ValidatePage(filters.Page, filters.PageSize); var query = ApplyCaseFilters(AccessibleCases().AsNoTracking(), filters); var total = await query.CountAsync(token);
         var rows = await ProjectCases(query.OrderByDescending(x => x.PriorityScore).ThenByDescending(x => x.OverdueBalance).Skip((filters.Page - 1) * filters.PageSize).Take(filters.PageSize)).ToArrayAsync(token);
-        return Page(rows, total, filters.Page, filters.PageSize);
+        return Page(await AttachRelatedOrganizationsAsync(rows, token), total, filters.Page, filters.PageSize);
     }
 
     public async Task<CollectionCaseDetailsDto> GetCaseAsync(Guid caseId, bool revealSensitive, CancellationToken token)
@@ -83,22 +210,48 @@ public sealed class CollectionsService : ICollectionsService
         var item = await AccessibleCases().AsNoTracking().Where(x => x.Id == caseId).Select(x => new
         {
             x.Id, x.CaseNumber, Client = isArabic ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish, Portfolio = isArabic ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish,
-            x.Customer.CustomerCode, Customer = isArabic ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!, x.Customer.NationalId, x.Customer.PrimaryPhone, x.Customer.AlternatePhone,
-            Address = isArabic ? x.Customer.AddressArabic ?? x.Customer.AddressEnglish : x.Customer.AddressEnglish ?? x.Customer.AddressArabic, x.Customer.Governorate, x.Customer.Area,
-            x.AccountReference, x.ContractReference, x.ProductType, x.OriginalAmount, x.OutstandingBalance, x.OverdueBalance, x.Penalties, x.Fees, x.TotalDue, x.DaysPastDue,
-            Bucket = isArabic ? x.CurrentBucket.NameArabic : x.CurrentBucket.NameEnglish, x.Status, x.Priority, x.PriorityScore, x.PriorityExplanation, Collector = x.AssignedCollector == null ? null : x.AssignedCollector.FullName
+            x.Customer.CustomerCode, Customer = isArabic ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!, x.Customer.NationalId, x.Customer.PrimaryPhone, x.Customer.AlternatePhone, x.Customer.TertiaryPhone,
+            Address = isArabic ? x.Customer.AddressArabic ?? x.Customer.AddressEnglish : x.Customer.AddressEnglish ?? x.Customer.AddressArabic, x.Customer.SecondaryAddress, x.Customer.Governorate, x.Customer.Area, x.Customer.City, x.Customer.Employer, x.Customer.JobTitle, x.Customer.Feedback,
+            x.AccountReference, x.CardNumber, x.ContractReference, x.ProductType, x.ImportStatusText, x.Stage, x.ImportBucketLabel, x.PreviousCollectorName, x.FileCollectorName, x.PreviousCollectorUserId, PreviousCollectorUserName = x.PreviousCollectorUser == null ? null : x.PreviousCollectorUser.FullName, x.FileCollectorUserId, FileCollectorUserName = x.FileCollectorUser == null ? null : x.FileCollectorUser.FullName, x.ImportRawJson,
+            x.OriginalAmount, x.OutstandingBalance, x.OverdueBalance, x.Penalties, x.Fees, x.TotalDue, x.DaysPastDue,
+            Bucket = isArabic ? x.CurrentBucket.NameArabic : x.CurrentBucket.NameEnglish, x.Status, x.Priority, x.PriorityScore, x.PriorityExplanation, x.AssignedCollectorId, Collector = x.AssignedCollector == null ? null : x.AssignedCollector.FullName,
+            x.CreditLimit, x.PurchaseAvailableLimit, x.ActivationDate, x.LastPaymentAmount, x.LastPaymentAt, x.LastTransactionDate, x.LastTransactionAmount
         }).SingleOrDefaultAsync(token) ?? throw new HrNotFoundException("Collection case was not found.");
         var activities = await _db.CollectionActivities.AsNoTracking().Where(x => x.CaseId == caseId).OrderByDescending(x => x.CreatedAt).Take(100).Select(x => new CollectionActivityDto(x.Id, x.ActivityType, x.Result, x.Notes, x.Channel, x.CreatedBy.FullName, x.CreatedAt, x.NextFollowUpAt)).ToArrayAsync(token);
         var promises = await ProjectPromises(_db.CollectionPromisesToPay.AsNoTracking().Where(x => x.CaseId == caseId).OrderByDescending(x => x.CreatedAt)).ToArrayAsync(token);
         var payments = await ProjectPayments(_db.CollectionPayments.AsNoTracking().Where(x => x.CaseId == caseId).OrderByDescending(x => x.SubmittedAt)).ToArrayAsync(token);
         var hasBreachedComplaint = await _db.CollectionComplaints.AsNoTracking().AnyAsync(x => x.CaseId == caseId && x.SlaDueAt < DateTimeOffset.UtcNow && x.Status != CollectionsValues.ComplaintStatuses.Closed && x.Status != CollectionsValues.ComplaintStatuses.Resolved, token);
         var nextBestAction = ResolveNextBestAction(item.PriorityScore, activities, promises, payments, hasBreachedComplaint, isArabic);
+        var related = string.IsNullOrWhiteSpace(item.NationalId) ? [] : await RelatedCreditorCasesAsync(DigitsOnly(item.NationalId), null, token);
+        var snapshot = FileSnapshot(item.ImportRawJson);
         if (revealSensitive) { _db.CollectionAuditLogs.Add(new CollectionAuditLog(_user.UserId, "SensitiveDataRevealed", nameof(CollectionCustomer), caseId, caseId, null, null, "WEB", DateTimeOffset.UtcNow)); await _db.SaveChangesAsync(token); }
+        var (address1, address2) = CollectionFileRowMapper.SeparateAddresses(item.Address, item.SecondaryAddress);
         return new CollectionCaseDetailsDto(item.Id, item.CaseNumber, item.Client, item.Portfolio, item.CustomerCode, item.Customer,
-            revealSensitive ? item.NationalId ?? "" : CollectionRules.MaskNationalId(item.NationalId), revealSensitive ? item.PrimaryPhone ?? "" : CollectionRules.MaskPhone(item.PrimaryPhone), revealSensitive ? item.AlternatePhone ?? "" : CollectionRules.MaskPhone(item.AlternatePhone),
-            revealSensitive ? item.Address ?? "" : MaskAddress(item.Address), item.Governorate, item.Area, item.AccountReference, item.ContractReference, item.ProductType, item.OriginalAmount, item.OutstandingBalance, item.OverdueBalance,
-            item.Penalties, item.Fees, item.TotalDue, item.DaysPastDue, item.Bucket, item.Status, item.Priority, item.PriorityScore, LocalizePriority(item.PriorityExplanation), item.Collector, revealSensitive,
-            nextBestAction.Code, nextBestAction.Reason, activities, promises, payments);
+            revealSensitive ? item.NationalId ?? "" : CollectionRules.MaskNationalId(item.NationalId),
+            revealSensitive ? item.PrimaryPhone ?? "" : CollectionRules.MaskPhone(item.PrimaryPhone),
+            revealSensitive ? item.AlternatePhone ?? "" : CollectionRules.MaskPhone(item.AlternatePhone),
+            revealSensitive ? item.TertiaryPhone : CollectionRules.MaskPhone(item.TertiaryPhone),
+            revealSensitive ? address1 ?? "" : MaskAddress(address1),
+            revealSensitive ? address2 : MaskAddress(address2),
+            item.Governorate, item.Area, item.City, item.Employer, item.JobTitle, item.Feedback,
+            item.AccountReference, revealSensitive ? item.CardNumber : CollectionRules.MaskCard(item.CardNumber),
+            item.ContractReference, item.ProductType, item.ImportStatusText, item.Stage, item.OriginalAmount, item.OutstandingBalance, item.OverdueBalance,
+            item.Penalties, item.Fees, item.TotalDue, item.DaysPastDue, item.Bucket, item.ImportBucketLabel, item.Status, item.Priority, item.PriorityScore, LocalizePriority(item.PriorityExplanation), item.Collector, item.AssignedCollectorId, item.PreviousCollectorName, item.FileCollectorName, item.PreviousCollectorUserId, item.PreviousCollectorUserName, item.FileCollectorUserId, item.FileCollectorUserName,
+            item.CreditLimit, item.PurchaseAvailableLimit, item.ActivationDate, item.LastPaymentAmount, item.LastPaymentAt, item.LastTransactionDate, item.LastTransactionAmount,
+            revealSensitive, nextBestAction.Code, nextBestAction.Reason, snapshot, related, activities, promises, payments);
+    }
+
+    public async Task<NationalIdLookupDto> LookupByNationalIdAsync(string nationalId, CancellationToken token)
+    {
+        var digits = new string((nationalId ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (digits.Length is < 10 or > 14) throw new HrValidationException("National ID must contain 10 to 14 digits.");
+        var cases = await RelatedCreditorCasesAsync(digits, null, token);
+        return new NationalIdLookupDto(
+            CanRevealSensitive() ? digits : CollectionRules.MaskNationalId(digits),
+            cases.Select(x => x.OrganizationId).Distinct().Count(),
+            cases.Length,
+            cases.Sum(x => x.OutstandingBalance),
+            cases);
     }
 
     private static (string Code, string Reason) ResolveNextBestAction(
@@ -246,7 +399,7 @@ public sealed class CollectionsService : ICollectionsService
     {
         if (!CanAssign()) throw new HrForbiddenException("You do not have permission to assign cases."); var ids = NormalizeIds(caseIds);
         var accessibleCount = await AccessibleCases().CountAsync(x => ids.Contains(x.Id), token); if (accessibleCount != ids.Length) throw new HrForbiddenException("One or more cases are outside your data scope.");
-        var collector = await _db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == collectorId && x.IsActive && x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.CollectionsCollector), token) ?? throw new HrValidationException("A valid active collector is required.");
+        var collector = await _db.Users.AsNoTracking().EligibleCollectors().SingleOrDefaultAsync(x => x.Id == collectorId, token) ?? throw new HrValidationException("A valid active collector is required.");
         var workload = await _db.CollectionCases.CountAsync(x => x.AssignedCollectorId == collectorId && x.Status == CollectionsValues.CaseStatuses.Active, token);
         return new AssignmentPreviewDto(ids.Length, [new AssignmentPreviewItemDto(collector.Id, collector.FullName, workload, ids.Length, workload + ids.Length)]);
     }
@@ -264,6 +417,87 @@ public sealed class CollectionsService : ICollectionsService
         await _db.SaveChangesAsync(token); await transaction.CommitAsync(token); return preview;
     }
 
+    public Task<ImportedCollectorLinkResultDto> PreviewImportedCollectorLinksAsync(Guid? organizationId, CancellationToken token)
+        => LinkImportedCollectorsAsync(organizationId, false, token);
+
+    public Task<ImportedCollectorLinkResultDto> ApplyImportedCollectorLinksAsync(Guid? organizationId, CancellationToken token)
+        => LinkImportedCollectorsAsync(organizationId, true, token);
+
+    private async Task<ImportedCollectorLinkResultDto> LinkImportedCollectorsAsync(Guid? organizationId, bool apply, CancellationToken token)
+    {
+        if (!CanAssign()) throw new HrForbiddenException("You do not have permission to assign cases.");
+        var directory = await _db.Users.AsNoTracking().CollectorIdentities().SelectIdentityCandidates().ToArrayAsync(token);
+        var query = AccessibleCases().Where(x => x.AssignedCollectorId == null && x.FileCollectorName != null);
+        if (organizationId.HasValue) query = query.Where(x => x.Portfolio.OrganizationId == organizationId);
+        var cases = apply
+            ? await query.ToArrayAsync(token)
+            : await query.AsNoTracking().ToArrayAsync(token);
+        var teams = apply ? await CollectionImportAssignment.ActiveTeamIdsAsync(_db, token) : [];
+        var now = DateTimeOffset.UtcNow;
+        var ambiguous = 0; var unmatched = 0;
+        var linked = new List<(Guid CollectorId, string CollectorName, string FileName)>();
+        foreach (var item in cases)
+        {
+            var match = item.FileCollectorUserId ?? CollectorIdentity.UniqueMatch(directory, item.FileCollectorName);
+            if (match is null)
+            {
+                var kind = CollectorIdentity.Match(directory, item.FileCollectorName).Kind;
+                if (kind == CollectorMatchKind.Ambiguous) ambiguous++; else unmatched++;
+                continue;
+            }
+            var name = directory.FirstOrDefault(x => x.UserId == match.Value)?.FullName ?? item.FileCollectorName!;
+            if (apply)
+            {
+                if (item.FileCollectorUserId != match) item.ApplyImportedDeskFields(null, item.FileCollectorName, null, null, match);
+                CollectionImportAssignment.TryAssign(_db, item, teams, _user.UserId, now);
+                AddAudit("CaseAssignedFromFileCollector", item, item.Id, new { AssignedCollectorId = (Guid?)null }, new { item.AssignedCollectorId, FileCollectorUserId = match });
+            }
+            linked.Add((match.Value, name, item.FileCollectorName!));
+        }
+        if (apply && linked.Count > 0) await _db.SaveChangesAsync(token);
+        var byCollector = linked.GroupBy(x => new { x.CollectorId, x.CollectorName, x.FileName }).Select(g => new ImportedCollectorLinkSliceDto(g.Key.CollectorId, g.Key.CollectorName, g.Key.FileName, g.Count())).OrderByDescending(x => x.Cases).ToArray();
+        return new ImportedCollectorLinkResultDto(linked.Count, ambiguous, unmatched, byCollector);
+    }
+
+    public async Task<AssignmentPreviewDto> PreviewUnassignmentAsync(IReadOnlyCollection<Guid> caseIds, CancellationToken token)
+    {
+        if (!CanAssign()) throw new HrForbiddenException("You do not have permission to distribute cases.");
+        var ids = NormalizeIds(caseIds);
+        var cases = await AccessibleCases().AsNoTracking().Where(x => ids.Contains(x.Id) && x.AssignedCollectorId != null)
+            .Select(x => new { x.AssignedCollectorId, Name = x.AssignedCollector!.FullName }).ToArrayAsync(token);
+        if (cases.Length != ids.Length) throw new HrValidationException("Only assigned cases can be returned to the unassigned queue.");
+        var collectorIds = cases.Select(x => x.AssignedCollectorId!.Value).Distinct().ToArray();
+        var workloads = await _db.CollectionCases.AsNoTracking()
+            .Where(x => x.AssignedCollectorId != null && collectorIds.Contains(x.AssignedCollectorId.Value) && x.Status == CollectionsValues.CaseStatuses.Active)
+            .GroupBy(x => x.AssignedCollectorId!.Value).Select(group => new { Id = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(x => x.Id, x => x.Count, token);
+        var collectors = cases.GroupBy(x => new { x.AssignedCollectorId, x.Name }).Select(group =>
+        {
+            var current = workloads.GetValueOrDefault(group.Key.AssignedCollectorId!.Value);
+            return new AssignmentPreviewItemDto(group.Key.AssignedCollectorId!.Value, group.Key.Name, current, group.Count(), Math.Max(current - group.Count(), 0));
+        }).ToArray();
+        return new AssignmentPreviewDto(ids.Length, collectors);
+    }
+
+    public async Task<AssignmentPreviewDto> UnassignCasesAsync(BulkUnassignRequest request, CancellationToken token)
+    {
+        if (!request.Confirmed) throw new HrValidationException("Unassignment confirmation is required.");
+        var preview = await PreviewUnassignmentAsync(request.CaseIds, token);
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        var ids = NormalizeIds(request.CaseIds);
+        var cases = await AccessibleCases().Where(x => ids.Contains(x.Id)).ToArrayAsync(token);
+        var now = DateTimeOffset.UtcNow;
+        foreach (var item in cases)
+        {
+            var previous = item.AssignedCollectorId;
+            item.Unassign(now);
+            _db.CollectionAssignmentHistory.Add(new CollectionAssignmentHistory(item.Id, previous, null, _user.UserId, null, request.Reason, "UNASSIGNED", null, now));
+            _db.CollectionActivities.Add(new CollectionActivity(item.Id, CollectionsValues.ActivityTypes.Assignment, "UNASSIGNED", request.Reason, null, _user.UserId, now, null));
+            AddAudit("CaseUnassigned", item, item.Id, new { AssignedCollectorId = previous }, new { AssignedCollectorId = (Guid?)null });
+        }
+        await _db.SaveChangesAsync(token); await transaction.CommitAsync(token); return preview;
+    }
+
     public Task<AutoAssignmentPreviewDto> PreviewAutomaticAssignmentAsync(AutoAssignmentRequest request, CancellationToken token)
     { if (request.Confirmed) throw new HrValidationException("Preview requests cannot be confirmed."); return BuildAutomaticPlanAsync(request, token); }
 
@@ -276,8 +510,20 @@ public sealed class CollectionsService : ICollectionsService
 
     private async Task<AutoAssignmentPreviewDto> BuildAutomaticPlanAsync(AutoAssignmentRequest request, CancellationToken token)
     {
-        if (!CanAssign()) throw new HrForbiddenException("You do not have permission to distribute cases."); if (request.MaxActiveCases is < 1 or > 5000) throw new HrValidationException("Maximum active case capacity must be between 1 and 5000."); var ids = NormalizeIds(request.CaseIds); var cases = await AccessibleCases().AsNoTracking().Where(x => ids.Contains(x.Id)).OrderByDescending(x => x.PriorityScore).ThenByDescending(x => x.OverdueBalance).Select(x => new { x.Id, x.CaseNumber, x.Customer.Governorate }).ToArrayAsync(token); if (cases.Length != ids.Length) throw new HrForbiddenException("One or more cases are outside your data scope."); var requestedCollectors = request.CollectorIds?.Where(x => x != Guid.Empty).Distinct().ToArray() ?? [];
-        var users = _db.Users.AsNoTracking().Where(x => x.IsActive && x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.CollectionsCollector)); if (requestedCollectors.Length > 0) users = users.Where(x => requestedCollectors.Contains(x.Id)); if (request.TeamId.HasValue) users = users.Where(x => _db.CollectionTeamMembers.Any(m => m.UserId == x.Id && m.TeamId == request.TeamId && m.IsActive)); if (HasRole(SystemRoleNames.CollectionsSupervisor)) users = users.Where(x => _db.CollectionTeamMembers.Any(m => m.UserId == x.Id && m.IsActive && m.Team.SupervisorId == _user.UserId)); var collectors = await users.OrderBy(x => x.FullName).Select(x => new { x.Id, x.FullName }).ToArrayAsync(token); if (collectors.Length == 0) throw new HrValidationException("No eligible active collectors match the distribution scope.");
+        if (!CanAssign()) throw new HrForbiddenException("You do not have permission to distribute cases."); if (request.MaxActiveCases is < 1 or > 5000) throw new HrValidationException("Maximum active case capacity must be between 1 and 5000.");
+        var requestedIds = request.CaseIds?.Where(x => x != Guid.Empty).Distinct().ToArray() ?? [];
+        Guid[] ids;
+        if (requestedIds.Length == 0)
+        {
+            ids = await AccessibleCases().AsNoTracking().Where(x => x.AssignedCollectorId == null)
+                .OrderByDescending(x => x.PriorityScore).ThenByDescending(x => x.OverdueBalance).ThenBy(x => x.Id)
+                .Take(500).Select(x => x.Id).ToArrayAsync(token);
+            if (ids.Length == 0) throw new HrValidationException("No unassigned cases are available for automatic distribution.");
+        }
+        else if (requestedIds.Length > 500) throw new HrValidationException("Select between 1 and 500 cases.");
+        else ids = requestedIds;
+        var cases = await AccessibleCases().AsNoTracking().Where(x => ids.Contains(x.Id)).OrderByDescending(x => x.PriorityScore).ThenByDescending(x => x.OverdueBalance).Select(x => new { x.Id, x.CaseNumber, x.Customer.Governorate }).ToArrayAsync(token); if (cases.Length != ids.Length) throw new HrForbiddenException("One or more cases are outside your data scope."); var requestedCollectors = request.CollectorIds?.Where(x => x != Guid.Empty).Distinct().ToArray() ?? [];
+        var users = _db.Users.AsNoTracking().EligibleCollectors(); if (requestedCollectors.Length > 0) users = users.Where(x => requestedCollectors.Contains(x.Id)); if (request.TeamId.HasValue) users = users.Where(x => _db.CollectionTeamMembers.Any(m => m.UserId == x.Id && m.TeamId == request.TeamId && m.IsActive)); if (HasRole(SystemRoleNames.CollectionsSupervisor) && !HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager)) users = users.ForSupervisorScope(_db, _user.UserId, false); var collectors = await users.OrderBy(x => x.FullName).Select(x => new { x.Id, x.FullName }).ToArrayAsync(token); if (collectors.Length == 0) throw new HrValidationException("No eligible active collectors match the distribution scope.");
         var collectorIds = collectors.Select(x => x.Id).ToArray(); var workloads = await _db.CollectionCases.AsNoTracking().Where(x => x.AssignedCollectorId != null && collectorIds.Contains(x.AssignedCollectorId.Value) && x.Status == CollectionsValues.CaseStatuses.Active).GroupBy(x => x.AssignedCollectorId!.Value).Select(g => new { Id = g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Id, x => x.Count, token); var geography = await _db.CollectionCases.AsNoTracking().Where(x => x.AssignedCollectorId != null && collectorIds.Contains(x.AssignedCollectorId.Value) && x.Customer.Governorate != null && x.Status == CollectionsValues.CaseStatuses.Active).GroupBy(x => new { Id = x.AssignedCollectorId!.Value, x.Customer.Governorate }).Select(g => new { g.Key.Id, g.Key.Governorate, Count = g.Count() }).ToArrayAsync(token); var proposed = collectors.ToDictionary(x => x.Id, _ => 0); var assignments = new List<AutoAssignmentCaseDto>(cases.Length);
         foreach (var item in cases) { var eligible = collectors.Where(x => workloads.GetValueOrDefault(x.Id) + proposed[x.Id] < request.MaxActiveCases).OrderBy(x => workloads.GetValueOrDefault(x.Id) + proposed[x.Id]).ThenByDescending(x => string.IsNullOrWhiteSpace(item.Governorate) ? 0 : geography.Where(g => g.Id == x.Id && g.Governorate == item.Governorate).Sum(g => g.Count)).ThenBy(x => x.FullName, StringComparer.OrdinalIgnoreCase).FirstOrDefault() ?? throw new HrConflictException("Collector capacity is insufficient for the selected cases."); proposed[eligible.Id]++; var hasAreaExperience = !string.IsNullOrWhiteSpace(item.Governorate) && geography.Any(g => g.Id == eligible.Id && g.Governorate == item.Governorate); assignments.Add(new AutoAssignmentCaseDto(item.Id, item.CaseNumber, eligible.Id, eligible.FullName, hasAreaExperience ? "Lowest workload with existing governorate coverage" : "Lowest resulting active workload")); }
         var summary = collectors.Where(x => proposed[x.Id] > 0).Select(x => new AssignmentPreviewItemDto(x.Id, x.FullName, workloads.GetValueOrDefault(x.Id), proposed[x.Id], workloads.GetValueOrDefault(x.Id) + proposed[x.Id])).ToArray(); return new AutoAssignmentPreviewDto("BALANCED_GEO_V1", cases.Length, summary, assignments);
@@ -286,12 +532,30 @@ public sealed class CollectionsService : ICollectionsService
     public async Task<IReadOnlyCollection<CollectorLookupDto>> GetCollectorsAsync(CancellationToken token)
     {
         if (!CanAssign()) throw new HrForbiddenException("You do not have permission to view collector workloads.");
+        return await EligibleCollectorLookupsAsync(token);
+    }
+
+    public async Task<IReadOnlyCollection<CollectorLookupDto>> GetCaseFilterCollectorsAsync(CancellationToken token)
+    {
+        if (CanAssign()) return await EligibleCollectorLookupsAsync(token);
+        var rows = await AccessibleCases().AsNoTracking()
+            .Where(x => x.AssignedCollectorId != null)
+            .Select(x => new { Id = x.AssignedCollectorId!.Value, Name = x.AssignedCollector!.FullName })
+            .Distinct()
+            .OrderBy(x => x.Name)
+            .ToArrayAsync(token);
+        return rows.Select(x => new CollectorLookupDto(x.Id, x.Name, 0, null, null)).ToArray();
+    }
+
+    private async Task<IReadOnlyCollection<CollectorLookupDto>> EligibleCollectorLookupsAsync(CancellationToken token)
+    {
         var userId = _user.UserId; var supervisorOnly = HasRole(SystemRoleNames.CollectionsSupervisor) && !HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager);
-        return await _db.Users.AsNoTracking()
-            .Where(x => x.IsActive && x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.CollectionsCollector) && (!supervisorOnly || _db.CollectionTeamMembers.Any(m => m.UserId == x.Id && m.IsActive && m.Team.SupervisorId == userId)))
+        var rows = await _db.Users.AsNoTracking().EligibleCollectors()
+            .ForSupervisorScope(_db, userId, !supervisorOnly)
             .OrderBy(x => x.FullName)
             .Select(x => new CollectorLookupDto(x.Id, x.FullName, _db.CollectionCases.Count(c => c.AssignedCollectorId == x.Id && c.Status == CollectionsValues.CaseStatuses.Active), _db.CollectionTeamMembers.Where(m => m.UserId == x.Id && m.IsActive).Select(m => (Guid?)m.TeamId).FirstOrDefault(), _db.CollectionTeamMembers.Where(m => m.UserId == x.Id && m.IsActive).Select(m => ApiTextLocalizer.IsArabic ? m.Team.NameArabic : m.Team.NameEnglish).FirstOrDefault()))
             .ToArrayAsync(token);
+        return rows.GroupBy(x => x.Id).Select(group => group.First()).ToArray();
     }
 
     public async Task<PagedResultDto<FieldVisitDto>> GetVisitsAsync(VisitFilters filters, CancellationToken token)
@@ -393,23 +657,92 @@ public sealed class CollectionsService : ICollectionsService
 
     public async Task<CollectionsConfigurationDto> GetConfigurationAsync(CancellationToken token)
     {
-        EnsureConfigurationManage(); var clientRows = await _db.CollectionClientOrganizations.AsNoTracking().OrderBy(x => x.Code).Select(x => new { x.Id, x.Code, x.NameArabic, x.NameEnglish, x.OrganizationType, x.LogoStorageKey, x.ContactEmail, x.ContactPhone, x.SettingsJson, x.IsActive }).ToArrayAsync(token); var clients = clientRows.Select(x => new ClientConfigurationDto(x.Id, x.Code, x.NameArabic, x.NameEnglish, x.OrganizationType, string.IsNullOrWhiteSpace(x.LogoStorageKey) ? null : CollectionsBrandingService.LogoUrl(x.Id), x.ContactEmail, x.ContactPhone, x.SettingsJson, x.IsActive)).ToArray(); var portfolios = await _db.CollectionPortfolios.AsNoTracking().OrderBy(x => x.OrganizationId).ThenBy(x => x.Code).Select(x => new PortfolioConfigurationDto(x.Id, x.OrganizationId, x.Code, x.NameArabic, x.NameEnglish, x.CurrencyCode, x.TargetAmount, x.SettingsJson, x.IsActive)).ToArrayAsync(token); var buckets = await _db.CollectionBucketDefinitions.AsNoTracking().OrderBy(x => x.OrganizationId).ThenBy(x => x.PortfolioId).ThenBy(x => x.SortOrder).Select(x => new BucketConfigurationDto(x.Id, x.OrganizationId, x.PortfolioId, x.Code, x.NameArabic, x.NameEnglish, x.MinimumDays, x.MaximumDays, x.SortOrder, x.IsActive)).ToArrayAsync(token); return new CollectionsConfigurationDto(clients, portfolios, buckets);
+        EnsureConfigurationManage();
+        var clientRows = await _db.CollectionClientOrganizations.AsNoTracking().OrderBy(x => x.Code).ToArrayAsync(token);
+        var clients = clientRows.Select(MapClient).ToArray();
+        var portfolioRows = await _db.CollectionPortfolios.AsNoTracking().OrderBy(x => x.OrganizationId).ThenBy(x => x.Code).ToArrayAsync(token);
+        var caseCounts = await _db.CollectionCases.AsNoTracking().Where(x => !x.IsArchived).GroupBy(x => x.PortfolioId).Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count, token);
+        var portfolios = portfolioRows.Select(x => MapPortfolio(x, caseCounts.GetValueOrDefault(x.Id))).ToArray();
+        var buckets = await _db.CollectionBucketDefinitions.AsNoTracking().OrderBy(x => x.OrganizationId).ThenBy(x => x.PortfolioId).ThenBy(x => x.SortOrder).Select(x => new BucketConfigurationDto(x.Id, x.OrganizationId, x.PortfolioId, x.Code, x.NameArabic, x.NameEnglish, x.MinimumDays, x.MaximumDays, x.SortOrder, x.IsActive)).ToArrayAsync(token);
+        return new CollectionsConfigurationDto(clients, portfolios, buckets);
     }
 
     public async Task<ClientConfigurationDto> SaveClientAsync(Guid? id, SaveClientConfigurationRequest request, CancellationToken token)
     {
-        EnsureConfigurationManage(); var code = request.Code.Trim().ToUpperInvariant(); var now = DateTimeOffset.UtcNow; ClientOrganization entity; object? before = null;
-        if (id.HasValue) { entity = await _db.CollectionClientOrganizations.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Client organization was not found."); if (!entity.Code.Equals(code, StringComparison.OrdinalIgnoreCase)) throw new HrConflictException("Organization code is immutable after creation."); before = new { entity.NameArabic, entity.NameEnglish, entity.OrganizationType, entity.ContactEmail, entity.ContactPhone, entity.SettingsJson, entity.IsActive }; }
-        else { if (await _db.CollectionClientOrganizations.AnyAsync(x => x.Code == code, token)) throw new HrConflictException("Organization code already exists."); entity = new ClientOrganization(code, request.NameArabic, request.NameEnglish, request.OrganizationType, now); _db.CollectionClientOrganizations.Add(entity); }
-        try { entity.Update(request.NameArabic, request.NameEnglish, request.OrganizationType, request.ContactEmail, request.ContactPhone, request.SettingsJson, request.IsActive, now); } catch (ArgumentException ex) { throw new HrValidationException(ex.Message); } AddAudit(id.HasValue ? "ClientOrganizationUpdated" : "ClientOrganizationCreated", entity, null, before, request); await _db.SaveChangesAsync(token); return new ClientConfigurationDto(entity.Id, entity.Code, entity.NameArabic, entity.NameEnglish, entity.OrganizationType, string.IsNullOrWhiteSpace(entity.LogoStorageKey) ? null : CollectionsBrandingService.LogoUrl(entity.Id), entity.ContactEmail, entity.ContactPhone, entity.SettingsJson, entity.IsActive);
+        EnsureConfigurationManage();
+        var organizationType = NormalizeOrganizationType(request.OrganizationType);
+        var code = request.Code.Trim().ToUpperInvariant();
+        var now = DateTimeOffset.UtcNow;
+        ClientOrganization entity;
+        object? before = null;
+        if (id.HasValue)
+        {
+            entity = await _db.CollectionClientOrganizations.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Client organization was not found.");
+            if (!entity.Code.Equals(code, StringComparison.OrdinalIgnoreCase)) throw new HrConflictException("Organization code is immutable after creation.");
+            before = new { entity.NameArabic, entity.NameEnglish, entity.OrganizationType, entity.ContactEmail, entity.ContactPhone, entity.SettingsJson, entity.IsActive };
+        }
+        else
+        {
+            if (await _db.CollectionClientOrganizations.AnyAsync(x => x.Code == code, token)) throw new HrConflictException("Organization code already exists.");
+            entity = new ClientOrganization(code, request.NameArabic, request.NameEnglish, organizationType, now);
+            _db.CollectionClientOrganizations.Add(entity);
+        }
+        var settingsJson = CollectionSettingsPolicy.Merge(entity.SettingsJson, request.PtpGraceDays, request.PtpToleranceAmount);
+        try { entity.Update(request.NameArabic, request.NameEnglish, organizationType, request.ContactEmail, request.ContactPhone, settingsJson, request.IsActive, now); }
+        catch (ArgumentException ex) { throw new HrValidationException(ex.Message); }
+        AddAudit(id.HasValue ? "ClientOrganizationUpdated" : "ClientOrganizationCreated", entity, null, before, request);
+        await _db.SaveChangesAsync(token);
+        return MapClient(entity);
     }
 
     public async Task<PortfolioConfigurationDto> SavePortfolioAsync(Guid? id, SavePortfolioConfigurationRequest request, CancellationToken token)
     {
-        EnsureConfigurationManage(); if (!await _db.CollectionClientOrganizations.AnyAsync(x => x.Id == request.OrganizationId, token)) throw new HrValidationException("A valid client organization is required."); var code = request.Code.Trim().ToUpperInvariant(); CollectionPortfolio entity; object? before = null;
-        if (id.HasValue) { entity = await _db.CollectionPortfolios.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Portfolio was not found."); if (entity.OrganizationId != request.OrganizationId || !entity.Code.Equals(code, StringComparison.OrdinalIgnoreCase)) throw new HrConflictException("Portfolio organization and code are immutable after creation."); before = new { entity.NameArabic, entity.NameEnglish, entity.CurrencyCode, entity.TargetAmount, entity.SettingsJson, entity.IsActive }; }
-        else { if (await _db.CollectionPortfolios.AnyAsync(x => x.OrganizationId == request.OrganizationId && x.Code == code, token)) throw new HrConflictException("Portfolio code already exists for this client."); entity = new CollectionPortfolio(request.OrganizationId, code, request.NameArabic, request.NameEnglish, request.CurrencyCode, DateTimeOffset.UtcNow); _db.CollectionPortfolios.Add(entity); }
-        try { entity.Update(request.NameArabic, request.NameEnglish, request.CurrencyCode, request.TargetAmount, request.SettingsJson, request.IsActive); } catch (ArgumentException ex) { throw new HrValidationException(ex.Message); } AddAudit(id.HasValue ? "PortfolioUpdated" : "PortfolioCreated", entity, null, before, request); await _db.SaveChangesAsync(token); return new PortfolioConfigurationDto(entity.Id, entity.OrganizationId, entity.Code, entity.NameArabic, entity.NameEnglish, entity.CurrencyCode, entity.TargetAmount, entity.SettingsJson, entity.IsActive);
+        EnsureConfigurationManage();
+        if (!await _db.CollectionClientOrganizations.AnyAsync(x => x.Id == request.OrganizationId, token)) throw new HrValidationException("A valid client organization is required.");
+        var classification = RequirePortfolioClassification(request.PrimaryClassification, request.SubClassification, required: !id.HasValue);
+        var code = request.Code.Trim().ToUpperInvariant();
+        CollectionPortfolio entity;
+        object? before = null;
+        if (id.HasValue)
+        {
+            entity = await _db.CollectionPortfolios.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Portfolio was not found.");
+            if (entity.OrganizationId != request.OrganizationId) throw new HrConflictException("Portfolio organization is immutable after creation.");
+            if (entity.PrimaryClassification is not null)
+            {
+                if (classification is { } pair && (entity.PrimaryClassification != pair.Primary || entity.SubClassification != pair.Sub))
+                    throw new HrConflictException("Collection desk classification cannot be changed after the desk exists.");
+            }
+            else if (!entity.Code.Equals(code, StringComparison.OrdinalIgnoreCase))
+                throw new HrConflictException("Portfolio organization and code are immutable after creation.");
+            before = new { entity.NameArabic, entity.NameEnglish, entity.CurrencyCode, entity.TargetAmount, entity.PrimaryClassification, entity.SubClassification, entity.SettingsJson, entity.IsActive };
+        }
+        else
+        {
+            var pair = classification!.Value;
+            entity = await ClassifiedPortfolio.ResolveAsync(_db, request.OrganizationId, pair.Primary, pair.Sub, token);
+            before = new { entity.NameArabic, entity.NameEnglish, entity.CurrencyCode, entity.TargetAmount, entity.PrimaryClassification, entity.SubClassification, entity.SettingsJson, entity.IsActive };
+        }
+        var settingsJson = CollectionSettingsPolicy.Merge(entity.SettingsJson, request.PtpGraceDays, request.PtpToleranceAmount);
+        try
+        {
+            entity.Update(request.NameArabic, request.NameEnglish, request.CurrencyCode, request.TargetAmount, settingsJson, request.IsActive);
+            if (entity.PrimaryClassification is null && classification is { } assigned) entity.AssignClassification(assigned.Primary, assigned.Sub);
+        }
+        catch (ArgumentException ex) { throw new HrValidationException(ex.Message); }
+        AddAudit(id.HasValue ? "PortfolioUpdated" : "PortfolioCreated", entity, null, before, request);
+        await _db.SaveChangesAsync(token);
+        return MapPortfolio(entity);
+    }
+
+    public async Task<PortfolioConfigurationDto> EnsureDeskAsync(EnsureCollectionDeskRequest request, CancellationToken token)
+    {
+        EnsureConfigurationManage();
+        if (!await _db.CollectionClientOrganizations.AnyAsync(x => x.Id == request.OrganizationId, token)) throw new HrValidationException("A valid client organization is required.");
+        var pair = RequirePortfolioClassification(request.PrimaryClassification, request.SubClassification, required: true)!.Value;
+        var entity = await ClassifiedPortfolio.ResolveAsync(_db, request.OrganizationId, pair.Primary, pair.Sub, token);
+        AddAudit("CollectionDeskEnsured", entity, null, null, new { request.OrganizationId, pair.Primary, pair.Sub });
+        await _db.SaveChangesAsync(token);
+        return MapPortfolio(entity);
     }
 
     public async Task<BucketConfigurationDto> SaveBucketAsync(Guid? id, SaveBucketConfigurationRequest request, CancellationToken token)
@@ -424,6 +757,81 @@ public sealed class CollectionsService : ICollectionsService
         try { entity.Update(request.NameArabic, request.NameEnglish, request.MinimumDays, request.MaximumDays, request.SortOrder, request.IsActive); } catch (ArgumentException ex) { throw new HrValidationException(ex.Message); } AddAudit(id.HasValue ? "BucketUpdated" : "BucketCreated", entity, null, before, request); await _db.SaveChangesAsync(token); return new BucketConfigurationDto(entity.Id, entity.OrganizationId, entity.PortfolioId, entity.Code, entity.NameArabic, entity.NameEnglish, entity.MinimumDays, entity.MaximumDays, entity.SortOrder, entity.IsActive);
     }
 
+    public async Task DeleteClientAsync(Guid id, CancellationToken token)
+    {
+        EnsureConfigurationManage();
+        var entity = await _db.CollectionClientOrganizations.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Client organization was not found.");
+        if (await _db.CollectionPortfolios.AnyAsync(x => x.OrganizationId == id, token)) throw new HrConflictException("This client still has portfolios. Delete or reassign them first, or deactivate the client instead.");
+        if (await _db.CollectionBucketDefinitions.AnyAsync(x => x.OrganizationId == id, token)) throw new HrConflictException("This client still has delinquency buckets. Remove them first, or deactivate the client instead.");
+        var before = new { entity.Code, entity.NameArabic, entity.NameEnglish, entity.OrganizationType, entity.IsActive };
+        AddAudit("ClientOrganizationDeleted", entity, null, before, null);
+        _db.CollectionClientOrganizations.Remove(entity);
+        await _db.SaveChangesAsync(token);
+    }
+
+    public async Task DeletePortfolioAsync(Guid id, CancellationToken token)
+    {
+        EnsureConfigurationManage();
+        var entity = await _db.CollectionPortfolios.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Portfolio was not found.");
+        if (await _db.CollectionCases.AnyAsync(x => x.PortfolioId == id, token)) throw new HrConflictException("This portfolio still has cases. Archive or move them first, or deactivate the portfolio instead.");
+        if (await _db.CollectionBucketDefinitions.AnyAsync(x => x.PortfolioId == id, token)) throw new HrConflictException("This portfolio still has delinquency buckets. Remove them first, or deactivate the portfolio instead.");
+        var before = new { entity.OrganizationId, entity.Code, entity.NameArabic, entity.NameEnglish, entity.IsActive };
+        AddAudit("PortfolioDeleted", entity, null, before, null);
+        _db.CollectionPortfolios.Remove(entity);
+        await _db.SaveChangesAsync(token);
+    }
+
+    public async Task DeleteBucketAsync(Guid id, CancellationToken token)
+    {
+        EnsureConfigurationManage();
+        var entity = await _db.CollectionBucketDefinitions.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Bucket definition was not found.");
+        if (await _db.CollectionCases.AnyAsync(x => x.CurrentBucketId == id, token)) throw new HrConflictException("This bucket is still assigned to cases. Deactivate it instead of deleting.");
+        var before = new { entity.OrganizationId, entity.PortfolioId, entity.Code, entity.NameArabic, entity.NameEnglish, entity.MinimumDays, entity.MaximumDays, entity.IsActive };
+        AddAudit("BucketDeleted", entity, null, before, null);
+        _db.CollectionBucketDefinitions.Remove(entity);
+        await _db.SaveChangesAsync(token);
+    }
+
+    public async Task ArchiveCaseAsync(Guid caseId, ArchiveCaseRequest request, CancellationToken token)
+    {
+        if (!CanAssign()) throw new HrForbiddenException("Only Collections supervisors or managers can archive cases.");
+        var collectionCase = await AccessibleCases().SingleOrDefaultAsync(x => x.Id == caseId, token) ?? throw new HrNotFoundException("Collection case was not found.");
+        var before = new { collectionCase.Status, collectionCase.IsArchived };
+        try { collectionCase.Archive(request.Reason, request.Notes, _user.UserId, DateTimeOffset.UtcNow); }
+        catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
+        catch (ArgumentException ex) { throw new HrValidationException(ex.Message); }
+        AddAudit("CaseArchived", collectionCase, collectionCase.Id, before, new { request.Reason, request.Notes });
+        await _db.SaveChangesAsync(token);
+    }
+
+    public async Task RestoreCaseAsync(Guid caseId, RestoreCaseRequest request, CancellationToken token)
+    {
+        if (!CanAssign()) throw new HrForbiddenException("Only Collections supervisors or managers can restore cases.");
+        var collectionCase = await _db.CollectionCases.SingleOrDefaultAsync(x => x.Id == caseId && x.IsArchived, token) ?? throw new HrNotFoundException("Archived collection case was not found.");
+        var before = new { collectionCase.Status, collectionCase.IsArchived };
+        try { collectionCase.Restore(request.Reason, _user.UserId, DateTimeOffset.UtcNow); }
+        catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
+        catch (ArgumentException ex) { throw new HrValidationException(ex.Message); }
+        AddAudit("CaseRestored", collectionCase, collectionCase.Id, before, new { request.Reason });
+        await _db.SaveChangesAsync(token);
+    }
+
+    public async Task<PromiseToPayDto> ChangePromiseStatusAsync(Guid promiseId, ChangePromiseStatusRequest request, CancellationToken token)
+    {
+        EnsureOperationalWrite();
+        var promise = await _db.CollectionPromisesToPay.SingleOrDefaultAsync(x => x.Id == promiseId && AccessibleCases().Any(c => c.Id == x.CaseId), token) ?? throw new HrNotFoundException("Promise to pay was not found.");
+        var status = (request.Status ?? string.Empty).Trim().ToUpperInvariant();
+        var before = new { promise.Status };
+        try { promise.Transition(status, DateTimeOffset.UtcNow); }
+        catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
+        catch (ArgumentException ex) { throw new HrValidationException(ex.Message); }
+        AddAudit(status switch { CollectionsValues.PromiseStatuses.Fulfilled => "PromiseFulfilled", CollectionsValues.PromiseStatuses.Broken => "PromiseBroken", _ => "PromiseCancelled" }, promise, promise.CaseId, before, new { status });
+        await _db.SaveChangesAsync(token);
+        return await ProjectPromises(_db.CollectionPromisesToPay.AsNoTracking().Where(x => x.Id == promiseId)).SingleAsync(token);
+    }
+
+    private static string? OrganizationLogo(Guid id, string? storageKey) => string.IsNullOrWhiteSpace(storageKey) ? null : CollectionsBrandingService.LogoUrl(id);
+
     private IQueryable<CollectionCase> AccessibleCases()
     {
         var userId = _user.UserId; if (IsGlobalRole()) return _db.CollectionCases.Where(x => !x.IsArchived);
@@ -437,14 +845,37 @@ public sealed class CollectionsService : ICollectionsService
     private IQueryable<CollectionCase> ApplyCaseFilters(IQueryable<CollectionCase> query, CollectionFilters f)
     {
         if (f.OrganizationId.HasValue) query = query.Where(x => x.Portfolio.OrganizationId == f.OrganizationId); if (f.PortfolioId.HasValue) query = query.Where(x => x.PortfolioId == f.PortfolioId); if (f.CollectorId.HasValue) query = query.Where(x => x.AssignedCollectorId == f.CollectorId);
+        if (f.Unassigned == true) query = query.Where(x => x.AssignedCollectorId == null);
+        else if (f.Unassigned == false) query = query.Where(x => x.AssignedCollectorId != null);
         if (!string.IsNullOrWhiteSpace(f.Bucket)) { var value = f.Bucket.Trim().ToUpperInvariant(); query = query.Where(x => x.CurrentBucket.Code == value); } if (!string.IsNullOrWhiteSpace(f.Status)) { var value = f.Status.Trim().ToUpperInvariant(); query = query.Where(x => x.Status == value); } if (!string.IsNullOrWhiteSpace(f.Priority)) { var value = f.Priority.Trim().ToUpperInvariant(); query = query.Where(x => x.Priority == value); }
-        if (!string.IsNullOrWhiteSpace(f.Search)) { if (f.Search.Length > 160) throw new HrValidationException("Search cannot exceed 160 characters."); var term = f.Search.Trim().ToLower(); query = query.Where(x => x.CaseNumber.ToLower().Contains(term) || x.AccountReference.ToLower().Contains(term) || (x.ContractReference != null && x.ContractReference.ToLower().Contains(term)) || x.Customer.CustomerCode.ToLower().Contains(term) || (x.Customer.FullNameArabic != null && x.Customer.FullNameArabic.ToLower().Contains(term)) || (x.Customer.FullNameEnglish != null && x.Customer.FullNameEnglish.ToLower().Contains(term) || (CanSearchSensitive() && ((x.Customer.NationalId != null && x.Customer.NationalId.Contains(term)) || (x.Customer.PrimaryPhone != null && x.Customer.PrimaryPhone.Contains(term)))))); }
+        if (!string.IsNullOrWhiteSpace(f.Search)) query = ApplyCaseSearch(query, f.Search, f.SearchField);
         return query;
+    }
+
+    private IQueryable<CollectionCase> ApplyCaseSearch(IQueryable<CollectionCase> query, string search, string? field)
+    {
+        if (search.Length > 160) throw new HrValidationException("Search cannot exceed 160 characters.");
+        var term = search.Trim().ToLower();
+        var digits = new string(term.Where(char.IsDigit).ToArray());
+        var kind = (field ?? "ALL").Trim().ToUpperInvariant();
+        var sensitive = CanSearchSensitive();
+        return kind switch
+        {
+            "NATIONAL_ID" => !sensitive ? query.Where(x => false) : query.Where(x => x.Customer.NationalId != null && (x.Customer.NationalId.ToLower().Contains(term) || (digits.Length >= 4 && x.Customer.NationalId.Contains(digits)))),
+            "MOBILE" => !sensitive ? query.Where(x => false) : query.Where(x =>
+                (x.Customer.PrimaryPhone != null && (x.Customer.PrimaryPhone.Contains(term) || (digits.Length >= 3 && x.Customer.PrimaryPhone.Contains(digits)))) ||
+                (x.Customer.AlternatePhone != null && (x.Customer.AlternatePhone.Contains(term) || (digits.Length >= 3 && x.Customer.AlternatePhone.Contains(digits)))) ||
+                (x.Customer.TertiaryPhone != null && (x.Customer.TertiaryPhone.Contains(term) || (digits.Length >= 3 && x.Customer.TertiaryPhone.Contains(digits))))),
+            "NAME" => query.Where(x => (x.Customer.FullNameArabic != null && x.Customer.FullNameArabic.ToLower().Contains(term)) || (x.Customer.FullNameEnglish != null && x.Customer.FullNameEnglish.ToLower().Contains(term))),
+            "CASE" => query.Where(x => x.CaseNumber.ToLower().Contains(term) || x.AccountReference.ToLower().Contains(term) || x.Customer.CustomerCode.ToLower().Contains(term) || (x.ContractReference != null && x.ContractReference.ToLower().Contains(term))),
+            "CARD" => !sensitive ? query.Where(x => false) : query.Where(x => x.CardNumber != null && x.CardNumber.ToLower().Contains(term)),
+            _ => query.Where(x => x.CaseNumber.ToLower().Contains(term) || x.AccountReference.ToLower().Contains(term) || (x.CardNumber != null && x.CardNumber.ToLower().Contains(term)) || (x.ContractReference != null && x.ContractReference.ToLower().Contains(term)) || x.Customer.CustomerCode.ToLower().Contains(term) || (x.Customer.FullNameArabic != null && x.Customer.FullNameArabic.ToLower().Contains(term)) || (x.Customer.FullNameEnglish != null && x.Customer.FullNameEnglish.ToLower().Contains(term)) || (x.ImportStatusText != null && x.ImportStatusText.ToLower().Contains(term)) || (x.ImportBucketLabel != null && x.ImportBucketLabel.ToLower().Contains(term)) || (x.FileCollectorName != null && x.FileCollectorName.ToLower().Contains(term)) || (sensitive && ((x.Customer.NationalId != null && (x.Customer.NationalId.Contains(term) || (digits.Length >= 8 && x.Customer.NationalId.Contains(digits)))) || (x.Customer.PrimaryPhone != null && (x.Customer.PrimaryPhone.Contains(term) || (digits.Length >= 3 && x.Customer.PrimaryPhone.Contains(digits)))) || (x.Customer.AlternatePhone != null && (x.Customer.AlternatePhone.Contains(term) || (digits.Length >= 3 && x.Customer.AlternatePhone.Contains(digits)))) || (x.Customer.TertiaryPhone != null && (x.Customer.TertiaryPhone.Contains(term) || (digits.Length >= 3 && x.Customer.TertiaryPhone.Contains(digits))))))),
+        };
     }
 
     private IQueryable<CollectionCaseListItemDto> ProjectCases(IQueryable<CollectionCase> query)
     {
-        var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new CollectionCaseListItemDto(x.Id, x.CaseNumber, x.Customer.CustomerCode, ar ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!, x.AccountReference, ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish, ar ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish, x.OutstandingBalance, x.OverdueBalance, x.DaysPastDue, ar ? x.CurrentBucket.NameArabic : x.CurrentBucket.NameEnglish, x.Status, x.Priority, x.PriorityScore, x.PriorityExplanation, x.AssignedCollectorId, x.AssignedCollector == null ? null : x.AssignedCollector.FullName, x.NextFollowUpAt));
+        var ar = ApiTextLocalizer.IsArabic; var reveal = CanRevealSensitive(); return query.Select(x => new CollectionCaseListItemDto(x.Id, x.CaseNumber, x.Customer.CustomerCode, ar ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!, x.AccountReference, ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish, ar ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish, x.OutstandingBalance, x.OverdueBalance, x.DaysPastDue, x.ImportBucketLabel ?? (ar ? x.CurrentBucket.NameArabic : x.CurrentBucket.NameEnglish), x.Status, x.Priority, x.PriorityScore, x.PriorityExplanation, x.AssignedCollectorId, x.AssignedCollector == null ? null : x.AssignedCollector.FullName, x.NextFollowUpAt, reveal ? x.Customer.NationalId : null, reveal ? x.CardNumber : null, x.ImportStatusText, x.ImportBucketLabel, reveal ? x.Customer.PrimaryPhone : null, reveal ? x.Customer.AlternatePhone : null, reveal ? x.Customer.TertiaryPhone : null, x.Customer.Governorate, x.Customer.Area, x.FileCollectorUser == null ? x.FileCollectorName : x.FileCollectorUser.FullName, x.LastPaymentAt, x.LastPaymentAmount, x.Portfolio.Organization.OrganizationType));
     }
     private IQueryable<PromiseToPayDto> ProjectPromises(IQueryable<PromiseToPay> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new PromiseToPayDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.PromisedAmount, x.PromiseDate, x.ActualPaidAmount, x.Status, x.Collector.FullName, x.Channel, x.CreatedAt)); }
     private IQueryable<CollectionPaymentDto> ProjectPayments(IQueryable<CollectionPayment> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new CollectionPaymentDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.Amount, x.PaymentDate, x.Method, x.ReferenceNumber, x.Status, x.SubmittedBy.FullName, x.SubmittedAt, x.VerifiedBy == null ? null : x.VerifiedBy.FullName, x.VerifiedAt, x.RejectionReason, x.Case.Portfolio.OrganizationId, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Case.Portfolio.Organization.OrganizationType, x.SubmittedById, x.SubmittedBy.FullName, x.CurrencyCode)); }
@@ -479,7 +910,7 @@ public sealed class CollectionsService : ICollectionsService
     private async Task<(int GraceDays, decimal ToleranceAmount)> GetPtpPolicyAsync(Guid caseId, CancellationToken token)
     {
         var settings = await _db.CollectionCases.AsNoTracking().Where(x => x.Id == caseId).Select(x => new { Portfolio = x.Portfolio.SettingsJson, Organization = x.Portfolio.Organization.SettingsJson }).SingleAsync(token);
-        return ParsePtpSettings(settings.Portfolio) ?? ParsePtpSettings(settings.Organization) ?? (0, 0);
+        return CollectionSettingsPolicy.Parse(settings.Portfolio) ?? CollectionSettingsPolicy.Parse(settings.Organization) ?? (0, 0);
     }
     private async Task EvaluateDuePromisesAsync(CancellationToken token)
     {
@@ -487,19 +918,107 @@ public sealed class CollectionsService : ICollectionsService
         if (promises.Length == 0) return; var caseIds = promises.Select(x => x.CaseId).Distinct().ToArray(); var earliest = promises.Min(x => DateOnly.FromDateTime(x.CreatedAt.UtcDateTime)); var approved = await _db.CollectionPayments.AsNoTracking().Where(x => caseIds.Contains(x.CaseId) && x.Status == CollectionsValues.PaymentStatuses.Approved && x.PaymentDate >= earliest).Select(x => new { x.CaseId, x.PaymentDate, x.Amount }).ToArrayAsync(token); var changed = false; var now = DateTimeOffset.UtcNow;
         foreach (var promise in promises)
         {
-            var policy = ParsePtpSettings(promise.Case.Portfolio.SettingsJson) ?? ParsePtpSettings(promise.Case.Portfolio.Organization.SettingsJson) ?? (0, 0); var start = DateOnly.FromDateTime(promise.CreatedAt.UtcDateTime); var end = promise.PromiseDate.AddDays(policy.GraceDays); var paid = approved.Where(x => x.CaseId == promise.CaseId && x.PaymentDate >= start && x.PaymentDate <= end).Sum(x => x.Amount); var evaluation = CollectionRules.EvaluatePromise(promise.PromisedAmount, paid, promise.PromiseDate, today, policy.GraceDays, policy.ToleranceAmount);
+            var policy = CollectionSettingsPolicy.Parse(promise.Case.Portfolio.SettingsJson) ?? CollectionSettingsPolicy.Parse(promise.Case.Portfolio.Organization.SettingsJson) ?? (0, 0); var start = DateOnly.FromDateTime(promise.CreatedAt.UtcDateTime); var end = promise.PromiseDate.AddDays(policy.GraceDays); var paid = approved.Where(x => x.CaseId == promise.CaseId && x.PaymentDate >= start && x.PaymentDate <= end).Sum(x => x.Amount); var evaluation = CollectionRules.EvaluatePromise(promise.PromisedAmount, paid, promise.PromiseDate, today, policy.GraceDays, policy.ToleranceAmount);
             if (evaluation.Status == promise.Status && evaluation.PaidAmount == promise.ActualPaidAmount) continue; var previousStatus = promise.Status; var previousPaid = promise.ActualPaidAmount; promise.ApplyEvaluation(evaluation.Status, evaluation.PaidAmount, now); _db.CollectionAuditLogs.Add(new CollectionAuditLog(null, "PromiseAutomaticallyEvaluated", nameof(PromiseToPay), promise.Id, promise.CaseId, JsonSerializer.Serialize(new { Status = previousStatus, ActualPaidAmount = previousPaid }, JsonOptions), JsonSerializer.Serialize(new { promise.Status, promise.ActualPaidAmount }, JsonOptions), "AUTOMATION", now)); changed = true;
         }
         if (changed) await _db.SaveChangesAsync(token);
     }
-    private static (int GraceDays, decimal ToleranceAmount)? ParsePtpSettings(string json)
+    private static ClientConfigurationDto MapClient(ClientOrganization entity)
     {
-        try { using var document = JsonDocument.Parse(json); var root = document.RootElement; var days = 0; var amount = 0m; var hasGrace = root.TryGetProperty("ptpGraceDays", out var graceValue) && graceValue.TryGetInt32(out days); var hasTolerance = root.TryGetProperty("ptpToleranceAmount", out var toleranceValue) && toleranceValue.TryGetDecimal(out amount); if (!hasGrace && !hasTolerance) return null; return (Math.Clamp(days, 0, 30), Math.Max(0, amount)); } catch (JsonException) { return null; }
+        var policy = CollectionSettingsPolicy.Read(entity.SettingsJson);
+        return new ClientConfigurationDto(entity.Id, entity.Code, entity.NameArabic, entity.NameEnglish, entity.OrganizationType, string.IsNullOrWhiteSpace(entity.LogoStorageKey) ? null : CollectionsBrandingService.LogoUrl(entity.Id), entity.ContactEmail, entity.ContactPhone, policy.GraceDays, policy.ToleranceAmount, entity.IsActive);
     }
-    private static void ValidatePage(int page, int pageSize) { if (page < 1 || pageSize is < 1 or > 100) throw new HrValidationException("Page must be at least 1 and page size must be between 1 and 100."); }
+
+    private static PortfolioConfigurationDto MapPortfolio(CollectionPortfolio entity, int caseCount = 0)
+    {
+        var policy = CollectionSettingsPolicy.Read(entity.SettingsJson);
+        return new PortfolioConfigurationDto(entity.Id, entity.OrganizationId, entity.Code, entity.NameArabic, entity.NameEnglish, entity.CurrencyCode, entity.TargetAmount, entity.PrimaryClassification, entity.SubClassification, policy.GraceDays, policy.ToleranceAmount, entity.IsActive, caseCount);
+    }
+
+    private static string NormalizeOrganizationType(string value)
+    {
+        var type = (value ?? string.Empty).Trim().ToUpperInvariant();
+        if (!CollectionsValues.OrganizationTypes.All.Contains(type)) throw new HrValidationException("Organization type must be BANK, CONSUMER_FINANCE, FINANCIAL_INSTITUTION, or OTHER.");
+        return type;
+    }
+
+    private static (string Primary, string Sub)? RequirePortfolioClassification(string? primary, string? sub, bool required)
+    {
+        var hasPrimary = !string.IsNullOrWhiteSpace(primary);
+        var hasSub = !string.IsNullOrWhiteSpace(sub);
+        if (!hasPrimary && !hasSub)
+        {
+            if (required) throw new HrValidationException("Select the collection desk and product for this portfolio.");
+            return null;
+        }
+        if (hasPrimary != hasSub) throw new HrValidationException("Collection desk and product must be selected together.");
+        try { return PortfolioClassification.Require(primary, sub); }
+        catch (ArgumentException ex) { throw new HrValidationException(ex.Message); }
+    }
+    private static void ValidatePage(int page, int pageSize) { if (page < 1 || pageSize is < 1 or > 200) throw new HrValidationException("Page must be at least 1 and page size must be between 1 and 200."); }
     private static PagedResultDto<T> Page<T>(IReadOnlyCollection<T> rows, int count, int page, int pageSize) => new(rows, count, page, pageSize, count == 0 ? 0 : (int)Math.Ceiling(count / (double)pageSize));
     private static Guid[] NormalizeIds(IReadOnlyCollection<Guid> ids) { var result = ids.Where(x => x != Guid.Empty).Distinct().ToArray(); if (result.Length == 0 || result.Length > 500) throw new HrValidationException("Select between 1 and 500 cases."); return result; }
     private void AddAudit(string action, object entity, Guid? caseId, object? before, object? after) { var id = (Guid)(entity.GetType().GetProperty("Id")?.GetValue(entity) ?? throw new InvalidOperationException("Audited entity must expose an identifier.")); _db.CollectionAuditLogs.Add(new CollectionAuditLog(_user.UserId, action, entity.GetType().Name, id, caseId, before is null ? null : JsonSerializer.Serialize(before, JsonOptions), after is null ? null : JsonSerializer.Serialize(after, JsonOptions), "WEB", DateTimeOffset.UtcNow)); }
+    private async Task<CollectionCaseListItemDto[]> AttachRelatedOrganizationsAsync(CollectionCaseListItemDto[] rows, CancellationToken token)
+    {
+        if (rows.Length == 0) return rows;
+        var ar = ApiTextLocalizer.IsArabic;
+        var ids = rows.Select(x => x.Id).ToArray();
+        var pageRows = await AccessibleCases().AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .Select(x => new { x.Id, OrgId = x.Portfolio.OrganizationId, x.Customer.NationalId })
+            .ToArrayAsync(token);
+        var nids = pageRows.Select(x => DigitsOnly(x.NationalId)).Where(x => x.Length >= 8).Distinct().ToArray();
+        if (nids.Length == 0) return rows.Select(x => x with { RelatedOrganizationNames = [] }).ToArray();
+        var matches = await AccessibleCases().AsNoTracking()
+            .Where(x => x.Customer.NationalId != null && nids.Contains(x.Customer.NationalId.Replace("-", "").Replace(" ", "")))
+            .Select(x => new { Nid = x.Customer.NationalId!.Replace("-", "").Replace(" ", ""), OrgId = x.Portfolio.OrganizationId, Name = ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish })
+            .ToArrayAsync(token);
+        var byNid = matches.GroupBy(x => x.Nid).ToDictionary(g => g.Key, g => g.ToArray());
+        var identity = pageRows.ToDictionary(x => x.Id);
+        return rows.Select(row =>
+        {
+            if (!identity.TryGetValue(row.Id, out var item)) return row with { RelatedOrganizationNames = [] };
+            var nid = DigitsOnly(item.NationalId);
+            if (nid.Length < 8 || !byNid.TryGetValue(nid, out var orgs)) return row with { RelatedOrganizationNames = [] };
+            return row with { RelatedOrganizationNames = orgs.Where(x => x.OrgId != item.OrgId).Select(x => x.Name).Distinct().OrderBy(x => x).ToArray() };
+        }).ToArray();
+    }
+
+    private async Task<RelatedCreditorCaseDto[]> RelatedCreditorCasesAsync(string nationalId, Guid? excludeCaseId, CancellationToken token)
+    {
+        var ar = ApiTextLocalizer.IsArabic;
+        return await AccessibleCases().AsNoTracking()
+            .Where(x => x.Customer.NationalId != null
+                && (x.Customer.NationalId == nationalId || x.Customer.NationalId.Replace("-", "").Replace(" ", "") == nationalId)
+                && (!excludeCaseId.HasValue || x.Id != excludeCaseId))
+            .OrderByDescending(x => x.OutstandingBalance)
+            .Select(x => new RelatedCreditorCaseDto(
+                x.Id, x.Portfolio.OrganizationId,
+                ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish,
+                x.Portfolio.Organization.OrganizationType, x.CaseNumber, x.AccountReference, x.OutstandingBalance, x.Status,
+                ar ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish))
+            .ToArrayAsync(token);
+    }
+
+    private static CollectionFileSnapshotDto? FileSnapshot(string? rawJson)
+    {
+        try
+        {
+            var values = CollectionFileRowMapper.Deserialize(rawJson);
+            if (values is null || values.Count == 0) return null;
+            var file = CollectionFileRowMapper.Read(values);
+            if (file.Action is null && file.PtpDate is null && file.PtpAmount is null && file.Payment is null && file.Update is null && file.Keep is null && file.Feedback is null)
+                return null;
+            return new CollectionFileSnapshotDto(file.Action, file.PtpDate, file.PtpAmount, file.Payment, file.Update, file.Keep, file.Feedback);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
+    private static string DigitsOnly(string? value) => new((value ?? string.Empty).Where(char.IsDigit).ToArray());
     private static string MaskAddress(string? value) => string.IsNullOrWhiteSpace(value) ? "" : value.Length <= 12 ? "********" : value[..8] + "…";
     private static string LocalizedCustomerName(CollectionCustomer customer) => ApiTextLocalizer.IsArabic ? customer.FullNameArabic ?? customer.FullNameEnglish ?? "" : customer.FullNameEnglish ?? customer.FullNameArabic ?? "";
     private static string LocalizePriority(string value) { if (!ApiTextLocalizer.IsArabic) return value; return value.Replace("HIGH_OUTSTANDING", "رصيد مرتفع").Replace("MATERIAL_OUTSTANDING", "رصيد مؤثر").Replace("SEVERE_DELINQUENCY", "تأخر شديد").Replace("HIGH_DELINQUENCY", "تأخر مرتفع").Replace("BROKEN_PTP", "وعد سداد مكسور").Replace("PTP_DUE_TODAY", "وعد مستحق اليوم").Replace("NO_RECENT_CONTACT", "لا يوجد تواصل حديث"); }

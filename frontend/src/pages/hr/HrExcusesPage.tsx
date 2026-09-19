@@ -3,14 +3,20 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { ErrorState } from '../../components/common/ErrorState';
+import { FormError } from '../../components/common/FormError';
 import { Modal } from '../../components/common/Modal';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Pagination } from '../../components/common/Pagination';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { TextInput } from '../../components/forms/TextInput';
+import { TimeInput } from '../../components/forms/TimeInput';
 import { SelectInput } from '../../components/forms/SelectInput';
 import { TextAreaInput } from '../../components/forms/TextAreaInput';
 import { DateInput } from '../../components/forms/DateInput';
+import { useToast } from '../../components/common/Toast';
+import { DateControl } from '../../components/forms/DateControl';
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
+import { FileInput } from '../../components/forms/FileInput';
 import { Checkbox } from '../../components/forms/Checkbox';
 import { useCollectionsLocalization } from '../../features/collections/localization/collectionsTranslations';
 import { EmployeeSearchSelect } from '../../features/hr/components/EmployeeSearchSelect';
@@ -42,6 +48,8 @@ const words = {
     from: 'From Time',
     to: 'To Time',
     fullDay: 'Full Day',
+    yes: 'Yes',
+    no: 'No',
     reason: 'Reason',
     status: 'Status',
     attachment: 'Attachment',
@@ -72,7 +80,12 @@ const words = {
     saveApprove: 'Approve Immediately',
     save: 'Save Changes',
     empty: 'No excuses found.',
+    allTypes: 'All types',
+    allStatuses: 'All statuses',
+    clearFilters: 'Clear filters',
+    retry: 'Try again',
     error: 'Unable to complete this action.',
+    loadTypesError: 'Unable to load excuse types. Refresh and try again.',
     link: 'Link to Existing Employee',
     missing: 'This collector needs a link to an existing employee before approval.',
     changed: 'The original visit has changed. See HR audit history for prior decisions.',
@@ -109,6 +122,8 @@ const words = {
     from: 'من الساعة',
     to: 'إلى الساعة',
     fullDay: 'يوم كامل',
+    yes: 'نعم',
+    no: 'لا',
     reason: 'السبب',
     status: 'الحالة',
     attachment: 'المرفق',
@@ -139,7 +154,12 @@ const words = {
     saveApprove: 'اعتماد فوري',
     save: 'حفظ التعديلات',
     empty: 'لا توجد أعذار.',
+    allTypes: 'كل الأنواع',
+    allStatuses: 'كل الحالات',
+    clearFilters: 'مسح الفلاتر',
+    retry: 'إعادة المحاولة',
     error: 'تعذر إتمام الإجراء.',
+    loadTypesError: 'تعذر تحميل أنواع الأعذار. حدّث الصفحة ثم أعد المحاولة.',
     link: 'ربط بموظف موجود',
     missing: 'يجب ربط المحصل بموظف موجود قبل الموافقة.',
     changed: 'تم تغيير الزيارة الأصلية. راجع سجل التدقيق للاطلاع على القرارات السابقة.',
@@ -176,13 +196,17 @@ const blank = (): ManualExcuse => ({
 });
 
 export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: string }) {
-  const { language, isRtl, ct } = useCollectionsLocalization();
+  const { language, ct } = useCollectionsLocalization();
+  const toast = useToast();
   const w = words[language];
   const label = (key: string) => w[key as keyof typeof w] ?? key;
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState<ExcusePage>();
   const [types, setTypes] = useState<ExcuseTypeOption[]>([]);
   const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
   const [pendingOnly, setPendingOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [error, setError] = useState('');
@@ -212,7 +236,9 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
         search: pendingOnly ? undefined : search,
         employeeId: profileEmployeeId || undefined,
         source: pendingOnly ? 'FieldVisit' : undefined,
-        status: pendingOnly ? 'PendingApproval' : undefined,
+        status: pendingOnly ? 'PendingApproval' : statusFilter || undefined,
+        type: pendingOnly ? undefined : typeFilter || undefined,
+        date: pendingOnly ? undefined : dateFilter || undefined,
         page,
       });
       if (v === version.current) setData(result);
@@ -221,7 +247,7 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
     } finally {
       if (v === version.current) setLoading(false);
     }
-  }, [search, pendingOnly, profileEmployeeId, page, w.error]);
+  }, [search, pendingOnly, profileEmployeeId, page, typeFilter, statusFilter, dateFilter, w.error]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 250);
@@ -229,8 +255,18 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
   }, [load]);
 
   useEffect(() => {
-    void service.types().then(setTypes).catch(() => setTypes([]));
-  }, [language]);
+    void service.types().then(setTypes).catch((reason) => {
+      setTypes([]);
+      toast.error(getApiErrorMessage(reason, w.loadTypesError));
+    });
+  }, [language, toast, w.loadTypesError]);
+
+  const requestId = params.get('requestId');
+  useEffect(() => {
+    if (requestId) void open(requestId);
+    // open is intentionally omitted so language toggles do not re-open the dialog
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
 
   useEffect(() => {
     if (!form.employeeId) {
@@ -256,13 +292,16 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
           });
         }
       })
-      .catch(() => {
-        if (active) setSelectedEmployee(null);
+      .catch((reason) => {
+        if (active) {
+          setSelectedEmployee(null);
+          toast.error(getApiErrorMessage(reason, w.error));
+        }
       });
     return () => {
       active = false;
     };
-  }, [form.employeeId]);
+  }, [form.employeeId, toast, w.error]);
 
   async function open(id: string) {
     setFormError('');
@@ -285,11 +324,6 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
       setBusy(false);
     }
   }
-
-  const requestId = params.get('requestId');
-  useEffect(() => {
-    if (requestId) void open(requestId);
-  }, [requestId, language]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -395,7 +429,7 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
         [w.type, label(item.type)],
         [w.source, label(item.source)],
         [w.date, item.date],
-        [w.fullDay, item.fullDay ? (language === 'ar' ? 'نعم' : 'Yes') : language === 'ar' ? 'لا' : 'No'],
+        [w.fullDay, item.fullDay ? w.yes : w.no],
         [w.from, formatExcuseTime(item.fromTime, language)],
         [w.to, formatExcuseTime(item.toTime, language)],
         [w.status, label(item.status)],
@@ -416,64 +450,75 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
   const canEditManual = !!item && item.source === 'Manual' && item.status === 'PendingApproval' && !!data?.canManage;
   const canCancel = !!item && (item.status === 'PendingApproval' || item.status === 'Approved') && !!data?.canManage && (item.status !== 'Approved' || !!data.canApprove);
 
-  return (
-    <div dir={isRtl ? 'rtl' : 'ltr'} className="space-y-5">
-      <PageHeader
-        title={w.title}
-        actions={
-          <>
-            {data?.canManage ? (
-              <Button
-                fullWidth={false}
-                onClick={() => {
-                  setForm({ ...blank(), employeeId: profileEmployeeId || '' });
-                  setFile(undefined);
-                  setFormError('');
-                  setEditing(false);
-                  setItem(undefined);
-                  setCreating(true);
-                }}
-              >
-                {w.add}
-              </Button>
-            ) : null}
-            <button
-              type="button"
-              className={`rounded-xl border px-5 py-2.5 font-semibold ${pendingOnly ? 'border-sky-400 bg-sky-100 text-sky-950' : 'border-sky-200 bg-sky-50 text-sky-900'}`}
-              onClick={() => {
-                setPendingOnly(true);
-                setSearch('');
-                setPage(1);
-              }}
-            >
-              {w.pending}: {data?.pendingApproval ?? '—'}
-            </button>
-          </>
-        }
-      />
-
-      <div className="relative max-w-3xl">
-        <Search className={`pointer-events-none absolute top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 ${isRtl ? 'end-3' : 'start-3'}`} aria-hidden />
-        <input
-          name="excuse-search"
-          type="search"
-          value={search}
-          placeholder={w.searchPlaceholder}
-          aria-label={w.searchPlaceholder}
-          className={`h-12 w-full rounded-xl border border-mis-border bg-white text-sm text-mis-navy shadow-sm outline-none ring-mis-primary/30 placeholder:text-slate-400 focus:border-mis-primary focus:ring-2 ${isRtl ? 'pe-4 ps-11' : 'ps-11 pe-4'}`}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPendingOnly(false);
-            setPage(1);
+  const hasFilters = Boolean(search || typeFilter || statusFilter || dateFilter || pendingOnly);
+  const toolbar = (
+    <>
+      {data?.canManage ? (
+        <Button
+          fullWidth={false}
+          onClick={() => {
+            setForm({ ...blank(), employeeId: profileEmployeeId || '' });
+            setFile(undefined);
+            setFormError('');
+            setEditing(false);
+            setItem(undefined);
+            setCreating(true);
           }}
-        />
+        >
+          {w.add}
+        </Button>
+      ) : null}
+      <button
+        type="button"
+        className={`inline-flex h-10 items-center rounded-xl border px-4 text-sm font-semibold ${pendingOnly ? 'border-sky-400 bg-sky-100 text-sky-950' : 'border-sky-200 bg-sky-50 text-sky-900'}`}
+        onClick={() => {
+          setPendingOnly((current) => !current);
+          setSearch('');
+          setTypeFilter('');
+          setStatusFilter('');
+          setDateFilter('');
+          setPage(1);
+        }}
+      >
+        {w.pending}: {data?.pendingApproval ?? '—'}
+      </button>
+    </>
+  );
+
+  return (
+    <div className="space-y-5">
+      {profileEmployeeId ? <div className="flex flex-wrap items-center justify-end gap-2">{toolbar}</div> : <PageHeader title={w.title} actions={toolbar} />}
+
+      <div className="module-filter-grid rounded-2xl border border-mis-border bg-white p-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+          <input
+            name="excuse-search"
+            type="search"
+            value={search}
+            placeholder={w.searchPlaceholder}
+            aria-label={w.searchPlaceholder}
+            className="h-11 w-full rounded-xl border border-mis-border bg-white pe-4 ps-11 text-sm text-mis-navy shadow-sm outline-none ring-mis-primary/30 placeholder:text-slate-400 focus:border-mis-primary focus:ring-2"
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPendingOnly(false);
+              setPage(1);
+            }}
+          />
+        </div>
+        <ProfessionalSelect aria-label={w.type} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(e) => { setTypeFilter(e.target.value); setPendingOnly(false); setPage(1); }} value={typeFilter}>
+          <option value="">{w.allTypes}</option>
+          {typeOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+        </ProfessionalSelect>
+        <ProfessionalSelect aria-label={w.status} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(e) => { setStatusFilter(e.target.value); setPendingOnly(false); setPage(1); }} value={statusFilter}>
+          <option value="">{w.allStatuses}</option>
+          {['PendingApproval', 'Approved', 'Rejected', 'Cancelled'].map((item) => <option key={item} value={item}>{label(item)}</option>)}
+        </ProfessionalSelect>
+        <DateControl aria-label={w.date} value={dateFilter} onChange={(e) => { setDateFilter(e.target.value); setPendingOnly(false); setPage(1); }} />
+        <Button disabled={!hasFilters} fullWidth={false} onClick={() => { setSearch(''); setTypeFilter(''); setStatusFilter(''); setDateFilter(''); setPendingOnly(false); setPage(1); }} variant="ghost">{w.clearFilters}</Button>
       </div>
 
-      {error && (
-        <p role="alert" className="text-red-700">
-          {error}
-        </p>
-      )}
+      {error ? <ErrorState compact message={error} onRetry={() => void load()} retryLabel={w.retry} title={w.error} /> : null}
 
       {loading ? (
         <LoadingSpinner />
@@ -481,7 +526,7 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
         data && (
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[960px] text-sm">
                 <thead className="bg-slate-50">
                   <tr>
                     {[w.employee, w.number, w.type, w.source, w.date, w.from, w.to, w.status, w.attachment, w.actions].map((h) => (
@@ -504,7 +549,7 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
                       <td className="px-4 py-3">{label(r.status)}</td>
                       <td className="px-4 py-3">{r.attachments.length || '—'}</td>
                       <td className="px-4 py-3">
-                        <Button disabled={busy} variant="secondary" onClick={() => void open(r.id)}>
+                        <Button disabled={busy} fullWidth={false} size="sm" variant="secondary" onClick={() => void open(r.id)}>
                           {r.status === 'PendingApproval' ? w.review : w.view}
                         </Button>
                       </td>
@@ -526,16 +571,13 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
       )}
 
       <Modal open={creating || !!item} onClose={() => { if (!busy) closeReview(); }} title={creating ? (editing ? w.edit : w.add) : w.review} size="lg">
-        {formError && (
-          <p role="alert" className="mb-4 text-red-700">
-            {formError}
-          </p>
-        )}
+        {formError ? <FormError message={formError} /> : null}
 
         {creating ? (
           <form className="space-y-4">
             <EmployeeSearchSelect
               required
+              initialSelection={selectedEmployee}
               label={w.employee}
               value={form.employeeId}
               onChange={(id) => setForm({ ...form, employeeId: id })}
@@ -572,28 +614,22 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
               onChange={(e) => setForm({ ...form, fullDay: e.target.checked, fromTime: e.target.checked ? null : form.fromTime, toTime: e.target.checked ? null : form.toTime })}
             />
             {!form.fullDay && (
-              <div className="grid grid-cols-2 gap-4">
-                <TextInput name="from" type="time" label={w.from} value={form.fromTime || ''} onChange={(e) => setForm({ ...form, fromTime: e.target.value || null })} required />
-                <TextInput name="to" type="time" label={w.to} value={form.toTime || ''} onChange={(e) => setForm({ ...form, toTime: e.target.value || null })} required />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <TimeInput name="from" label={w.from} value={form.fromTime || ''} onChange={(e) => setForm({ ...form, fromTime: e.target.value || null })} required />
+                <TimeInput name="to" label={w.to} value={form.toTime || ''} onChange={(e) => setForm({ ...form, toTime: e.target.value || null })} required />
               </div>
             )}
             <TextAreaInput required label={w.reason} maxLength={1000} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
             <TextAreaInput label={w.notes} maxLength={3000} value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             {!editing && (
-              <>
-                <label className="block text-sm">
-                  {w.upload}
-                  <input className="mt-2 block" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0])} />
-                </label>
-                <p className="text-xs text-slate-500">{w.fileHint}</p>
-              </>
+              <FileInput accept=".pdf,.jpg,.jpeg,.png" hint={w.fileHint} label={w.upload} onChange={(e) => setFile(e.target.files?.[0])} />
             )}
             <div className="flex flex-wrap gap-3">
-              <Button type="button" disabled={busy} onClick={(e) => void submitManual(e as unknown as FormEvent, false)}>
+              <Button type="button" fullWidth={false} disabled={busy} onClick={(e) => void submitManual(e as unknown as FormEvent, false)}>
                 {editing ? w.save : w.savePending}
               </Button>
               {!editing && data?.canApprove && (
-                <Button type="button" disabled={busy} variant="secondary" onClick={(e) => void submitManual(e as unknown as FormEvent, true)}>
+                <Button type="button" fullWidth={false} disabled={busy} variant="secondary" onClick={(e) => void submitManual(e as unknown as FormEvent, true)}>
                   {w.saveApprove}
                 </Button>
               )}
@@ -629,8 +665,9 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
               {!item.employeeId && data?.canApprove && item.collectorUserId && (
                 <div className="space-y-3 rounded-lg bg-amber-50 p-4">
                   <p>{w.missing}</p>
-                  <EmployeeSearchSelect label={w.employee} value={linkId} onChange={setLinkId} includeInactive />
+                  <EmployeeSearchSelect label={w.employee} value={linkId} onChange={(id) => setLinkId(id)} includeInactive />
                   <Button
+                    fullWidth={false}
                     disabled={busy || !linkId}
                     onClick={() =>
                       void run(async () => {
@@ -645,18 +682,20 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
               )}
               <div className="space-y-3">
                 {item.attachments.map((a) => (
-                  <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg border p-3">
-                    <span className="break-all">{a.fileName}</span>
-                    <Button disabled={busy} variant="secondary" onClick={() => void run(() => service.file(item.id, a, false))}>
+                  <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-mis-border p-3">
+                    <span className="min-w-0 flex-1 break-all text-sm font-semibold text-mis-navy">{a.fileName}</span>
+                    <Button disabled={busy} fullWidth={false} size="sm" variant="secondary" onClick={() => void run(() => service.file(item.id, a, false))}>
                       {w.view}
                     </Button>
-                    <Button disabled={busy} variant="secondary" onClick={() => void run(() => service.file(item.id, a, true))}>
+                    <Button disabled={busy} fullWidth={false} size="sm" variant="secondary" onClick={() => void run(() => service.file(item.id, a, true))}>
                       {w.download}
                     </Button>
                     {data?.canManage && (
                       <>
                         <Button
                           disabled={busy}
+                          fullWidth={false}
+                          size="sm"
                           variant="secondary"
                           onClick={() => {
                             setReplacement(a.id);
@@ -667,7 +706,9 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
                         </Button>
                         <Button
                           disabled={busy}
-                          variant="secondary"
+                          fullWidth={false}
+                          size="sm"
+                          variant="outline"
                           onClick={() =>
                             void run(async () => {
                               await service.remove(item.id, a.id);
@@ -684,12 +725,9 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
               </div>
               {data?.canManage && (
                 <div className="space-y-2">
-                  <label className="block text-sm">
-                    {replacement ? w.replace : w.upload}
-                    <input key={replacement || item.updatedAt} disabled={busy} className="mt-2 block" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0])} />
-                  </label>
-                  <p className="text-xs text-slate-500">{w.fileHint}</p>
+                  <FileInput key={replacement || item.updatedAt} accept=".pdf,.jpg,.jpeg,.png" disabled={busy} hint={w.fileHint} label={replacement ? w.replace : w.upload} onChange={(e) => setFile(e.target.files?.[0])} />
                   <Button
+                    fullWidth={false}
                     disabled={busy || !file}
                     onClick={() =>
                       void run(async () => {
@@ -704,14 +742,14 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
               )}
               {item.status === 'PendingApproval' && data?.canApprove && (
                 <div className="space-y-4 border-t pt-4">
-                  {!item.fullDay && <TextInput name="confirm-end" type="time" label={w.to} value={end.slice(0, 5)} onChange={(e) => setEnd(e.target.value)} />}
+                  {!item.fullDay && <TimeInput name="confirm-end" label={w.to} value={end.slice(0, 5)} onChange={(e) => setEnd(e.target.value)} />}
                   <TextAreaInput label={w.notes} maxLength={3000} value={notes} onChange={(e) => setNotes(e.target.value)} />
                   <TextAreaInput label={w.rejection} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />
-                  <div className="flex gap-3">
-                    <Button disabled={busy || !item.employeeId} onClick={() => void decide(true)}>
+                  <div className="flex flex-wrap gap-3">
+                    <Button fullWidth={false} disabled={busy || !item.employeeId} onClick={() => void decide(true)}>
                       {w.approve}
                     </Button>
-                    <Button variant="danger" disabled={busy || !reason.trim()} onClick={() => void decide(false)}>
+                    <Button fullWidth={false} variant="danger" disabled={busy || !reason.trim()} onClick={() => void decide(false)}>
                       {w.reject}
                     </Button>
                   </div>
@@ -721,6 +759,7 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
                 <div className="space-y-3 border-t pt-4">
                   <TextAreaInput label={w.cancelReason} maxLength={1000} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
                   <Button
+                    fullWidth={false}
                     variant="danger"
                     disabled={busy || !cancelReason.trim()}
                     onClick={() =>

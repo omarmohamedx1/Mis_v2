@@ -1,3 +1,5 @@
+import type { EmployeeOrganizationAssignment } from './employee';
+
 export type EmployeeStatus = 'Active' | 'Inactive' | 'OnLeave' | 'Suspended' | 'Terminated';
 export type ContractStatus = 'Draft' | 'Active' | 'Expired' | 'Terminated';
 
@@ -34,10 +36,13 @@ export interface EmployeeEmploymentInformation {
   directManagerId: string | null;
   directManagerName: string | null;
   hireDate: string | null;
-  operationalRole: 'COLLECTOR' | 'ADMIN' | 'SUPERVISOR' | null;
+  operationalRole: 'COLLECTOR' | 'ADMIN' | 'SUPERVISOR' | 'OFFICE' | null;
   fingerprintEnrollmentDate: string | null;
   terminationDate: string | null;
   status: EmployeeStatus;
+  organizations: EmployeeOrganizationAssignment[];
+  workNumber?: string | null;
+  packageType?: string | null;
 }
 
 export interface EmployeeContractInformation {
@@ -131,6 +136,9 @@ export interface UpdateEmployeeEmploymentRequest {
   employmentTypeId: string | null;
   directManagerId: string | null;
   hireDate: string | null;
+  organizationIds: string[];
+  workNumber?: string | null;
+  packageType?: string | null;
 }
 
 export interface UpdateEmployeeContractRequest {

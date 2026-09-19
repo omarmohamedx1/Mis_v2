@@ -29,31 +29,32 @@ import type {
   AttendanceTrendPoint,
   DepartmentEmployeeCount,
   HrDashboardSummary,
+  OrganizationEmployeeCount,
 } from '../../features/hr/types/dashboard';
 import { getApiErrorMessage } from '../../services/apiClient';
 
 const dashboardCopy = {
   en: {
     inactiveEmployees: 'Inactive Employees', todayAttendance: "Today's Attendance", present: 'Present', absent: 'Absent', late: 'Late', onLeave: 'On Leave', missingCheckOut: 'Missing Check-Out',
-    byDepartment: 'Employees by Department', alerts: 'HR Alerts', noAlerts: 'No current alerts', noAlertsHelp: 'Expiring contracts, documents, probation dates, and birthdays will appear here.',
+    byDepartment: 'Employees by Department', byAssignedClient: 'Employees by assigned bank / company', alerts: 'Action Required', alertsHelp: 'Only operational items that need HR follow-up are shown here: contracts, documents, and probation periods.', noAlerts: 'No action required', noAlertsHelp: 'There are no expiring contracts, documents, or probation periods in the current alert window.',
     attendanceTrend: 'Attendance Trend', absenceTrend: 'Absence Trend', lastThirtyDays: 'Last 30 days from processed attendance records', noTrend: 'No processed data for this period',
     activity: 'Recent HR Activity', noActivity: 'No recent HR activity', noActivityHelp: 'Important HR changes will appear after they are recorded.',
     daysRemaining: '{days} days remaining', overdue: '{days} days overdue', dueToday: 'Due today', reports: 'Open Reports', importAttendance: 'Import Attendance', refreshed: 'Live data from the HR API',
-    unassigned: 'Unassigned', people: 'employees', refresh: 'Refresh', viewEmployee: 'View employee', retry: 'Try again', unavailable: 'Dashboard unavailable',
+    unassigned: 'Unassigned', people: 'employees', refresh: 'Refresh', viewEmployee: 'View employee', retry: 'Try again', unavailable: 'Dashboard unavailable', contract: 'Contract', document: 'Document', probation: 'Probation',
   },
   ar: {
     inactiveEmployees: 'الموظفون غير النشطين', todayAttendance: 'حضور اليوم', present: 'حاضر', absent: 'غائب', late: 'متأخر', onLeave: 'في إجازة', missingCheckOut: 'بدون تسجيل خروج',
-    byDepartment: 'الموظفون حسب القسم', alerts: 'تنبيهات الموارد البشرية', noAlerts: 'لا توجد تنبيهات حالية', noAlertsHelp: 'ستظهر هنا العقود والمستندات وفترات الاختبار القريبة من الانتهاء وأعياد الميلاد.',
+    byDepartment: 'الموظفون حسب القسم', byAssignedClient: 'الموظفون حسب البنك / الشركة المكلّف بها', alerts: 'إجراءات مطلوبة', alertsHelp: 'تظهر هنا فقط البنود التشغيلية التي تحتاج متابعة من الموارد البشرية: العقود والمستندات وفترات الاختبار.', noAlerts: 'لا توجد إجراءات مطلوبة', noAlertsHelp: 'لا توجد عقود أو مستندات أو فترات اختبار قريبة من الانتهاء خلال فترة التنبيه الحالية.',
     attendanceTrend: 'اتجاه الحضور', absenceTrend: 'اتجاه الغياب', lastThirtyDays: 'آخر 30 يومًا من سجلات الحضور المعالجة', noTrend: 'لا توجد بيانات معالجة لهذه الفترة',
     activity: 'أحدث نشاطات الموارد البشرية', noActivity: 'لا يوجد نشاط حديث', noActivityHelp: 'ستظهر التغييرات المهمة بعد تسجيلها في النظام.',
     daysRemaining: 'متبقي {days} يوم', overdue: 'متأخر {days} يوم', dueToday: 'موعده اليوم', reports: 'فتح التقارير', importAttendance: 'استيراد الحضور', refreshed: 'بيانات مباشرة من واجهة الموارد البشرية',
-    unassigned: 'غير محدد', people: 'موظف', refresh: 'تحديث', viewEmployee: 'عرض الموظف', retry: 'إعادة المحاولة', unavailable: 'لوحة التحكم غير متاحة',
+    unassigned: 'غير محدد', people: 'موظف', refresh: 'تحديث', viewEmployee: 'عرض الموظف', retry: 'إعادة المحاولة', unavailable: 'لوحة التحكم غير متاحة', contract: 'عقد', document: 'مستند', probation: 'فترة اختبار',
   },
 } as const;
 
-function MetricCard({ context, icon, label, value }: { context: string; icon: ReactNode; label: string; value: number }) {
-  return (
-    <Card className="relative overflow-hidden" padding="md">
+function MetricCard({ context, href, icon, label, value }: { context: string; href?: string; icon: ReactNode; label: string; value: number }) {
+  const body = (
+    <Card className={`relative overflow-hidden ${href ? 'transition hover:border-mis-primary hover:shadow-sm' : ''}`} padding="md">
       <div className="absolute -end-5 -top-5 h-24 w-24 rounded-full bg-mis-pale/70" aria-hidden="true" />
       <div className="relative flex items-start justify-between gap-4">
         <div><p className="text-sm font-semibold text-slate-500">{label}</p><p className="mt-3 text-3xl font-bold tabular-nums text-mis-navy">{value}</p></div>
@@ -62,21 +63,28 @@ function MetricCard({ context, icon, label, value }: { context: string; icon: Re
       <p className="relative mt-4 text-xs text-slate-500">{context}</p>
     </Card>
   );
+  return href ? <Link className="block" to={href}>{body}</Link> : body;
 }
 
-function DistributionBars({ emptyText, items }: { emptyText: string; items: DepartmentEmployeeCount[]; }) {
-  const populated = items.filter((item) => item.employeeCount > 0);
+function DistributionBars({ emptyText, hrefFor, items }: {
+  emptyText: string;
+  hrefFor: (item: DepartmentEmployeeCount | OrganizationEmployeeCount) => string;
+  items?: Array<DepartmentEmployeeCount | OrganizationEmployeeCount> | null;
+}) {
+  const populated = (items ?? []).filter((item) => item.employeeCount > 0);
   const maximum = Math.max(...populated.map((item) => item.employeeCount), 1);
   if (!populated.length) return <EmptyState compact description={emptyText} title={emptyText} />;
 
   return (
     <div className="space-y-4">
       {populated.map((item) => {
+        const id = 'departmentId' in item ? item.departmentId : item.organizationId;
+        const name = 'departmentName' in item ? item.departmentName : item.organizationName;
         return (
-          <div key={item.departmentId}>
-            <div className="mb-2 flex items-center justify-between gap-4 text-sm"><span className="truncate font-semibold text-slate-700">{item.departmentName}</span><span className="font-bold tabular-nums text-mis-navy">{item.employeeCount}</span></div>
+          <Link className="block rounded-xl p-1 -m-1 hover:bg-mis-pale/40" key={id} to={hrefFor(item)}>
+            <div className="mb-2 flex items-center justify-between gap-4 text-sm"><span className="truncate font-semibold text-slate-700">{name}</span><span className="font-bold tabular-nums text-mis-navy">{item.employeeCount}</span></div>
             <div className="h-2 overflow-hidden rounded-full bg-mis-pale"><div className="h-full rounded-full bg-mis-primary transition-all" style={{ width: `${Math.max((item.employeeCount / maximum) * 100, 3)}%` }} /></div>
-          </div>
+          </Link>
         );
       })}
     </div>
@@ -119,10 +127,25 @@ function AbsenceTrend({ copy, locale, points }: { copy: typeof dashboardCopy.en 
   );
 }
 
+function alertHref(alert: HrDashboardSummary['alerts'][number]): string {
+  const category = alert.category.toLowerCase();
+  if (category === 'document') return `/hr/employee-documents?employeeId=${alert.employeeId}`;
+  if (category === 'contract' || category === 'probation') return `/hr/employees/${alert.employeeId}?tab=contract`;
+  return `/hr/employees/${alert.employeeId}`;
+}
+
 function alertTone(severity: string): StatusTone {
-  if (severity.toLowerCase() === 'danger' || severity.toLowerCase() === 'critical') return 'danger';
-  if (severity.toLowerCase() === 'warning') return 'warning';
+  if (severity.toLowerCase() === 'danger' || severity.toLowerCase() === 'critical' || severity.toLowerCase() === 'expired') return 'danger';
+  if (severity.toLowerCase() === 'warning' || severity.toLowerCase() === 'upcoming') return 'warning';
   return 'info';
+}
+
+function alertCategoryLabel(category: string, copy: typeof dashboardCopy.en | typeof dashboardCopy.ar) {
+  const normalized = category.toLowerCase();
+  if (normalized === 'contract') return copy.contract;
+  if (normalized === 'document') return copy.document;
+  if (normalized === 'probation') return copy.probation;
+  return category;
 }
 
 export function HrDashboardPage() {
@@ -143,19 +166,22 @@ export function HrDashboardPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const attendanceQuery = (status: string) => `/hr/attendance?status=${status}&dateFrom=${today}&dateTo=${today}`;
   const attendanceCards = useMemo(() => summary ? [
-    { label: copy.present, value: summary.todayAttendance.present, tone: 'bg-emerald-50 text-emerald-700', icon: <CalendarCheck2 className="h-5 w-5" /> },
-    { label: copy.absent, value: summary.todayAttendance.absent, tone: 'bg-red-50 text-red-700', icon: <CalendarX2 className="h-5 w-5" /> },
-    { label: copy.late, value: summary.todayAttendance.late, tone: 'bg-amber-50 text-amber-700', icon: <CalendarClock className="h-5 w-5" /> },
-    { label: copy.onLeave, value: summary.todayAttendance.onLeave, tone: 'bg-sky-50 text-sky-700', icon: <CalendarDays className="h-5 w-5" /> },
-    { label: copy.missingCheckOut, value: summary.todayAttendance.missingCheckOut, tone: 'bg-violet-50 text-violet-700', icon: <TimerOff className="h-5 w-5" /> },
-  ] : [], [copy, summary]);
+    { label: copy.present, value: summary.todayAttendance.present, tone: 'bg-emerald-50 text-emerald-700', icon: <CalendarCheck2 className="h-5 w-5" />, href: attendanceQuery('Present') },
+    { label: copy.absent, value: summary.todayAttendance.absent, tone: 'bg-red-50 text-red-700', icon: <CalendarX2 className="h-5 w-5" />, href: attendanceQuery('Absent') },
+    { label: copy.late, value: summary.todayAttendance.late, tone: 'bg-amber-50 text-amber-700', icon: <CalendarClock className="h-5 w-5" />, href: attendanceQuery('Late') },
+    { label: copy.onLeave, value: summary.todayAttendance.onLeave, tone: 'bg-sky-50 text-sky-700', icon: <CalendarDays className="h-5 w-5" />, href: attendanceQuery('Leave') },
+    { label: copy.missingCheckOut, value: summary.todayAttendance.missingCheckOut, tone: 'bg-violet-50 text-violet-700', icon: <TimerOff className="h-5 w-5" />, href: '/hr/attendance' },
+  ] : [], [copy, summary, today]);
 
   if (loading && !summary) return <div className="flex min-h-[420px] items-center justify-center"><LoadingSpinner /></div>;
   if (!summary) return <ErrorState message={error} onRetry={() => void load()} retryLabel={copy.retry} title={copy.unavailable} />;
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div>
       <PageHeader
         actions={<div className="flex flex-wrap gap-2"><Button fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} isLoading={loading} onClick={() => void load()} variant="outline">{copy.refresh}</Button><Link className="inline-flex h-10 items-center rounded-xl bg-mis-primary px-4 text-sm font-semibold text-white hover:bg-mis-deep" to="/hr/reports">{copy.reports}</Link></div>}
         description={copy.refreshed}
@@ -164,34 +190,37 @@ export function HrDashboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard context={t('allEmployeeRecords')} icon={<UsersRound className="h-5 w-5" />} label={t('totalEmployees')} value={summary.totalEmployees} />
-        <MetricCard context={summary.totalEmployees ? t('totalEmployeePercent', { value: Math.round((summary.activeEmployees / summary.totalEmployees) * 100) }) : t('noEmployeeRecords')} icon={<UserRoundCheck className="h-5 w-5" />} label={t('activeEmployees')} value={summary.activeEmployees} />
-        <MetricCard context={copy.refreshed} icon={<UserRoundMinus className="h-5 w-5" />} label={copy.inactiveEmployees} value={summary.inactiveEmployees} />
-        <MetricCard context={t('totalDocumentsContext', { count: summary.totalDocuments })} icon={<FileWarning className="h-5 w-5" />} label={t('documentsAttention')} value={summary.documentsRequiringAttention ?? 0} />
+        <MetricCard context={t('allEmployeeRecords')} href="/hr/employees" icon={<UsersRound className="h-5 w-5" />} label={t('totalEmployees')} value={summary.totalEmployees} />
+        <MetricCard context={summary.totalEmployees ? t('totalEmployeePercent', { value: Math.round((summary.activeEmployees / summary.totalEmployees) * 100) }) : t('noEmployeeRecords')} href="/hr/employees?status=active" icon={<UserRoundCheck className="h-5 w-5" />} label={t('activeEmployees')} value={summary.activeEmployees} />
+        <MetricCard context={copy.refreshed} href="/hr/employees?status=inactive" icon={<UserRoundMinus className="h-5 w-5" />} label={copy.inactiveEmployees} value={summary.inactiveEmployees} />
+        <MetricCard context={t('totalDocumentsContext', { count: summary.totalDocuments })} href="/hr/employee-documents" icon={<FileWarning className="h-5 w-5" />} label={t('documentsAttention')} value={summary.documentsRequiringAttention ?? 0} />
       </div>
 
       <Section className="mt-6" description={copy.refreshed} title={copy.todayAttendance}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {attendanceCards.map((item) => <div className={`rounded-xl p-4 ${item.tone}`} key={item.label}><div className="flex items-center justify-between gap-3"><span>{item.icon}</span><strong className="text-2xl tabular-nums">{item.value}</strong></div><p className="mt-3 text-sm font-semibold">{item.label}</p></div>)}
+          {attendanceCards.map((item) => <Link className={`rounded-xl p-4 transition hover:-translate-y-0.5 hover:shadow-sm ${item.tone}`} key={item.label} to={item.href}><div className="flex items-center justify-between gap-3"><span>{item.icon}</span><strong className="text-2xl tabular-nums">{item.value}</strong></div><p className="mt-3 text-sm font-semibold">{item.label}</p></Link>)}
         </div>
       </Section>
 
-      <Section className="mt-6" title={copy.byDepartment}><DistributionBars emptyText={t('employeeDataHelp')} items={summary.employeesByDepartment} /></Section>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Section title={copy.byDepartment}><DistributionBars emptyText={t('employeeDataHelp')} hrefFor={(item) => 'departmentId' in item ? `/hr/employees?departmentId=${item.departmentId}` : '/hr/employees'} items={summary.employeesByDepartment} /></Section>
+        <Section title={copy.byAssignedClient}><DistributionBars emptyText={t('employeeDataHelp')} hrefFor={(item) => 'organizationId' in item ? `/hr/employees?organizationId=${item.organizationId}` : '/hr/employees'} items={summary.employeesByOrganization} /></Section>
+      </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
         <Section description={copy.lastThirtyDays} title={copy.attendanceTrend}><AttendanceTrend copy={copy} locale={locale} points={summary.attendanceTrend} /></Section>
-        <Section description={copy.lastThirtyDays} title={copy.absenceTrend}><AbsenceTrend copy={copy} locale={locale} points={summary.absenceTrend} /></Section>
+        <Section action={<Link className="text-sm font-semibold text-mis-primary" to="/hr/attendance?tab=absences">{t('viewAbsences')}</Link>} description={copy.lastThirtyDays} title={copy.absenceTrend}><AbsenceTrend copy={copy} locale={locale} points={summary.absenceTrend} /></Section>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Section action={<Link className="text-sm font-semibold text-mis-primary" to="/hr/employee-documents">{t('viewDocuments')}</Link>} bodyClassName="divide-y divide-mis-border" title={copy.alerts}>
+        <Section bodyClassName="divide-y divide-mis-border" description={copy.alertsHelp} title={copy.alerts}>
           {summary.alerts.length ? summary.alerts.slice(0, 10).map((alert) => {
             const remaining = alert.daysRemaining === 0 ? copy.dueToday : alert.daysRemaining < 0 ? copy.overdue.replace('{days}', String(Math.abs(alert.daysRemaining))) : copy.daysRemaining.replace('{days}', String(alert.daysRemaining));
-            return <article className="flex items-start gap-3 px-5 py-4" key={`${alert.category}-${alert.entityId}`}><div className="mt-0.5 rounded-lg bg-amber-50 p-2 text-amber-700"><AlertTriangle className="h-4 w-4" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><p className="font-semibold text-mis-navy">{alert.title}</p><StatusBadge tone={alertTone(alert.severity)}>{remaining}</StatusBadge></div><p className="mt-1 text-sm text-slate-500">{alert.employeeNumber} · {alert.employeeName}</p><p className="mt-1 text-xs text-slate-400">{new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(`${alert.dueDate}T00:00:00`))}</p></div></article>;
+            return <Link className="flex items-start gap-3 px-5 py-4 transition hover:bg-mis-pale/40" key={`${alert.category}-${alert.entityId}`} to={alertHref(alert)}><div className="mt-0.5 rounded-lg bg-amber-50 p-2 text-amber-700"><AlertTriangle className="h-4 w-4" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start gap-2"><span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600">{alertCategoryLabel(alert.category, copy)}</span><StatusBadge tone={alertTone(alert.severity)}>{remaining}</StatusBadge></div><p className="mt-2 font-semibold text-mis-navy">{alert.title}</p><p className="mt-1 text-sm text-slate-500">{alert.employeeNumber} · {alert.employeeName}</p><p className="mt-1 text-xs text-slate-400">{new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(`${alert.dueDate}T00:00:00`))}</p></div></Link>;
           }) : <EmptyState compact description={copy.noAlertsHelp} icon={<FileWarning className="h-5 w-5" />} title={copy.noAlerts} />}
         </Section>
 
-        <Section bodyClassName="divide-y divide-mis-border" title={copy.activity}>
+        <Section action={<Link className="text-sm font-semibold text-mis-primary" to="/hr/audit">{t('auditLogLink')}</Link>} bodyClassName="divide-y divide-mis-border" title={copy.activity}>
           {summary.recentActivity.length ? summary.recentActivity.slice(0, 12).map((activity) => <article className="flex gap-3 px-5 py-4" key={activity.id}><div className="mt-0.5 rounded-lg bg-mis-pale p-2 text-mis-primary"><Activity className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="font-semibold text-mis-navy">{activity.message}</p><p className="mt-1 text-sm text-slate-500">{activity.username}{activity.employeeName ? ` · ${activity.employeeName}` : ''}</p><time className="mt-1 block text-xs text-slate-400" dateTime={activity.timestamp}>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(activity.timestamp))}</time></div>{activity.employeeId ? <Link aria-label={copy.viewEmployee} className="text-mis-primary" to={`/hr/employees/${activity.employeeId}`}><BriefcaseBusiness className="h-4 w-4" /></Link> : null}</article>) : <EmptyState compact description={copy.noActivityHelp} icon={<Activity className="h-5 w-5" />} title={copy.noActivity} />}
         </Section>
       </div>

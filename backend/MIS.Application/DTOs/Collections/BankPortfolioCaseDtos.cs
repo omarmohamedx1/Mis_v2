@@ -10,7 +10,7 @@ public sealed record BankPortfolioCaseListItemDto(Guid Id, string CaseNumber, st
 public sealed record BankPortfolioCasePageDto(IReadOnlyCollection<BankPortfolioCaseListItemDto> Items, int TotalCount,
     int Page, int PageSize, int TotalPages, BankPortfolioAccessDto Access);
 public sealed record BankPortfolioCaseDetailsDto(Guid Id, string CaseNumber, string CustomerName, string CustomerCode,
-    string? Mobile, string? AlternativeMobile, string? NationalId, string? Address, string BankName, string PortfolioName,
+    string? Mobile, string? AlternativeMobile, string? NationalId, string? Address, string? SecondaryAddress, string BankName, string PortfolioName,
     string AccountReference, string? ContractReference, string? ProductType, decimal OriginalAmount,
     decimal OutstandingAmount, decimal PaidAmount, decimal RemainingAmount, string Status, Guid? AssignedCollectorId,
     string? AssignedCollectorName, DateTimeOffset? LastActivityAt, DateTimeOffset? NextFollowUpAt, string? LatestNote,

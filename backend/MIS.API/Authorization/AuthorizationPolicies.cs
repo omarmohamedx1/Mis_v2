@@ -33,4 +33,6 @@ public static class AuthorizationPolicies
     public const string DataEntryAccess = "DataEntryAccess";
     public const string DataEntryManage = "DataEntryManage";
     public const string DataEntryBatchReview = "DataEntryBatchReview";
+    public const string LegalAccess = "LegalAccess";
+    public const string LegalCaseManage = "LegalCaseManage";
 }

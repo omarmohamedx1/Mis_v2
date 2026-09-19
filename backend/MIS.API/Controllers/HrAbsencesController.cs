@@ -33,13 +33,13 @@ public sealed class HrAbsencesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<PagedAbsencesDto>> GetAbsences([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] Guid? departmentId = null, [FromQuery] DateOnly? date = null, [FromQuery] string? status = null, CancellationToken cancellationToken = default)
+        public async Task<ActionResult<PagedAbsencesDto>> GetAbsences([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] Guid? departmentId = null, [FromQuery] Guid? organizationId = null, [FromQuery] Guid? employeeId = null, [FromQuery] DateOnly? date = null, [FromQuery] string? status = null, CancellationToken cancellationToken = default)
     {
         if (page < 1 || pageSize is < 1 or > 100) return BadRequest(ApiErrorResponse.Failure("Page must be at least 1 and pageSize must be between 1 and 100."));
         if (search?.Length > 160) return BadRequest(ApiErrorResponse.Failure("Search cannot exceed 160 characters."));
         var normalizedStatus = string.IsNullOrWhiteSpace(status) || status.Equals("all", StringComparison.OrdinalIgnoreCase) ? null : NormalizeStatus(status);
         if (!string.IsNullOrWhiteSpace(status) && !status.Equals("all", StringComparison.OrdinalIgnoreCase) && normalizedStatus is null) return BadRequest(ApiErrorResponse.Failure("Status must be all, pending, excused, or unexcused."));
-        var result = await _repository.GetPagedAsync(page, pageSize, search, departmentId, date, normalizedStatus, cancellationToken);
+        var result = await _repository.GetPagedAsync(page, pageSize, search, departmentId, organizationId, employeeId, date, normalizedStatus, cancellationToken);
         return Ok(CanManagePayrollImpact ? result : result with
         {
             Items = result.Items.Select(item => item with

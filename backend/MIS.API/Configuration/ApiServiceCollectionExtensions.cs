@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
@@ -37,8 +36,9 @@ public static class ApiServiceCollectionExtensions
                         .SelectMany(modelState => modelState.Value!.Errors)
                         .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Invalid request value." : error.ErrorMessage)
                         .ToArray();
+                    var message = errors.Length == 1 ? errors[0] : "Validation failed.";
 
-                    return new BadRequestObjectResult(ApiErrorResponse.Failure("Validation failed.", errors));
+                    return new BadRequestObjectResult(ApiErrorResponse.Failure(message, errors));
                 };
             });
 
@@ -138,6 +138,11 @@ public static class ApiServiceCollectionExtensions
                 || HasPermission(context.User, SystemPermissionCodes.DataEntryBatchReview)
                 || context.User.IsInRole(SystemRoleNames.CollectionsSupervisor)
                 || context.User.IsInRole(SystemRoleNames.CollectionsOperationsManager)));
+            options.AddPolicy(AuthorizationPolicies.LegalAccess, policy => policy.RequireAuthenticatedUser().RequireAssertion(LegalUser));
+            options.AddPolicy(AuthorizationPolicies.LegalCaseManage, policy => policy.RequireAuthenticatedUser().RequireAssertion(context =>
+                LegalUser(context)
+                || HasPermission(context.User, SystemPermissionCodes.LegalCaseManage)
+                || context.User.IsInRole(SystemRoleNames.LegalOfficer)));
         });
 
         return services;
@@ -149,6 +154,13 @@ public static class ApiServiceCollectionExtensions
         || HasPermission(context.User, "accounting.access")
         || HasPermission(context.User, SystemPermissionCodes.FinanceAccess)
         || context.User.HasClaim("department", DepartmentCodes.Accounting);
+
+    private static bool LegalUser(AuthorizationHandlerContext context) =>
+        context.User.IsInRole(SystemRoleNames.Admin)
+        || HasPermission(context.User, SystemPermissionCodes.LegalAccess)
+        || HasPermission(context.User, SystemPermissionCodes.LegalCaseManage)
+        || context.User.IsInRole(SystemRoleNames.LegalOfficer)
+        || context.User.HasClaim("department", DepartmentCodes.Legal);
 
     private static bool DataEntryUser(AuthorizationHandlerContext context) =>
         context.User.IsInRole(SystemRoleNames.Admin)
@@ -168,11 +180,12 @@ public static class ApiServiceCollectionExtensions
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
             ?? throw new InvalidOperationException("Jwt configuration is missing.");
 
-        var keyBytes = Encoding.UTF8.GetBytes(jwtOptions.SecretKey);
-
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+            .AddJwtBearer();
+
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<JwtSigningKeyAccessor>((options, signingKey) =>
             {
                 options.RequireHttpsMetadata = false;
                 options.SaveToken = false;
@@ -184,12 +197,18 @@ public static class ApiServiceCollectionExtensions
                     ValidateLifetime = true,
                     ValidIssuer = jwtOptions.Issuer,
                     ValidAudience = jwtOptions.Audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-                    ClockSkew = TimeSpan.FromMinutes(1)
+                    ClockSkew = TimeSpan.FromMinutes(1),
+                    IssuerSigningKeyResolver = (_, _, _, _) => [signingKey.SecurityKey]
                 };
 
                 options.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = context =>
+                    {
+                        if (IsAnonymousAuthPath(context.Request.Path))
+                            context.NoResult();
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = async context =>
                     {
                         var userIdValue = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -206,6 +225,12 @@ public static class ApiServiceCollectionExtensions
                     },
                     OnChallenge = async context =>
                     {
+                        if (IsAnonymousAuthPath(context.Request.Path)
+                            || context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+                        {
+                            return;
+                        }
+
                         context.HandleResponse();
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         await context.Response.WriteAsJsonAsync(ApiErrorResponse.Failure("Authentication is required."));
@@ -220,4 +245,7 @@ public static class ApiServiceCollectionExtensions
 
         return services;
     }
+
+    private static bool IsAnonymousAuthPath(PathString path) =>
+        path.StartsWithSegments("/api/auth/login");
 }

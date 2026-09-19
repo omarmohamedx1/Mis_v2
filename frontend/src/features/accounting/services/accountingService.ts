@@ -1,7 +1,9 @@
-import { apiClient } from '../../../services/apiClient';
+import { apiClient, downloadApiFile } from '../../../services/apiClient';
+import { loadAllPages, withoutPaging } from '../../../utils/loadAllPages';
 import type {
   AccountingCollectorCommission,
   AccountingCollectorCommissionDetails,
+  AccountingCommissionRule,
   AccountingDashboard,
   AccountingEmployeePayroll,
   AccountingLookupEmployee,
@@ -24,8 +26,8 @@ export const accountingService = {
   generatePayroll(year: number, month: number, notes?: string) {
     return apiClient.post<AccountingPayrollPeriod>('/accounting/salaries/generate', { year, month, notes }).then((r) => r.data);
   },
-  salaries(periodId: string, search?: string, status?: string, page = 1) {
-    return apiClient.get<AccountingPaged<AccountingEmployeePayroll>>('/accounting/salaries', { params: { periodId, search: search || undefined, status: status || undefined, page, pageSize: 30 } }).then((r) => r.data);
+  salaries(periodId: string, search?: string, status?: string) {
+    return loadAllPages((page, pageSize) => apiClient.get<AccountingPaged<AccountingEmployeePayroll>>('/accounting/salaries', { params: { periodId, search: search || undefined, status: status || undefined, page, pageSize } }).then((r) => r.data), 200);
   },
   salary(id: string) {
     return apiClient.get<AccountingEmployeePayroll>(`/accounting/salaries/${id}`).then((r) => r.data);
@@ -37,7 +39,7 @@ export const accountingService = {
     return apiClient.post<AccountingEmployeePayroll>(`/accounting/salaries/${id}/${action}`).then((r) => r.data);
   },
   transportation(params: { search?: string; status?: string; from?: string; to?: string; page?: number }) {
-    return apiClient.get<AccountingPaged<AccountingTransportation>>('/accounting/transportation', { params: { ...params, page: params.page ?? 1, pageSize: 30 } }).then((r) => r.data);
+    return loadAllPages((page, pageSize) => apiClient.get<AccountingPaged<AccountingTransportation>>('/accounting/transportation', { params: { ...withoutPaging(params), page, pageSize } }).then((r) => r.data), 200);
   },
   createTransportation(body: { employeeId: string; claimDate: string; amount: number; purpose: string; notes?: string; fieldVisitId?: string; caseId?: string }) {
     return apiClient.post<AccountingTransportation>('/accounting/transportation', body).then((r) => r.data);
@@ -56,11 +58,26 @@ export const accountingService = {
   deleteTransportationAttachment(id: string) {
     return apiClient.delete(`/accounting/transportation/${id}/attachment`);
   },
+  downloadTransportationAttachment(id: string, fileName: string) {
+    return downloadApiFile(`/accounting/transportation/${id}/attachment`, fileName);
+  },
+  commissionRules(scope?: string) {
+    return apiClient.get<AccountingCommissionRule[]>('/accounting/commission-rules', { params: { scope: scope || undefined } }).then((r) => r.data);
+  },
+  createCommissionRule(body: { code: string; nameArabic: string; nameEnglish: string; scope: string; basis: string; percentage?: number | null; fixedAmount?: number | null; effectiveFrom: string }) {
+    return apiClient.post<AccountingCommissionRule>('/accounting/commission-rules', body).then((r) => r.data);
+  },
+  setCommissionRuleActive(id: string, isActive: boolean) {
+    return apiClient.patch<AccountingCommissionRule>(`/accounting/commission-rules/${id}/active`, { isActive }).then((r) => r.data);
+  },
+  deleteCommissionRule(id: string) {
+    return apiClient.delete(`/accounting/commission-rules/${id}`);
+  },
   calculateCollectorCommissions(year: number, month: number) {
     return apiClient.post<number>('/accounting/collector-commissions/calculate', { year, month }).then((r) => r.data);
   },
   collectorCommissions(params: { year?: number; month?: number; search?: string; status?: string; page?: number }) {
-    return apiClient.get<AccountingPaged<AccountingCollectorCommission>>('/accounting/collector-commissions', { params: { ...params, page: params.page ?? 1, pageSize: 30 } }).then((r) => r.data);
+    return loadAllPages((page, pageSize) => apiClient.get<AccountingPaged<AccountingCollectorCommission>>('/accounting/collector-commissions', { params: { ...withoutPaging(params), page, pageSize } }).then((r) => r.data), 200);
   },
   collectorCommissionDetails(id: string) {
     return apiClient.get<AccountingCollectorCommissionDetails>(`/accounting/collector-commissions/${id}`).then((r) => r.data);
@@ -75,7 +92,7 @@ export const accountingService = {
     return apiClient.post<number>('/accounting/supervisor-commissions/calculate', { year, month }).then((r) => r.data);
   },
   supervisorCommissions(params: { year?: number; month?: number; search?: string; status?: string; page?: number }) {
-    return apiClient.get<AccountingPaged<AccountingSupervisorCommission>>('/accounting/supervisor-commissions', { params: { ...params, page: params.page ?? 1, pageSize: 30 } }).then((r) => r.data);
+    return loadAllPages((page, pageSize) => apiClient.get<AccountingPaged<AccountingSupervisorCommission>>('/accounting/supervisor-commissions', { params: { ...withoutPaging(params), page, pageSize } }).then((r) => r.data), 200);
   },
   adjustSupervisorCommission(id: string, adjustments: number, notes?: string) {
     return apiClient.post<AccountingSupervisorCommission>(`/accounting/supervisor-commissions/${id}/adjust`, { adjustments, notes }).then((r) => r.data);

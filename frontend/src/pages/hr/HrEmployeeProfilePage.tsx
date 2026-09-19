@@ -1,14 +1,16 @@
 import { HrExcusesPage } from './HrExcusesPage';
 import { HrSocialInsurancePage } from './HrSocialInsurancePage';
 import { useAuth } from '../../context/AuthContext';
+import { hasHrFeature, isSystemAdmin } from '../../features/modules/moduleAccess';
 import {
-  ArrowLeft, BadgeDollarSign, BriefcaseBusiness, CalendarCheck2, CalendarDays,
+  Archive, ArrowLeft, BadgeDollarSign, BriefcaseBusiness, CalendarCheck2, CalendarDays,
   ContactRound, ExternalLink, FileSignature, Files, HeartHandshake, History,
-  LayoutDashboard, ScrollText, Search, ShieldAlert, UserRound, UserRoundX,
+  LayoutDashboard, RotateCcw, ScrollText, Search, ShieldAlert, Trash2, UserRound,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
@@ -25,9 +27,11 @@ import { SelectInput } from '../../components/forms/SelectInput';
 import { TextAreaInput } from '../../components/forms/TextAreaInput';
 import { TextInput } from '../../components/forms/TextInput';
 import { useLocalization } from '../../context/LocalizationContext';
+import { keepArabicEmployeeName, keepEnglishEmployeeName, organizationLabel, secondaryEmployeeName } from '../../features/hr/employeeDisplay';
 import { hrAuditService } from '../../features/hr/services/hrAuditService';
 import { hrEmployeeProfileService } from '../../features/hr/services/hrEmployeeProfileService';
 import { hrEmployeeService } from '../../features/hr/services/hrEmployeeService';
+import { RemoveEmployeesModal } from '../../features/hr/components/RemoveEmployeesModal';
 import { hrMasterDataService } from '../../features/hr/services/hrMasterDataService';
 import type { AuditLogItem, PagedAuditLogs } from '../../features/hr/types/audit';
 import {
@@ -45,21 +49,22 @@ import {
   type UpdateEmployeeEmergencyContactRequest,
   type UpdateEmployeeEmploymentRequest,
 } from '../../features/hr/types/employeeProfile';
-import type { EmployeeListItem } from '../../features/hr/types/employee';
+import type { EmployeeListItem, EmployeeOrganizationAssignment } from '../../features/hr/types/employee';
 import type { MasterDataLookup } from '../../features/hr/types/masterData';
 import type { TranslationKey } from '../../localization/translations';
 import { getApiErrorMessage } from '../../services/apiClient';
 
-type ProfileTab = 'overview' | 'personal' | 'employment' | 'contract' | 'compensation' | 'emergency' | 'documents' | 'attendance' | 'leaves' | 'absences' | 'delegations' | 'socialInsurance' | 'excusesMissions' | 'audit';
+type ProfileTab = 'overview' | 'personal' | 'employment' | 'contract' | 'compensation' | 'emergency' | 'documents' | 'attendance' | 'leaves' | 'delegations' | 'socialInsurance' | 'excusesMissions' | 'audit';
 
 interface ProfileLookups {
   contractTypes: MasterDataLookup[];
   departments: MasterDataLookup[];
   employmentTypes: MasterDataLookup[];
   positions: MasterDataLookup[];
+  organizations: EmployeeOrganizationAssignment[];
 }
 
-const profileTabs: ProfileTab[] = ['overview', 'personal', 'employment', 'contract', 'compensation', 'emergency', 'documents', 'attendance', 'leaves', 'absences', 'delegations', 'socialInsurance', 'excusesMissions', 'audit'];
+const profileTabs: ProfileTab[] = ['overview', 'personal', 'employment', 'contract', 'compensation', 'emergency', 'documents', 'attendance', 'leaves', 'delegations', 'socialInsurance', 'excusesMissions', 'audit'];
 const tabLabels: Record<ProfileTab, TranslationKey> = {
   overview: 'profileOverview',
   personal: 'profilePersonal',
@@ -70,7 +75,6 @@ const tabLabels: Record<ProfileTab, TranslationKey> = {
   documents: 'employeeDocuments',
   attendance: 'attendance',
   leaves: 'leaves',
-  absences: 'companyAbsences',
   delegations: 'delegations',
   socialInsurance: 'socialInsurance',
   excusesMissions: 'excusesMissions',
@@ -87,7 +91,6 @@ const tabIcons: Record<ProfileTab, ReactNode> = {
   documents: <Files aria-hidden="true" className="h-4 w-4" />,
   attendance: <CalendarCheck2 aria-hidden="true" className="h-4 w-4" />,
   leaves: <CalendarDays aria-hidden="true" className="h-4 w-4" />,
-  absences: <UserRoundX aria-hidden="true" className="h-4 w-4" />,
   delegations: <ScrollText aria-hidden="true" className="h-4 w-4" />,
   excusesMissions: <ShieldAlert aria-hidden="true" className="h-4 w-4" />,
   socialInsurance: <ShieldAlert aria-hidden="true" className="h-4 w-4" />,
@@ -139,6 +142,11 @@ function formatDateTime(value: string, language: 'ar' | 'en'): string {
   return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(date);
 }
 
+function formatMoney(value: number | null | undefined, language: 'ar' | 'en'): string {
+  if (value == null) return '—';
+  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value);
+}
+
 function InfoItem({ label, value }: { label: ReactNode; value: ReactNode }) {
   return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</dt><dd className="mt-1.5 break-words text-sm font-semibold text-mis-navy" dir="auto">{value || '—'}</dd></div>;
 }
@@ -152,37 +160,47 @@ function SaveActions({ saving }: { saving: boolean }) {
   return <div className="flex justify-end border-t border-mis-border pt-5"><Button fullWidth={false} isLoading={saving} size="md" type="submit">{saving ? t('saving') : t('saveChanges')}</Button></div>;
 }
 
-function OverviewTab({ profile, reportingLine }: { profile: EmployeeProfile; reportingLine: EmployeeReportingLine }) {
+function OverviewTab({ onOpenTab, profile, reportingLine }: { onOpenTab: (tab: ProfileTab) => void; profile: EmployeeProfile; reportingLine: EmployeeReportingLine }) {
   const { language, t } = useLocalization();
   const counters = [
-    { label: t('employeeDocuments'), value: profile.counters.documents },
-    { label: t('attendanceRecords'), value: profile.counters.attendanceRecords },
-    { label: t('leaveRequests'), value: profile.counters.leaveRequests },
-    { label: t('absences'), value: profile.counters.absences },
-    { label: t('delegations'), value: profile.counters.delegations },
+    { label: t('employeeDocuments'), value: profile.counters.documents, tab: 'documents' as const },
+    { label: t('attendanceRecords'), value: profile.counters.attendanceRecords, tab: 'attendance' as const },
+    { label: t('leaveRequests'), value: profile.counters.leaveRequests, tab: 'leaves' as const },
+    { label: t('absences'), value: profile.counters.absences, tab: 'attendance' as const },
+    { label: t('delegations'), value: profile.counters.delegations, tab: 'delegations' as const },
   ];
-  const labels = language === 'ar'
-    ? { birth: 'تاريخ الميلاد', address: 'العنوان', role: 'الدور الوظيفي', start: 'تاريخ بدء العمل', end: 'تاريخ انتهاء العمل', fingerprint: 'تاريخ تسجيل البصمة', attendance: 'معلومات الحضور' }
-    : { birth: 'Date of Birth', address: 'Address', role: 'Employee Role', start: 'Work Start Date', end: 'Work End Date', fingerprint: 'Fingerprint Enrollment Date', attendance: 'Attendance Information' };
-  const role = profile.employment.operationalRole ? ({ COLLECTOR: language === 'ar' ? 'محصل' : 'Collector', ADMIN: language === 'ar' ? 'إداري' : 'Admin', SUPERVISOR: language === 'ar' ? 'مشرف' : 'Supervisor' } as const)[profile.employment.operationalRole] : null;
+  const labels = {
+    birth: t('dateOfBirth'),
+    address: t('address'),
+    start: t('workStartDate'),
+    end: t('workEndDate'),
+    fingerprint: t('fingerprintEnrollmentDate'),
+    attendance: t('attendanceInformation'),
+    clients: t('clientAssignment'),
+  };
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {counters.map((counter) => <Card key={counter.label as string}><p className="text-sm font-semibold text-slate-500">{counter.label}</p><p className="mt-3 text-3xl font-bold text-mis-navy">{counter.value}</p></Card>)}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {counters.map((counter) => <button className="text-start" key={counter.label} onClick={() => onOpenTab(counter.tab)} type="button"><Card className="h-full transition hover:border-mis-primary hover:shadow-sm"><p className="text-sm font-semibold text-slate-500">{counter.label}</p><p className="mt-3 text-3xl font-bold text-mis-navy">{counter.value}</p></Card></button>)}
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <Section title={t('employeeSummary')}>
           <dl className="grid gap-5 sm:grid-cols-2">
             <InfoItem label={t('employeeId')} value={profile.employeeNumber} />
             <InfoItem label={t('status')} value={<StatusBadge tone={statusTone(profile.status)}>{t(statusLabels[profile.status])}</StatusBadge>} />
-            <InfoItem label={t('department')} value={profile.employment.departmentName} />
+            <InfoItem label={t('internalDepartment')} value={profile.employment.departmentName} />
             <InfoItem label={t('position')} value={profile.employment.positionName} />
-            <InfoItem label={labels.role} value={role} />
+            <InfoItem label={t('workNumber')} value={profile.employment.workNumber} />
+            <InfoItem label={t('packageType')} value={profile.employment.packageType} />
+            <InfoItem label={labels.clients} value={(profile.employment.organizations ?? []).length ? (profile.employment.organizations ?? []).map((org) => organizationLabel(org, language)).join(' · ') : t('noBankCompanyAssigned')} />
             <InfoItem label={labels.start} value={formatDate(profile.employment.hireDate, language)} />
             <InfoItem label={labels.end} value={formatDate(profile.employment.terminationDate, language)} />
             <InfoItem label={labels.birth} value={formatDate(profile.personal.dateOfBirth, language)} />
             <InfoItem label={t('mobileNumber')} value={profile.contact.mobileNumber ? <bdi dir="ltr">{profile.contact.mobileNumber}</bdi> : null} />
+            <InfoItem label={t('basicSalary')} value={formatMoney(profile.compensation?.basicSalary, language)} />
+            <InfoItem label={t('allowances')} value={formatMoney(profile.compensation?.allowances, language)} />
+            <InfoItem label={t('totalSalary')} value={formatMoney(profile.compensation?.totalSalary, language)} />
             <InfoItem label={labels.address} value={profile.contact.address} />
           </dl>
         </Section>
@@ -206,29 +224,19 @@ function OverviewTab({ profile, reportingLine }: { profile: EmployeeProfile; rep
   );
 }
 
-type LinkedRecordsTabName = 'documents' | 'attendance' | 'leaves' | 'absences' | 'delegations';
+type LinkedRecordsTabName = 'documents' | 'attendance' | 'leaves' | 'delegations';
 
-function LinkedRecordsTab({ profile, tab }: { profile: EmployeeProfile; tab: LinkedRecordsTabName }) {
+function LinkedRecordCard({ count, extraQuery, help, label, route }: { count: number; extraQuery?: string; help: string; label: string; route: string }) {
   const { t } = useLocalization();
-  const config: Record<LinkedRecordsTabName, { count: number; label: TranslationKey; route: string }> = {
-    documents: { count: profile.counters.documents, label: 'employeeDocuments', route: '/hr/employee-documents' },
-    attendance: { count: profile.counters.attendanceRecords, label: 'attendanceRecords', route: '/hr/attendance' },
-    leaves: { count: profile.counters.leaveRequests, label: 'leaveRequests', route: '/hr/leaves' },
-    absences: { count: profile.counters.absences, label: 'companyAbsences', route: '/hr/absences' },
-    delegations: { count: profile.counters.delegations, label: 'delegations', route: '/hr/delegations' },
-  };
-  const item = config[tab];
-  const query = new URLSearchParams({ employee: profile.employeeNumber, employeeId: profile.id }).toString();
-
   return (
     <Card padding="lg">
       <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
         <div>
-          <p className="text-sm font-semibold text-slate-500">{t(item.label)}</p>
-          <p className="mt-2 text-4xl font-bold text-mis-navy">{item.count}</p>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{t('profileLinkedRecordsHelp')}</p>
+          <p className="text-sm font-semibold text-slate-500">{label}</p>
+          <p className="mt-2 text-4xl font-bold text-mis-navy">{count}</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{help}</p>
         </div>
-        <Link className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-mis-primary px-5 text-sm font-semibold text-white transition hover:bg-mis-deep" to={`${item.route}?${query}`}>
+        <Link className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-mis-primary px-5 text-sm font-semibold text-white transition hover:bg-mis-deep" to={extraQuery ? `${route}?${extraQuery}` : route}>
           {t('openFilteredRecords')}<ExternalLink className="h-4 w-4" aria-hidden="true" />
         </Link>
       </div>
@@ -236,17 +244,45 @@ function LinkedRecordsTab({ profile, tab }: { profile: EmployeeProfile; tab: Lin
   );
 }
 
+function LinkedRecordsTab({ profile, tab }: { profile: EmployeeProfile; tab: LinkedRecordsTabName }) {
+  const { t } = useLocalization();
+  const query = new URLSearchParams({ employee: profile.employeeNumber, employeeId: profile.id });
+  const help = t('profileLinkedRecordsHelp');
+  if (tab === 'attendance') {
+    const absencesQuery = new URLSearchParams(query);
+    absencesQuery.set('tab', 'absences');
+    return (
+      <div className="grid gap-4 lg:grid-cols-2">
+        <LinkedRecordCard count={profile.counters.attendanceRecords} extraQuery={query.toString()} help={help} label={t('attendanceRecords')} route="/hr/attendance" />
+        <LinkedRecordCard count={profile.counters.absences} extraQuery={absencesQuery.toString()} help={help} label={t('absences')} route="/hr/attendance" />
+      </div>
+    );
+  }
+
+  const config: Record<Exclude<LinkedRecordsTabName, 'attendance'>, { count: number; label: TranslationKey; route: string }> = {
+    documents: { count: profile.counters.documents, label: 'employeeDocuments', route: '/hr/employee-documents' },
+    leaves: { count: profile.counters.leaveRequests, label: 'leaveRequests', route: '/hr/leaves' },
+    delegations: { count: profile.counters.delegations, label: 'delegations', route: '/hr/delegations' },
+  };
+  const item = config[tab];
+  return <LinkedRecordCard count={item.count} extraQuery={query.toString()} help={help} label={t(item.label)} route={item.route} />;
+}
+
+function normalizeGender(value: string | null) {
+  return value === 'Male' || value === 'Female' ? value : null;
+}
+
 function PersonalTab({ onUpdated, profile }: { onUpdated: (profile: EmployeeProfile) => void; profile: EmployeeProfile }) {
   const { t } = useLocalization();
   const toast = useToast();
-  const [personal, setPersonal] = useState<EmployeePersonalInformation>(profile.personal);
+  const [personal, setPersonal] = useState<EmployeePersonalInformation>(() => ({ ...profile.personal, gender: normalizeGender(profile.personal.gender) }));
   const [contact, setContact] = useState<EmployeeContactInformation>(profile.contact);
   const [personalError, setPersonalError] = useState('');
   const [contactError, setContactError] = useState('');
   const [savingPersonal, setSavingPersonal] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
 
-  useEffect(() => { setPersonal(profile.personal); setContact(profile.contact); }, [profile]);
+  useEffect(() => { setPersonal({ ...profile.personal, gender: normalizeGender(profile.personal.gender) }); setContact(profile.contact); }, [profile]);
 
   async function savePersonal(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -302,12 +338,12 @@ function PersonalTab({ onUpdated, profile }: { onUpdated: (profile: EmployeeProf
       <Section title={t('personalInformation')}>
         <form className="space-y-5" noValidate onSubmit={savePersonal}>
           <FormError message={personalError} />
-          <TextInput label={t('fullNameArabic')} maxLength={160} name="fullNameArabic" onChange={(event) => setPersonal((current) => ({ ...current, fullNameArabic: event.target.value }))} value={personal.fullNameArabic ?? ''} />
-          <TextInput label={t('fullNameEnglish')} maxLength={160} name="fullNameEnglish" onChange={(event) => setPersonal((current) => ({ ...current, fullNameEnglish: event.target.value }))} value={personal.fullNameEnglish ?? ''} />
+          <TextInput dir="rtl" lang="ar" label={t('fullNameArabic')} maxLength={160} name="fullNameArabic" onChange={(event) => setPersonal((current) => ({ ...current, fullNameArabic: keepArabicEmployeeName(event.target.value) }))} value={personal.fullNameArabic ?? ''} />
+          <TextInput dir="ltr" lang="en" label={t('fullNameEnglish')} maxLength={160} name="fullNameEnglish" onChange={(event) => setPersonal((current) => ({ ...current, fullNameEnglish: keepEnglishEmployeeName(event.target.value) }))} value={personal.fullNameEnglish ?? ''} />
           <TextInput inputMode="numeric" label={t('nationalId')} maxLength={18} name="nationalId" onChange={(event) => setPersonal((current) => ({ ...current, nationalId: event.target.value }))} value={personal.nationalId ?? ''} />
           <DateInput label={t('dateOfBirth')} max={today} name="dateOfBirth" onChange={(event) => setPersonal((current) => ({ ...current, dateOfBirth: event.target.value || null }))} value={personal.dateOfBirth ?? ''} />
           <SelectInput label={t('gender')} name="gender" onChange={(event) => setPersonal((current) => ({ ...current, gender: event.target.value || null }))} value={personal.gender ?? ''}>
-            <option value="">{t('selectValue')}</option><option value="Male">{t('male')}</option><option value="Female">{t('female')}</option><option value="Other">{t('other')}</option>
+            <option value="">{t('selectValue')}</option><option value="Male">{t('male')}</option><option value="Female">{t('female')}</option>
           </SelectInput>
           <SelectInput label={t('maritalStatus')} name="maritalStatus" onChange={(event) => setPersonal((current) => ({ ...current, maritalStatus: event.target.value || null }))} value={personal.maritalStatus ?? ''}>
             <option value="">{t('selectValue')}</option><option value="Single">{t('single')}</option><option value="Married">{t('married')}</option><option value="Divorced">{t('divorced')}</option><option value="Widowed">{t('widowed')}</option><option value="Other">{t('other')}</option>
@@ -340,6 +376,9 @@ function EmploymentTab({ lookups, onUpdated, profile }: { lookups: ProfileLookup
     employmentTypeId: profile.employment.employmentTypeId,
     hireDate: profile.employment.hireDate,
     positionId: profile.employment.positionId,
+    organizationIds: (profile.employment.organizations ?? []).map((item) => item.id),
+    workNumber: profile.employment.workNumber ?? null,
+    packageType: profile.employment.packageType ?? null,
   });
   const [managerSearch, setManagerSearch] = useState('');
   const [managers, setManagers] = useState<EmployeeListItem[]>([]);
@@ -348,7 +387,17 @@ function EmploymentTab({ lookups, onUpdated, profile }: { lookups: ProfileLookup
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm({ branchId: profile.employment.branchId, departmentId: profile.employment.departmentId, directManagerId: profile.employment.directManagerId, employmentTypeId: profile.employment.employmentTypeId, hireDate: profile.employment.hireDate, positionId: profile.employment.positionId });
+    setForm({
+      branchId: profile.employment.branchId,
+      departmentId: profile.employment.departmentId,
+      directManagerId: profile.employment.directManagerId,
+      employmentTypeId: profile.employment.employmentTypeId,
+      hireDate: profile.employment.hireDate,
+      positionId: profile.employment.positionId,
+      organizationIds: (profile.employment.organizations ?? []).map((item) => item.id),
+      workNumber: profile.employment.workNumber ?? null,
+      packageType: profile.employment.packageType ?? null,
+    });
   }, [profile]);
 
   useEffect(() => {
@@ -357,7 +406,7 @@ function EmploymentTab({ lookups, onUpdated, profile }: { lookups: ProfileLookup
       try {
         const result = await hrEmployeeService.getEmployees({ departmentId: '', page: 1, pageSize: 20, search: managerSearch.trim(), status: 'active' });
         setManagers(result.items.filter((item) => item.id !== profile.id));
-      } catch { setManagers([]); }
+      } catch { setManagers([]); setError(t('employeeSearchLoadError')); }
       finally { setManagerLoading(false); }
     }, 300);
     return () => window.clearTimeout(timer);
@@ -383,16 +432,18 @@ function EmploymentTab({ lookups, onUpdated, profile }: { lookups: ProfileLookup
     <Section description={t('employmentInformationHelp')} title={t('employmentInformation')}>
       <form className="grid gap-5 sm:grid-cols-2" noValidate onSubmit={submit}>
         {error ? <div className="sm:col-span-2"><FormError message={error} /></div> : null}
-        <SelectInput label={t('department')} name="departmentId" onChange={(event) => setForm((current) => ({ ...current, departmentId: event.target.value }))} required value={form.departmentId}>
-          <option value="">{t('selectDepartment')}</option>{lookups.departments.map((item) => <option disabled={!item.isActive && item.id !== form.departmentId} key={item.id} value={item.id}>{lookupLabel(item, language)} ({item.code}){item.isActive ? '' : ` — ${t('inactive')}`}</option>)}
+        <SelectInput label={t('internalDepartment')} name="departmentId" onChange={(event) => setForm((current) => ({ ...current, departmentId: event.target.value, positionId: current.positionId && lookups.positions.some((item) => item.id === current.positionId && (!item.departmentId || item.departmentId === event.target.value)) ? current.positionId : null }))} required value={form.departmentId}>
+          <option value="">{t('selectDepartment')}</option>{lookups.departments.map((item) => <option disabled={!item.isActive && item.id !== form.departmentId} key={item.id} value={item.id}>{lookupLabel(item, language)}{item.isActive ? '' : ` — ${t('inactive')}`}</option>)}
         </SelectInput>
         <SelectInput label={t('position')} name="positionId" onChange={(event) => setForm((current) => ({ ...current, positionId: event.target.value || null }))} value={form.positionId ?? ''}>
-          <option value="">{t('notAssigned')}</option>{lookups.positions.map((item) => <option disabled={!item.isActive && item.id !== form.positionId} key={item.id} value={item.id}>{lookupLabel(item, language)}{item.isActive ? '' : ` — ${t('inactive')}`}</option>)}
+          <option value="">{t('notAssigned')}</option>{lookups.positions.filter((item) => !item.departmentId || item.departmentId === form.departmentId || item.id === form.positionId).map((item) => <option disabled={!item.isActive && item.id !== form.positionId} key={item.id} value={item.id}>{lookupLabel(item, language)}{item.isActive ? '' : ` — ${t('inactive')}`}</option>)}
         </SelectInput>
         <SelectInput label={t('employmentType')} name="employmentTypeId" onChange={(event) => setForm((current) => ({ ...current, employmentTypeId: event.target.value || null }))} value={form.employmentTypeId ?? ''}>
           <option value="">{t('notAssigned')}</option>{lookups.employmentTypes.map((item) => <option disabled={!item.isActive && item.id !== form.employmentTypeId} key={item.id} value={item.id}>{lookupLabel(item, language)}{item.isActive ? '' : ` — ${t('inactive')}`}</option>)}
         </SelectInput>
         <DateInput label={t('hireDate')} name="hireDate" onChange={(event) => setForm((current) => ({ ...current, hireDate: event.target.value || null }))} value={form.hireDate ?? ''} />
+        <TextInput label={t('workNumber')} maxLength={50} name="workNumber" onChange={(event) => setForm((current) => ({ ...current, workNumber: event.target.value.trim() ? event.target.value : null }))} value={form.workNumber ?? ''} />
+        <TextInput label={t('packageType')} maxLength={80} name="packageType" onChange={(event) => setForm((current) => ({ ...current, packageType: event.target.value.trim() ? event.target.value : null }))} value={form.packageType ?? ''} />
         <div className="space-y-3">
           <TextInput label={t('searchManager')} name="managerSearch" onChange={(event) => setManagerSearch(event.target.value)} placeholder={t('employeeIdOrName')} value={managerSearch} />
           <SelectInput disabled={managerLoading} label={t('directManager')} name="directManagerId" onChange={(event) => setForm((current) => ({ ...current, directManagerId: event.target.value || null }))} value={form.directManagerId ?? ''}>
@@ -401,6 +452,21 @@ function EmploymentTab({ lookups, onUpdated, profile }: { lookups: ProfileLookup
             {managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.employeeNumber} — {manager.fullName}</option>)}
           </SelectInput>
         </div>
+        <fieldset className="rounded-xl border border-mis-border bg-slate-50/70 p-4 sm:col-span-2">
+          <legend className="px-2 text-sm font-bold text-mis-navy">{t('clientAssignment')}</legend>
+          <div className="grid max-h-48 gap-2 overflow-y-auto pe-1 sm:grid-cols-2">
+            {lookups.organizations.map((item) => {
+              const checked = (form.organizationIds ?? []).includes(item.id);
+              return (
+                <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${checked ? 'border-mis-sky bg-white text-mis-primary shadow-sm' : 'border-transparent bg-white/60 text-slate-700 hover:border-slate-200'}`} key={item.id}>
+                  <input checked={checked} className="h-4 w-4 shrink-0 accent-mis-primary" onChange={() => setForm((current) => ({ ...current, organizationIds: checked ? (current.organizationIds ?? []).filter((id) => id !== item.id) : [...(current.organizationIds ?? []), item.id] }))} type="checkbox" />
+                  <span className="min-w-0 break-words font-semibold">{organizationLabel(item, language)}</span>
+                  <bdi className="ms-auto shrink-0 text-[11px] text-slate-400">{item.code}</bdi>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
         <div className="sm:col-span-2"><SaveActions saving={saving} /></div>
       </form>
     </Section>
@@ -661,19 +727,29 @@ function StatusChangeModal({ onClose, onUpdated, profile }: { onClose: () => voi
 
 export function HrEmployeeProfilePage() {
   const { user } = useAuth();
-  const canViewExcuses = !!(user?.roles.some(r => ['HrManager', 'HrOfficer'].includes(r)) || user?.permissions.some(p => ['hr.excuses.view', 'hr.excuses.manage', 'hr.excuses.approve'].includes(p)));
-  const canViewInsurance = !!(user?.roles.some(r => ['HrManager', 'HrOfficer'].includes(r)) || user?.permissions.some(p => ['hr.social_insurance.view', 'hr.social_insurance.manage'].includes(p)));
+  const canDelete = isSystemAdmin(user);
+  const canViewExcuses = hasHrFeature(user, ['hr.excuses.view', 'hr.excuses.manage', 'hr.excuses.approve']);
+  const canViewInsurance = hasHrFeature(user, ['hr.social_insurance.view', 'hr.social_insurance.manage']);
   const { id = '' } = useParams();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { t } = useLocalization();
+  const { language, t } = useLocalization();
+  const toast = useToast();
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [reportingLine, setReportingLine] = useState<EmployeeReportingLine | null>(null);
   const [lookups, setLookups] = useState<ProfileLookups | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveReason, setArchiveReason] = useState('');
+  const [archiving, setArchiving] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const requestedTab = searchParams.get('tab');
+  const requestedTab = searchParams.get('tab') === 'absences' ? 'attendance' : searchParams.get('tab');
   const requestedTabAllowed = (requestedTab !== 'compensation' || profile?.canManageCompensation === true) && (requestedTab !== 'socialInsurance' || canViewInsurance) && (requestedTab !== 'excusesMissions' || canViewExcuses);
   const activeTab: ProfileTab = profileTabs.includes(requestedTab as ProfileTab) && requestedTabAllowed ? requestedTab as ProfileTab : 'overview';
 
@@ -681,10 +757,11 @@ export function HrEmployeeProfilePage() {
     if (!id) return;
     setLoading(true); setError('');
     try {
-      const [loadedProfile, line, departments, positions, employmentTypes, contractTypes] = await Promise.all([
-        hrEmployeeProfileService.getProfile(id), hrEmployeeProfileService.getReportingLine(id), hrMasterDataService.getLookup('departments', true), hrMasterDataService.getLookup('positions', true), hrMasterDataService.getLookup('employment-types', true), hrMasterDataService.getLookup('contract-types', true),
+      const [loadedProfile, line, departments, positions, employmentTypes, contractTypes, organizations] = await Promise.all([
+        hrEmployeeProfileService.getProfile(id), hrEmployeeProfileService.getReportingLine(id), hrMasterDataService.getLookup('departments', true), hrMasterDataService.getLookup('positions', true), hrMasterDataService.getLookup('employment-types', true), hrMasterDataService.getLookup('contract-types', true), hrEmployeeService.getOrganizations(),
       ]);
-      setProfile(loadedProfile); setReportingLine(line); setLookups({ contractTypes, departments, employmentTypes, positions });
+      loadedProfile.employment.organizations ??= [];
+      setProfile(loadedProfile); setReportingLine(line); setLookups({ contractTypes, departments, employmentTypes, positions, organizations });
     } catch (requestError) { setError(getApiErrorMessage(requestError, t('loadEmployeeProfileError'))); }
     finally { setLoading(false); }
   }, [id, t]);
@@ -693,6 +770,58 @@ export function HrEmployeeProfilePage() {
   async function updateProfile(updated: EmployeeProfile) {
     setProfile(updated);
     try { setReportingLine(await hrEmployeeProfileService.getReportingLine(updated.id)); } catch { /* The saved profile remains usable if the secondary summary refresh fails. */ }
+  }
+
+  async function archiveEmployee() {
+    if (!profile || archiveReason.trim().length < 2) return;
+    setArchiving(true);
+    try {
+      await hrEmployeeService.archiveEmployee(profile.id, archiveReason.trim());
+      toast.success(t('archiveEmployee'));
+      setArchiveOpen(false);
+      setArchiveReason('');
+      await load();
+    } catch (requestError) {
+      toast.error(getApiErrorMessage(requestError, t('saveEmployeeError')));
+    } finally {
+      setArchiving(false);
+    }
+  }
+
+  async function restoreEmployee() {
+    if (!profile) return;
+    setRestoring(true);
+    try {
+      await hrEmployeeService.restoreEmployee(profile.id);
+      toast.success(t('restoreEmployee'));
+      setRestoreOpen(false);
+      await load();
+    } catch (requestError) {
+      toast.error(getApiErrorMessage(requestError, t('saveEmployeeError')));
+    } finally {
+      setRestoring(false);
+    }
+  }
+
+  async function removeEmployee(keepData: boolean, reason: string) {
+    if (!profile) return;
+    setDeleting(true);
+    try {
+      const result = await hrEmployeeService.removeEmployees([profile.id], keepData, keepData ? reason : undefined);
+      if (keepData) {
+        toast.success(t('removeEmployeesSuccessKept', { count: result.kept || 1 }));
+        setDeleteOpen(false);
+        await load();
+      } else {
+        toast.success(t('removeEmployeesSuccessDeleted', { count: result.deleted || 1 }));
+        navigate('/hr/employees');
+        return;
+      }
+    } catch (requestError) {
+      toast.error(getApiErrorMessage(requestError, t('saveEmployeeError')));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const tabs = useMemo(
@@ -709,23 +838,35 @@ export function HrEmployeeProfilePage() {
   if (!profile || !reportingLine || !lookups) return <ErrorState message={error} onRetry={() => void load()} title={t('employeeProfileUnavailable')} />;
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div>
       <Link className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-mis-primary hover:text-mis-deep" to="/hr/employees"><ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />{t('backToEmployees')}</Link>
       <PageHeader
-        actions={<Button fullWidth={false} onClick={() => setStatusOpen(true)} size="md" variant="outline">{t('changeEmployeeStatus')}</Button>}
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Button fullWidth={false} onClick={() => setStatusOpen(true)} size="md" variant="outline">{t('changeEmployeeStatus')}</Button>
+            {profile.isArchived
+              ? <Button fullWidth={false} leftIcon={<RotateCcw className="h-4 w-4" />} onClick={() => setRestoreOpen(true)} size="md" variant="outline">{t('restoreEmployee')}</Button>
+              : <Button fullWidth={false} leftIcon={<Archive className="h-4 w-4" />} onClick={() => setArchiveOpen(true)} size="md" variant="outline">{t('archiveEmployee')}</Button>}
+            {canDelete ? <Button fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteOpen(true)} size="md" variant="danger">{t('delete')}</Button> : null}
+          </div>
+        )}
         description={<span className="flex flex-wrap items-center gap-3"><span>{t('employeeId')}: {profile.employeeNumber}</span><StatusBadge dot tone={statusTone(profile.status)}>{t(statusLabels[profile.status])}</StatusBadge></span>}
         eyebrow={t('employeeProfile')}
-        title={profile.displayName}
+        title={<span dir="auto">{profile.displayName}</span>}
       />
 
       <div className="mb-6 flex items-center gap-4 rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
         <div className="flex h-16 w-16 flex-none items-center justify-center rounded-2xl bg-mis-pale text-2xl font-bold text-mis-primary">{profile.displayName.trim().charAt(0).toUpperCase() || <UserRound />}</div>
-        <div className="min-w-0"><p className="truncate text-lg font-bold text-mis-navy">{profile.displayName}</p><p className="mt-1 truncate text-sm text-slate-500">{profile.employment.positionName || t('notAssigned')} · {profile.employment.departmentName}</p></div>
+        <div className="min-w-0">
+          <p className="truncate text-lg font-bold text-mis-navy" dir="auto">{profile.displayName}</p>
+          {secondaryEmployeeName({ fullName: profile.displayName, fullNameArabic: profile.personal.fullNameArabic, fullNameEnglish: profile.personal.fullNameEnglish }, language) ? <p className="mt-0.5 truncate text-sm text-slate-400" dir="auto">{secondaryEmployeeName({ fullName: profile.displayName, fullNameArabic: profile.personal.fullNameArabic, fullNameEnglish: profile.personal.fullNameEnglish }, language)}</p> : null}
+          <p className="mt-1 truncate text-sm text-slate-500">{profile.employment.positionName || t('notAssigned')} · {profile.employment.departmentName}{(profile.employment.organizations ?? []).length ? ` · ${(profile.employment.organizations ?? []).map((org) => organizationLabel(org, language)).join(' · ')}` : ''}{profile.canManageCompensation ? ` · ${t('basicSalary')} ${formatMoney(profile.compensation?.basicSalary, language)}` : ''}</p>
+        </div>
       </div>
 
       <div className="mb-6 rounded-2xl border border-slate-200 bg-white shadow-sm"><Tabs ariaLabel={t('employeeProfileTabs')} items={tabs} onChange={changeTab} value={activeTab} wrap /></div>
 
-      {activeTab === 'overview' ? <OverviewTab profile={profile} reportingLine={reportingLine} /> : null}
+      {activeTab === 'overview' ? <OverviewTab onOpenTab={changeTab} profile={profile} reportingLine={reportingLine} /> : null}
       {activeTab === 'personal' ? <PersonalTab onUpdated={(updated) => void updateProfile(updated)} profile={profile} /> : null}
       {activeTab === 'employment' ? <EmploymentTab lookups={lookups} onUpdated={(updated) => void updateProfile(updated)} profile={profile} /> : null}
       {activeTab === 'contract' ? <ContractTab contractTypes={lookups.contractTypes} onUpdated={(updated) => void updateProfile(updated)} profile={profile} /> : null}
@@ -734,13 +875,30 @@ export function HrEmployeeProfilePage() {
       {activeTab === 'documents' ? <LinkedRecordsTab profile={profile} tab="documents" /> : null}
       {activeTab === 'attendance' ? <LinkedRecordsTab profile={profile} tab="attendance" /> : null}
       {activeTab === 'leaves' ? <LinkedRecordsTab profile={profile} tab="leaves" /> : null}
-      {activeTab === 'absences' ? <LinkedRecordsTab profile={profile} tab="absences" /> : null}
       {activeTab === 'delegations' ? <LinkedRecordsTab profile={profile} tab="delegations" /> : null}
       {activeTab === 'excusesMissions' ? <HrExcusesPage employeeId={profile.id} /> : null}
       {activeTab === 'socialInsurance' ? <HrSocialInsurancePage employeeId={profile.id} /> : null}
       {activeTab === 'audit' ? <AuditTab employeeId={profile.id} /> : null}
 
       {statusOpen ? <StatusChangeModal onClose={() => setStatusOpen(false)} onUpdated={(updated) => void updateProfile(updated)} profile={profile} /> : null}
+      {archiveOpen ? (
+        <Modal
+          footer={(
+            <>
+              <Button fullWidth={false} onClick={() => { setArchiveOpen(false); setArchiveReason(''); }} variant="outline">{t('cancel')}</Button>
+              <Button disabled={archiveReason.trim().length < 2} fullWidth={false} isLoading={archiving} onClick={() => void archiveEmployee()} variant="danger">{t('archiveEmployee')}</Button>
+            </>
+          )}
+          onClose={() => { setArchiveOpen(false); setArchiveReason(''); }}
+          open
+          title={t('archiveEmployeePrompt')}
+        >
+          <p className="mb-4 font-semibold text-mis-navy" dir="auto">{profile.displayName}</p>
+          <TextAreaInput label={t('archiveReason')} maxLength={500} onChange={(event) => setArchiveReason(event.target.value)} required rows={3} value={archiveReason} />
+        </Modal>
+      ) : null}
+      <ConfirmDialog confirmLabel={t('restoreEmployee')} isConfirming={restoring} message={t('restoreEmployeeConfirm', { name: profile.displayName })} onCancel={() => setRestoreOpen(false)} onConfirm={() => void restoreEmployee()} open={restoreOpen} title={t('restoreEmployeePrompt')} />
+      <RemoveEmployeesModal busy={deleting} canDelete={canDelete} canKeep={!profile.isArchived} count={deleteOpen ? 1 : 0} names={profile ? [profile.displayName] : []} onClose={() => setDeleteOpen(false)} onConfirm={(keepData, reason) => void removeEmployee(keepData, reason)} open={deleteOpen} />
     </div>
   );
 }

@@ -94,7 +94,11 @@ public sealed class CollectionCustomer
     public string? AddressEnglish { get; private set; }
     public string? Governorate { get; private set; }
     public string? Area { get; private set; }
+    public string? TertiaryPhone { get; private set; }
+    public string? City { get; private set; }
     public string? Employer { get; private set; }
+    public string? JobTitle { get; private set; }
+    public string? SecondaryAddress { get; private set; }
     public string? Feedback { get; private set; }
     public string? Notes { get; private set; }
     public string? DataEntrySource { get; private set; }
@@ -103,6 +107,19 @@ public sealed class CollectionCustomer
     public DateTimeOffset CreatedAt { get; private set; }
     public void ApplyImportedContact(string? nameArabic, string? nameEnglish, string? nationalId, string? primaryPhone)
     { FullNameArabic = Normalize(nameArabic) ?? FullNameArabic; FullNameEnglish = Normalize(nameEnglish) ?? FullNameEnglish; NationalId = Normalize(nationalId) ?? NationalId; PrimaryPhone = Normalize(primaryPhone) ?? PrimaryPhone; }
+    public void ApplyImportedProfile(string? alternatePhone, string? tertiaryPhone, string? region, string? area, string? city, string? address, string? employer, string? jobTitle, string? feedback, bool arabic, string? secondaryAddress = null)
+    {
+        AlternatePhone = Normalize(alternatePhone) ?? AlternatePhone;
+        TertiaryPhone = Normalize(tertiaryPhone) ?? TertiaryPhone;
+        Governorate = Normalize(region) ?? Governorate;
+        Area = Normalize(area) ?? Area;
+        City = Normalize(city) ?? City;
+        if (arabic) AddressArabic = Normalize(address) ?? AddressArabic; else AddressEnglish = Normalize(address) ?? AddressEnglish;
+        SecondaryAddress = Normalize(secondaryAddress) ?? SecondaryAddress;
+        Employer = Normalize(employer) ?? Employer;
+        JobTitle = Normalize(jobTitle) ?? JobTitle;
+        Feedback = Normalize(feedback) ?? Feedback;
+    }
     public void UpdatePortfolioContact(string? primaryPhone, string? alternatePhone, string? address, bool arabic)
     { PrimaryPhone = Normalize(primaryPhone); AlternatePhone = Normalize(alternatePhone); if (arabic) AddressArabic = Normalize(address); else AddressEnglish = Normalize(address); }
     public void ApplyDataEntryDetails(string? feedback, string? notes, string? source, Guid? createdByUserId)
@@ -209,6 +226,23 @@ public sealed class CollectionCase
     public string AccountReference { get; private set; } = string.Empty;
     public string? ContractReference { get; private set; }
     public string? ProductType { get; private set; }
+    public string? CardNumber { get; private set; }
+    public string? ImportStatusText { get; private set; }
+    public string? Stage { get; private set; }
+    public decimal? CreditLimit { get; private set; }
+    public decimal? PurchaseAvailableLimit { get; private set; }
+    public DateOnly? ActivationDate { get; private set; }
+    public decimal? LastPaymentAmount { get; private set; }
+    public DateOnly? LastTransactionDate { get; private set; }
+    public decimal? LastTransactionAmount { get; private set; }
+    public string? ImportRawJson { get; private set; }
+    public string? PreviousCollectorName { get; private set; }
+    public Guid? PreviousCollectorUserId { get; private set; }
+    public User? PreviousCollectorUser { get; private set; }
+    public string? FileCollectorName { get; private set; }
+    public Guid? FileCollectorUserId { get; private set; }
+    public User? FileCollectorUser { get; private set; }
+    public string? ImportBucketLabel { get; private set; }
     public decimal OriginalAmount { get; private set; }
     public decimal PrincipalAmount { get; private set; }
     public decimal OutstandingBalance { get; private set; }
@@ -244,6 +278,12 @@ public sealed class CollectionCase
     public string? RestoreReason { get; private set; }
 
     public void Assign(Guid collectorId, Guid? teamId, DateTimeOffset now) { AssignedCollectorId = collectorId; AssignedTeamId = teamId; UpdatedAt = now; }
+    public bool TryAssignImportedFileCollector(Guid? teamId, DateTimeOffset now)
+    {
+        if (AssignedCollectorId != null || FileCollectorUserId is not Guid collectorId) return false;
+        Assign(collectorId, teamId, now);
+        return true;
+    }
     public void Unassign(DateTimeOffset now) { AssignedCollectorId = null; AssignedTeamId = null; UpdatedAt = now; }
     public void SetPriority(int score, string explanation, DateTimeOffset now) { PriorityScore = Math.Clamp(score, 0, 100); Priority = score >= 70 ? "HIGH" : score >= 40 ? "MEDIUM" : "NORMAL"; PriorityExplanation = explanation.Trim(); UpdatedAt = now; }
     public void RecordContact(DateTimeOffset contactedAt, DateTimeOffset? nextFollowUpAt) { LastContactAt = contactedAt; NextFollowUpAt = nextFollowUpAt; UpdatedAt = contactedAt; }
@@ -254,6 +294,36 @@ public sealed class CollectionCase
     { if (outstanding < 0 || overdue < 0 || daysPastDue < 0 || bucketId == Guid.Empty) throw new ArgumentOutOfRangeException(nameof(outstanding)); OutstandingBalance = outstanding; OverdueBalance = overdue; TotalDue = overdue + Penalties + Fees; DaysPastDue = daysPastDue; CurrentBucketId = bucketId; UpdatedAt = now; }
     public void ApplyImportedReferences(string? contractReference, string? productType, DateTimeOffset now)
     { ContractReference = string.IsNullOrWhiteSpace(contractReference) ? ContractReference : contractReference.Trim(); ProductType = string.IsNullOrWhiteSpace(productType) ? ProductType : productType.Trim(); UpdatedAt = now; }
+    public void ApplyImportedProfile(string? cardNumber, string? statusText, string? stage, decimal? creditLimit, decimal? purchaseAvailableLimit, DateOnly? activationDate, decimal? lastPaymentAmount, DateTimeOffset? lastPaymentAt, DateOnly? lastTransactionDate, decimal? lastTransactionAmount, string? rawJson, DateTimeOffset now)
+    {
+        CardNumber = Keep(cardNumber, CardNumber);
+        ImportStatusText = Keep(statusText, ImportStatusText);
+        Stage = Keep(stage, Stage);
+        if (creditLimit is >= 0) CreditLimit = creditLimit;
+        if (purchaseAvailableLimit is >= 0) PurchaseAvailableLimit = purchaseAvailableLimit;
+        if (activationDate.HasValue) ActivationDate = activationDate;
+        if (lastPaymentAmount is >= 0) LastPaymentAmount = lastPaymentAmount;
+        if (lastPaymentAt.HasValue) LastPaymentAt = lastPaymentAt;
+        if (lastTransactionDate.HasValue) LastTransactionDate = lastTransactionDate;
+        if (lastTransactionAmount is >= 0) LastTransactionAmount = lastTransactionAmount;
+        if (!string.IsNullOrWhiteSpace(rawJson)) ImportRawJson = rawJson;
+        UpdatedAt = now;
+    }
+    public void ApplyImportedDeskFields(string? previousCollectorName, string? fileCollectorName, string? bucketLabel, Guid? previousCollectorUserId = null, Guid? fileCollectorUserId = null)
+    {
+        if (!string.IsNullOrWhiteSpace(previousCollectorName))
+        {
+            PreviousCollectorName = previousCollectorName.Trim();
+            PreviousCollectorUserId = previousCollectorUserId;
+        }
+        if (!string.IsNullOrWhiteSpace(fileCollectorName))
+        {
+            FileCollectorName = fileCollectorName.Trim();
+            FileCollectorUserId = fileCollectorUserId;
+        }
+        ImportBucketLabel = Keep(bucketLabel, ImportBucketLabel);
+    }
+    private static string? Keep(string? value, string? current) => string.IsNullOrWhiteSpace(value) ? current : value.Trim();
     public void LinkImport(Guid importId) { if (importId == Guid.Empty) throw new ArgumentException("Import is required.", nameof(importId)); SourceImportId = importId; }
     public void UpdatePortfolioCase(string status, DateTimeOffset? nextFollowUpAt, DateTimeOffset now)
     { ArgumentException.ThrowIfNullOrWhiteSpace(status); Status = status.Trim().ToUpperInvariant(); NextFollowUpAt = nextFollowUpAt; UpdatedAt = now; }

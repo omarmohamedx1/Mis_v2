@@ -96,6 +96,14 @@ public sealed class PortfolioClassificationTests
         Assert.Equal(CollectionsValues.SubClassifications.CorporateSegments, PortfolioClassification.SubClassificationsFor("CORP"));
         Assert.Empty(PortfolioClassification.SubClassificationsFor("RETAIL"));
     }
+
+    [Fact]
+    public void AllDesks_AreTheEightOperationalCollectionDesks()
+    {
+        Assert.Equal(8, PortfolioClassification.AllDesks.Length);
+        Assert.All(PortfolioClassification.AllDesks, pair => Assert.True(PortfolioClassification.IsValid(pair.Primary, pair.Sub)));
+        Assert.Equal(PortfolioClassification.AllDesks.Length, PortfolioClassification.AllDesks.Distinct().Count());
+    }
 }
 
 public sealed class CollectionsClassificationContextTests

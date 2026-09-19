@@ -30,7 +30,7 @@ const dotClasses: Record<StatusTone, string> = {
 
 export function StatusBadge({ children, className = '', dot = false, size = 'sm', tone = 'neutral', ...props }: StatusBadgeProps) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full font-semibold ${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'} ${toneClasses[tone]} ${className}`} {...props}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full font-semibold leading-snug ${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'} ${toneClasses[tone]} ${className}`} {...props}>
       {dot ? <span className={`h-1.5 w-1.5 rounded-full ${dotClasses[tone]}`} aria-hidden="true" /> : null}
       {children}
     </span>

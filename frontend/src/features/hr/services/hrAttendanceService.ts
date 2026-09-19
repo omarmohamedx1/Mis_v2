@@ -1,5 +1,6 @@
 import { apiClient } from '../../../services/apiClient';
 import type { AttendanceDetails, AttendanceQuery, PagedAttendanceRecords, ProcessAttendanceDayResult, SaveManualAttendanceRequest } from '../types/attendance';
+import { loadAllHrPages } from './hrPaging';
 
 function attendanceParams(query: AttendanceQuery) {
   return {
@@ -7,6 +8,7 @@ function attendanceParams(query: AttendanceQuery) {
     dateFrom: query.dateFrom || undefined,
     dateTo: query.dateTo || undefined,
     departmentId: query.departmentId || undefined,
+    organizationId: query.organizationId || undefined,
     employeeId: query.employeeId || undefined,
     page: query.page,
     pageSize: query.pageSize,
@@ -20,8 +22,10 @@ function attendanceParams(query: AttendanceQuery) {
 
 export const hrAttendanceService = {
   async getPaged(query: AttendanceQuery): Promise<PagedAttendanceRecords> {
-    const { data } = await apiClient.get<PagedAttendanceRecords>('/hr/attendance', { params: attendanceParams(query) });
-    return data;
+    return loadAllHrPages(async (page, pageSize) => {
+      const { data } = await apiClient.get<PagedAttendanceRecords>('/hr/attendance', { params: attendanceParams({ ...query, page, pageSize }) });
+      return data;
+    });
   },
 
   async getDetails(id: string): Promise<AttendanceDetails> {

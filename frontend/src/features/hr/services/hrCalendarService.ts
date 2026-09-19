@@ -7,6 +7,7 @@ import type {
   UpdateWorkingCalendarRequest,
   WorkingCalendar,
 } from '../types/calendar';
+import { loadAllHrPages } from './hrPaging';
 
 export const hrCalendarService = {
   async getWorkingCalendar(): Promise<WorkingCalendar> {
@@ -20,18 +21,20 @@ export const hrCalendarService = {
   },
 
   async getExceptions(query: CalendarExceptionQuery): Promise<PagedCalendarExceptions> {
-    const { data } = await apiClient.get<PagedCalendarExceptions>('/hr/calendar/exceptions', {
+    return loadAllHrPages(async (page, pageSize) => {
+      const { data } = await apiClient.get<PagedCalendarExceptions>('/hr/calendar/exceptions', {
       params: {
         dateFrom: query.dateFrom || undefined,
         dateTo: query.dateTo || undefined,
         isActive: query.isActive ?? undefined,
-        page: query.page,
-        pageSize: query.pageSize,
+        page,
+        pageSize,
         search: query.search || undefined,
         type: query.type || undefined,
       },
     });
-    return data;
+      return data;
+    });
   },
 
   async getException(id: string): Promise<CalendarExceptionDetails> {

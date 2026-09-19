@@ -42,6 +42,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasDefaultValue(1)
             .IsRequired();
 
+        builder.Property(user => user.MustChangePassword)
+            .HasDefaultValue(false)
+            .IsRequired();
+
         builder.Property(user => user.CreatedAt)
             .IsRequired();
 

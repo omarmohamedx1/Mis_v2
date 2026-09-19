@@ -12,6 +12,7 @@ import type {
   SaveLeaveRequest,
   UpsertLeaveEntitlementRequest,
 } from '../types/leave';
+import { loadAllHrPages } from './hrPaging';
 
 export const hrLeaveService = {
   async reviewImport(file: File): Promise<LeaveImportReview> {
@@ -31,7 +32,8 @@ export const hrLeaveService = {
     link.href = url; link.download = 'Leave_Import_Template.xlsx'; link.click(); URL.revokeObjectURL(url);
   },
   async getPaged(query: LeaveRequestQuery): Promise<PagedLeaveRequests> {
-    const { data } = await apiClient.get<PagedLeaveRequests>('/hr/leaves', {
+    return loadAllHrPages(async (page, pageSize) => {
+      const { data } = await apiClient.get<PagedLeaveRequests>('/hr/leaves', {
       params: {
         branchId: query.branchId || undefined,
         dateFrom: query.dateFrom || undefined,
@@ -39,15 +41,16 @@ export const hrLeaveService = {
         departmentId: query.departmentId || undefined,
         employeeId: query.employeeId || undefined,
         leaveTypeId: query.leaveTypeId || undefined,
-        page: query.page,
-        pageSize: query.pageSize,
+        page,
+        pageSize,
         search: query.search || undefined,
         sortBy: query.sortBy || undefined,
         sortDescending: query.sortDescending || undefined,
         status: query.status || undefined,
       },
     });
-    return data;
+      return data;
+    });
   },
 
   async getDetails(id: string): Promise<LeaveRequestDetails> {
@@ -81,19 +84,21 @@ export const hrLeaveService = {
   },
 
   async getBalances(query: LeaveBalanceQuery): Promise<PagedLeaveBalances> {
-    const { data } = await apiClient.get<PagedLeaveBalances>('/hr/leaves/balances', {
+    return loadAllHrPages(async (page, pageSize) => {
+      const { data } = await apiClient.get<PagedLeaveBalances>('/hr/leaves/balances', {
       params: {
         branchId: query.branchId || undefined,
         departmentId: query.departmentId || undefined,
         employeeId: query.employeeId || undefined,
         leaveTypeId: query.leaveTypeId || undefined,
-        page: query.page,
-        pageSize: query.pageSize,
+        page,
+        pageSize,
         search: query.search || undefined,
         year: query.year,
       },
     });
-    return data;
+      return data;
+    });
   },
 
   async getEmployeeBalances(employeeId: string, year: number): Promise<LeaveBalance[]> {

@@ -131,15 +131,17 @@ export function BankPortfolioUploadModal({ bankId, bankName, open, onClose, onIm
               <div className="max-h-72 overflow-auto rounded-xl border border-mis-border">
                 <table className="min-w-full text-sm">
                   <thead className="sticky top-0 bg-slate-50 text-xs uppercase text-slate-500">
-                    <tr>{[ct('row'), ct('customerName'), ct('customerCode'), ct('accountReference'), ct('outstandingAmount'), ct('status'), ct('errors')].map((label) => <th className="px-3 py-2 text-start" key={label}>{label}</th>)}</tr>
+                    <tr>{[ct('row'), ct('customerName'), ct('nationalId'), ct('caseRef'), ct('cardNumber'), ct('currentBkt'), ct('currentBalance'), ct('status'), ct('errors')].map((label) => <th className="px-3 py-2 text-start" key={label}>{label}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y divide-mis-border">
                     {preview.rows.map((row) => (
                       <tr key={row.rowNumber}>
                         <td className="px-3 py-2" data-bidi="ltr">{row.rowNumber}</td>
                         <td className="px-3 py-2">{row.customerName ?? '—'}</td>
-                        <td className="px-3 py-2" data-bidi="ltr">{row.customerCode ?? '—'}</td>
+                        <td className="px-3 py-2" data-bidi="ltr">{row.nationalId ?? '—'}</td>
                         <td className="px-3 py-2" data-bidi="ltr">{row.accountReference ?? '—'}</td>
+                        <td className="px-3 py-2" data-bidi="ltr">{row.cardNumber ?? '—'}</td>
+                        <td className="px-3 py-2">{row.bucket ?? '—'}</td>
                         <td className="px-3 py-2" data-bidi="ltr">{row.outstandingBalance == null ? '—' : number(row.outstandingBalance)}</td>
                         <td className="px-3 py-2"><StatusBadge tone={row.status === 'Ready' ? 'success' : row.status === 'Existing' ? 'warning' : 'danger'}>{ct(row.status as never) || row.status}</StatusBadge></td>
                         <td className="max-w-xs px-3 py-2 text-xs text-rose-700">{row.errors.join(' · ') || '—'}</td>

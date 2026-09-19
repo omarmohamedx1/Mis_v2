@@ -276,6 +276,9 @@ public sealed class HrEmployeeDocumentService : IHrEmployeeDocumentService
 
         if (filter.EmployeeId.HasValue) employeeQuery = employeeQuery.Where(item => item.Id == filter.EmployeeId.Value);
         if (filter.DepartmentId.HasValue) employeeQuery = employeeQuery.Where(item => item.DepartmentId == filter.DepartmentId.Value);
+        if (filter.OrganizationId.HasValue)
+            employeeQuery = employeeQuery.Where(item => _dbContext.EmployeeOrganizationAssignments.Any(assignment =>
+                assignment.EmployeeId == item.Id && assignment.OrganizationId == filter.OrganizationId.Value));
         if (filter.PositionId.HasValue) employeeQuery = employeeQuery.Where(item => item.PositionId == filter.PositionId.Value);
         if (!string.IsNullOrWhiteSpace(filter.Gender))
         {

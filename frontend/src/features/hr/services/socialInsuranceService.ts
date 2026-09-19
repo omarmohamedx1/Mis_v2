@@ -1,4 +1,5 @@
 import { apiClient } from '../../../services/apiClient';
+import { loadAllHrPages } from './hrPaging';
 
 export type InsuranceStatus = 'Insured' | 'NotInsured' | 'Suspended' | 'Ended';
 export interface InsuranceRecord {
@@ -17,7 +18,7 @@ export interface InsurancePage {
 export type SaveInsurance = Omit<InsuranceRecord, 'id' | 'insuranceEndDate'>;
 export const socialInsuranceService = {
   async list(params: { search?: string; departmentId?: string; status?: string; employeeId?: string; page?: number }) {
-    return (await apiClient.get<InsurancePage>('/hr/social-insurance', { params })).data;
+    return loadAllHrPages(async (page, pageSize) => (await apiClient.get<InsurancePage>('/hr/social-insurance', { params: { ...params, page, pageSize } })).data);
   },
   async history(employeeId: string) { return (await apiClient.get<InsuranceRecord[]>(`/hr/social-insurance/employees/${employeeId}`)).data; },
   async save(id: string | undefined, request: SaveInsurance) {

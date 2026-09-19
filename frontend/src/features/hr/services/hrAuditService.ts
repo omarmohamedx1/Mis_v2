@@ -1,20 +1,21 @@
 import { apiClient } from '../../../services/apiClient';
 import type { AuditQuery, PagedAuditLogs } from '../types/audit';
+import { loadAllHrPages } from './hrPaging';
 
 export const hrAuditService = {
   async getPaged(query: AuditQuery): Promise<PagedAuditLogs> {
-    const { data } = await apiClient.get<PagedAuditLogs>('/hr/audit', {
-      params: {
+    return loadAllHrPages(async (page, pageSize) => {
+      const { data } = await apiClient.get<PagedAuditLogs>('/hr/audit', { params: {
         action: query.action || undefined,
         employeeId: query.employeeId || undefined,
         entityType: query.entityType || undefined,
         from: query.from || undefined,
-        page: query.page,
-        pageSize: query.pageSize,
+        page,
+        pageSize,
         search: query.search || undefined,
         to: query.to || undefined,
-      },
+      } });
+      return data;
     });
-    return data;
   },
 };

@@ -9,4 +9,5 @@ public sealed record AuthenticatedUserDto(
     string Department,
     string Role,
     IReadOnlyCollection<string> Roles,
-    IReadOnlyCollection<string> Permissions);
+    IReadOnlyCollection<string> Permissions,
+    bool MustChangePassword);

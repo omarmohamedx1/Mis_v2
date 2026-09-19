@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +26,7 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<HrFileStorageOptions>(configuration.GetSection(HrFileStorageOptions.SectionName));
-        ValidateJwtOptions(configuration);
+        services.AddSingleton<JwtSigningKeyAccessor>();
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IHrDashboardRepository, HrDashboardRepository>();
@@ -47,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IAbsenceImportService, AbsenceImportService>();
         services.AddScoped<IHrLeaveService, HrLeaveService>();
         services.AddScoped<IHrReportService, HrReportService>();
+        services.AddScoped<IHrNetSalaryService, HrNetSalaryService>();
         services.AddScoped<IHrAttendanceService, HrAttendanceService>();
         services.AddScoped<IHrExcuseMissionService, HrExcuseMissionService>();
         services.AddScoped<HrMissionSynchronizer>();
@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IBankCustomerService, BankCustomerService>();
         services.AddScoped<IBankCustomerImportService, BankCustomerImportService>();
         services.AddScoped<IDataEntryService, DataEntryService>();
+        services.AddScoped<ILegalService, LegalService>();
         services.AddScoped<IBankCaseDistributionService, BankCaseDistributionService>();
         services.AddScoped<IBankDistributionImportService, BankDistributionImportService>();
         services.AddScoped<IBankCaseActivityService, BankCaseActivityService>();
@@ -84,15 +85,5 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
 
         return services;
-    }
-
-    private static void ValidateJwtOptions(IConfiguration configuration)
-    {
-        var secretKey = configuration[$"{JwtOptions.SectionName}:SecretKey"];
-
-        if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey) < JwtOptions.MinimumSecretBytes)
-        {
-            throw new InvalidOperationException($"Jwt:SecretKey must be configured with at least {JwtOptions.MinimumSecretBytes} bytes. Use environment variables or user secrets.");
-        }
     }
 }

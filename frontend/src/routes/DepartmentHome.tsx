@@ -7,6 +7,7 @@ export function DepartmentHome() {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!user) return <Navigate to="/unauthorized" replace />;
+  if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
   const modules = getAccessibleModules(user);
   if (!modules.length) return <Navigate to="/unauthorized" replace />;
   if (modules.length === 1) return <Navigate to={modules[0].homePath} replace />;

@@ -6,9 +6,13 @@
 export type EmployeeImportFieldKey =
   | 'MobileNumber'
   | 'EmployeeNumber'
-  | 'FullName'
+  | 'FullNameArabic'
+  | 'FullNameEnglish'
   | 'Gender'
   | 'Department'
+  | 'Organization'
+  | 'WorkNumber'
+  | 'PackageType'
   | 'Position'
   | 'OperationalRole'
   | 'NationalId'
@@ -17,7 +21,9 @@ export type EmployeeImportFieldKey =
   | 'FingerprintEnrollmentDate'
   | 'WorkEndDate'
   | 'Address'
-  | 'Status';
+  | 'Status'
+  | 'BasicSalary'
+  | 'Allowances';
 
 export interface EmployeeImportFieldDef {
   key: EmployeeImportFieldKey;
@@ -39,14 +45,21 @@ export const employeeImportFields: readonly EmployeeImportFieldDef[] = [
     en: 'Employee Number',
     ar: 'رقم الموظف',
     requiredInFile: true,
-    aliases: ['code', 'employee code', 'employee number', 'employee no', 'emp no', 'emp number', 'emp code', 'رقم الموظف', 'كود الموظف'],
+    aliases: ['code', 'employee code', 'employee number', 'employee no', 'emp no', 'emp number', 'emp code', 'رقم الموظف', 'رقم المظف', 'كود الموظف'],
   },
   {
-    key: 'FullName',
-    en: 'Employee Name',
-    ar: 'اسم الموظف',
-    requiredInFile: true,
-    aliases: ['name in arabic', 'name in english', 'arabic name', 'english name', 'employee name', 'full name', 'name', 'اسم الموظف', 'الاسم', 'الاسم بالعربي', 'الاسم بالانجليزي'],
+    key: 'FullNameArabic',
+    en: 'Employee Name Arabic',
+    ar: 'اسم الموظف بالعربية',
+    requiredInFile: false,
+    aliases: ['name in arabic', 'arabic name', 'arabic full name', 'employee name arabic', 'اسم الموظف بالعربية', 'الاسم بالعربي', 'الاسم العربي', 'اسم الموظف', 'اسم المظف', 'الاسم'],
+  },
+  {
+    key: 'FullNameEnglish',
+    en: 'Employee Name English',
+    ar: 'اسم الموظف بالإنجليزية',
+    requiredInFile: false,
+    aliases: ['name in english', 'english name', 'english full name', 'employee name english', 'employee name', 'full name', 'اسم الموظف بالانجليزي', 'الاسم بالانجليزي', 'الاسم الإنجليزي'],
   },
   {
     key: 'NationalId',
@@ -60,14 +73,14 @@ export const employeeImportFields: readonly EmployeeImportFieldDef[] = [
     en: 'Position / Job Title',
     ar: 'المسمى الوظيفي',
     requiredInFile: true,
-    aliases: ['title', 'position', 'job title', 'job', 'المسمى الوظيفي', 'الوظيفة'],
+    aliases: ['position / job title', 'position job title', 'title', 'position', 'job title', 'job', 'المسمى الوظيفي', 'الوظيفة'],
   },
   {
     key: 'WorkStartDate',
     en: 'Employment Date',
     ar: 'تاريخ التعيين',
     requiredInFile: true,
-    aliases: ['date of employment', 'employment date', 'hire date', 'start date', 'work start date', 'joining date', 'تاريخ التعيين'],
+    aliases: ['date of employment', 'date of empoloyment', 'employment date', 'empoloyment date', 'hire date', 'start date', 'work start date', 'joining date', 'تاريخ التعيين'],
   },
   {
     key: 'Department',
@@ -75,6 +88,41 @@ export const employeeImportFields: readonly EmployeeImportFieldDef[] = [
     ar: 'القسم',
     requiredInFile: false,
     aliases: ['department', 'dept', 'القسم'],
+  },
+  {
+    key: 'Organization',
+    en: 'Assigned Bank / Company',
+    ar: 'البنك / الشركة المكلّف بها',
+    requiredInFile: false,
+    aliases: [
+      'assigned bank / company',
+      'assigned bank company',
+      'assigned bank',
+      'assigned company',
+      'bank',
+      'company',
+      'client',
+      'organization',
+      'البنك / الشركة المكلف بها',
+      'البنك / الشركة',
+      'البنك',
+      'الشركة',
+      'الجهة',
+    ],
+  },
+  {
+    key: 'WorkNumber',
+    en: 'Work Number',
+    ar: 'رقم الشغل',
+    requiredInFile: false,
+    aliases: ['work number', 'job number', 'work no', 'worknumber', 'رقم الشغل', 'رقم العمل'],
+  },
+  {
+    key: 'PackageType',
+    en: 'Package Type',
+    ar: 'نوع الباقة',
+    requiredInFile: false,
+    aliases: ['package type', 'packagetype', 'package', 'bundle', 'نوع الباقة', 'نوع الباقه', 'الباقة', 'الباقه'],
   },
   {
     key: 'OperationalRole',
@@ -133,6 +181,20 @@ export const employeeImportFields: readonly EmployeeImportFieldDef[] = [
     requiredInFile: false,
     aliases: ['status', 'الحالة'],
   },
+  {
+    key: 'BasicSalary',
+    en: 'Basic Salary',
+    ar: 'الراتب الأساسي',
+    requiredInFile: false,
+    aliases: ['basic salary', 'salary', 'basic pay', 'gross salary', 'الراتب الأساسي', 'المرتب', 'الراتب'],
+  },
+  {
+    key: 'Allowances',
+    en: 'Allowances',
+    ar: 'البدلات',
+    requiredInFile: false,
+    aliases: ['allowances', 'allowance', 'بدلات', 'البدلات', 'البدل'],
+  },
 ];
 
 export function normalizeImportHeader(value: string): string {
@@ -156,8 +218,19 @@ function scoreAliasMatch(column: string, alias: string): number {
   const normalizedAlias = normalizeImportHeader(alias);
   if (!normalizedColumn || !normalizedAlias) return 0;
   if (normalizedColumn === normalizedAlias) return 100 + normalizedAlias.length;
-  if (compactHeader(column) === compactHeader(alias)) return 90 + normalizedAlias.length;
+  const compactColumn = compactHeader(column);
+  const compactAlias = compactHeader(alias);
+  if (compactColumn && compactColumn === compactAlias) return 90 + normalizedAlias.length;
+  const aliasWords = normalizedAlias.split(' ').filter(Boolean);
+  if (aliasWords.length >= 2) {
+    if (` ${normalizedColumn} `.includes(` ${normalizedAlias} `)) return 70 + normalizedAlias.length;
+    if (compactColumn.startsWith(compactAlias) || compactColumn.endsWith(compactAlias)) return 60 + normalizedAlias.length;
+  }
   return 0;
+}
+
+function fieldMatchLabels(field: EmployeeImportFieldDef): string[] {
+  return [field.en, field.ar, ...field.aliases];
 }
 
 export function autoMapEmployeeImportColumns(detectedColumns: readonly string[]): Record<string, string> {
@@ -169,7 +242,7 @@ export function autoMapEmployeeImportColumns(detectedColumns: readonly string[])
     let bestScore = 0;
     for (const column of detectedColumns) {
       if (claimed.has(column) || !column?.trim()) continue;
-      for (const alias of field.aliases) {
+      for (const alias of fieldMatchLabels(field)) {
         const score = scoreAliasMatch(column, alias);
         if (score > bestScore) {
           bestScore = score;
@@ -186,25 +259,67 @@ export function autoMapEmployeeImportColumns(detectedColumns: readonly string[])
   return columns;
 }
 
+export function scoreEmployeeSheetMapping(detectedColumns: readonly string[]): number {
+  const mapped = autoMapEmployeeImportColumns(detectedColumns);
+  const mappedCount = Object.values(mapped).filter((value) => value.trim()).length;
+  const missingRequired = missingRequiredEmployeeImportFields(mapped).length;
+  return mappedCount * 10 - missingRequired * 50 + scoreEmployeeHeaderRow(detectedColumns);
+}
+
+export function pickEmployeeImportSheetIndex(sheets: readonly { detectedColumns: readonly string[] }[]): number {
+  let bestIndex = 0;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  sheets.forEach((sheet, index) => {
+    const score = scoreEmployeeSheetMapping(sheet.detectedColumns);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
+}
+
 export function missingRequiredEmployeeImportFields(columns: Record<string, string>): EmployeeImportFieldDef[] {
-  return employeeImportFields.filter((field) => field.requiredInFile && !columns[field.key]?.trim());
+  const mappedName = Boolean(columns.FullNameArabic?.trim() || columns.FullNameEnglish?.trim());
+  return employeeImportFields.filter((field) => {
+    if (field.key === 'FullNameArabic' || field.key === 'FullNameEnglish') return false;
+    return field.requiredInFile && !columns[field.key]?.trim();
+  }).concat(mappedName ? [] : employeeImportFields.filter((field) => field.key === 'FullNameArabic'));
 }
 
 /** Headers that strongly identify an employee master sheet. */
 export const employeeHeaderDetectionHints = [
   'code',
+  'employee number',
   'name in arabic',
+  'employee name arabic',
+  'employee name english',
   'male female',
   'title',
+  'position / job title',
   'card number',
   'date of employment',
+  'date of empoloyment',
   'fingerprint date',
   'birth of day',
   'address',
   'date out of work employer',
   'department',
+  'assigned bank / company',
+  'assigned bank',
+  'work number',
+  'package type',
+  'رقم الشغل',
+  'نوع الباقة',
+  'employee role',
   'mobile',
   'national id',
+  'basic salary',
+  'allowances',
+  'رقم المظف',
+  'اسم المظف',
+  'الراتب الأساسي',
+  'البدلات',
 ] as const;
 
 export function scoreEmployeeHeaderRow(cells: readonly string[]): number {

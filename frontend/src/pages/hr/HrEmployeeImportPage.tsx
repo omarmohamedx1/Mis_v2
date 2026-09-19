@@ -1,23 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Eye, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Upload, Eye, CheckCircle2, AlertTriangle, Download, FileSpreadsheet, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { Pagination } from '../../components/common/Pagination';
 import { FileInput } from '../../components/forms/FileInput';
 import { TextInput } from '../../components/forms/TextInput';
 import { SelectInput } from '../../components/forms/SelectInput';
 import { useLocalization } from '../../context/LocalizationContext';
 import { getApiErrorMessage } from '../../services/apiClient';
+import { EmployeeImportRowEditor } from '../../features/hr/components/EmployeeImportRowEditor';
 import {
   autoMapEmployeeImportColumns,
   employeeImportFields,
   missingRequiredEmployeeImportFields,
+  pickEmployeeImportSheetIndex,
 } from '../../features/hr/employeeImportAutoMap';
+import { hrEmployeeService } from '../../features/hr/services/hrEmployeeService';
+import { hrMasterDataService } from '../../features/hr/services/hrMasterDataService';
+import type { DepartmentOption, EmployeeOrganizationAssignment } from '../../features/hr/types/employee';
+import type { MasterDataLookup } from '../../features/hr/types/masterData';
 import {
   employeeImportService,
+  type EmployeeImportEmployee,
   type EmployeeImportHistory,
   type EmployeeImportMapping,
   type EmployeeImportPreview,
@@ -55,12 +62,54 @@ export function HrEmployeeImportPage() {
   const [preview, setPreview] = useState<EmployeeImportPreview | null>(null);
   const [result, setResult] = useState<EmployeeImportResult | null>(null);
   const [history, setHistory] = useState<EmployeeImportHistory[]>([]);
-  const [page, setPage] = useState(1);
+  const [historyError, setHistoryError] = useState('');
   const [showErrorsOnly, setShowErrorsOnly] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [editRow, setEditRow] = useState<number | null>(null);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [organizations, setOrganizations] = useState<EmployeeOrganizationAssignment[]>([]);
+  const [positions, setPositions] = useState<MasterDataLookup[]>([]);
+  const [historyToDelete, setHistoryToDelete] = useState<EmployeeImportHistory | null>(null);
+  const [deletingHistory, setDeletingHistory] = useState(false);
+
+  async function loadHistory() {
+    try {
+      setHistory(await employeeImportService.history());
+      setHistoryError('');
+    } catch (reason) {
+      setHistoryError(getApiErrorMessage(reason, text('Unable to load import history.', 'تعذر تحميل سجل الاستيراد.')));
+    }
+  }
 
   useEffect(() => {
-    void employeeImportService.history().then(setHistory).catch(() => undefined);
+    void Promise.all([hrEmployeeService.getDepartments(), hrEmployeeService.getOrganizations(), hrMasterDataService.getLookup('positions', true)])
+      .then(([departmentItems, organizationItems, positionItems]) => {
+        setDepartments(departmentItems);
+        setOrganizations(organizationItems);
+        setPositions(positionItems);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    void loadHistory();
   }, [result, upload, preview]);
+
+  async function deleteHistoryRecord() {
+    if (!historyToDelete) return;
+    setDeletingHistory(true);
+    setHistoryError('');
+    try {
+      await employeeImportService.deleteHistory(historyToDelete.id);
+      setHistory((items) => items.filter((item) => item.id !== historyToDelete.id));
+      setHistoryToDelete(null);
+    } catch (reason) {
+      setHistoryError(getApiErrorMessage(reason, text('Unable to delete the import record.', 'تعذر مسح سجل الاستيراد.')));
+    } finally {
+      setDeletingHistory(false);
+    }
+  }
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -69,7 +118,7 @@ export function HrEmployeeImportPage() {
       await action();
     } catch (reason) {
       setError(getApiErrorMessage(reason, text('Employee import failed.', 'تعذر استيراد الموظفين.')));
-      if (step === 'working') setStep(upload ? 'missing' : 'upload');
+      setStep((current) => (current === 'working' ? 'upload' : current));
     } finally {
       setBusy(false);
       setPhase('');
@@ -81,44 +130,52 @@ export function HrEmployeeImportPage() {
     setUpload(data);
     setMapping(nextMapping);
     setSheetIndex(index);
-
-    if (gaps.length) {
-      setMissing(gaps.map((field) => text(field.en, field.ar)));
-      setStep('missing');
-      return;
-    }
-
+    setMissing(gaps.map((field) => text(field.en, field.ar)));
     setStep('working');
     setPhase(text('Reading file and validating rows…', 'جاري قراءة الملف والتحقق من البيانات…'));
     const built = await employeeImportService.preview(data.id, nextMapping);
     setPreview(built);
-    setPage(1);
-
-    const importable = built.rows.some((row) => row.status === 'Ready' || row.status === 'Warning');
-    if (!importable) {
-      setStep('preview');
-      return;
-    }
-
-    setPhase(text('Importing employees…', 'جاري استيراد الموظفين…'));
-    const confirmed = await employeeImportService.confirm(data.id, built.previewId);
-    setResult(confirmed);
-    setStep('done');
+    setShowErrorsOnly(built.rows.some((row) => row.status === 'Error'));
+    setStep('preview');
   }
 
-  async function sendFile() {
-    if (!file) return;
-    if (!/\.(xlsx|xls|csv)$/i.test(file.name) || file.size > 20 * 1024 * 1024) {
+  async function sendFile(selected?: File | null) {
+    const nextFile = selected ?? file;
+    if (!nextFile) return;
+    if (!/\.(xlsx|xls|csv)$/i.test(nextFile.name) || nextFile.size > 20 * 1024 * 1024) {
       setError(text('Choose CSV, XLS, or XLSX, maximum 20 MB.', 'اختر CSV أو XLS أو XLSX بحد أقصى 20 ميجابايت.'));
       return;
     }
+    setFile(nextFile);
     await run(async () => {
       setStep('working');
       setPhase(text('Reading file…', 'جاري قراءة الملف…'));
-      const data = await employeeImportService.upload(file);
-      const next = buildMapping(data, 0);
-      await autoImportWith(data, next, 0);
+      const data = await employeeImportService.upload(nextFile);
+      const index = pickEmployeeImportSheetIndex(data.sheets);
+      const next = buildMapping(data, index);
+      await autoImportWith(data, next, index);
     });
+  }
+
+  async function saveCorrection(rowNumber: number, employee: EmployeeImportEmployee) {
+    if (!upload || !preview) return;
+    await run(async () => {
+      const next = await employeeImportService.revise(upload.id, preview.previewId, [{ row: rowNumber, employee }]);
+      setPreview(next);
+      setEditRow(null);
+    });
+  }
+
+  async function downloadTemplate() {
+    setDownloadingTemplate(true);
+    setError('');
+    try {
+      await employeeImportService.downloadTemplate();
+    } catch (reason) {
+      setError(getApiErrorMessage(reason, text('Unable to download the employee template.', 'تعذر تنزيل قالب الموظفين.')));
+    } finally {
+      setDownloadingTemplate(false);
+    }
   }
 
   const statusLabel = (status: string) =>
@@ -157,19 +214,20 @@ export function HrEmployeeImportPage() {
       ? preview.rows.filter((row) => row.status === 'Error' || row.status === 'Existing')
       : preview.rows
     : [];
+  const importableCount = preview?.rows.filter((row) => row.status === 'Ready' || row.status === 'Warning').length ?? 0;
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-5">
+    <div className="space-y-5">
       <PageHeader
         title={text('Import Employees', 'استيراد موظفين')}
         description={text(
-          'Upload an employee Excel file. Columns are detected and mapped automatically. Existing employees are never overwritten.',
-          'ارفع ملف الموظفين Excel. يتم اكتشاف الأعمدة وربطها تلقائياً. لا يتم تعديل الموظفين الموجودين.',
+          'Choose an employee Excel file and it uploads immediately. Fix any row errors here, then confirm. Existing employees are never overwritten.',
+          'اختار ملف الموظفين وهيترفع ويتراجع لوحده. صحّح الأخطاء من هنا بعدين أكّد. الموظفين الموجودين مش هيتعدلوا.',
         )}
-        actions={link}
+        actions={<div className="flex flex-wrap gap-2"><Button fullWidth={false} isLoading={downloadingTemplate} leftIcon={<Download className="h-4 w-4" />} onClick={() => void downloadTemplate()} variant="outline">{text('Download Excel template', 'تنزيل قالب Excel')}</Button>{link}</div>}
       />
 
-      <div className="grid grid-cols-4 overflow-hidden rounded-2xl border border-mis-border bg-white">
+      <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-mis-border bg-white sm:grid-cols-4">
         {stepper.map((label, index) => (
           <div key={label} className={`p-4 text-center text-sm font-semibold ${activeStep === index ? 'bg-mis-pale text-mis-primary' : 'text-slate-500'}`}>
             {index + 1}. {label}
@@ -184,26 +242,47 @@ export function HrEmployeeImportPage() {
       ) : null}
 
       {step === 'upload' ? (
-        <Card padding="lg">
-          <form
-            className="mx-auto max-w-2xl space-y-5"
-            onSubmit={(event) => {
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <Card
+            className={dragging ? 'border-mis-primary bg-mis-pale/40' : undefined}
+            padding="lg"
+            onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
               event.preventDefault();
-              void sendFile();
+              setDragging(false);
+              const next = event.dataTransfer.files?.[0] ?? null;
+              if (next) void sendFile(next);
             }}
           >
+            <div className="mx-auto max-w-2xl space-y-5">
+            <div className="flex items-start gap-3">
+              <Upload className="mt-1 h-6 w-6 text-mis-primary" />
+              <div>
+                <h2 className="font-bold text-mis-navy">{text('Choose the file and it starts immediately', 'اختار الملف وهيشتغل لوحده')}</h2>
+                <p className="mt-1 text-sm text-slate-600">{text('No extra upload click. Review the preview, fix errors in place, then confirm.', 'من غير زرار رفع إضافي. راجع المعاينة، صحّح الأخطاء هنا، وبعدين أكّد.')}</p>
+              </div>
+            </div>
             <FileInput
               accept=".xlsx,.xls,.csv"
               label={text('Employee Excel / CSV file', 'ملف الموظفين Excel / CSV')}
-              hint={text('Maximum 20 MB and 2,000 rows. Recognized headers import automatically.', 'بحد أقصى 20 ميجابايت و2000 صف. الأعمدة المعروفة تُستورد تلقائياً.')}
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              hint={text('The file starts processing as soon as you choose it. Maximum 20 MB and 2,000 rows.', 'الملف بيشتغل أول ما تختاره. بحد أقصى 20 ميجابايت و2000 صف.')}
+              onChange={(event) => {
+                const next = event.target.files?.[0] ?? null;
+                void sendFile(next);
+              }}
               required
             />
-            <Button isLoading={busy} type="submit" leftIcon={<Upload className="h-4 w-4" />}>
-              {text('Upload employee file', 'رفع ملف الموظفين')}
-            </Button>
-          </form>
-        </Card>
+            <p className="text-sm text-slate-500">{text('You can also drop the file on this card.', 'تقدر كمان تسحب الملف وتفلته هنا.')}</p>
+            </div>
+          </Card>
+          <Card className="border-sky-200 bg-sky-50/60" padding="lg">
+            <FileSpreadsheet className="h-9 w-9 text-mis-primary" />
+            <h2 className="mt-4 font-bold text-mis-navy">{text('Start with the official template', 'ابدأ بالقالب الرسمي')}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{text('It includes the required columns, bilingual instructions, and the current departments and positions from the system.', 'يحتوي على الأعمدة المطلوبة وتعليمات بالعربية والإنجليزية، بالإضافة إلى الأقسام والمسميات الحالية من النظام.')}</p>
+            <Button className="mt-5" isLoading={downloadingTemplate} leftIcon={<Download className="h-4 w-4" />} onClick={() => void downloadTemplate()} variant="secondary">{text('Download template', 'تنزيل القالب')}</Button>
+          </Card>
+        </div>
       ) : null}
 
       {step === 'working' ? (
@@ -310,7 +389,7 @@ export function HrEmployeeImportPage() {
             {employeeImportFields.map((field) => (
               <SelectInput
                 key={field.key}
-                required={field.required}
+                required={field.requiredInFile}
                 label={text(field.en, field.ar)}
                 value={mapping.columns[field.key] ?? ''}
                 onChange={(event) => {
@@ -340,12 +419,12 @@ export function HrEmployeeImportPage() {
             />
             <p className="text-sm text-slate-500 sm:col-span-2 lg:col-span-3">
               {text(
-                'Department and position must match existing Basic Data. Employee role maps to COLLECTOR, SUPERVISOR, or ADMIN. National ID: 14 digits. The same Excel column cannot map to two fields.',
-                'يجب أن يطابق القسم والمسمى الوظيفي البيانات الأساسية. الدور يُحوَّل إلى COLLECTOR أو SUPERVISOR أو ADMIN. الرقم القومي: 14 رقمًا. لا يمكن ربط نفس عمود Excel بحقلين.',
+                'Department is the internal HR unit. Banks and finance companies map to Assigned Bank / Company, and those employees are placed in Collections.',
+                'القسم هو الوحدة الداخلية. البنوك وشركات التمويل تُعيَّن في البنك / الشركة، ويُنقل موظفوها إلى قسم التحصيل.',
               )}
             </p>
             <div className="flex justify-end gap-3 sm:col-span-2 lg:col-span-3">
-              <Button disabled={busy} fullWidth={false} type="button" variant="outline" onClick={() => setStep('missing')}>
+              <Button disabled={busy} fullWidth={false} type="button" variant="outline" onClick={() => setStep(preview ? 'preview' : 'upload')}>
                 {text('Back', 'رجوع')}
               </Button>
               <Button fullWidth={false} isLoading={busy} type="submit" leftIcon={<Eye className="h-4 w-4" />}>
@@ -358,11 +437,22 @@ export function HrEmployeeImportPage() {
 
       {step === 'preview' && preview ? (
         <>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
-            {text(
-              'No new employees were imported. Review the validation results below, fix the file, or use Advanced Manual Mapping.',
-              'لم يتم استيراد موظفين جدد. راجع نتائج التحقق أدناه، أو صحّح الملف، أو استخدم التعيين اليدوي المتقدم.',
-            )}
+          {missing.length ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+              <p className="font-semibold">{text('Some columns were not recognized. You can still fix those values in the table.', 'بعض الأعمدة مش متعرفة. تقدر تعدّل القيم دي في الجدول.')}</p>
+              <p className="mt-1 text-sm">{missing.join(' · ')}</p>
+            </div>
+          ) : null}
+          <div className={`rounded-xl border p-4 ${importableCount > 0 ? 'border-blue-200 bg-blue-50 text-blue-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+            {importableCount > 0
+              ? text(
+                  `${importableCount} row(s) are ready. Fix remaining errors here, then confirm. Nothing has been saved yet.`,
+                  `${importableCount} صف جاهز. صحّح الباقي من هنا بعدين أكّد. لسه مفيش حاجة اتحفظت.`,
+                )
+              : text(
+                  'No valid employees are ready yet. Open a row with an error and correct it here, without going back to Excel.',
+                  'مفيش صفوف جاهزة لسه. افتح الصف اللي فيه الغلط وصحّحه من هنا من غير ما ترجع للإكسل.',
+                )}
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {(['Ready', 'Warning', 'Error', 'Existing'] as const).map((status) => (
@@ -373,6 +463,18 @@ export function HrEmployeeImportPage() {
             ))}
           </div>
           <div className="flex flex-wrap gap-3">
+            <Button
+              disabled={busy || importableCount === 0}
+              fullWidth={false}
+              isLoading={busy}
+              onClick={() => void run(async () => {
+                const confirmed = await employeeImportService.confirm(preview.id, preview.previewId);
+                setResult(confirmed);
+                setStep('done');
+              })}
+            >
+              {text(`Confirm import (${importableCount})`, `تأكيد استيراد (${importableCount})`)}
+            </Button>
             <Button fullWidth={false} variant="outline" onClick={() => setShowErrorsOnly((value) => !value)}>
               {showErrorsOnly ? text('Show all rows', 'عرض كل الصفوف') : text('Show errors', 'عرض الأخطاء')}
             </Button>
@@ -394,18 +496,25 @@ export function HrEmployeeImportPage() {
           </div>
           <Card padding="none">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1300px] text-sm">
+              <table className="w-full min-w-[1750px] text-sm">
                 <thead className="bg-mis-surface">
                   <tr>
                     {[
+                      text('Action', 'الإجراء'),
                       text('Employee Number', 'رقم الموظف'),
-                      text('Name', 'الاسم'),
+                      text('Arabic name', 'الاسم بالعربية'),
+                      text('English name', 'الاسم بالإنجليزية'),
                       text('Gender', 'النوع'),
                       text('Department', 'القسم'),
+                      text('Assigned bank / company', 'البنك / الشركة'),
+                      text('Work Number', 'رقم الشغل'),
+                      text('Package Type', 'نوع الباقة'),
                       text('Position', 'المسمى الوظيفي'),
                       text('Mobile Number', 'رقم الموبايل'),
                       text('National ID', 'الرقم القومي'),
+                      text('Date of Birth', 'تاريخ الميلاد'),
                       text('Employment Date', 'تاريخ التعيين'),
+                      text('Fingerprint Date', 'تاريخ البصمة'),
                       text('End Work Date', 'تاريخ انتهاء العمل'),
                       text('Status', 'الحالة'),
                       text('Validation', 'التحقق'),
@@ -417,17 +526,39 @@ export function HrEmployeeImportPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-mis-border">
-                  {previewRows.slice((page - 1) * 50, page * 50).map((row) => (
-                    <tr key={row.row}>
+                  {previewRows.map((row) => (
+                    <tr className={`border-t border-mis-border ${row.status === 'Error' ? 'bg-red-50/40' : row.status === 'Warning' ? 'bg-amber-50/30' : ''}`} key={row.row}>
+                      <td className="p-3">
+                        {row.status === 'Existing' ? null : (
+                          <button className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-mis-primary hover:bg-mis-pale" onClick={() => setEditRow(row.row)} type="button">
+                            <Pencil className="h-3.5 w-3.5" />
+                            {text('Edit', 'تعديل')}
+                          </button>
+                        )}
+                      </td>
                       <td className="p-3">
                         <bdi>{row.employee.employeeNumber}</bdi>
                       </td>
-                      <td className="p-3">{row.employee.fullName}</td>
+                      <td className="p-3" dir="rtl">{row.employee.fullNameArabic || '—'}</td>
+                      <td className="p-3" dir="ltr">{row.employee.fullNameEnglish || '—'}</td>
                       <td className="p-3">
                         {row.employee.gender === 'Male' ? text('Male', 'ذكر') : row.employee.gender === 'Female' ? text('Female', 'أنثى') : '—'}
                       </td>
-                      <td className="p-3">{row.department}</td>
-                      <td className="p-3">{row.position}</td>
+                      <td className="p-3">
+                        <span>{row.department}</span>
+                        {row.sourceDepartment && row.sourceDepartment !== row.department ? (
+                          <p className="mt-1 text-xs text-amber-700">{text('File value', 'قيمة الملف')}: {row.sourceDepartment}</p>
+                        ) : null}
+                      </td>
+                      <td className="p-3">{row.organization || '—'}</td>
+                      <td className="p-3">{row.employee.workNumber || '—'}</td>
+                      <td className="p-3">{row.employee.packageType || '—'}</td>
+                      <td className="p-3">
+                        <span>{row.position}</span>
+                        {row.sourcePosition && row.sourcePosition !== row.position ? (
+                          <p className="mt-1 text-xs text-amber-700">{text('File value', 'قيمة الملف')}: {row.sourcePosition}</p>
+                        ) : null}
+                      </td>
                       <td className="p-3">
                         <bdi dir="ltr">{row.employee.mobileNumber}</bdi>
                       </td>
@@ -435,7 +566,13 @@ export function HrEmployeeImportPage() {
                         <bdi>{row.employee.nationalId}</bdi>
                       </td>
                       <td className="p-3">
+                        <bdi>{row.employee.dateOfBirth ?? '—'}</bdi>
+                      </td>
+                      <td className="p-3">
                         <bdi>{row.employee.workStartDate}</bdi>
+                      </td>
+                      <td className="p-3">
+                        <bdi>{row.employee.fingerprintEnrollmentDate ?? '—'}</bdi>
                       </td>
                       <td className="p-3">
                         <bdi>{row.employee.workEndDate}</bdi>
@@ -456,8 +593,20 @@ export function HrEmployeeImportPage() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={page} pageSize={50} totalCount={previewRows.length} totalPages={Math.max(1, Math.ceil(previewRows.length / 50))} onPageChange={setPage} />
           </Card>
+          {editRow != null && preview.rows.find((row) => row.row === editRow) ? (
+            <EmployeeImportRowEditor
+              departments={departments}
+              language={language}
+              onClose={() => setEditRow(null)}
+              onSave={(employee) => void saveCorrection(editRow, employee)}
+              organizations={organizations}
+              positions={positions}
+              row={preview.rows.find((row) => row.row === editRow)!}
+              saving={busy}
+              text={text}
+            />
+          ) : null}
         </>
       ) : null}
 
@@ -499,11 +648,12 @@ export function HrEmployeeImportPage() {
 
       <Card padding="lg">
         <h2 className="mb-4 text-lg font-bold">{text('Your Import History (latest 50)', 'سجل استيرادك (آخر 50)')}</h2>
+        {historyError ? <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{historyError}</p> : null}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr>
-                {[text('File', 'الملف'), text('Uploaded by', 'رفع بواسطة'), text('Uploaded at', 'تاريخ الرفع'), text('Rows', 'الصفوف'), text('Imported / Skipped / Failed', 'تم الاستيراد / التجاوز / الفشل')].map((label) => (
+                {[text('File', 'الملف'), text('Uploaded by', 'رفع بواسطة'), text('Uploaded at', 'تاريخ الرفع'), text('Rows', 'الصفوف'), text('Imported / Skipped / Failed', 'تم الاستيراد / التجاوز / الفشل'), text('Action', 'الإجراء')].map((label) => (
                   <th key={label} className="p-3 text-start">
                     {label}
                   </th>
@@ -520,12 +670,37 @@ export function HrEmployeeImportPage() {
                   <td className="p-3">
                     <bdi>{item.result ? `${item.result.imported} / ${item.result.skipped} / ${item.result.failed}` : text('Awaiting confirmation', 'في انتظار التأكيد')}</bdi>
                   </td>
+                  <td className="p-3">
+                    <Button
+                      disabled={deletingHistory}
+                      fullWidth={false}
+                      leftIcon={<Trash2 className="h-4 w-4" />}
+                      onClick={() => setHistoryToDelete(item)}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      {text('Delete', 'مسح')}
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </Card>
+      <ConfirmDialog
+        confirmLabel={text('Delete', 'مسح')}
+        isConfirming={deletingHistory}
+        message={text(
+          `Remove ${historyToDelete?.fileName ?? 'this import'} from your history? Employees already imported stay in the system.`,
+          `مسح سجل ${historyToDelete?.fileName ?? 'الاستيراد'}؟ الموظفين اللي اتشافوا هيفضلوا في السيستم.`,
+        )}
+        onCancel={() => { if (!deletingHistory) setHistoryToDelete(null); }}
+        onConfirm={() => void deleteHistoryRecord()}
+        open={historyToDelete != null}
+        title={text('Delete import record', 'مسح سجل الاستيراد')}
+      />
     </div>
   );
 }

@@ -66,16 +66,13 @@ The users supplied in the initial operating directory are seeded in development 
 
 ## Backend Setup
 
-The backend does not store secrets in `appsettings.json`. Configure sensitive values with environment variables or user secrets.
+The backend does not store secrets in `appsettings.json`. Configure the database connection with environment variables, user secrets, or a gitignored `backend/MIS.API/appsettings.Local.json` (copy `appsettings.Local.json.example`). Copying that local file with the project lets the same machine-local database password travel when you move the folder.
 
 PowerShell environment variable example:
 
 ```powershell
 cd backend
 $env:ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=mis_dev;Username=postgres;Password=YOUR_DEV_DB_PASSWORD"
-$env:Jwt__SecretKey="replace-with-a-long-random-dev-secret-at-least-32-bytes"
-$env:Seed__AdminPassword="choose-a-strong-development-password"
-$env:Seed__HrPassword="choose-a-strong-development-hr-password"
 dotnet restore
 dotnet build
 dotnet run --project MIS.API
@@ -87,31 +84,10 @@ User secrets example:
 cd backend/MIS.API
 dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=mis_dev;Username=postgres;Password=YOUR_DEV_DB_PASSWORD"
-dotnet user-secrets set "Jwt:SecretKey" "replace-with-a-long-random-dev-secret-at-least-32-bytes"
-dotnet user-secrets set "Seed:AdminPassword" "choose-a-strong-development-password"
-dotnet user-secrets set "Seed:HrPassword" "choose-a-strong-development-hr-password"
 dotnet run
 ```
 
-Development seed user:
-
-- Username: `admin`
-- Department: `ADMIN`
-- Password: supplied by `Seed:AdminPassword`
-
-Development HR user (when `Seed:HrPassword` is configured):
-
-- Username: `hr.user`
-- Email: `hr@mis.local`
-- Department: `HR`
-- Password: supplied by `Seed:HrPassword`
-- Role: `HrManager` by default; set `Seed:HrRole=HrOfficer` for an operations-only user
-
-The seed password is intentionally not checked into source control.
-
-HR roles are enforced by the API, not only by the UI. `HrManager` can view and update
-restricted compensation and banking data; `HrOfficer` can operate the remaining HR
-workflows without receiving those fields in employee-profile responses.
+Login passwords live only as hashes on existing user accounts in PostgreSQL. The app does not seed, store, or reset account passwords from configuration.
 
 ## Database
 
@@ -144,7 +120,7 @@ dotnet ef database update --project MIS.Infrastructure --startup-project MIS.API
 ```
 
 Design-time EF commands load `MIS.API/appsettings.json`, the active environment file,
-MIS.API user secrets, and then environment variables (in that precedence order).
+optional `appsettings.Local.json`, MIS.API user secrets, and then environment variables.
 The checked-in connection string intentionally has no password, so configure
 `ConnectionStrings:DefaultConnection` through user secrets or set
 `ConnectionStrings__DefaultConnection` / `MIS_DB_CONNECTION` before running migrations.
@@ -183,7 +159,7 @@ Routes:
 - `/hr/reports` - report preview and organized Excel/PDF exports
 - `/hr/audit` - searchable HR audit history
 - `/collections/dashboard` - Collections Command Center and personalized work queue
-- `/collections/clients` - configurable client organizations and portfolio workspaces
+- `/banks` and `/installment-companies` - bank and installment-company workspaces
 - `/collections/cases` and `/collections/cases/:id` - paged workbench and audited case 360
 - `/collections/promises` - deterministic promise-to-pay hub
 - `/collections/payments` - maker-checker daily collections review
@@ -192,11 +168,11 @@ Routes:
 - `/collections/complaints` - complaint ownership, lifecycle, and SLA tracking
 - `/collections/imports` - validated portfolio upload, preview, errors, and safe confirmation
 - `/collections/audit` - immutable Collections audit history
-- `/collections/reports` - server-calculated executive, client, bucket, and collector reports with authorized CSV export
-- `/collections/settings` - audited client, portfolio, target, PTP policy, and bucket configuration
-- `/collections/branding` - validated bank/client logo management with polished fallback identity marks
+- `/collections/reports` - server-calculated executive, bank/company, bucket, and collector reports with authorized CSV export
+- `/collections/settings` - audited bank/company, portfolio, target, PTP policy, and bucket configuration
+- `/collections/branding` - validated bank/company logo management with polished fallback identity marks
 - `/collections/profile` and `/hr/profile` - self-service account, login email, and password security
-- `/finance/dashboard` - posted-ledger finance command center with client-money separation
+- `/finance/dashboard` - posted-ledger finance command center with bank/company-money separation
 - `/finance/journals` and `/finance/journals/:id` - journal workflow, approval, posting, and linked reversal
 - `/finance/accounts` - bilingual chart of accounts and live posted balances
 - `/finance/periods` - fiscal-year initialization, soft close, close, and controlled reopen
@@ -244,10 +220,6 @@ Collections roles are granular system capabilities:
 - `CollectionsOperationsManager`
 - `CollectionsClientViewer`
 - `CollectionsAuditor`
-
-For a development Collections user, configure `Seed:CollectionsPassword` and optionally
-`Seed:CollectionsUsername`, `Seed:CollectionsEmail`, `Seed:CollectionsFullName`, and
-`Seed:CollectionsRole`. The default seeded role is `CollectionsOperationsManager`.
 
 Every user has an immutable login code in the format `USR-XXXXXXXX`. Authentication
 accepts this code, the username, or the current email address. The bilingual profile

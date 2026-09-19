@@ -27,6 +27,8 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Property(x => x.HireDate).HasColumnType("date");
         builder.Property(x => x.OperationalRole).HasMaxLength(24);
         builder.Property(x => x.FingerprintEnrollmentDate).HasColumnType("date");
+        builder.Property(x => x.WorkNumber).HasMaxLength(50);
+        builder.Property(x => x.PackageType).HasMaxLength(80);
         builder.Property(x => x.Status).HasMaxLength(32).HasDefaultValue(Employee.ActiveStatus).IsRequired();
         builder.Property(x => x.TerminationDate).HasColumnType("date");
         builder.Property(x => x.TerminationReason).HasMaxLength(500);

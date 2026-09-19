@@ -2,7 +2,7 @@ namespace MIS.Application.DTOs.Admin;
 
 public sealed record AdminDashboardDto(
     int TotalUsers, int ActiveUsers, int InactiveUsers, int PendingAccessRequests,
-    int PrivilegedUsers, int ExpiringAccessCount, int NeverLoggedInCount,
+    int PrivilegedUsers, int ExpiringAccessCount, int NeverLoggedInCount, int MustChangePasswordCount,
     IReadOnlyCollection<AdminDecisionItemDto> DecisionQueue,
     IReadOnlyCollection<AdminDepartmentSummaryDto> Departments,
     IReadOnlyCollection<AdminAuditItemDto> RecentActivity);
@@ -12,7 +12,9 @@ public sealed record AdminDepartmentSummaryDto(Guid Id, string Code, string Name
 public sealed record AdminUserListDto(IReadOnlyCollection<AdminUserDto> Items, int Total, int Page, int PageSize);
 public sealed record AdminUserDto(Guid Id, string LoginCode, string Username, string Email, string FullName, Guid DepartmentId,
     string DepartmentCode, string DepartmentNameAr, string DepartmentNameEn, bool IsActive, DateTimeOffset CreatedAt,
-    DateTimeOffset? LastLoginAt, IReadOnlyCollection<AdminRoleDto> Roles, IReadOnlyCollection<AdminAccessGrantDto> AccessGrants);
+    DateTimeOffset? LastLoginAt, bool MustChangePassword, IReadOnlyCollection<AdminRoleDto> Roles, IReadOnlyCollection<AdminAccessGrantDto> AccessGrants,
+    Guid? EmployeeId = null, string? EmployeeNumber = null, string? EmployeeName = null, string? EmployeeOperationalRole = null);
+public sealed record AdminCredentialIssueDto(AdminUserDto User, string TemporaryPassword);
 public sealed record AdminRoleDto(Guid Id, string Name, string? Description, bool IsSystemRole);
 public sealed record AdminAccessGrantDto(Guid Id, string PermissionCode, string ScopeType, Guid? ClientOrganizationId,
     string? ClientOrganizationNameAr, string? ClientOrganizationNameEn, string Status,
@@ -36,6 +38,7 @@ public sealed class CreateAdminUserRequest
     public Guid DepartmentId { get; set; }
     public string TemporaryPassword { get; set; } = string.Empty;
     public IReadOnlyCollection<Guid> RoleIds { get; set; } = [];
+    public Guid? EmployeeId { get; set; }
 }
 
 public sealed class SaveUserAccessRequest
@@ -62,3 +65,11 @@ public sealed class ResetAdminUserPasswordRequest
 {
     public string TemporaryPassword { get; set; } = string.Empty;
 }
+
+public sealed class LinkAdminEmployeeRequest
+{
+    public Guid? EmployeeId { get; set; }
+}
+
+public sealed record AdminLinkableEmployeeDto(Guid Id, string EmployeeNumber, string FullName, Guid DepartmentId,
+    string DepartmentCode, string DepartmentNameAr, string DepartmentNameEn, string? OperationalRole, string? Email, Guid? LinkedUserId);

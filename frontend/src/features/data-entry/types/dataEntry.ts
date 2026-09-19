@@ -13,6 +13,12 @@ export interface DataEntryClientListItem {
   customerNumber: string;
   customerName: string;
   mobileNumber?: string | null;
+  organizationName: string;
+  source?: string | null;
+  caseNumber?: string | null;
+  caseId?: string | null;
+  caseStatus?: string | null;
+  batchStatus?: string | null;
 }
 
 export interface DataEntryPagedResult<T> {
@@ -44,6 +50,7 @@ export interface DataEntryClientDetails {
   primaryClassification?: string | null;
   subClassification?: string | null;
   caseNumber?: string | null;
+  caseId?: string | null;
   accountNumber?: string | null;
   contractNumber?: string | null;
   outstandingBalance?: number | null;
@@ -133,6 +140,8 @@ export interface DataEntryImportPreviewRow {
   mobileNumber?: string | null;
   status: string;
   errorMessage?: string | null;
+  collectionCustomerId?: string | null;
+  collectionCaseId?: string | null;
 }
 
 export interface DataEntryImportPreview {
@@ -175,6 +184,21 @@ export interface DataEntryBatchDetails {
   reviewedAt?: string | null;
   distributedAt?: string | null;
   rows: DataEntryImportPreviewRow[];
+  documents?: DataEntryDocument[];
+}
+
+export interface DataEntryDocument {
+  id: string;
+  customerId: string;
+  batchId?: string | null;
+  caseId?: string | null;
+  originalFileName: string;
+  contentType: string;
+  fileSize: number;
+  note?: string | null;
+  uploadedBy: string;
+  uploadedAt: string;
+  canDownload: boolean;
 }
 
 export interface DataEntryNotification {

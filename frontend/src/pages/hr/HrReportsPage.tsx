@@ -149,9 +149,9 @@ export function HrReportsPage() {
     setFilter((current) => ({ ...current, page: 1, typeId: '', type: '' }));
     if (!category) return;
     let active = true;
-    void hrMasterDataService.getLookup(category, true).then((items) => { if (active) setTypes(items); }).catch(() => { if (active) setTypes([]); });
+    void hrMasterDataService.getLookup(category, true).then((items) => { if (active) setTypes(items); }).catch((reason) => { if (active) { setTypes([]); toast.error(getApiErrorMessage(reason, t('loadLookupsError'))); } });
     return () => { active = false; };
-  }, [selectedCode]);
+  }, [selectedCode, t, toast]);
 
   const runReport = useCallback(async (nextFilter: HrReportFilter = filter) => {
     if (!selectedCode) return;
@@ -187,7 +187,7 @@ export function HrReportsPage() {
   if (catalogError && !catalog.length) return <ErrorState message={catalogError} onRetry={() => void loadCatalog()} retryLabel={copy.retry} title={copy.loadCatalogError} />;
 
   return (
-    <div className="mx-auto max-w-[1500px]">
+    <div>
       <PageHeader description={copy.subtitle} eyebrow={t('hrDepartment')} title={copy.title} />
       <div className="grid gap-6 xl:grid-cols-[310px_minmax(0,1fr)]">
         <Section bodyClassName="p-2" description={copy.selectReport} title={copy.catalog}>

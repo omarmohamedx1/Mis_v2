@@ -19,11 +19,12 @@ import { TextAreaInput } from '../../components/forms/TextAreaInput';
 import { TextInput } from '../../components/forms/TextInput';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
+import { organizationLabel } from '../../features/hr/employeeDisplay';
 import { EmployeeSearchSelect } from '../../features/hr/components/EmployeeSearchSelect';
 import { hrAbsenceService } from '../../features/hr/services/hrAbsenceService';
 import { hrEmployeeService } from '../../features/hr/services/hrEmployeeService';
 import type { AbsenceDetails, AbsenceListItem, AbsenceStatus, PagedAbsences, PayrollImpactStatus, SaveAbsenceRequest } from '../../features/hr/types/absence';
-import type { DepartmentOption } from '../../features/hr/types/employee';
+import type { DepartmentOption, EmployeeOrganizationAssignment } from '../../features/hr/types/employee';
 import type { TranslationKey } from '../../localization/translations';
 import { getApiErrorMessage } from '../../services/apiClient';
 
@@ -161,7 +162,7 @@ function DetailsModal({ absence, onClose }: { absence: AbsenceDetails; onClose: 
 }
 
 function PayrollReviewModal({ absence, onClose, onSaved }: { absence: AbsenceDetails; onClose: () => void; onSaved: () => void }) {
-  const { language } = useLocalization();
+  const { language, t } = useLocalization();
   const toast = useToast();
   const text = payrollCopy[language];
   const [amount, setAmount] = useState(String(absence.approvedDeductionAmount ?? absence.suggestedDeductionAmount));
@@ -181,7 +182,7 @@ function PayrollReviewModal({ absence, onClose, onSaved }: { absence: AbsenceDet
     finally { setSaving(null); }
   }
 
-  return <Modal closeOnBackdrop={!saving} closeOnEscape={!saving} footer={<><Button disabled={Boolean(saving)} fullWidth={false} onClick={onClose} variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button><Button disabled={Boolean(saving)} fullWidth={false} leftIcon={<Ban className="h-4 w-4" />} onClick={() => void submit('Exclude')} variant="outline">{text.exclude}</Button><Button fullWidth={false} isLoading={saving === 'Approve'} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void submit('Approve')}>{text.approve}</Button></>} hideCloseButton={Boolean(saving)} onClose={onClose} open title={text.review}>
+  return <Modal closeOnBackdrop={!saving} closeOnEscape={!saving} footer={<><Button disabled={Boolean(saving)} fullWidth={false} onClick={onClose} variant="outline">{t('cancel')}</Button><Button disabled={Boolean(saving)} fullWidth={false} leftIcon={<Ban className="h-4 w-4" />} onClick={() => void submit('Exclude')} variant="outline">{text.exclude}</Button><Button fullWidth={false} isLoading={saving === 'Approve'} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void submit('Approve')}>{text.approve}</Button></>} hideCloseButton={Boolean(saving)} onClose={onClose} open title={text.review}>
     <div className="space-y-5">
       <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-900"><div className="flex gap-3"><BadgeDollarSign className="mt-0.5 h-5 w-5 flex-none" /><p>{text.explanation}</p></div>{absence.suggestedDeductionAmount === 0 ? <p className="mt-2 font-bold text-amber-800">{text.noSalary}</p> : null}</div>
       <FormError message={error} />
@@ -191,16 +192,19 @@ function PayrollReviewModal({ absence, onClose, onSaved }: { absence: AbsenceDet
   </Modal>;
 }
 
-export function HrAbsencesPage() {
+export function HrAbsencesPage({ embedded = false }: { embedded?: boolean }) {
   const { language, t } = useLocalization();
   const { user } = useAuth();
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState(emptyPage);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [organizations, setOrganizations] = useState<EmployeeOrganizationAssignment[]>([]);
+  const [employeeId, setEmployeeId] = useState(() => searchParams.get('employeeId') ?? '');
   const [searchInput, setSearchInput] = useState(() => searchParams.get('employee') ?? '');
   const [search, setSearch] = useState(() => searchParams.get('employee') ?? '');
   const [departmentId, setDepartmentId] = useState('');
+  const [organizationId, setOrganizationId] = useState('');
   const [date, setDate] = useState('');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
@@ -221,20 +225,26 @@ export function HrAbsencesPage() {
   }, [searchInput]);
 
   useEffect(() => {
-    void hrEmployeeService.getDepartments().then(setDepartments).catch(() => setError(t('loadDepartmentsError')));
+    if (employeeId && search !== (searchParams.get('employee') ?? '')) setEmployeeId('');
+  }, [employeeId, search, searchParams]);
+
+  useEffect(() => {
+    void Promise.all([hrEmployeeService.getDepartments(), hrEmployeeService.getOrganizations()])
+      .then(([departmentItems, organizationItems]) => { setDepartments(departmentItems); setOrganizations(organizationItems); })
+      .catch((reason) => setError(getApiErrorMessage(reason, t('loadDepartmentsError'))));
   }, [language, t]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      setData(await hrAbsenceService.getAbsences({ page, pageSize: 20, search, departmentId, date, status }));
+      setData(await hrAbsenceService.getAbsences({ page, pageSize: 20, search, departmentId, organizationId, employeeId, date, status }));
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, t('loadAbsencesError')));
     } finally {
       setLoading(false);
     }
-  }, [date, departmentId, language, page, search, status, t]);
+  }, [date, departmentId, organizationId, employeeId, language, page, search, status, t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -264,46 +274,56 @@ export function HrAbsencesPage() {
     }
   }
 
-  const hasFilters = Boolean(search || departmentId || date || status !== 'all');
+  const hasFilters = Boolean(employeeId || search || departmentId || organizationId || date || status !== 'all');
+  function clearFilters() { setEmployeeId(''); setSearchInput(''); setSearch(''); setDepartmentId(''); setOrganizationId(''); setDate(''); setStatus('all'); setPage(1); }
   const canReviewPayroll = user?.roles.includes('HrManager') ?? false;
   const headings = useMemo(() => [t('employeeId'), t('employee'), t('department'), t('date'), t('status'), payrollCopy[language].impact, t('actions')], [language, t]);
 
+  const absenceActions = (
+    <>
+      <Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={() => setFormRecord(null)}>
+        {t('recordAbsence')}
+      </Button>
+      <Link
+        to="/hr/attendance/absences/import"
+        className="inline-flex h-10 items-center gap-2 rounded-xl border border-mis-sky/60 bg-mis-pale px-4 text-sm font-semibold text-mis-deep shadow-sm hover:border-mis-primary hover:bg-white"
+      >
+        <Upload className="h-4 w-4" />
+        {t('importAbsenceFile')}
+      </Link>
+    </>
+  );
+
   return (
-    <div className="mx-auto max-w-7xl">
-      <PageHeader
-        actions={
-          <>
-            <Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={() => setFormRecord(null)}>
-              {t('recordAbsence')}
-            </Button>
-            <Link
-              to="/hr/absences/import"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-mis-sky/60 bg-mis-pale px-4 text-sm font-semibold text-mis-deep shadow-sm hover:border-mis-primary hover:bg-white"
-            >
-              <Upload className="h-4 w-4" />
-              {t('importAbsenceFile')}
-            </Link>
-          </>
-        }
-        description={t('absencesSubtitle')}
-        eyebrow={t('hrDepartment')}
-        title={t('absencesTitle')}
-      />
+    <div>
+      {embedded ? <div className="mb-4 flex flex-wrap justify-end gap-2">{absenceActions}</div> : (
+        <PageHeader
+          actions={absenceActions}
+          description={t('absencesSubtitle')}
+          eyebrow={t('hrDepartment')}
+          title={t('absencesTitle')}
+        />
+      )}
       <section className="overflow-hidden rounded-2xl border border-mis-border bg-white shadow-sm">
-        <div className="grid gap-3 border-b border-mis-border p-4 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_170px_150px]">
+        <div className="module-filter-grid border-b border-mis-border p-4">
           <label className="relative">
             <Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" aria-hidden="true" />
             <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchEmployee')} value={searchInput} />
           </label>
           <ProfessionalSelect aria-label={t('department')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setDepartmentId(event.target.value); setPage(1); }} value={departmentId}>
             <option value="">{t('allDepartments')}</option>
-            {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+            {departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </ProfessionalSelect>
+          <ProfessionalSelect aria-label={t('assignedBankCompany')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setOrganizationId(event.target.value); setPage(1); }} value={organizationId}>
+            <option value="">{t('allOrganizations')}</option>
+            {organizations.map((item) => <option key={item.id} value={item.id}>{organizationLabel(item, language)}</option>)}
           </ProfessionalSelect>
           <DateControl aria-label={t('absenceDateFilter')} className="h-11 rounded-xl border border-mis-border px-3 text-sm" onChange={(event) => { setDate(event.target.value); setPage(1); }}  value={date} />
           <ProfessionalSelect aria-label={t('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setStatus(event.target.value); setPage(1); }} value={status}>
             <option value="all">{t('all')}</option>
             {statuses.map((item) => <option key={item} value={item.toLowerCase()}>{t(statusLabels[item])}</option>)}
           </ProfessionalSelect>
+          <Button disabled={!hasFilters} fullWidth={false} onClick={clearFilters} size="md" variant="ghost">{t('clearFilters')}</Button>
         </div>
 
         {error ? <div className="p-5"><ErrorState compact message={error} onRetry={() => void load()} title={t('loadAbsencesError')} /></div> : loading ? (

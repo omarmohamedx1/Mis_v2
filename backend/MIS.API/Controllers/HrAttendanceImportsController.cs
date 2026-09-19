@@ -20,6 +20,13 @@ public sealed class HrAttendanceImportsController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("template")]
+    public async Task<IActionResult> DownloadTemplate(CancellationToken cancellationToken)
+    {
+        var template = await _service.BuildTemplateAsync(cancellationToken);
+        return File(template.Content, template.ContentType, template.FileName);
+    }
+
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaximumImportBytes + 1024 * 1024)]

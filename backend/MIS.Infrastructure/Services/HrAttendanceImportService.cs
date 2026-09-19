@@ -40,6 +40,15 @@ public sealed class HrAttendanceImportService : IHrAttendanceImportService
         _parser = new AttendanceImportParser(calendar);
     }
 
+    public Task<HrImportFileTemplate> BuildTemplateAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(new HrImportFileTemplate(
+            HrImportWorkbookBuilder.BuildAttendance(),
+            "Attendance_Import_Template.xlsx",
+            HrImportWorkbookBuilder.ExcelContentType));
+    }
+
     public async Task<AttendanceImportUploadDto> UploadAsync(
         AttendanceImportFile file,
         CancellationToken cancellationToken)

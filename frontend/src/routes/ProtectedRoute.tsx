@@ -15,6 +15,10 @@ export function ProtectedRoute({ department, requiredRole }: ProtectedRouteProps
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  if (user?.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
   if (department && (!user || !canAccessDepartment(user, department))) {
     return <Navigate to="/unauthorized" replace />;
   }

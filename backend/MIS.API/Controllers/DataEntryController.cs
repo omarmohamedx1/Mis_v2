@@ -44,6 +44,14 @@ public sealed class DataEntryController(IDataEntryService dataEntry) : Controlle
     public Task<DataEntryClientDetailsDto> CreateClient([FromBody] CreateDataEntryClientRequest request, CancellationToken token)
         => dataEntry.CreateManualClientAsync(request, token);
 
+    [HttpDelete("clients/{customerId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
+    public async Task<IActionResult> DeleteClient(Guid customerId, CancellationToken token)
+    {
+        await dataEntry.DeleteClientAsync(customerId, token);
+        return NoContent();
+    }
+
     [HttpPost("import/upload")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
     [Consumes("multipart/form-data")]
@@ -109,4 +117,46 @@ public sealed class DataEntryController(IDataEntryService dataEntry) : Controlle
     [Authorize(Policy = AuthorizationPolicies.DataEntryBatchReview)]
     public Task<DataEntryBatchListItemDto> SendToDistribution(Guid batchId, CancellationToken token)
         => dataEntry.SendToDistributionAsync(batchId, token);
+
+    [HttpGet("clients/{customerId:guid}/documents")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]
+    public Task<IReadOnlyList<DataEntryDocumentDto>> ClientDocuments(Guid customerId, CancellationToken token)
+        => dataEntry.ListClientDocumentsAsync(customerId, token);
+
+    [HttpPost("clients/{customerId:guid}/documents")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(RequestLimit)]
+    public async Task<ActionResult<DataEntryDocumentDto>> UploadClientDocument(Guid customerId, IFormFile file, [FromForm] string? note, CancellationToken token)
+    {
+        if (file is null || file.Length == 0) throw new HrValidationException("A supporting file is required.");
+        await using var stream = file.OpenReadStream();
+        return Ok(await dataEntry.UploadClientDocumentAsync(customerId, new HrUploadFile(file.FileName, file.ContentType, file.Length, stream), note, token));
+    }
+
+    [HttpGet("batches/{batchId:guid}/documents")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]
+    public Task<IReadOnlyList<DataEntryDocumentDto>> BatchDocuments(Guid batchId, CancellationToken token)
+        => dataEntry.ListBatchDocumentsAsync(batchId, token);
+
+    [HttpGet("cases/{caseId:guid}/documents")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryBatchReview)]
+    public Task<IReadOnlyList<DataEntryDocumentDto>> CaseDocuments(Guid caseId, CancellationToken token)
+        => dataEntry.ListCaseDocumentsAsync(caseId, token);
+
+    [HttpGet("documents/{documentId:guid}/download")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryBatchReview)]
+    public async Task<IActionResult> DownloadDocument(Guid documentId, CancellationToken token)
+    {
+        var file = await dataEntry.DownloadDocumentAsync(documentId, token);
+        return File(file.Content, file.ContentType, file.FileName);
+    }
+
+    [HttpDelete("documents/{documentId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]
+    public async Task<IActionResult> DeleteDocument(Guid documentId, CancellationToken token)
+    {
+        await dataEntry.DeleteDocumentAsync(documentId, token);
+        return NoContent();
+    }
 }

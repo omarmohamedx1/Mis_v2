@@ -41,6 +41,7 @@ public static class CollectionRules
 
     public static string MaskNationalId(string? value) => Mask(value, 3, 3);
     public static string MaskPhone(string? value) => Mask(value, 2, 2);
+    public static string MaskCard(string? value) => Mask(value, 4, 4);
     private static string Mask(string? value, int visibleStart, int visibleEnd)
     {
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;

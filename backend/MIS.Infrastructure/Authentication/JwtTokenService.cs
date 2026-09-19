@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MIS.Application.Interfaces;
@@ -12,19 +11,12 @@ namespace MIS.Infrastructure.Authentication;
 public sealed class JwtTokenService : ITokenService
 {
     private readonly JwtOptions _options;
-    private readonly SymmetricSecurityKey _securityKey;
+    private readonly JwtSigningKeyAccessor _signingKey;
 
-    public JwtTokenService(IOptions<JwtOptions> options)
+    public JwtTokenService(IOptions<JwtOptions> options, JwtSigningKeyAccessor signingKey)
     {
         _options = options.Value;
-        var keyBytes = Encoding.UTF8.GetBytes(_options.SecretKey);
-
-        if (keyBytes.Length < JwtOptions.MinimumSecretBytes)
-        {
-            throw new InvalidOperationException($"Jwt:SecretKey must be configured and at least {JwtOptions.MinimumSecretBytes} bytes long.");
-        }
-
-        _securityKey = new SymmetricSecurityKey(keyBytes);
+        _signingKey = signingKey;
     }
 
     public string GenerateAccessToken(User user, IReadOnlyCollection<string> roles, IReadOnlyCollection<string> permissions)
@@ -43,7 +35,7 @@ public sealed class JwtTokenService : ITokenService
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
         claims.AddRange(permissions.Select(permission => new Claim(SystemPermissionCodes.ClaimType, permission)));
 
-        var credentials = new SigningCredentials(_securityKey, SecurityAlgorithms.HmacSha256);
+        var credentials = new SigningCredentials(_signingKey.SecurityKey, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,
             audience: _options.Audience,

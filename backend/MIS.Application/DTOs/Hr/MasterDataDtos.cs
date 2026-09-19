@@ -48,7 +48,8 @@ public sealed record MasterDataLookupDto(
     string Code,
     string NameEnglish,
     string? NameArabic,
-    bool IsActive);
+    bool IsActive,
+    Guid? DepartmentId = null);
 
 public sealed record PagedMasterDataDto(
     IReadOnlyCollection<MasterDataItemDto> Items,

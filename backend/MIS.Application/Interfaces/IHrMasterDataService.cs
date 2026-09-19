@@ -15,4 +15,6 @@ public interface IHrMasterDataService
     Task<MasterDataItemDto> UpdateAsync(string category, Guid id, SaveMasterDataRequest request, CancellationToken cancellationToken);
 
     Task<MasterDataItemDto> SetActiveAsync(string category, Guid id, bool isActive, CancellationToken cancellationToken);
+
+    Task DeleteAsync(string category, Guid id, CancellationToken cancellationToken);
 }

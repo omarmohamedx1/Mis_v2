@@ -40,8 +40,7 @@ function mappingFor(upload: BankCustomerImportUpload, sheetIndex: number, portfo
 }
 
 export function BankCustomerImportPage() {
-  const { bank, organizationKind } = useOutletContext<BankWorkspaceContext>();
-  const base = organizationKind === 'installment' ? '/installment-companies' : '/banks';
+  const { bank, workspaceBase } = useOutletContext<BankWorkspaceContext>();
   const { language, ct } = useCollectionsLocalization();
   const ar = language === 'ar';
   const [step, setStep] = useState(0);
@@ -88,7 +87,7 @@ export function BankCustomerImportPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        actions={<Link className="rounded-xl border border-mis-border px-4 py-2 text-sm font-bold text-mis-primary" to={`${base}/${bank.id}/customers`}>{ct('backToCustomers')}</Link>}
+        actions={<Link className="rounded-xl border border-mis-border px-4 py-2 text-sm font-bold text-mis-primary" to={`${workspaceBase}/customers`}>{ct('backToCustomers')}</Link>}
         description={ct('importCustomersSubtitle')}
         title={ct('importCustomersTitle')}
       />
@@ -175,7 +174,7 @@ export function BankCustomerImportPage() {
           <div><p className="text-sm text-slate-500">{ct('importedCount')}</p><p className="text-3xl font-bold text-mis-navy">{result.imported}</p></div>
           <div><p className="text-sm text-slate-500">{ct('skippedCount')}</p><p className="text-3xl font-bold text-mis-navy">{result.skipped}</p></div>
           <div><p className="text-sm text-slate-500">{ct('failedCount')}</p><p className="text-3xl font-bold text-mis-navy">{result.failed}</p></div>
-          <div className="sm:col-span-3"><Link className="inline-flex rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white" to={`${base}/${bank.id}/customers`}>{ct('backToCustomers')}</Link></div>
+          <div className="sm:col-span-3"><Link className="inline-flex rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white" to={`${workspaceBase}/customers`}>{ct('backToCustomers')}</Link></div>
         </Card>
       ) : null}
     </div>

@@ -9,6 +9,7 @@ using MIS.Application.DTOs.Hr;
 using MIS.Application.Interfaces;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
+using MIS.Domain.Hr;
 using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
@@ -344,31 +345,17 @@ public sealed class BankDistributionImportService(
 
     private static MatchedCollector? MatchCollector(List<(User User, string? EmployeeNumber)> collectors, string employeeNumber, string username, string email, string name, List<string> errors)
     {
-        if (!string.IsNullOrWhiteSpace(employeeNumber))
+        var directory = collectors.Select(x => new CollectorIdentityCandidate(
+            x.User.Id, x.User.FullName, x.User.Username, x.User.Email, x.EmployeeNumber,
+            x.User.Employee?.FullName, x.User.Employee?.FullNameArabic, x.User.Employee?.FullNameEnglish)).ToArray();
+        var match = CollectorIdentity.Match(directory, employeeNumber, username, email, name);
+        if (match.Kind == CollectorMatchKind.Unique)
         {
-            var hits = collectors.Where(x => x.EmployeeNumber != null && x.EmployeeNumber.Equals(employeeNumber, StringComparison.OrdinalIgnoreCase)).ToArray();
-            if (hits.Length == 1) return new(hits[0].User.Id, hits[0].User.FullName);
-            if (hits.Length > 1) { errors.Add("Ambiguous collector. / أكثر من محصل مطابق"); return null; }
+            var user = collectors.First(x => x.User.Id == match.UserId).User;
+            return new(user.Id, user.FullName);
         }
-        if (!string.IsNullOrWhiteSpace(username))
-        {
-            var hits = collectors.Where(x => x.User.Username.Equals(username, StringComparison.OrdinalIgnoreCase)).ToArray();
-            if (hits.Length == 1) return new(hits[0].User.Id, hits[0].User.FullName);
-            if (hits.Length > 1) { errors.Add("Ambiguous collector. / أكثر من محصل مطابق"); return null; }
-        }
-        if (!string.IsNullOrWhiteSpace(email))
-        {
-            var hits = collectors.Where(x => x.User.Email.Equals(email, StringComparison.OrdinalIgnoreCase)).ToArray();
-            if (hits.Length == 1) return new(hits[0].User.Id, hits[0].User.FullName);
-            if (hits.Length > 1) { errors.Add("Ambiguous collector. / أكثر من محصل مطابق"); return null; }
-        }
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            var hits = collectors.Where(x => x.User.FullName.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
-            if (hits.Length == 1) return new(hits[0].User.Id, hits[0].User.FullName);
-            if (hits.Length > 1) { errors.Add("Ambiguous collector. / أكثر من محصل مطابق"); return null; }
-        }
-        errors.Add("Collector not found. / المحصل غير موجود");
+        if (match.Kind == CollectorMatchKind.Ambiguous) errors.Add("Ambiguous collector. / أكثر من محصل مطابق");
+        else errors.Add("Collector not found. / المحصل غير موجود");
         return null;
     }
 
@@ -381,11 +368,7 @@ public sealed class BankDistributionImportService(
             (x.AssignedTeamId == null && db.CollectionUserAccess.Any(a => a.UserId == user.UserId && a.OrganizationId == bankId && (a.PortfolioId == null || a.PortfolioId == x.PortfolioId))));
     }
 
-    private IQueryable<User> AuthorizedCollectors(Guid bankId)
-    {
-        var q = db.Users.Where(x => x.IsActive && x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.CollectionsCollector));
-        return Global ? q : q.Where(x => db.CollectionTeamMembers.Any(m => m.UserId == x.Id && m.IsActive && m.Team.IsActive && m.Team.SupervisorId == user.UserId));
-    }
+    private IQueryable<User> AuthorizedCollectors(Guid bankId) => db.Users.EligibleCollectors().ForSupervisorScope(db, user.UserId, Global);
 
     private async Task RequireAccessAsync(Guid bankId, CancellationToken token)
     {

@@ -1,12 +1,12 @@
 import { Navigate } from 'react-router-dom';
-import { OrganizationClassificationPrimaryPage } from './OrganizationClassificationPages';
+import { OrganizationDirectoryPage } from './BanksPage';
 
 export function InstallmentCompaniesPage() {
-  return <OrganizationClassificationPrimaryPage kind="installment" />;
+  return <OrganizationDirectoryPage kind="installment" />;
 }
 
 export function BanksEntryPage() {
-  return <OrganizationClassificationPrimaryPage kind="bank" />;
+  return <OrganizationDirectoryPage kind="bank" />;
 }
 
 export function LegacyOrganizationRedirect({ kind }: { kind: 'bank' | 'installment' }) {

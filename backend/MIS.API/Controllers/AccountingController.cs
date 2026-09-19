@@ -109,6 +109,19 @@ public sealed class AccountingController(IAccountingService accounting) : Contro
     public Task<AccountingCommissionRuleDto> CreateRule([FromBody] CreateCommissionRuleRequest request, CancellationToken token)
         => accounting.CreateRuleAsync(request, token);
 
+    [HttpPatch("commission-rules/{id:guid}/active")]
+    [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
+    public Task<AccountingCommissionRuleDto> SetRuleActive(Guid id, [FromBody] SetActiveRequest request, CancellationToken token)
+        => accounting.SetRuleActiveAsync(id, request.IsActive, token);
+
+    [HttpDelete("commission-rules/{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
+    public async Task<IActionResult> DeleteRule(Guid id, CancellationToken token)
+    {
+        await accounting.DeleteRuleAsync(id, token);
+        return NoContent();
+    }
+
     [HttpPost("collector-commissions/calculate")]
     [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
     public Task<int> CalculateCollectors([FromBody] CalculateCommissionsRequest request, CancellationToken token)

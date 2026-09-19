@@ -14,8 +14,7 @@ import { getApiErrorMessage } from '../../services/apiClient';
 import type { BankWorkspaceContext } from './BankWorkspaceLayout';
 
 export function BankCustomersPage() {
-  const { bank, organizationKind } = useOutletContext<BankWorkspaceContext>();
-  const base = organizationKind === 'installment' ? '/installment-companies' : '/banks';
+  const { bank, workspaceBase } = useOutletContext<BankWorkspaceContext>();
   const { language, ct } = useCollectionsLocalization();
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -50,7 +49,7 @@ export function BankCustomersPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button fullWidth={false} onClick={() => setReload((value) => value + 1)} variant="outline"><RefreshCw className="h-4 w-4" />{ct('refresh')}</Button>
-          <Link className="inline-flex items-center gap-2 rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white" to={`${base}/${bank.id}/customers/import`}><FileUp className="h-4 w-4" />{ct('importCustomersFile')}</Link>
+          <Link className="inline-flex items-center gap-2 rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white" to={`${workspaceBase}/customers/import`}><FileUp className="h-4 w-4" />{ct('importCustomersFile')}</Link>
         </div>
       </div>
       <label className="relative block">
@@ -81,7 +80,7 @@ export function BankCustomersPage() {
                           <td className="px-4 py-3" data-bidi="ltr">{money(item.remainingAmount)}</td>
                           <td className="px-4 py-3">{item.status ? <StatusBadge>{ct(item.status as never) || item.status}</StatusBadge> : '—'}</td>
                           <td className="px-4 py-3">{item.assignedCollectorName ?? '—'}</td>
-                          <td className="px-4 py-3"><Link className="inline-flex items-center gap-1 rounded-lg border border-mis-border px-3 py-1.5 text-xs font-bold text-mis-primary" to={`${base}/${bank.id}/customers/${item.id}`}><Eye className="h-3.5 w-3.5" />{ct('viewDetails')}</Link></td>
+                          <td className="px-4 py-3"><Link className="inline-flex items-center gap-1 rounded-lg border border-mis-border px-3 py-1.5 text-xs font-bold text-mis-primary" to={`${workspaceBase}/customers/${item.id}`}><Eye className="h-3.5 w-3.5" />{ct('viewDetails')}</Link></td>
                         </tr>
                       ))}
                     </tbody>

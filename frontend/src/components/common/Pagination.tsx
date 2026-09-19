@@ -36,6 +36,8 @@ export function Pagination({ ariaLabel, className = '', disabled = false, labels
   const from = totalCount === 0 || safePage === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const to = totalCount === 0 || safePage === 0 ? 0 : Math.min(safePage * pageSize, totalCount);
 
+  if (safeTotalPages <= 1) return null;
+
   return (
     <nav aria-label={ariaLabel ?? t('paginationLabel')} className={`flex flex-col items-center justify-between gap-3 border-t border-mis-border px-5 py-4 text-sm text-slate-500 sm:flex-row ${className}`}>
       {showSummary ? <span>{text.showing(from, to, totalCount)}</span> : <span />}

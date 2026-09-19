@@ -11,8 +11,16 @@ public sealed class EmployeeImportMapping
     public Dictionary<string, string> Columns { get; init; } = [];
 }
 public sealed record EmployeeImportUpload(Guid Id, string FileName, IReadOnlyCollection<AttendanceImportSheetDto> Sheets);
-public sealed record EmployeeImportRow(int Row, SaveEmployeeRequest Employee, string Department, string Position, string Status, IReadOnlyCollection<string> Errors);
+public sealed record EmployeeImportRow(int Row, SaveEmployeeRequest Employee, string Department, string Position, string Status,
+    IReadOnlyCollection<string> Errors, string? SourceDepartment = null, string? SourcePosition = null, string? Organization = null);
 public sealed record EmployeeImportPreview(Guid Id, Guid PreviewId, IReadOnlyCollection<EmployeeImportRow> Rows);
 public sealed record EmployeeImportResult(int Imported, int Skipped, int Failed);
 public sealed record EmployeeImportHistory(Guid Id, string FileName, string UploadedBy, DateTimeOffset UploadedAt, int? TotalRows, EmployeeImportResult? Result);
 public sealed record ConfirmEmployeeImportRequest(Guid PreviewId);
+public sealed record ReviseEmployeeImportRow(int Row, SaveEmployeeRequest Employee);
+public sealed class ReviseEmployeeImportRequest
+{
+    [Required] public Guid PreviewId { get; init; }
+    [Required] public IReadOnlyCollection<ReviseEmployeeImportRow> Rows { get; init; } = Array.Empty<ReviseEmployeeImportRow>();
+}
+public sealed record EmployeeImportTemplate(byte[] Content, string FileName, string ContentType);

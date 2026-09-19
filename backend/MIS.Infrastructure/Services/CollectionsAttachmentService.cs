@@ -34,6 +34,18 @@ public sealed class CollectionsAttachmentService : ICollectionsAttachmentService
         var attachment = await _db.CollectionAttachments.AsNoTracking().SingleOrDefaultAsync(x => x.Id == attachmentId, token) ?? throw new HrNotFoundException("Attachment was not found."); await EnsureCaseAccessAsync(attachment.CaseId, token); var content = await _files.OpenReadAsync(attachment.StorageKey, token); _db.CollectionAuditLogs.Add(new CollectionAuditLog(_user.UserId, "AttachmentDownloaded", nameof(CollectionAttachment), attachment.Id, attachment.CaseId, null, JsonSerializer.Serialize(new { attachment.Category, attachment.OriginalFileName }), "WEB", DateTimeOffset.UtcNow)); await _db.SaveChangesAsync(token); return new CollectionAttachmentDownloadDto(content, attachment.ContentType, attachment.OriginalFileName);
     }
 
+    public async Task DeleteAsync(Guid attachmentId, CancellationToken token)
+    {
+        var attachment = await _db.CollectionAttachments.SingleOrDefaultAsync(x => x.Id == attachmentId, token) ?? throw new HrNotFoundException("Attachment was not found.");
+        await EnsureCaseAccessAsync(attachment.CaseId, token);
+        var isManager = HasRole(SystemRoleNames.Admin) || HasRole(SystemRoleNames.CollectionsOperationsManager) || HasRole(SystemRoleNames.CollectionsSupervisor);
+        if (!isManager && attachment.UploadedById != _user.UserId) throw new HrForbiddenException("You can only remove attachments you uploaded.");
+        _db.CollectionAttachments.Remove(attachment);
+        _db.CollectionAuditLogs.Add(new CollectionAuditLog(_user.UserId, "AttachmentDeleted", nameof(CollectionAttachment), attachment.Id, attachment.CaseId, JsonSerializer.Serialize(new { attachment.Category, attachment.OriginalFileName, attachment.ContentType, attachment.FileSize }), null, "WEB", DateTimeOffset.UtcNow));
+        await _db.SaveChangesAsync(token);
+        try { await _files.DeleteAsync(attachment.StorageKey, token); } catch { /* file already gone; audit + row removal is authoritative */ }
+    }
+
     private async Task EnsureCaseAccessAsync(Guid caseId, CancellationToken token) { if (!await AccessibleCases().AnyAsync(x => x.Id == caseId, token)) throw new HrNotFoundException("Collection case was not found."); }
     private IQueryable<CollectionCase> AccessibleCases()
     {

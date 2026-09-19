@@ -29,6 +29,7 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<DelegationType> DelegationTypes => Set<DelegationType>();
     public DbSet<SocialInsuranceRecord> SocialInsuranceRecords => Set<SocialInsuranceRecord>();
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<EmployeeOrganizationAssignment> EmployeeOrganizationAssignments => Set<EmployeeOrganizationAssignment>();
     public DbSet<EmployeeContract> EmployeeContracts => Set<EmployeeContract>();
     public DbSet<EmployeeCompensation> EmployeeCompensations => Set<EmployeeCompensation>();
     public DbSet<EmployeeEmergencyContact> EmployeeEmergencyContacts => Set<EmployeeEmergencyContact>();
@@ -90,6 +91,10 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<DataEntryBatch> DataEntryBatches => Set<DataEntryBatch>();
     public DbSet<DataEntryRow> DataEntryRows => Set<DataEntryRow>();
     public DbSet<DataEntryNotification> DataEntryNotifications => Set<DataEntryNotification>();
+    public DbSet<DataEntryDocument> DataEntryDocuments => Set<DataEntryDocument>();
+    public DbSet<RuntimeSetting> RuntimeSettings => Set<RuntimeSetting>();
+    public DbSet<LegalCaseFile> LegalCaseFiles => Set<LegalCaseFile>();
+    public DbSet<LegalCaseAction> LegalCaseActions => Set<LegalCaseAction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

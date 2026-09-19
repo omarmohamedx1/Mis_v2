@@ -16,7 +16,11 @@ apiClient.interceptors.request.use((config) => {
 
   config.headers.set('Accept-Language', language);
 
-  if (auth?.accessToken) {
+  const requestUrl = `${config.baseURL ?? ''}${config.url ?? ''}`;
+  const isLoginRequest = requestUrl.includes('/auth/login');
+  if (isLoginRequest) {
+    config.headers.delete('Authorization');
+  } else if (auth?.accessToken) {
     config.headers.Authorization = `Bearer ${auth.accessToken}`;
   }
 
@@ -30,15 +34,19 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiErrorResponse>) => {
-    if (error.response?.status === 401 && getStoredAuth()) {
+    const requestUrl = `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`;
+    const isLoginRequest = requestUrl.includes('/auth/login');
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+
+    if (error.response?.status === 401 && getStoredAuth() && !isLoginRequest) {
       clearStoredAuth();
 
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      if (path && path !== '/login') {
         window.location.assign('/login');
       }
     }
 
-    if (error.response?.status === 403 && typeof window !== 'undefined' && window.location.pathname !== '/unauthorized') {
+    if (error.response?.status === 403 && path && path !== '/unauthorized' && path !== '/login' && path !== '/change-password') {
       window.location.assign('/unauthorized');
     }
 
@@ -138,9 +146,14 @@ export function isForbiddenApiError(error: unknown): boolean {
 export function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     const axiosError = error as AxiosError<ApiErrorResponse>;
-    const serverMessage = axiosError.response?.data?.message;
+    const data = axiosError.response?.data;
     const isArabic = typeof window !== 'undefined' && window.localStorage.getItem('mis.language') === 'ar';
-    if (serverMessage && (!isArabic || /[\u0600-\u06ff]/.test(serverMessage))) return serverMessage;
+    const details = (data?.errors ?? []).map((item) => item?.trim()).filter(Boolean);
+    const serverMessage = data?.message?.trim();
+    const generic = serverMessage === 'Validation failed.' || serverMessage === 'تعذر التحقق من صحة البيانات.';
+    const parts = generic && details.length ? details : [...new Set([serverMessage, ...details].filter(Boolean))];
+    const combined = parts.join(' ');
+    if (combined && (!isArabic || /[\u0600-\u06ff]/.test(combined))) return combined;
   }
 
   return fallbackMessage;

@@ -17,8 +17,17 @@ public sealed class CollectionsController : ControllerBase
     [HttpGet("dashboard")]
     public Task<CollectionDashboardDto> Dashboard([FromQuery] Guid? organizationId, CancellationToken token) => _service.GetDashboardAsync(organizationId, token);
 
+    [HttpGet("dashboard/creditors")]
+    public Task<CollectionCreditorDashboardDto> CreditorDashboard(CancellationToken token) => _service.GetCreditorDashboardAsync(token);
+
+    [HttpGet("dashboard/collectors")]
+    public Task<CollectionCollectorDashboardDto> CollectorDashboard(CancellationToken token) => _service.GetCollectorDashboardAsync(token);
+
     [HttpGet("clients")]
     public Task<PagedResultDto<ClientOrganizationCardDto>> Clients([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] string? type = null, [FromQuery] bool? active = null, CancellationToken token = default) => _service.GetClientsAsync(page, pageSize, search, type, active, token);
+
+    [HttpGet("national-id/{nationalId}")]
+    public Task<NationalIdLookupDto> ByNationalId(string nationalId, CancellationToken token) => _service.LookupByNationalIdAsync(nationalId, token);
 
     [HttpGet("work-queue/my")]
     public Task<WorkQueueDto> MyWork(CancellationToken token) => _service.GetMyWorkAsync(token);
@@ -34,10 +43,14 @@ public sealed class CollectionCasesController : ControllerBase
 
     [HttpGet]
     public Task<PagedResultDto<CollectionCaseListItemDto>> Cases(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] string? search = null,
         [FromQuery] Guid? organizationId = null, [FromQuery] Guid? portfolioId = null, [FromQuery] Guid? collectorId = null,
         [FromQuery] string? bucket = null, [FromQuery] string? status = null, [FromQuery] string? priority = null,
-        CancellationToken token = default) => _service.GetCasesAsync(new CollectionFilters(page, pageSize, search, organizationId, portfolioId, collectorId, bucket, status, priority), token);
+        [FromQuery] bool? unassigned = null, [FromQuery] string? searchField = null,
+        CancellationToken token = default) => _service.GetCasesAsync(new CollectionFilters(page, pageSize, search, organizationId, portfolioId, collectorId, bucket, status, priority, unassigned, searchField), token);
+
+    [HttpGet("collectors")]
+    public Task<IReadOnlyCollection<CollectorLookupDto>> CaseCollectors(CancellationToken token) => _service.GetCaseFilterCollectorsAsync(token);
 
     [HttpGet("{id:guid}")]
     public Task<CollectionCaseDetailsDto> Case(Guid id, CancellationToken token) => _service.GetCaseAsync(id, false, token);
@@ -63,6 +76,18 @@ public sealed class CollectionCasesController : ControllerBase
     {
         var result = await _service.SubmitPaymentAsync(id, request, token); return Created($"/api/collections/payments/{result.Id}", result);
     }
+
+    [HttpPost("{id:guid}/archive")]
+    public async Task<IActionResult> Archive(Guid id, ArchiveCaseRequest request, CancellationToken token)
+    {
+        await _service.ArchiveCaseAsync(id, request, token); return NoContent();
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    public async Task<IActionResult> Restore(Guid id, RestoreCaseRequest request, CancellationToken token)
+    {
+        await _service.RestoreCaseAsync(id, request, token); return NoContent();
+    }
 }
 
 [ApiController]
@@ -75,6 +100,8 @@ public sealed class CollectionPromisesController : ControllerBase
     [HttpGet]
     public Task<PagedResultDto<PromiseToPayDto>> Promises([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] Guid? organizationId = null, [FromQuery] Guid? collectorId = null, [FromQuery] string? status = null, [FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null, CancellationToken token = default)
         => _service.GetPromisesAsync(new PromiseFilters(page, pageSize, search, organizationId, collectorId, status, from, to), token);
+    [HttpPatch("{id:guid}/status")]
+    public Task<PromiseToPayDto> ChangeStatus(Guid id, ChangePromiseStatusRequest request, CancellationToken token) => _service.ChangePromiseStatusAsync(id, request, token);
 }
 
 [ApiController]
@@ -115,6 +142,14 @@ public sealed class CollectionAssignmentsController : ControllerBase
     public Task<AssignmentPreviewDto> Preview(BulkAssignmentRequest request, CancellationToken token) => _service.PreviewAssignmentAsync(request.CaseIds, request.CollectorId, token);
     [HttpPost]
     public Task<AssignmentPreviewDto> Assign(BulkAssignmentRequest request, CancellationToken token) => _service.AssignCasesAsync(request, token);
+    [HttpGet("imported-collectors")]
+    public Task<ImportedCollectorLinkResultDto> ImportedCollectors([FromQuery] Guid? organizationId, CancellationToken token) => _service.PreviewImportedCollectorLinksAsync(organizationId, token);
+    [HttpPost("imported-collectors")]
+    public Task<ImportedCollectorLinkResultDto> ApplyImportedCollectors([FromQuery] Guid? organizationId, CancellationToken token) => _service.ApplyImportedCollectorLinksAsync(organizationId, token);
+    [HttpPost("unassign/preview")]
+    public Task<AssignmentPreviewDto> UnassignPreview(BulkUnassignRequest request, CancellationToken token) => _service.PreviewUnassignmentAsync(request.CaseIds, token);
+    [HttpPost("unassign")]
+    public Task<AssignmentPreviewDto> Unassign(BulkUnassignRequest request, CancellationToken token) => _service.UnassignCasesAsync(request, token);
     [HttpPost("automatic/preview")]
     public Task<AutoAssignmentPreviewDto> AutomaticPreview(AutoAssignmentRequest request, CancellationToken token) => _service.PreviewAutomaticAssignmentAsync(request, token);
     [HttpPost("automatic")]
@@ -195,6 +230,8 @@ public sealed class CollectionImportsController : ControllerBase
     public Task<CollectionImportBatchDto> Confirm(Guid id, ConfirmCollectionImportRequest request, CancellationToken token) => _service.ConfirmAsync(id, request, token);
     [HttpGet("{id:guid}/errors.csv")]
     public async Task<IActionResult> Errors(Guid id, CancellationToken token) => File(await _service.ExportErrorsAsync(id, token), "text/csv; charset=utf-8", $"collection-import-{id:N}-errors.csv");
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken token) { await _service.DeleteAsync(id, token); return NoContent(); }
 }
 
 [ApiController]
@@ -214,10 +251,18 @@ public sealed class CollectionsConfigurationController : ControllerBase
     public async Task<ActionResult<PortfolioConfigurationDto>> CreatePortfolio(SavePortfolioConfigurationRequest request, CancellationToken token) { var value = await _service.SavePortfolioAsync(null, request, token); return Created($"/api/collections/configuration/portfolios/{value.Id}", value); }
     [HttpPut("portfolios/{id:guid}")]
     public Task<PortfolioConfigurationDto> UpdatePortfolio(Guid id, SavePortfolioConfigurationRequest request, CancellationToken token) => _service.SavePortfolioAsync(id, request, token);
+    [HttpPost("desks")]
+    public async Task<ActionResult<PortfolioConfigurationDto>> EnsureDesk(EnsureCollectionDeskRequest request, CancellationToken token) { var value = await _service.EnsureDeskAsync(request, token); return Created($"/api/collections/configuration/portfolios/{value.Id}", value); }
     [HttpPost("buckets")]
     public async Task<ActionResult<BucketConfigurationDto>> CreateBucket(SaveBucketConfigurationRequest request, CancellationToken token) { var value = await _service.SaveBucketAsync(null, request, token); return Created($"/api/collections/configuration/buckets/{value.Id}", value); }
     [HttpPut("buckets/{id:guid}")]
     public Task<BucketConfigurationDto> UpdateBucket(Guid id, SaveBucketConfigurationRequest request, CancellationToken token) => _service.SaveBucketAsync(id, request, token);
+    [HttpDelete("clients/{id:guid}")]
+    public async Task<IActionResult> DeleteClient(Guid id, CancellationToken token) { await _service.DeleteClientAsync(id, token); return NoContent(); }
+    [HttpDelete("portfolios/{id:guid}")]
+    public async Task<IActionResult> DeletePortfolio(Guid id, CancellationToken token) { await _service.DeletePortfolioAsync(id, token); return NoContent(); }
+    [HttpDelete("buckets/{id:guid}")]
+    public async Task<IActionResult> DeleteBucket(Guid id, CancellationToken token) { await _service.DeleteBucketAsync(id, token); return NoContent(); }
 }
 
 [ApiController]
@@ -262,6 +307,8 @@ public sealed class CollectionAttachmentsController : ControllerBase
     { if (file is null || file.Length == 0) return BadRequest(MIS.Application.Common.ApiErrorResponse.Failure("A non-empty attachment is required.")); await using var stream = file.OpenReadStream(); var value = await _service.UploadAsync(caseId, paymentId, category, file.FileName, file.ContentType ?? "application/octet-stream", file.Length, stream, token); return Created($"/api/collections/attachments/{value.Id}", value); }
     [HttpGet("{id:guid}/download")]
     public async Task<IActionResult> Download(Guid id, CancellationToken token) { var value = await _service.DownloadAsync(id, token); return File(value.Content, value.ContentType, value.FileName); }
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken token) { await _service.DeleteAsync(id, token); return NoContent(); }
 }
 
 [ApiController]

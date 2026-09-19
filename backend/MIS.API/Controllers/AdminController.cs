@@ -30,11 +30,19 @@ public sealed class AdminController : ControllerBase
     public Task<AdminUserDto> GetUser(Guid id, CancellationToken token) => _service.GetUserAsync(id, token);
 
     [HttpPost("users")]
-    public async Task<ActionResult<AdminUserDto>> Create(CreateAdminUserRequest request, CancellationToken token)
+    public async Task<ActionResult<AdminCredentialIssueDto>> Create(CreateAdminUserRequest request, CancellationToken token)
     {
         var result = await _service.CreateUserAsync(request, SourceIp, token);
-        return CreatedAtAction(nameof(GetUser), new { id = result.Id }, result);
+        return CreatedAtAction(nameof(GetUser), new { id = result.User.Id }, result);
     }
+
+    [HttpGet("employees")]
+    public Task<IReadOnlyCollection<AdminLinkableEmployeeDto>> Employees([FromQuery] string? search, [FromQuery] Guid? includeEmployeeId, CancellationToken token) =>
+        _service.GetLinkableEmployeesAsync(search, includeEmployeeId, token);
+
+    [HttpPut("users/{id:guid}/employee")]
+    public Task<AdminUserDto> LinkEmployee(Guid id, LinkAdminEmployeeRequest request, CancellationToken token) =>
+        _service.LinkEmployeeAsync(id, request, SourceIp, token);
 
     [HttpPut("users/{id:guid}/access")]
     public Task<AdminUserDto> SaveAccess(Guid id, SaveUserAccessRequest request, CancellationToken token) => _service.SaveAccessAsync(id, request, SourceIp, token);
@@ -42,12 +50,16 @@ public sealed class AdminController : ControllerBase
     [HttpPatch("users/{id:guid}/status")]
     public Task<AdminUserDto> Status(Guid id, SetAdminUserStatusRequest request, CancellationToken token) => _service.SetStatusAsync(id, request, SourceIp, token);
 
-    [HttpPost("users/{id:guid}/reset-password")]
-    public async Task<IActionResult> ResetPassword(Guid id, ResetAdminUserPasswordRequest request, CancellationToken token)
+    [HttpDelete("users/{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken token)
     {
-        await _service.ResetPasswordAsync(id, request, SourceIp, token);
+        await _service.DeleteUserAsync(id, SourceIp, token);
         return NoContent();
     }
+
+    [HttpPost("users/{id:guid}/reset-password")]
+    public Task<AdminCredentialIssueDto> ResetPassword(Guid id, ResetAdminUserPasswordRequest request, CancellationToken token) =>
+        _service.ResetPasswordAsync(id, request, SourceIp, token);
 
     [HttpGet("audit")]
     public Task<AdminAuditPageDto> Audit([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken token = default) =>

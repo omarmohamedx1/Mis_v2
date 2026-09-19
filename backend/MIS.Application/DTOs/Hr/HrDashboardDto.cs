@@ -12,6 +12,12 @@ public sealed record BranchEmployeeCountDto(
     string? BranchCode,
     int EmployeeCount);
 
+public sealed record OrganizationEmployeeCountDto(
+    Guid OrganizationId,
+    string OrganizationName,
+    string OrganizationCode,
+    int EmployeeCount);
+
 public sealed record TodayAttendanceSummaryDto(
     int Present,
     int Absent,
@@ -57,6 +63,7 @@ public sealed record HrDashboardDto(
     bool DocumentAttentionAvailable,
     int TotalDocuments,
     IReadOnlyCollection<DepartmentEmployeeCountDto> EmployeesByDepartment,
+    IReadOnlyCollection<OrganizationEmployeeCountDto> EmployeesByOrganization,
     int InactiveEmployees,
     IReadOnlyCollection<BranchEmployeeCountDto> EmployeesByBranch,
     TodayAttendanceSummaryDto TodayAttendance,

@@ -9,6 +9,15 @@ export interface SocialInsuranceImportResult { imported: number; skipped: number
 export interface SocialInsuranceImportHistory { id: string; fileName: string; uploadedBy: string; uploadedAt: string; totalRows: number | null; result: SocialInsuranceImportResult | null }
 const base = '/hr/social-insurance/imports';
 export const socialInsuranceImportService = {
+  async downloadTemplate() {
+    const response = await apiClient.get<Blob>(`${base}/template`, { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Social_Insurance_Import_Template.xlsx';
+    link.click();
+    URL.revokeObjectURL(url);
+  },
   upload(file: File) { const form = new FormData(); form.append('file', file); return requestFormData<SocialInsuranceImportUpload>(base, form); },
   async preview(id: string, mapping: SocialInsuranceImportMapping) { return (await apiClient.post<SocialInsuranceImportPreview>(`${base}/${id}/preview`, mapping)).data; },
   async confirm(id: string, previewId: string) { return (await apiClient.post<SocialInsuranceImportResult>(`${base}/${id}/confirm`, { previewId })).data; },

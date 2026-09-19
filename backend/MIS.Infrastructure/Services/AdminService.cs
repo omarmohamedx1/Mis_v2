@@ -5,6 +5,7 @@ using MIS.Application.DTOs.Admin;
 using MIS.Application.Interfaces;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
+using MIS.Domain.Hr;
 using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
@@ -26,30 +27,39 @@ public sealed class AdminService : IAdminService
     public async Task<AdminDashboardDto> GetDashboardAsync(CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
-        var users = await _db.Users.AsNoTracking().Select(x => new { x.Id, x.IsActive, x.LastLoginAt, x.DepartmentId }).ToArrayAsync(cancellationToken);
+        var users = await _db.Users.AsNoTracking().Select(x => new { x.Id, x.IsActive, x.LastLoginAt, x.DepartmentId, x.MustChangePassword }).ToArrayAsync(cancellationToken);
         var activeGrants = await _db.UserAccessGrants.AsNoTracking().Where(x => x.Status == "ACTIVE" && (x.ExpiresAt == null || x.ExpiresAt > now)).ToArrayAsync(cancellationToken);
         var adminIds = await _db.UserRoles.AsNoTracking().Where(x => x.Role.Name == SystemRoleNames.Admin).Select(x => x.UserId).ToArrayAsync(cancellationToken);
         var privilegedIds = activeGrants.Where(x => AdminPermissionCatalog.IsPrivileged(x.PermissionCode)).Select(x => x.UserId).Concat(adminIds).Distinct().ToHashSet();
-        var departments = await _db.Departments.AsNoTracking().OrderBy(x => x.Name).ToArrayAsync(cancellationToken);
-        var departmentSummary = departments.Select(d => new AdminDepartmentSummaryDto(d.Id, d.Code, d.NameArabic ?? d.Name, d.Name,
-            users.Count(x => x.DepartmentId == d.Id), users.Count(x => x.DepartmentId == d.Id && x.IsActive),
-            users.Count(x => x.DepartmentId == d.Id && privilegedIds.Contains(x.Id)))).ToArray();
+        var departments = await _db.Departments.AsNoTracking().Where(x => x.IsActive).ToArrayAsync(cancellationToken);
+        var departmentSummary = departments
+            .Where(d => DepartmentCodes.IsOperationalUnit(d.Code))
+            .OrderBy(d => DepartmentCodes.CompanyDirectoryOrder(d.Code))
+            .Select(d => new AdminDepartmentSummaryDto(d.Id, d.Code, d.NameArabic ?? d.Name, d.Name,
+                users.Count(x => x.DepartmentId == d.Id), users.Count(x => x.DepartmentId == d.Id && x.IsActive),
+                users.Count(x => x.DepartmentId == d.Id && privilegedIds.Contains(x.Id))))
+            .ToArray();
         var pending = await _db.UserAccessGrants.CountAsync(x => x.Status == "PENDING", cancellationToken);
         var expiring = activeGrants.Count(x => x.ExpiresAt >= now && x.ExpiresAt <= now.AddDays(14));
         var neverLogged = users.Count(x => x.IsActive && x.LastLoginAt == null);
+        var mustChange = users.Count(x => x.IsActive && x.MustChangePassword);
         var decisions = new List<AdminDecisionItemDto>();
         if (pending > 0) decisions.Add(new("PENDING_ACCESS", "HIGH", pending, "صلاحيات تنتظر قرارك", "Access awaiting review", "راجع النطاق قبل الاعتماد؛ الطلب وحده لا يمنح أي وصول.", "Review scope before approval; a request grants no access by itself."));
         if (expiring > 0) decisions.Add(new("EXPIRING_ACCESS", "MEDIUM", expiring, "صلاحيات تنتهي خلال 14 يومًا", "Access expiring in 14 days", "مدّد فقط إذا ما زالت هناك حاجة عمل موثقة.", "Extend only where a documented business need remains."));
+        if (mustChange > 0) decisions.Add(new("MUST_CHANGE_PASSWORD", "MEDIUM", mustChange, "كلمات مرور مؤقتة لم تُغيَّر", "Temporary passwords not changed", "الموظف لم يستبدل كلمة المرور المؤقتة بعد أول دخول.", "The employee has not replaced the temporary password after first sign-in."));
         if (neverLogged > 0) decisions.Add(new("NEVER_LOGGED_IN", "LOW", neverLogged, "حسابات مفعلة لم تُستخدم", "Active accounts never used", "تحقق من الحاجة للحسابات لتقليل سطح المخاطر.", "Verify account need to reduce exposure."));
         var recent = await QueryAuditAsync(null).Take(8).ToArrayAsync(cancellationToken);
-        return new(users.Length, users.Count(x => x.IsActive), users.Count(x => !x.IsActive), pending, privilegedIds.Count, expiring, neverLogged,
+        return new(users.Length, users.Count(x => x.IsActive), users.Count(x => !x.IsActive), pending, privilegedIds.Count, expiring, neverLogged, mustChange,
             decisions, departmentSummary, await MapAuditAsync(recent, cancellationToken));
     }
 
     public async Task<AdminReferenceDataDto> GetReferenceDataAsync(CancellationToken cancellationToken)
     {
-        var departments = await _db.Departments.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name)
-            .Select(x => new AdminDepartmentLookupDto(x.Id, x.Code, x.NameArabic ?? x.Name, x.Name)).ToArrayAsync(cancellationToken);
+        var departments = (await _db.Departments.AsNoTracking().Where(x => x.IsActive).ToArrayAsync(cancellationToken))
+            .Where(x => DepartmentCodes.IsOperationalUnit(x.Code))
+            .OrderBy(x => DepartmentCodes.CompanyDirectoryOrder(x.Code))
+            .Select(x => new AdminDepartmentLookupDto(x.Id, x.Code, x.NameArabic ?? x.Name, x.Name))
+            .ToArray();
         var roles = await _db.Roles.AsNoTracking().OrderBy(x => x.Name)
             .Select(x => new AdminRoleDto(x.Id, x.Name, x.Description, x.IsSystemRole)).ToArrayAsync(cancellationToken);
         var clients = await _db.CollectionClientOrganizations.AsNoTracking().OrderBy(x => x.NameEnglish)
@@ -77,10 +87,10 @@ public sealed class AdminService : IAdminService
     public async Task<AdminUserDto> GetUserAsync(Guid id, CancellationToken cancellationToken) =>
         MapUser(await UsersQuery().SingleOrDefaultAsync(x => x.Id == id, cancellationToken) ?? throw new HrNotFoundException("User was not found."));
 
-    public async Task<AdminUserDto> CreateUserAsync(CreateAdminUserRequest request, string? sourceIp, CancellationToken cancellationToken)
+    public async Task<AdminCredentialIssueDto> CreateUserAsync(CreateAdminUserRequest request, string? sourceIp, CancellationToken cancellationToken)
     {
         ValidateIdentity(request.FullName, request.Username, request.Email);
-        ValidatePassword(request.TemporaryPassword);
+        var password = ResolveTemporaryPassword(request.TemporaryPassword);
         var normalizedUsername = request.Username.Trim().ToLowerInvariant();
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         if (await _db.Users.AnyAsync(x => x.Username.ToLower() == normalizedUsername || x.Email.ToLower() == normalizedEmail, cancellationToken))
@@ -92,12 +102,66 @@ public sealed class AdminService : IAdminService
         if (roles.Any(x => x.Name == SystemRoleNames.Admin)) throw new HrValidationException("Administrator access must be granted separately through the protected access review.");
         var now = DateTimeOffset.UtcNow;
         var user = new User(request.Username, request.Email, "temporary", request.FullName, department.Id, now);
-        user.SetPasswordHash(_passwords.HashPassword(user, request.TemporaryPassword), now);
+        user.SetPasswordHash(_passwords.HashPassword(user, password), now);
+        user.RequirePasswordChange(now);
         foreach (var role in roles) user.AssignRole(role, now);
         _db.Users.Add(user);
-        AddAudit("USER_CREATED", "User", user.Id, "User account created.", null, new { user.FullName, user.Username, user.Email, Department = department.Code, Roles = roles.Select(x => x.Name) }, sourceIp, now);
+        if (request.EmployeeId.HasValue)
+        {
+            var employee = await _db.Employees.Include(x => x.Department).SingleOrDefaultAsync(x => x.Id == request.EmployeeId, cancellationToken)
+                ?? throw new HrNotFoundException("Employee was not found.");
+            await UserEmployeeLinker.LinkAsync(_db, user, employee, now, cancellationToken);
+            department = await _db.Departments.SingleAsync(x => x.Id == user.DepartmentId, cancellationToken);
+        }
+        AddAudit("USER_CREATED", "User", user.Id, "User account created with a one-time password.", null, new { user.FullName, user.Username, user.Email, Department = department.Code, Roles = roles.Select(x => x.Name), user.EmployeeId, MustChangePassword = true }, sourceIp, now);
         await _db.SaveChangesAsync(cancellationToken);
-        return await GetUserAsync(user.Id, cancellationToken);
+        return new(await GetUserAsync(user.Id, cancellationToken), password);
+    }
+
+    public async Task<IReadOnlyCollection<AdminLinkableEmployeeDto>> GetLinkableEmployeesAsync(string? search, Guid? includeEmployeeId, CancellationToken cancellationToken)
+    {
+        var query = _db.Employees.AsNoTracking().Include(x => x.Department)
+            .Where(x => x.IsActive && !x.IsArchived
+                && x.OperationalRole != EmployeeOperationalRoles.Office
+                && x.Department.Code != DepartmentCodes.Office
+                && (!_db.Users.Any(u => u.EmployeeId == x.Id) || x.Id == includeEmployeeId));
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(x => x.FullName.ToLower().Contains(term)
+                || (x.FullNameArabic != null && x.FullNameArabic.ToLower().Contains(term))
+                || (x.FullNameEnglish != null && x.FullNameEnglish.ToLower().Contains(term))
+                || x.EmployeeNumber.ToLower().Contains(term));
+        }
+        var rows = await query.OrderBy(x => x.EmployeeNumber).Take(200)
+            .Select(x => new { x.Id, x.EmployeeNumber, x.FullName, x.DepartmentId, x.Department.Code, NameAr = x.Department.NameArabic ?? x.Department.Name, NameEn = x.Department.Name, x.OperationalRole, x.Email })
+            .ToArrayAsync(cancellationToken);
+        var ids = rows.Select(x => x.Id).ToArray();
+        var links = await _db.Users.AsNoTracking().Where(x => x.EmployeeId != null && ids.Contains(x.EmployeeId.Value))
+            .ToDictionaryAsync(x => x.EmployeeId!.Value, x => x.Id, cancellationToken);
+        return rows.Select(x => new AdminLinkableEmployeeDto(x.Id, x.EmployeeNumber, x.FullName, x.DepartmentId, x.Code, x.NameAr, x.NameEn, x.OperationalRole, x.Email, links.GetValueOrDefault(x.Id))).ToArray();
+    }
+
+    public async Task<AdminUserDto> LinkEmployeeAsync(Guid id, LinkAdminEmployeeRequest request, string? sourceIp, CancellationToken cancellationToken)
+    {
+        var user = await _db.Users.Include(x => x.Department).SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new HrNotFoundException("User was not found.");
+        var now = DateTimeOffset.UtcNow;
+        var before = new { user.EmployeeId, user.DepartmentId };
+        if (!request.EmployeeId.HasValue)
+        {
+            UserEmployeeLinker.Unlink(user, now);
+            AddAudit("USER_EMPLOYEE_UNLINKED", "User", user.Id, "Employee link removed from the user account.", before, new { user.EmployeeId }, sourceIp, now);
+        }
+        else
+        {
+            var employee = await _db.Employees.Include(x => x.Department).SingleOrDefaultAsync(x => x.Id == request.EmployeeId, cancellationToken)
+                ?? throw new HrNotFoundException("Employee was not found.");
+            await UserEmployeeLinker.LinkAsync(_db, user, employee, now, cancellationToken);
+            AddAudit("USER_EMPLOYEE_LINKED", "User", user.Id, "Employee linked to the user account.", before, new { user.EmployeeId, employee.EmployeeNumber, employee.OperationalRole }, sourceIp, now);
+        }
+        await _db.SaveChangesAsync(cancellationToken);
+        return await GetUserAsync(id, cancellationToken);
     }
 
     public async Task<AdminUserDto> SaveAccessAsync(Guid id, SaveUserAccessRequest request, string? sourceIp, CancellationToken cancellationToken)
@@ -158,14 +222,66 @@ public sealed class AdminService : IAdminService
         return await GetUserAsync(id, cancellationToken);
     }
 
-    public async Task ResetPasswordAsync(Guid id, ResetAdminUserPasswordRequest request, string? sourceIp, CancellationToken cancellationToken)
+    public async Task DeleteUserAsync(Guid id, string? sourceIp, CancellationToken cancellationToken)
     {
-        ValidatePassword(request.TemporaryPassword);
+        if (id == _currentUser.UserId) throw new HrForbiddenException("You cannot delete your own account.");
+        var user = await _db.Users.Include(x => x.UserRoles).ThenInclude(x => x.Role)
+            .Include(x => x.AccessGrants)
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new HrNotFoundException("User was not found.");
+        if (user.UserRoles.Any(x => x.Role.Name == SystemRoleNames.Admin) && await _db.Users.CountAsync(x => x.UserRoles.Any(r => r.Role.Name == SystemRoleNames.Admin), cancellationToken) <= 1)
+            throw new HrConflictException("The last administrator cannot be deleted.");
+
+        var used =
+            await _db.CollectionCases.AnyAsync(x => x.AssignedCollectorId == id || x.FileCollectorUserId == id || x.PreviousCollectorUserId == id, cancellationToken)
+            || await _db.CollectionTeams.AnyAsync(x => x.SupervisorId == id, cancellationToken)
+            || await _db.CollectionAuditLogs.AnyAsync(x => x.UserId == id, cancellationToken)
+            || await _db.HrAuditLogs.AnyAsync(x => x.UserId == id, cancellationToken)
+            || await _db.AdminAuditLogs.AnyAsync(x => x.ActorUserId == id, cancellationToken)
+            || await _db.CollectionPayments.AnyAsync(x => x.SubmittedById == id || x.VerifiedById == id, cancellationToken)
+            || await _db.AccountingCollectorCommissions.AnyAsync(x => x.CollectorUserId == id, cancellationToken)
+            || await _db.AccountingSupervisorCommissions.AnyAsync(x => x.SupervisorUserId == id, cancellationToken)
+            || await _db.LegalCaseFiles.AnyAsync(x => x.ReceivedByUserId == id, cancellationToken)
+            || await _db.LegalCaseActions.AnyAsync(x => x.CreatedByUserId == id, cancellationToken)
+            || await _db.Employees.AnyAsync(x => x.ArchivedByUserId == id, cancellationToken);
+
+        if (used)
+            throw new HrConflictException("This account has operational history and cannot be deleted. Suspend the account instead.");
+
+        var now = DateTimeOffset.UtcNow;
+        AddAudit("USER_DELETED", "User", user.Id, $"Deleted unused account {user.Username}.", new { user.Username, user.FullName, user.IsActive, user.LastLoginAt }, null, sourceIp, now);
+        user.UnlinkEmployee(now);
+        _db.CollectionUserAccess.RemoveRange(await _db.CollectionUserAccess.Where(x => x.UserId == id).ToListAsync(cancellationToken));
+        _db.CollectionTeamMembers.RemoveRange(await _db.CollectionTeamMembers.Where(x => x.UserId == id).ToListAsync(cancellationToken));
+        _db.Users.Remove(user);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            throw new HrConflictException("This account has operational history and cannot be deleted. Suspend the account instead.");
+        }
+    }
+
+    public async Task<AdminCredentialIssueDto> ResetPasswordAsync(Guid id, ResetAdminUserPasswordRequest request, string? sourceIp, CancellationToken cancellationToken)
+    {
+        var password = ResolveTemporaryPassword(request.TemporaryPassword);
         var user = await _db.Users.SingleOrDefaultAsync(x => x.Id == id, cancellationToken) ?? throw new HrNotFoundException("User was not found.");
-        user.SetPasswordHash(_passwords.HashPassword(user, request.TemporaryPassword), DateTimeOffset.UtcNow);
-        user.InvalidateAccess(DateTimeOffset.UtcNow);
-        AddAudit("PASSWORD_RESET_BY_ADMIN", "User", user.Id, "Temporary password set by an administrator.", null, new { PasswordReset = true }, sourceIp, DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var activated = !user.IsActive;
+        user.SetPasswordHash(_passwords.HashPassword(user, password), now);
+        user.RequirePasswordChange(now);
+        if (activated)
+            user.SetActive(true, now);
+        else
+            user.InvalidateAccess(now);
+        AddAudit("PASSWORD_RESET_BY_ADMIN", "User", user.Id, activated
+            ? "Temporary password issued and the account was activated for first sign-in."
+            : "Temporary password issued by an administrator. The user must change it at next sign-in.",
+            null, new { PasswordReset = true, MustChangePassword = true, Activated = activated }, sourceIp, now);
         await _db.SaveChangesAsync(cancellationToken);
+        return new(await GetUserAsync(id, cancellationToken), password);
     }
 
     public async Task<AdminAuditPageDto> GetAuditAsync(string? search, int page, int pageSize, CancellationToken cancellationToken)
@@ -179,16 +295,18 @@ public sealed class AdminService : IAdminService
 
     private IQueryable<User> UsersQuery(bool tracking = false)
     {
-        var q = _db.Users.Include(x => x.Department).Include(x => x.UserRoles).ThenInclude(x => x.Role)
+        var q = _db.Users.Include(x => x.Department).Include(x => x.Employee)
+            .Include(x => x.UserRoles).ThenInclude(x => x.Role)
             .Include(x => x.AccessGrants).ThenInclude(x => x.ClientOrganization).AsSplitQuery();
         return tracking ? q : q.AsNoTracking();
     }
 
     private static AdminUserDto MapUser(User x) => new(x.Id, x.LoginCode, x.Username, x.Email, x.FullName, x.DepartmentId,
-        x.Department.Code, x.Department.NameArabic ?? x.Department.Name, x.Department.Name, x.IsActive, x.CreatedAt, x.LastLoginAt,
+        x.Department.Code, x.Department.NameArabic ?? x.Department.Name, x.Department.Name, x.IsActive, x.CreatedAt, x.LastLoginAt, x.MustChangePassword,
         x.UserRoles.Select(r => new AdminRoleDto(r.Role.Id, r.Role.Name, r.Role.Description, r.Role.IsSystemRole)).OrderBy(r => r.Name).ToArray(),
         x.AccessGrants.Where(g => g.Status is "ACTIVE" or "PENDING").Select(g => new AdminAccessGrantDto(g.Id, g.PermissionCode, g.ScopeType,
-            g.ClientOrganizationId, g.ClientOrganization?.NameArabic, g.ClientOrganization?.NameEnglish, g.Status, g.RequestedAt, g.GrantedAt, g.ExpiresAt)).ToArray());
+            g.ClientOrganizationId, g.ClientOrganization?.NameArabic, g.ClientOrganization?.NameEnglish, g.Status, g.RequestedAt, g.GrantedAt, g.ExpiresAt)).ToArray(),
+        x.EmployeeId, x.Employee?.EmployeeNumber, x.Employee?.FullName, x.Employee?.OperationalRole);
 
     private IReadOnlyCollection<SaveAccessGrantRequest> NormalizeGrants(IReadOnlyCollection<SaveAccessGrantRequest> grants)
     {
@@ -233,6 +351,12 @@ public sealed class AdminService : IAdminService
         if (string.IsNullOrWhiteSpace(fullName) || fullName.Trim().Length < 2 || fullName.Length > 160) throw new HrValidationException("Enter a valid full name.");
         if (string.IsNullOrWhiteSpace(username) || username.Trim().Length < 3 || username.Length > 100 || !username.All(c => char.IsLetterOrDigit(c) || c is '.' or '_' or '-')) throw new HrValidationException("Username must be 3-100 letters, numbers, dots, dashes, or underscores.");
         if (string.IsNullOrWhiteSpace(email) || email.Length > 256 || !email.Contains('@')) throw new HrValidationException("Enter a valid email address.");
+    }
+    private static string ResolveTemporaryPassword(string? value)
+    {
+        var password = string.IsNullOrWhiteSpace(value) ? TemporaryPasswordGenerator.Create() : value.Trim();
+        ValidatePassword(password);
+        return password;
     }
     private static void ValidatePassword(string value)
     {

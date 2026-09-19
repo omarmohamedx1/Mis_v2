@@ -58,6 +58,7 @@ public sealed class SocialInsuranceImportTests
     public async Task Every_import_operation_requires_management_permission_before_accessing_data()
     {
         var service = new SocialInsuranceImportService(null!, null!, null!, new Viewer(), null!);
+        await Assert.ThrowsAsync<HrForbiddenException>(() => service.BuildTemplateAsync(default));
         await Assert.ThrowsAsync<HrForbiddenException>(() => service.UploadAsync(null!, default));
         await Assert.ThrowsAsync<HrForbiddenException>(() => service.PreviewAsync(Guid.NewGuid(), new(), default));
         await Assert.ThrowsAsync<HrForbiddenException>(() => service.ConfirmAsync(Guid.NewGuid(), Guid.NewGuid(), default));

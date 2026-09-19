@@ -1,7 +1,6 @@
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 import {
   Children,
-  cloneElement,
   forwardRef,
   isValidElement,
   useEffect,
@@ -25,6 +24,7 @@ interface SelectOption {
   key: string;
   label: ReactNode;
   searchText: string;
+  text: string;
   value: string;
 }
 
@@ -43,18 +43,23 @@ function nodeText(node: ReactNode): string {
 
 function readOptions(children: ReactNode): SelectOption[] {
   const result: SelectOption[] = [];
+  const seen = new Set<string>();
   const visit = (nodes: ReactNode) => {
     Children.forEach(nodes, (node) => {
       if (!isValidElement(node)) return;
       if (node.type === 'option') {
         const option = node as ReactElement<OptionHTMLAttributes<HTMLOptionElement>>;
         const label = option.props.children;
-        const value = String(option.props.value ?? nodeText(label));
+        const text = nodeText(label);
+        const value = String(option.props.value ?? text);
+        if (seen.has(value)) return;
+        seen.add(value);
         result.push({
           disabled: Boolean(option.props.disabled),
-          key: String(option.key ?? value),
+          key: value,
           label,
-          searchText: nodeText(label).toLocaleLowerCase(),
+          searchText: text.toLocaleLowerCase(),
+          text,
           value,
         });
         return;
@@ -114,7 +119,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
   const [activeIndex, setActiveIndex] = useState(0);
   const [layout, setLayout] = useState({ bottom: undefined as number | undefined, left: 12, maxHeight: 320, mobile: false, top: 0, width: 288 });
   const selectedValue = controlledValue ?? internalValue;
-  const selectedOption = options.find((option) => option.value === selectedValue) ?? options[0];
+  const selectedOption = options.find((option) => option.value === selectedValue) ?? options.find((option) => option.value === '') ?? undefined;
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleOptions = normalizedQuery ? options.filter((option) => option.searchText.includes(normalizedQuery)) : options;
   const showSearch = options.length >= 7;
@@ -253,7 +258,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-black uppercase tracking-wider text-slate-500">{language === 'ar' ? 'اختر من القائمة' : 'Select an option'}</p>
-            <p className="mt-0.5 truncate text-sm font-bold text-mis-navy">{selectedOption?.label ?? (language === 'ar' ? 'لم يتم الاختيار' : 'Nothing selected')}</p>
+            <p className="mt-0.5 break-words text-sm font-bold leading-5 text-mis-navy">{selectedOption?.label ?? (language === 'ar' ? 'لم يتم الاختيار' : 'Nothing selected')}</p>
           </div>
           <button aria-label={language === 'ar' ? 'إغلاق' : 'Close'} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-white hover:text-mis-navy" onClick={() => close()} type="button"><X className="h-4 w-4" /></button>
         </div>
@@ -308,7 +313,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         tabIndex={-1}
         value={selectedValue}
       >
-        {Children.map(children, (child) => isValidElement(child) ? cloneElement(child) : child)}
+        {options.map((option) => <option disabled={option.disabled} key={option.value} value={option.value}>{option.text}</option>)}
       </select>
       <button
         aria-controls={open ? listboxId : undefined}
@@ -327,7 +332,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         onKeyDown={handleTriggerKeyDown}
         ref={triggerRef}
         tabIndex={tabIndex}
-        title={title}
+        title={title ?? nodeText(selectedOption?.label)}
         type="button"
       >
         <span className={`min-w-0 flex-1 truncate ${selectedValue === '' ? 'text-slate-500' : ''}`}>{selectedOption?.label ?? '—'}</span>

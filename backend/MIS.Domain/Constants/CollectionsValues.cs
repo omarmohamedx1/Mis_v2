@@ -8,6 +8,8 @@ public static class CollectionsValues
         public const string ConsumerFinance = "CONSUMER_FINANCE";
         public const string FinancialInstitution = "FINANCIAL_INSTITUTION";
         public const string Other = "OTHER";
+
+        public static readonly string[] All = [Bank, ConsumerFinance, FinancialInstitution, Other];
     }
 
     public static class CaseStatuses
@@ -65,6 +67,7 @@ public static class CollectionsValues
         public const string Visit = "VISIT";
         public const string Complaint = "COMPLAINT";
         public const string StatusChange = "STATUS_CHANGE";
+        public const string Legal = "LEGAL";
     }
 
     public static class VisitStatuses
@@ -175,6 +178,18 @@ public static class PortfolioClassification
             throw new ArgumentException($"Sub classification must be one of {string.Join(", ", SubClassificationsFor(normalizedPrimary))} for {normalizedPrimary}.", nameof(sub));
         return (normalizedPrimary, normalizedSub);
     }
+
+    public static readonly (string Primary, string Sub)[] AllDesks =
+    [
+        (CollectionsValues.PrimaryClassifications.Act, CollectionsValues.SubClassifications.Loan),
+        (CollectionsValues.PrimaryClassifications.Act, CollectionsValues.SubClassifications.Visa),
+        (CollectionsValues.PrimaryClassifications.Act, CollectionsValues.SubClassifications.Auto),
+        (CollectionsValues.PrimaryClassifications.Wo, CollectionsValues.SubClassifications.Loan),
+        (CollectionsValues.PrimaryClassifications.Wo, CollectionsValues.SubClassifications.Visa),
+        (CollectionsValues.PrimaryClassifications.Wo, CollectionsValues.SubClassifications.Auto),
+        (CollectionsValues.PrimaryClassifications.Corp, CollectionsValues.SubClassifications.Act),
+        (CollectionsValues.PrimaryClassifications.Corp, CollectionsValues.SubClassifications.Wo),
+    ];
 
     public static string Code(string primary, string sub) => $"{primary}-{sub}";
 

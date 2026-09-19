@@ -24,8 +24,17 @@ export const hrReportService = {
   },
 
   async getPreview(code: string, filter: HrReportFilter): Promise<HrReportPreview> {
-    const { data } = await apiClient.get<HrReportPreview>(`/hr/reports/${encodeURIComponent(code)}/preview`, { params: params(filter) });
-    return data;
+    const loadPage = async (page: number) => (await apiClient.get<HrReportPreview>(`/hr/reports/${encodeURIComponent(code)}/preview`, {
+      params: params({ ...filter, page, pageSize: 100 }),
+    })).data;
+    const first = await loadPage(1);
+    const rows = [...first.rows];
+    for (let start = 2; start <= first.totalPages; start += 4) {
+      const pageNumbers = Array.from({ length: Math.min(4, first.totalPages - start + 1) }, (_, index) => start + index);
+      const results = await Promise.all(pageNumbers.map(loadPage));
+      results.forEach((result) => rows.push(...result.rows));
+    }
+    return { ...first, rows, page: 1, pageSize: Math.max(rows.length, 1), totalPages: first.totalCount > 0 ? 1 : 0 };
   },
 
   async export(code: string, format: HrReportExportFormat, filter: HrReportFilter): Promise<void> {

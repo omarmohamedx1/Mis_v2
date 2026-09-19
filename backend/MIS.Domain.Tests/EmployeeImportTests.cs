@@ -17,7 +17,7 @@ public sealed class EmployeeImportTests
     private static readonly EmployeeImportMapper.Lookup[] Positions = [new(PositionId, "Accountant", "ACCOUNTANT", "محاسب")];
     private static Dictionary<string, string> Values() => new()
     {
-        ["EmployeeNumber"] = "TEST-IMPORT", ["FullName"] = "Test Employee", ["NationalId"] = "12345678901234",
+        ["EmployeeNumber"] = "TEST-IMPORT", ["FullName"] = "Test Employee", ["NationalId"] = "28712010111213",
         ["Department"] = "accounting", ["Position"] = "ACCOUNTANT", ["OperationalRole"] = "ADMIN", ["WorkStartDate"] = "17-Aug-26"
     };
 
@@ -38,6 +38,42 @@ public sealed class EmployeeImportTests
         Assert.Equal(new DateOnly(2026, 8, 17), request.WorkStartDate);
     }
 
+    [Fact]
+    public void Mapper_maps_basic_salary_and_allowances()
+    {
+        var values = Values();
+        values["BasicSalary"] = "12,500.50";
+        values["Allowances"] = "١٢٠٠";
+        var errors = new List<string>();
+        var request = EmployeeImportMapper.Map(values, null, Departments, Positions, errors);
+        Assert.Empty(errors);
+        Assert.Equal(12500.50m, request.BasicSalary);
+        Assert.Equal(1200m, request.Allowances);
+    }
+
+    [Fact]
+    public void Mapper_maps_optional_work_number_and_package_type()
+    {
+        var values = Values();
+        values["WorkNumber"] = "  W-441 ";
+        values["PackageType"] = "باقة قانونية";
+        var errors = new List<string>();
+        var request = EmployeeImportMapper.Map(values, null, Departments, Positions, errors);
+        Assert.Empty(errors);
+        Assert.Equal("W-441", request.WorkNumber);
+        Assert.Equal("باقة قانونية", request.PackageType);
+    }
+
+    [Fact]
+    public void Mapper_leaves_work_number_and_package_type_empty_when_absent()
+    {
+        var errors = new List<string>();
+        var request = EmployeeImportMapper.Map(Values(), null, Departments, Positions, errors);
+        Assert.Empty(errors);
+        Assert.Null(request.WorkNumber);
+        Assert.Null(request.PackageType);
+    }
+
     [Theory]
     [InlineData("2026-08-17")]
     [InlineData("17/08/2026")]
@@ -54,6 +90,9 @@ public sealed class EmployeeImportTests
     [InlineData("Supervisor", "SUPERVISOR")]
     [InlineData("Data Entry", "ADMIN")]
     [InlineData("Accounting", "ADMIN")]
+    [InlineData("Office", "OFFICE")]
+    [InlineData("Office Boy", "OFFICE")]
+    [InlineData("أوفيس", "OFFICE")]
     [InlineData("محصل", "COLLECTOR")]
     [InlineData("مشرف", "SUPERVISOR")]
     public void Mapper_maps_employee_role_aliases_to_operational_roles(string source, string expected)
@@ -65,6 +104,216 @@ public sealed class EmployeeImportTests
         Assert.Equal(expected, request.OperationalRole);
     }
 
+    [Theory]
+    [InlineData("Collector", "Collector", "COLLECTOR")]
+    [InlineData("Supervisor", "Supervisor", "SUPERVISOR")]
+    [InlineData("Collection Manegar", "Collection Manager", "SUPERVISOR")]
+    [InlineData("Office Boy", "Office Boy", "OFFICE")]
+    [InlineData("Office Girl", "Office Girl", "OFFICE")]
+    public void Mapper_infers_operational_role_from_legacy_title_when_role_column_is_absent(
+        string sourceTitle, string masterTitle, string expectedRole)
+    {
+        var values = Values();
+        values["Position"] = sourceTitle;
+        values.Remove("OperationalRole");
+        var errors = new List<string>();
+        var positions = new[] { new EmployeeImportMapper.Lookup(PositionId, masterTitle, masterTitle.ToUpperInvariant().Replace(' ', '_'), null) };
+
+        var request = EmployeeImportMapper.Map(values, null, Departments, positions, errors);
+
+        Assert.Empty(errors);
+        Assert.Equal(expectedRole, request.OperationalRole);
+    }
+
+    [Fact]
+    public void Mapper_normalizes_hyphens_underscores_spacing_and_non_breaking_spaces_in_master_data()
+    {
+        var values = Values();
+        values["Department"] = "  DATA-ENTRY\u00a0";
+        var dataEntryId = Guid.NewGuid();
+        var departments = new[] { new EmployeeImportMapper.Lookup(dataEntryId, "Data Entry", "DATA_ENTRY", "إدخال البيانات") };
+        var errors = new List<string>();
+
+        var request = EmployeeImportMapper.Map(values, null, departments, Positions, errors);
+
+        Assert.Empty(errors);
+        Assert.Equal(dataEntryId, request.DepartmentId);
+    }
+
+    [Fact]
+    public void Mapper_treats_bank_department_as_collections_assignment()
+    {
+        var values = Values();
+        values["Department"] = "AlexBank";
+        values["Position"] = "collector";
+        values.Remove("OperationalRole");
+        var collectionsId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        var positionId = Guid.NewGuid();
+        var errors = new List<string>();
+        var warnings = new List<string>();
+
+        var request = EmployeeImportMapper.Map(values, null,
+            [new EmployeeImportMapper.Lookup(collectionsId, "Collections", "COLLECTIONS", "التحصيل")],
+            [new EmployeeImportMapper.Lookup(positionId, "Collector", "COLLECTOR", null)],
+            errors, warnings,
+            [new EmployeeImportMapper.Lookup(organizationId, "AlexBank", "ALEXBANK", "بنك الإسكندرية")],
+            new EmployeeImportMapper.Lookup(collectionsId, "Collections", "COLLECTIONS", "التحصيل"));
+
+        Assert.Empty(errors);
+        Assert.Equal(collectionsId, request.DepartmentId);
+        Assert.Equal(positionId, request.PositionId);
+        Assert.Equal("COLLECTOR", request.OperationalRole);
+        Assert.Equal([organizationId], request.OrganizationIds);
+        Assert.Contains(warnings, warning => warning.Contains("Collections", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("Halan")]
+    [InlineData("MNT-Halan")]
+    [InlineData("Attijariwafa Egypt")]
+    [InlineData("Premium Card")]
+    public void Mapper_matches_client_aliases_when_the_spreadsheet_department_is_a_bank_or_company(string department)
+    {
+        var values = Values();
+        values["Department"] = department;
+        values["Position"] = "collector";
+        values.Remove("OperationalRole");
+        var collectionsId = Guid.NewGuid();
+        var alexId = Guid.NewGuid();
+        var attijariId = Guid.NewGuid();
+        var rayaId = Guid.NewGuid();
+        var halanId = Guid.NewGuid();
+        var premiumId = Guid.NewGuid();
+        var positionId = Guid.NewGuid();
+        var errors = new List<string>();
+        var warnings = new List<string>();
+        var organizations = new EmployeeImportMapper.Lookup[]
+        {
+            new(alexId, "AlexBank", "ALEXBANK", "بنك الإسكندرية"),
+            new(attijariId, "Attijariwafa Bank Egypt", "ATTIJARIWAFA", "التجاري وفا بنك إيجيبت"),
+            new(rayaId, "Raya", "RAYA", "راية"),
+            new(halanId, "MNT-Halan", "MNT_HALAN", "إم إن تي حالا"),
+            new(premiumId, "Premium Card", "PREMIUM_CARD", "بريميوم كارد")
+        };
+
+        var request = EmployeeImportMapper.Map(values, null,
+            [new EmployeeImportMapper.Lookup(collectionsId, "Collections", "COLLECTIONS", "التحصيل")],
+            [new EmployeeImportMapper.Lookup(positionId, "Collector", "COLLECTOR", "محصل")],
+            errors, warnings, organizations,
+            new EmployeeImportMapper.Lookup(collectionsId, "Collections", "COLLECTIONS", "التحصيل"));
+
+        Assert.Empty(errors);
+        Assert.Equal(collectionsId, request.DepartmentId);
+        Assert.Single(request.OrganizationIds);
+        Assert.Contains(warnings, warning => warning.Contains("Collections", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Mapper_treats_office_title_department_as_office()
+    {
+        var values = Values();
+        values["Department"] = "Office girl";
+        values["Position"] = "OFFICE GIRL";
+        values.Remove("OperationalRole");
+        var adminId = Guid.NewGuid();
+        var officeId = Guid.NewGuid();
+        var collectionsId = Guid.NewGuid();
+        var positionId = Guid.NewGuid();
+        var errors = new List<string>();
+        var warnings = new List<string>();
+
+        var request = EmployeeImportMapper.Map(values, null,
+            [
+                new EmployeeImportMapper.Lookup(adminId, "Administration", "ADMIN", "الإدارة"),
+                new EmployeeImportMapper.Lookup(officeId, "Office", "OFFICE", "الأوفيس"),
+                new EmployeeImportMapper.Lookup(collectionsId, "Collections", "COLLECTIONS", "التحصيل")
+            ],
+            [new EmployeeImportMapper.Lookup(positionId, "Office Girl", "OFFICE_GIRL", "عاملة خدمات", officeId)],
+            errors, warnings, [],
+            new EmployeeImportMapper.Lookup(collectionsId, "Collections", "COLLECTIONS", "التحصيل"));
+
+        Assert.Empty(errors);
+        Assert.Equal(officeId, request.DepartmentId);
+        Assert.Equal(positionId, request.PositionId);
+        Assert.Equal("OFFICE", request.OperationalRole);
+        Assert.Empty(request.OrganizationIds);
+        Assert.Contains(warnings, warning => warning.Contains("position", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Mapper_splits_arabic_and_english_names_into_localized_fields()
+    {
+        var values = Values();
+        values["FullName"] = "محمد أحمد";
+        values["FullNameEnglish"] = "Mohamed Ahmed";
+        var errors = new List<string>();
+
+        var request = EmployeeImportMapper.Map(values, null, Departments, Positions, errors);
+
+        Assert.Empty(errors);
+        Assert.Equal("محمد أحمد", request.FullNameArabic);
+        Assert.Equal("Mohamed Ahmed", request.FullNameEnglish);
+        Assert.Equal("محمد أحمد", request.FullName);
+    }
+
+    [Fact]
+    public void Mapper_normalizes_Arabic_digits_and_restores_an_unambiguous_mobile_leading_zero()
+    {
+        var values = Values();
+        values["MobileNumber"] = "١٠١٢٣٤٥٦٧٨";
+        values["NationalId"] = "٢٨٧١٢٠١٠١١١٢١٣";
+        values["DateOfBirth"] = "01/12/1987";
+        var errors = new List<string>();
+        var warnings = new List<string>();
+
+        var request = EmployeeImportMapper.Map(values, null, Departments, Positions, errors, warnings);
+
+        Assert.Empty(errors);
+        Assert.Equal("01012345678", request.MobileNumber);
+        Assert.Equal("28712010111213", request.NationalId);
+        Assert.Contains("The missing leading zero was restored in the mobile number.", warnings);
+    }
+
+    [Theory]
+    [InlineData("0101234567")]
+    [InlineData("010123456789")]
+    [InlineData("01312345678")]
+    public void Mapper_rejects_mobile_numbers_with_missing_or_invalid_digits(string mobile)
+    {
+        var values = Values(); values["MobileNumber"] = mobile;
+        var errors = new List<string>();
+
+        _ = EmployeeImportMapper.Map(values, null, Departments, Positions, errors);
+
+        Assert.Contains("Mobile number must contain exactly 11 digits and use a valid Egyptian mobile prefix.", errors);
+    }
+
+    [Theory]
+    [InlineData("2871201011121")]
+    [InlineData("18712010111213")]
+    [InlineData("28702310111213")]
+    public void Mapper_rejects_invalid_Egyptian_national_IDs(string nationalId)
+    {
+        var values = Values(); values["NationalId"] = nationalId;
+        var errors = new List<string>();
+
+        _ = EmployeeImportMapper.Map(values, null, Departments, Positions, errors);
+
+        Assert.NotEmpty(errors);
+    }
+
+    [Fact]
+    public void Mapper_rejects_date_of_birth_that_does_not_match_national_ID()
+    {
+        var values = Values(); values["DateOfBirth"] = "02/12/1987";
+        var errors = new List<string>();
+
+        _ = EmployeeImportMapper.Map(values, null, Departments, Positions, errors);
+
+        Assert.Contains("Date of birth does not match the birth date encoded in the National ID.", errors);
+    }
+
     [Fact]
     public void Mapper_reports_department_not_found_with_source_value()
     {
@@ -72,6 +321,41 @@ public sealed class EmployeeImportTests
         var errors = new List<string>();
         EmployeeImportMapper.Map(values, null, Departments, Positions, errors);
         Assert.Contains(errors, error => error == "Department not found: Unknown Dept");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Accountant")]
+    public void Mapper_safely_infers_department_from_linked_position_when_department_is_missing_or_duplicated(string department)
+    {
+        var values = Values(); values["Department"] = department;
+        var errors = new List<string>();
+        var warnings = new List<string>();
+        var linkedPositions = new[] { new EmployeeImportMapper.Lookup(PositionId, "Accountant", "ACCOUNTANT", "محاسب", DepartmentId) };
+
+        var request = EmployeeImportMapper.Map(values, null, Departments, linkedPositions, errors, warnings);
+
+        Assert.Empty(errors);
+        Assert.Equal(DepartmentId, request.DepartmentId);
+        Assert.Contains("Department was inferred from the selected position.", warnings);
+    }
+
+    [Fact]
+    public void Mapper_rejects_department_that_conflicts_with_linked_position()
+    {
+        var otherDepartmentId = Guid.NewGuid();
+        var values = Values(); values["Department"] = "Human Resources";
+        var errors = new List<string>();
+        var departments = new[]
+        {
+            Departments[0],
+            new EmployeeImportMapper.Lookup(otherDepartmentId, "Human Resources", "HR", "الموارد البشرية")
+        };
+        var linkedPositions = new[] { new EmployeeImportMapper.Lookup(PositionId, "Accountant", "ACCOUNTANT", "محاسب", DepartmentId) };
+
+        _ = EmployeeImportMapper.Map(values, null, departments, linkedPositions, errors);
+
+        Assert.Contains("Department does not match the selected position.", errors);
     }
 
     [Fact]
@@ -113,7 +397,7 @@ public sealed class EmployeeImportTests
     {
         var repository = new MemoryEmployees(); var audit = new MemoryAudit();
         var service = new EmployeeCreationService(repository, new MemoryTransactions(), audit);
-        var values = Values(); values["Gender"] = "F"; values["WorkEndDate"] = "31-Aug-26";
+        var values = Values(); values["Gender"] = "F"; values["NationalId"] = "28712010111223"; values["WorkEndDate"] = "31-Aug-26";
         var request = EmployeeImportMapper.Map(values, null, Departments, Positions, []);
         await service.ValidateAsync(request, default);
         Assert.Empty(repository.Employees); Assert.Empty(audit.Actions);
@@ -173,8 +457,8 @@ public sealed class EmployeeImportTests
     [InlineData("   ", null)]
     [InlineData(" 01012345678 ", "01012345678")]
     [InlineData("01123456789", "01123456789")]
-    [InlineData("+201012345678", "+201012345678")]
-    [InlineData("+20 10 1234 5678", "+20 10 1234 5678")]
+    [InlineData("+201012345678", "01012345678")]
+    [InlineData("+20 10 1234 5678", "01012345678")]
     public async Task Optional_mobile_flows_from_import_through_creation_and_details(string? source, string? expected)
     {
         var values = Values(); if (source != null) values["MobileNumber"] = source;
@@ -183,6 +467,22 @@ public sealed class EmployeeImportTests
         var result = await service.CreateAsync(EmployeeImportMapper.Map(values, null, Departments, Positions, []), default);
         Assert.Equal(expected, Assert.Single(repository.Employees).MobileNumber);
         Assert.Equal(expected, result.MobileNumber);
+    }
+
+    [Fact]
+    public async Task Optional_work_assignment_flows_from_import_through_creation()
+    {
+        var values = Values();
+        values["WorkNumber"] = "JOB-88";
+        values["PackageType"] = "Legal";
+        var repository = new MemoryEmployees();
+        var service = new EmployeeCreationService(repository, new MemoryTransactions(), new MemoryAudit());
+        var result = await service.CreateAsync(EmployeeImportMapper.Map(values, null, Departments, Positions, []), default);
+        var employee = Assert.Single(repository.Employees);
+        Assert.Equal("JOB-88", employee.WorkNumber);
+        Assert.Equal("Legal", employee.PackageType);
+        Assert.Equal("JOB-88", result.WorkNumber);
+        Assert.Equal("Legal", result.PackageType);
     }
 
     [Theory]
@@ -215,8 +515,38 @@ public sealed class EmployeeImportTests
             workbook.SaveAs(stream);
         }
         else { var bytes = Encoding.UTF8.GetBytes("Telephone\n01012345678\n+201012345678\n01012345678\n"); stream.Write(bytes); }
-        var table = await AttendanceImportParser.ReadTableAsync(stream, excel ? ".xlsx" : ".csv", null, 1, 2, default, "Telephone");
+        var table = await AttendanceImportParser.ReadTableAsync(stream, excel ? ".xlsx" : ".csv", null, 1, 2, default, ["Telephone"]);
         Assert.Equal(new[] { "01012345678", "+201012345678", "01012345678" }, table.Rows.Select(row => row[0]));
+    }
+
+    [Fact]
+    public async Task Excel_numeric_identity_cells_are_read_without_rounding_and_mobile_zero_is_recovered_during_mapping()
+    {
+        using var stream = new MemoryStream();
+        using (var workbook = new XLWorkbook())
+        {
+            var sheet = workbook.AddWorksheet("Employees");
+            sheet.Cell(1, 1).Value = "Mobile";
+            sheet.Cell(1, 2).Value = "National ID";
+            sheet.Cell(2, 1).Value = 1012345678d;
+            sheet.Cell(2, 2).Value = 28712010111213d;
+            workbook.SaveAs(stream);
+        }
+
+        var table = await AttendanceImportParser.ReadTableAsync(stream, ".xlsx", null, 1, 2, default, ["Mobile", "National ID"]);
+        var cells = Assert.Single(table.Rows);
+        Assert.Equal("1012345678", cells[0]);
+        Assert.Equal("28712010111213", cells[1]);
+
+        var values = Values();
+        values["MobileNumber"] = cells[0];
+        values["NationalId"] = cells[1];
+        var errors = new List<string>();
+        var warnings = new List<string>();
+        var request = EmployeeImportMapper.Map(values, null, Departments, Positions, errors, warnings);
+        Assert.Empty(errors);
+        Assert.Equal("01012345678", request.MobileNumber);
+        Assert.Contains("The missing leading zero was restored in the mobile number.", warnings);
     }
 
     [Fact]
@@ -246,6 +576,9 @@ public sealed class EmployeeImportTests
     {
         public List<Employee> Employees { get; } = [];
         public void Add(Employee employee) => Employees.Add(employee);
+        public Task UpsertCurrentSalaryAsync(Guid employeeId, decimal basicSalary, decimal allowances, DateOnly effectiveFrom, CancellationToken token) => Task.CompletedTask;
+        public Task DeleteUnusedAsync(Guid id, CancellationToken token) { Employees.RemoveAll(item => item.Id == id); return Task.CompletedTask; }
+        public Task DeletePermanentlyAsync(Guid id, CancellationToken token) => DeleteUnusedAsync(id, token);
         public Task SaveChangesAsync(CancellationToken token) => Task.CompletedTask;
         public Task<bool> DepartmentExistsAsync(Guid id, CancellationToken token) => Task.FromResult(id == DepartmentId);
         public Task<bool> PositionExistsAsync(Guid id, CancellationToken token) => Task.FromResult(id == PositionId);
@@ -257,11 +590,17 @@ public sealed class EmployeeImportTests
             return Task.FromResult<EmployeeDetailsDto?>(new(employee.Id, employee.EmployeeNumber, employee.FullName, employee.NationalId,
                 DepartmentId, "Accounting", "ACC", PositionId, "Accountant", employee.OperationalRole, employee.HireDate,
                 employee.FingerprintEnrollmentDate, employee.DateOfBirth, employee.Address, employee.TerminationDate,
-                employee.IsActive, employee.CreatedAt, employee.UpdatedAt, employee.Status, employee.IsArchived, null, null, employee.MobileNumber));
+                employee.IsActive, employee.CreatedAt, employee.UpdatedAt, employee.Status, employee.IsArchived, null, null, employee.MobileNumber,
+                employee.FullNameArabic, employee.FullNameEnglish, Array.Empty<EmployeeOrganizationAssignmentDto>(), null, null, employee.WorkNumber, employee.PackageType));
         }
         public Task<Employee?> GetTrackedByIdAsync(Guid id, CancellationToken token) => Task.FromResult(Employees.SingleOrDefault(item => item.Id == id));
         public Task<IReadOnlyCollection<DepartmentOptionDto>> GetDepartmentsAsync(CancellationToken token) => throw new NotSupportedException();
+        public Task<IReadOnlyCollection<EmployeeOrganizationAssignmentDto>> GetOrganizationsAsync(CancellationToken token) => Task.FromResult<IReadOnlyCollection<EmployeeOrganizationAssignmentDto>>([]);
+        public Task<bool> OrganizationsExistAsync(IReadOnlyCollection<Guid> organizationIds, CancellationToken token) => Task.FromResult(true);
+        public Task ReplaceOrganizationAssignmentsAsync(Guid employeeId, IReadOnlyCollection<Guid> organizationIds, CancellationToken token) => Task.CompletedTask;
         public Task<PagedEmployeesDto> GetPagedAsync(int page, int pageSize, string? search, Guid? departmentId, bool? isActive, CancellationToken token) => throw new NotSupportedException();
-        public Task<PagedEmployeesDto> GetPagedByStatusAsync(int page, int pageSize, string? search, Guid? departmentId, string? status, string? role, bool? archived, CancellationToken token) => throw new NotSupportedException();
+        public Task<PagedEmployeesDto> GetPagedByStatusAsync(int page, int pageSize, string? search, string? searchField, Guid? departmentId, string? status, string? role, bool? archived, Guid? organizationId, string? gender, Guid? positionId, CancellationToken token) => throw new NotSupportedException();
+        public Task<PositionLookupDto?> GetPositionAsync(Guid id, CancellationToken token) =>
+            Task.FromResult<PositionLookupDto?>(id == PositionId ? new(PositionId, "ACCOUNTANT", "Accountant", "محاسب", DepartmentId) : null);
     }
 }

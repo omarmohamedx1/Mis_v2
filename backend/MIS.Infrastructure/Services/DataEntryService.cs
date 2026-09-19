@@ -19,8 +19,7 @@ public sealed class DataEntryService(
     ICurrentUserContext user,
     IHrFileStorage storage,
     IHrAuditService audit,
-    IWorkingCalendarCalculator calendar,
-    ICollectionsClassificationContext classification) : IDataEntryService
+    IWorkingCalendarCalculator calendar) : IDataEntryService
 {
     private const string Entity = "DataEntryImport";
     private const string BatchEntity = "DataEntryBatch";
@@ -105,8 +104,7 @@ public sealed class DataEntryService(
         await RequireOrganizationAsync(organizationId, token);
         return await db.CollectionPortfolios.AsNoTracking()
             .Where(x => x.OrganizationId == organizationId && x.IsActive)
-            .Apply(classification)
-            .OrderBy(x => x.NameEnglish)
+            .OrderBy(x => x.PrimaryClassification).ThenBy(x => x.SubClassification).ThenBy(x => x.NameEnglish)
             .Select(x => new DataEntryPortfolioDto(x.Id, x.Code, x.NameArabic, x.NameEnglish, x.PrimaryClassification, x.SubClassification))
             .ToArrayAsync(token);
     }
@@ -122,12 +120,14 @@ public sealed class DataEntryService(
         {
             var term = search.Trim();
             query = query.Where(c =>
+                c.CustomerCode.Contains(term) ||
                 (c.NationalId != null && c.NationalId.Contains(term)) ||
                 (c.FullNameArabic != null && c.FullNameArabic.Contains(term)) ||
                 (c.FullNameEnglish != null && c.FullNameEnglish.Contains(term)) ||
                 (c.PrimaryPhone != null && c.PrimaryPhone.Contains(term)));
         }
 
+        var arabic = ApiTextLocalizer.IsArabic;
         var total = await query.CountAsync(token);
         var items = await query
             .OrderByDescending(c => c.CreatedAt)
@@ -137,7 +137,13 @@ public sealed class DataEntryService(
                 c.Id,
                 c.CustomerCode,
                 c.FullNameArabic ?? c.FullNameEnglish ?? c.CustomerCode,
-                c.PrimaryPhone))
+                c.PrimaryPhone,
+                arabic ? c.Organization.NameArabic : c.Organization.NameEnglish,
+                c.DataEntrySource,
+                db.CollectionCases.Where(x => x.CustomerId == c.Id).OrderByDescending(x => x.CreatedAt).Select(x => x.CaseNumber).FirstOrDefault(),
+                db.CollectionCases.Where(x => x.CustomerId == c.Id).OrderByDescending(x => x.CreatedAt).Select(x => (Guid?)x.Id).FirstOrDefault(),
+                db.CollectionCases.Where(x => x.CustomerId == c.Id).OrderByDescending(x => x.CreatedAt).Select(x => x.Status).FirstOrDefault(),
+                db.DataEntryRows.Where(r => r.CollectionCustomerId == c.Id).OrderByDescending(r => r.CreatedAt).Select(r => r.Batch.Status).FirstOrDefault()))
             .ToArrayAsync(token);
         return new DataEntryClientPageDto(items, page, pageSize, total);
     }
@@ -185,13 +191,14 @@ public sealed class DataEntryService(
             customer.CreatedByUser?.FullName ?? customer.CreatedByUser?.Username,
             customer.CreatedAt,
             customer.OrganizationId,
-            customer.Organization.NameEnglish,
+            ApiTextLocalizer.IsArabic ? customer.Organization.NameArabic : customer.Organization.NameEnglish,
             customer.Organization.OrganizationType,
             portfolio?.Code,
             portfolio is null ? null : (ApiTextLocalizer.IsArabic ? portfolio.NameArabic : portfolio.NameEnglish),
             portfolio?.PrimaryClassification ?? row?.Batch.PrimaryClassification,
             portfolio?.SubClassification ?? row?.Batch.SubClassification,
             collectionCase?.CaseNumber,
+            collectionCase?.Id,
             collectionCase?.AccountReference ?? row?.AccountNumber,
             collectionCase?.ContractReference ?? row?.ContractNumber,
             collectionCase?.OutstandingBalance ?? row?.OutstandingBalance,
@@ -296,6 +303,43 @@ public sealed class DataEntryService(
         await db.SaveChangesAsync(token);
         await transaction.CommitAsync(token);
         return await GetClientAsync(customer.Id, token);
+    }
+
+    public async Task DeleteClientAsync(Guid customerId, CancellationToken token)
+    {
+        EnsureManage();
+        var customer = await db.CollectionCustomers.SingleOrDefaultAsync(x => x.Id == customerId, token)
+            ?? throw new HrNotFoundException("Data-entry client was not found.");
+        if (await db.CollectionCases.AnyAsync(x => x.CustomerId == customerId, token))
+            throw new HrConflictException("This client already has a collections case and cannot be deleted.");
+
+        var rows = await db.DataEntryRows.Include(x => x.Batch)
+            .Where(x => x.CollectionCustomerId == customerId)
+            .ToListAsync(token);
+        if (rows.Any(row => row.CollectionCaseId is not null))
+            throw new HrConflictException("This client already has a collections case and cannot be deleted.");
+        if (rows.Any(row => row.Batch.Status is DataEntryValues.BatchStatuses.Accepted or DataEntryValues.BatchStatuses.Distributed))
+            throw new HrConflictException("This client is already in the collections pipeline and cannot be deleted.");
+
+        var batchIds = rows.Select(row => row.BatchId).Distinct().ToArray();
+        db.DataEntryRows.RemoveRange(rows);
+        await db.SaveChangesAsync(token);
+
+        var emptyBatches = await db.DataEntryBatches
+            .Include(batch => batch.Rows)
+            .Where(batch => batchIds.Contains(batch.Id) && !batch.Rows.Any())
+            .ToListAsync(token);
+        db.DataEntryBatches.RemoveRange(emptyBatches);
+        db.CollectionCustomers.Remove(customer);
+        await audit.WriteAsync(new AuditWriteRequest(
+            "ManualClientDeleted",
+            nameof(CollectionCustomer),
+            customerId.ToString(),
+            null,
+            new { customer.CustomerCode, customer.FullNameEnglish },
+            null,
+            $"Deleted unused data-entry client {customer.CustomerCode}."), token);
+        await db.SaveChangesAsync(token);
     }
 
     public async Task<DataEntryImportUploadDto> UploadImportAsync(HrUploadFile file, CancellationToken token)
@@ -645,6 +689,10 @@ public sealed class DataEntryService(
             throw new HrForbiddenException("You do not have permission to view this batch.");
 
         var summary = ToBatchListItem(batch);
+        var customerIds = batch.Rows.Where(r => r.CollectionCustomerId.HasValue).Select(r => r.CollectionCustomerId!.Value).ToArray();
+        var documents = await ProjectDocuments(db.DataEntryDocuments.AsNoTracking()
+            .Where(x => x.BatchId == batchId || customerIds.Contains(x.CustomerId))
+            .OrderByDescending(x => x.UploadedAt), token);
         return new DataEntryBatchDetailsDto(
             summary,
             batch.RejectionReason,
@@ -653,7 +701,8 @@ public sealed class DataEntryService(
             batch.ReviewedAt,
             batch.DistributedAt,
             batch.Rows.OrderBy(r => r.RowNumber).Select(r => new DataEntryImportPreviewRowDto(
-                r.RowNumber, r.CustomerCode, r.CustomerName, r.NationalId, r.MobileNumber, r.Status, r.ErrorMessage)).ToArray());
+                r.RowNumber, r.CustomerCode, r.CustomerName, r.NationalId, r.MobileNumber, r.Status, r.ErrorMessage, r.CollectionCustomerId, r.CollectionCaseId)).ToArray(),
+            documents);
     }
 
     public async Task<DataEntryBatchListItemDto> AcceptBatchAsync(Guid batchId, CancellationToken token)
@@ -720,6 +769,15 @@ public sealed class DataEntryService(
             row.LinkCase(collectionCase.Id);
             existingAccounts.Add(account);
             createdCases++;
+        }
+
+        var linkedCustomerIds = batch.Rows.Where(r => r.CollectionCustomerId.HasValue).Select(r => r.CollectionCustomerId!.Value).Distinct().ToArray();
+        var documents = await db.DataEntryDocuments.Where(x => linkedCustomerIds.Contains(x.CustomerId)).ToArrayAsync(token);
+        foreach (var document in documents)
+        {
+            document.AttachBatch(batch.Id);
+            var caseId = batch.Rows.FirstOrDefault(r => r.CollectionCustomerId == document.CustomerId)?.CollectionCaseId;
+            if (caseId.HasValue) document.AttachCase(caseId.Value);
         }
 
         if (createdCases > 0) batch.AddCreatedCounts(0, createdCases, now);
@@ -789,6 +847,148 @@ public sealed class DataEntryService(
         await db.SaveChangesAsync(token);
     }
 
+    public Task<IReadOnlyList<DataEntryDocumentDto>> ListClientDocumentsAsync(Guid customerId, CancellationToken token)
+    {
+        EnsureAccess();
+        return ListDocumentsAsync(db.DataEntryDocuments.AsNoTracking().Where(x => x.CustomerId == customerId), customerId, token);
+    }
+
+    public async Task<IReadOnlyList<DataEntryDocumentDto>> ListBatchDocumentsAsync(Guid batchId, CancellationToken token)
+    {
+        EnsureAccess();
+        var batch = await db.DataEntryBatches.AsNoTracking().Include(x => x.Rows).SingleOrDefaultAsync(x => x.Id == batchId, token)
+            ?? throw new HrNotFoundException("Batch was not found.");
+        if (batch.UploadedByUserId != user.UserId && !CanReview())
+            throw new HrForbiddenException("You do not have permission to view this batch.");
+        var customerIds = batch.Rows.Where(r => r.CollectionCustomerId.HasValue).Select(r => r.CollectionCustomerId!.Value).ToArray();
+        return await ProjectDocuments(db.DataEntryDocuments.AsNoTracking()
+            .Where(x => x.BatchId == batchId || customerIds.Contains(x.CustomerId))
+            .OrderByDescending(x => x.UploadedAt), token);
+    }
+
+    public async Task<IReadOnlyList<DataEntryDocumentDto>> ListCaseDocumentsAsync(Guid caseId, CancellationToken token)
+    {
+        EnsureReview();
+        if (!await db.CollectionCases.AsNoTracking().AnyAsync(x => x.Id == caseId, token))
+            throw new HrNotFoundException("Collection case was not found.");
+        return await ProjectDocuments(db.DataEntryDocuments.AsNoTracking()
+            .Where(x => x.CaseId == caseId)
+            .OrderByDescending(x => x.UploadedAt), token);
+    }
+
+    public async Task<DataEntryDocumentDto> UploadClientDocumentAsync(Guid customerId, HrUploadFile file, string? note, CancellationToken token)
+    {
+        EnsureManage();
+        if (!await ScopeClientIds().AnyAsync(id => id == customerId, token))
+            throw new HrForbiddenException("You do not have permission to attach files to this client.");
+        if (file.Length <= 0 || file.Length > MaximumBytes)
+            throw new HrValidationException("Supporting files must be between 1 byte and 20 MB.");
+        if (!string.IsNullOrWhiteSpace(note) && note.Trim().Length > 500)
+            throw new HrValidationException("The note cannot exceed 500 characters.");
+
+        var count = await db.DataEntryDocuments.CountAsync(x => x.CustomerId == customerId, token);
+        if (count >= 12)
+            throw new HrValidationException("A client can have at most 12 supporting files.");
+
+        await using var buffer = await BufferUploadAsync(file.Content, token);
+        var detectedType = await DetectDocumentTypeAsync(buffer, file.FileName, token);
+        buffer.Position = 0;
+        var row = await db.DataEntryRows.AsNoTracking()
+            .Where(x => x.CollectionCustomerId == customerId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new { x.BatchId, x.CollectionCaseId })
+            .FirstOrDefaultAsync(token);
+        var stored = await storage.SaveAsync("data-entry-documents", file.FileName, detectedType, buffer, MaximumBytes, token);
+        var document = new DataEntryDocument(customerId, row?.BatchId, row?.CollectionCaseId, stored.OriginalFileName, detectedType, stored.Length, stored.Sha256Hash, stored.StorageKey, user.UserId, DateTimeOffset.UtcNow, note);
+        db.DataEntryDocuments.Add(document);
+        try
+        {
+            await audit.WriteAsync(new AuditWriteRequest(
+                "DocumentUploaded", "DataEntryDocument", document.Id.ToString(), null, null,
+                new { document.CustomerId, document.OriginalFileName, document.FileSize, document.Note },
+                $"Data entry supporting file {document.OriginalFileName} uploaded."), token);
+            await db.SaveChangesAsync(token);
+        }
+        catch { await storage.DeleteAsync(stored.StorageKey, token); throw; }
+        return (await ProjectDocuments(db.DataEntryDocuments.AsNoTracking().Where(x => x.Id == document.Id), token)).Single();
+    }
+
+    public async Task<DataEntryDocumentDownloadDto> DownloadDocumentAsync(Guid documentId, CancellationToken token)
+    {
+        EnsureReview();
+        var document = await db.DataEntryDocuments.AsNoTracking().SingleOrDefaultAsync(x => x.Id == documentId, token)
+            ?? throw new HrNotFoundException("Document was not found.");
+        var content = await storage.OpenReadAsync(document.StorageKey, token);
+        return new DataEntryDocumentDownloadDto(content, document.ContentType, document.OriginalFileName);
+    }
+
+    public async Task DeleteDocumentAsync(Guid documentId, CancellationToken token)
+    {
+        var document = await db.DataEntryDocuments.SingleOrDefaultAsync(x => x.Id == documentId, token)
+            ?? throw new HrNotFoundException("Document was not found.");
+        var reviewer = CanReview();
+        if (!reviewer)
+        {
+            EnsureManage();
+            if (document.UploadedByUserId != user.UserId)
+                throw new HrForbiddenException("You can only remove files you uploaded.");
+            if (document.CaseId.HasValue)
+                throw new HrForbiddenException("Files already attached to a collections case can only be removed by a supervisor.");
+        }
+
+        var storageKey = document.StorageKey;
+        await audit.WriteAsync(new AuditWriteRequest(
+            "DocumentDeleted", "DataEntryDocument", document.Id.ToString(), null,
+            new { document.CustomerId, document.OriginalFileName }, null,
+            $"Data entry supporting file {document.OriginalFileName} removed."), token);
+        db.DataEntryDocuments.Remove(document);
+        await db.SaveChangesAsync(token);
+        try { await storage.DeleteAsync(storageKey, token); } catch { /* row removal is authoritative */ }
+    }
+
+    private async Task<IReadOnlyList<DataEntryDocumentDto>> ListDocumentsAsync(IQueryable<DataEntryDocument> query, Guid customerId, CancellationToken token)
+    {
+        if (!await ScopeClientIds().AnyAsync(id => id == customerId, token))
+            throw new HrForbiddenException("You do not have permission to view this client.");
+        return await ProjectDocuments(query.OrderByDescending(x => x.UploadedAt), token);
+    }
+
+    private async Task<IReadOnlyList<DataEntryDocumentDto>> ProjectDocuments(IQueryable<DataEntryDocument> query, CancellationToken token)
+    {
+        var canDownload = CanReview();
+        var rows = await query.Select(x => new
+        {
+            x.Id, x.CustomerId, x.BatchId, x.CaseId, x.OriginalFileName, x.ContentType, x.FileSize, x.Note,
+            UploadedBy = x.UploadedByUser.FullName, x.UploadedAt
+        }).ToArrayAsync(token);
+        return rows.Select(x => new DataEntryDocumentDto(
+            x.Id, x.CustomerId, x.BatchId, x.CaseId, x.OriginalFileName, x.ContentType, x.FileSize, x.Note,
+            x.UploadedBy, x.UploadedAt, canDownload)).ToArray();
+    }
+
+    private static async Task<string> DetectDocumentTypeAsync(Stream stream, string fileName, CancellationToken token)
+    {
+        if (!stream.CanSeek) throw new HrValidationException("The uploaded file stream must be seekable.");
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        var header = new byte[8];
+        var read = await stream.ReadAsync(header, token);
+        stream.Position = 0;
+        var pdf = read >= 5 && header.AsSpan(0, 5).SequenceEqual("%PDF-"u8);
+        var jpeg = read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+        var png = read >= 8 && header.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
+        var zip = read >= 2 && header[0] == 0x50 && header[1] == 0x4B;
+        return extension switch
+        {
+            ".pdf" when pdf => "application/pdf",
+            ".jpg" or ".jpeg" when jpeg => "image/jpeg",
+            ".png" when png => "image/png",
+            ".xlsx" when zip => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xls" => "application/vnd.ms-excel",
+            ".csv" => "text/csv",
+            _ => throw new HrValidationException("Only PDF, JPEG, PNG, Excel, and CSV files are accepted for case supporting data."),
+        };
+    }
+
     private async Task<DataEntryBatchPageDto> ListBatchesInternalAsync(string? status, int page, int pageSize, bool mineOnly, CancellationToken token)
     {
         (page, pageSize) = NormalizePage(page, pageSize);
@@ -850,20 +1050,26 @@ public sealed class DataEntryService(
     private async Task<CollectionPortfolio> ResolvePortfolioAsync(
         Guid organizationId, Guid? portfolioId, string? primary, string? sub, CancellationToken token)
     {
-        if (classification.HasValue)
-            return await ClassifiedPortfolio.ResolveAsync(db, organizationId, classification.Primary!, classification.Sub!, token);
-
         var mappedPrimary = PortfolioClassification.Normalize(primary);
         var mappedSub = PortfolioClassification.Normalize(sub);
         if (mappedPrimary is not null && mappedSub is not null)
             return await ClassifiedPortfolio.ResolveAsync(db, organizationId, mappedPrimary, mappedSub, token);
 
         if (!portfolioId.HasValue)
-            throw new HrValidationException("Portfolio is required when classification is not provided.");
+            throw new HrValidationException("Choose the collections desk (primary and sub classification).");
 
         return await db.CollectionPortfolios.Include(x => x.Organization)
             .SingleOrDefaultAsync(x => x.Id == portfolioId && x.OrganizationId == organizationId && x.IsActive, token)
             ?? throw new HrValidationException("A valid active portfolio is required.");
+    }
+
+    private static async Task<MemoryStream> BufferUploadAsync(Stream content, CancellationToken token)
+    {
+        var buffer = new MemoryStream();
+        if (content.CanSeek) content.Position = 0;
+        await content.CopyToAsync(buffer, token);
+        buffer.Position = 0;
+        return buffer;
     }
 
     private async Task RequireOrganizationAsync(Guid organizationId, CancellationToken token)
@@ -926,7 +1132,7 @@ public sealed class DataEntryService(
             batch.ValidRows,
             batch.InvalidRows,
             batch.CreatedCustomerCount,
-            batch.Organization?.NameEnglish ?? string.Empty,
+            batch.Organization is null ? string.Empty : (ApiTextLocalizer.IsArabic ? batch.Organization.NameArabic : batch.Organization.NameEnglish),
             batch.PrimaryClassification,
             batch.SubClassification,
             batch.Status,

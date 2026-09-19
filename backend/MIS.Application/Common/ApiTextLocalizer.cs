@@ -64,9 +64,11 @@ public static partial class ApiTextLocalizer
             ["A rejection or cancellation reason is required."] = "سبب الرفض أو الإلغاء مطلوب.",
             ["A replacement contract cannot start before the current contract version."] = "لا يمكن أن يبدأ العقد البديل قبل نسخة العقد الحالية.",
             ["A replacement file is required."] = "الملف البديل مطلوب.",
+            ["This portfolio has collection payments and cannot be deleted. Archive it instead."] = "هذه المحفظة عليها تحصيلات ولا يمكن حذفها. استخدم الأرشفة بدلاً من ذلك.",
             ["A storage key is required."] = "مرجع التخزين مطلوب.",
             ["A valid absence date is required."] = "تاريخ غياب صحيح مطلوب.",
             ["A valid department is required."] = "يجب اختيار قسم صحيح.",
+            ["Banks and companies are not HR departments."] = "البنوك والشركات ليست أقسام موارد بشرية. سجّلها على الموظف في البنك / الشركة المكلّف بها.",
             ["A valid employee is required."] = "يجب اختيار موظف صحيح.",
             ["Absence record was not found."] = "سجل الغياب غير موجود.",
             ["Absence status is invalid."] = "حالة الغياب غير صحيحة.",
@@ -100,6 +102,7 @@ public static partial class ApiTextLocalizer
             ["An authenticated user is required."] = "يجب تسجيل الدخول أولًا.",
             ["An employee cannot be their own direct manager."] = "لا يمكن أن يكون الموظف مديرًا مباشرًا لنفسه.",
             ["An employee with this employee ID already exists."] = "يوجد بالفعل موظف بهذا الرقم الوظيفي.",
+            ["An employee with this National ID already exists."] = "يوجد بالفعل موظف بهذا الرقم القومي.",
             ["An expiry date is required for this document type."] = "تاريخ الانتهاء مطلوب لهذا النوع من المستندات.",
             ["An unexpected error occurred."] = "حدث خطأ غير متوقع.",
             ["Another calendar exception already exists for this date."] = "يوجد بالفعل استثناء تقويم لهذا التاريخ.",
@@ -121,6 +124,8 @@ public static partial class ApiTextLocalizer
             ["Gender: invalid value."] = "النوع: قيمة غير صالحة.",
             ["Status: invalid value."] = "الحالة: قيمة غير صالحة.",
             ["Department: must match one existing lookup value."] = "القسم: يجب مطابقته مع قيمة واحدة موجودة في البيانات الأساسية.",
+            ["Department was inferred from the selected position."] = "تم استنتاج القسم تلقائيًا من المسمى الوظيفي المسجل؛ راجعه قبل تأكيد الاستيراد.",
+            ["Department does not match the selected position."] = "القسم لا يتطابق مع القسم المرتبط بالمسمى الوظيفي في البيانات الأساسية.",
             ["Position: must match one existing lookup value."] = "المسمى الوظيفي: يجب مطابقته مع قيمة واحدة موجودة في البيانات الأساسية.",
             ["The EmployeeNumber field is required."] = "رقم الموظف مطلوب.",
             ["The FullName field is required."] = "اسم الموظف مطلوب.",
@@ -132,6 +137,14 @@ public static partial class ApiTextLocalizer
             ["WorkEndDate: invalid date."] = "تاريخ انتهاء العمل: تاريخ غير صالح.",
             ["FingerprintEnrollmentDate: invalid date."] = "تاريخ البصمة: تاريخ غير صالح.",
             ["DateOfBirth: invalid date."] = "تاريخ الميلاد: تاريخ غير صالح.",
+            ["National ID must contain exactly 14 digits."] = "يجب أن يتكون الرقم القومي من 14 رقمًا بالضبط.",
+            ["National ID must start with 2 or 3 and contain a valid birth date."] = "الرقم القومي غير صحيح: يجب أن يبدأ بـ 2 أو 3 وأن يحتوي على تاريخ ميلاد صالح.",
+            ["Date of birth does not match the birth date encoded in the National ID."] = "تاريخ الميلاد لا يطابق تاريخ الميلاد المسجل داخل الرقم القومي.",
+            ["Mobile number must contain exactly 11 digits and use a valid Egyptian mobile prefix."] = "رقم الموبايل يجب أن يكون 11 رقمًا ويبدأ بـ 010 أو 011 أو 012 أو 015.",
+            ["The missing leading zero was restored in the mobile number."] = "تم استرجاع الصفر الأول الذي أسقطه Excel من رقم الموبايل؛ راجعه قبل التأكيد.",
+            ["The mobile number was standardized to the Egyptian local format."] = "تم توحيد رقم الموبايل إلى الصيغة المصرية المحلية المكونة من 11 رقمًا.",
+            ["Work start date cannot be before date of birth."] = "تاريخ التعيين لا يمكن أن يسبق تاريخ الميلاد.",
+            ["Fingerprint enrollment date cannot be before date of birth."] = "تاريخ تسجيل البصمة لا يمكن أن يسبق تاريخ الميلاد.",
             ["AM/PM value is missing or invalid."] = "قيمة AM/PM مفقودة أو غير صالحة.",
             ["Attendance date mapping is required for separate punch times."] = "يجب تعيين عمود التاريخ لأوقات البصمات المنفصلة.",
             ["AM/PM mapping is required for separate 12-hour punch times."] = "يجب تعيين عمود AM/PM لأوقات البصمات المنفصلة بنظام 12 ساعة.",
@@ -184,6 +197,10 @@ public static partial class ApiTextLocalizer
             ["Employee is required."] = "الموظف مطلوب.",
             ["Employee status must be Active, Inactive, OnLeave, Suspended, or Terminated."] = "يجب أن تكون حالة الموظف: نشط أو غير نشط أو في إجازة أو موقوف أو منتهية خدمته.",
             ["Employee was not found."] = "الموظف غير موجود.",
+            ["Only an active employee can be linked to a user account."] = "لا يمكن ربط حساب إلا بموظف نشط.",
+            ["Office employees cannot be linked to operational system accounts."] = "لا يمكن ربط موظفي الأوفيس بحسابات تشغيلية على النظام.",
+            ["This employee is already linked to another account."] = "هذا الموظف مربوط بالفعل بحساب آخر.",
+            ["This user is already linked to a different employee."] = "هذا الحساب مربوط بالفعل بموظف آخر.",
             ["End date cannot be before start date."] = "لا يمكن أن يكون تاريخ النهاية قبل تاريخ البداية.",
             ["Expiry date cannot be before issue date."] = "لا يمكن أن يكون تاريخ الانتهاء قبل تاريخ الإصدار.",
             ["Expiry window must be between 1 and 365 days."] = "يجب أن تكون فترة قرب الانتهاء بين يوم واحد و365 يومًا.",
@@ -282,7 +299,9 @@ public static partial class ApiTextLocalizer
             ["Egyptian national ID has an invalid century digit."] = "خانة القرن في الرقم القومي المصري غير صحيحة.",
             ["Egyptian national ID contains an invalid birth date."] = "الرقم القومي المصري يحتوي على تاريخ ميلاد غير صحيح.",
             ["Egyptian national ID cannot contain a future birth date."] = "لا يمكن أن يحتوي الرقم القومي المصري على تاريخ ميلاد مستقبلي.",
+            ["Date of birth cannot be in the future."] = "تاريخ الميلاد لا يمكن أن يكون في المستقبل.",
             ["Date of birth does not match the Egyptian national ID."] = "تاريخ الميلاد لا يطابق الرقم القومي المصري.",
+            ["Work end date cannot be before work start date."] = "تاريخ انتهاء العمل لا يمكن أن يسبق تاريخ بدء العمل.",
             ["Gender does not match the Egyptian national ID."] = "النوع لا يطابق الرقم القومي المصري.",
             ["Phone number is required."] = "رقم الهاتف مطلوب.",
             ["Mobile number must be a valid phone number of at most 32 characters."] = "يجب إدخال رقم موبايل صالح لا يتجاوز 32 حرفاً.",
@@ -452,7 +471,35 @@ public static partial class ApiTextLocalizer
             ["Mobile"] = "رقم الهاتف", ["Email"] = "البريد الإلكتروني", ["City"] = "المدينة",
             ["Probation End"] = "نهاية فترة التجربة", ["Days"] = "عدد الأيام", ["Decision Notes"] = "ملاحظات القرار",
             ["Department Code"] = "كود القسم", ["Branch Code"] = "كود الفرع", ["Total Employees"] = "إجمالي الموظفين",
-            ["Active"] = "نشط", ["Inactive"] = "غير نشط", ["Created At"] = "تاريخ الإنشاء", ["Leave Type"] = "نوع الإجازة"
+            ["Active"] = "نشط", ["Inactive"] = "غير نشط", ["Created At"] = "تاريخ الإنشاء", ["Leave Type"] = "نوع الإجازة",
+            ["Username or email is already in use."] = "اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل.",
+            ["Choose an active department."] = "اختر قسمًا نشطًا.",
+            ["One or more roles are invalid."] = "يوجد دور غير صالح.",
+            ["Administrator access must be granted separately through the protected access review."] = "صلاحية مدير النظام تُمنح فقط من مراجعة الوصول المحمية.",
+            ["Type GRANT ADMIN ACCESS exactly to confirm administrator access."] = "للتأكيد اكتب GRANT ADMIN ACCESS حرفيًا.",
+            ["User was not found."] = "المستخدم غير موجود.",
+            ["User account created with a one-time password."] = "تم إنشاء الحساب بكلمة مرور لمرة واحدة.",
+            ["Temporary password issued by an administrator. The user must change it at next sign-in."] = "تم إصدار كلمة مرور مؤقتة. يجب على المستخدم تغييرها عند الدخول التالي.",
+            ["Temporary password must be at least 12 characters and include upper, lower, number, and symbol."] = "كلمة المرور المؤقتة يجب ألا تقل عن ١٢ حرفًا وتشمل حرفًا كبيرًا وصغيرًا ورقمًا ورمزًا.",
+            ["Password must contain uppercase, lowercase, number, and special character and be at least 10 characters."] = "كلمة المرور يجب ألا تقل عن ١٠ أحرف وتشمل حرفًا كبيرًا وصغيرًا ورقمًا ورمزًا خاصًا.",
+            ["New password and confirmation do not match."] = "كلمة المرور الجديدة وتأكيدها غير متطابقين.",
+            ["New password must be different from the current password."] = "يجب أن تختلف كلمة المرور الجديدة عن الحالية.",
+            ["Current password is incorrect."] = "كلمة المرور الحالية غير صحيحة.",
+            ["User account was not found."] = "حساب المستخدم غير موجود.",
+            ["This employee is linked to a system user account and cannot be deleted. Unlink the account in Admin, or archive the employee."] = "هذا الموظف مربوط بحساب على النظام ولا يمكن حذفه. ألغِ الربط من الإدارة، أو أرشف الموظف.",
+            ["This employee has operational history and cannot be deleted. Archive the record instead."] = "لهذا الموظف سجل تشغيلي ولا يمكن حذفه. أرشف السجل بدلًا من الحذف.",
+            ["Only administrators can permanently delete employees."] = "حذف الموظف نهائيًا متاح للأدمن فقط.",
+            ["This employee still has related records and could not be deleted."] = "ما زال لهذا الموظف سجلات مرتبطة وتعذر حذفه.",
+            ["You cannot delete your own account."] = "لا يمكنك حذف حسابك.",
+            ["The last administrator cannot be deleted."] = "لا يمكن حذف آخر مدير نظام.",
+            ["This account has operational history and cannot be deleted. Suspend the account instead."] = "لهذا الحساب سجل تشغيلي ولا يمكن حذفه. أوقف الحساب بدلًا من الحذف.",
+            ["This master-data record is in use and cannot be deleted. Deactivate it instead."] = "هذا السجل مستخدم ولا يمكن حذفه. أوقف تفعيله بدلًا من الحذف.",
+            ["This commission rule has been used in calculations and cannot be deleted. Deactivate it instead."] = "قاعدة العمولة استُخدمت في احتسابات ولا يمكن حذفها. أوقف تفعيلها بدلًا من الحذف.",
+            ["Inactive commission rules cannot be reactivated. Create a new rule instead."] = "لا يمكن إعادة تفعيل قاعدة عمولة موقوفة. أنشئ قاعدة جديدة.",
+            ["This client already has a collections case and cannot be deleted."] = "لهذا العميل حالة في التحصيل ولا يمكن حذفه.",
+            ["This client is already in the collections pipeline and cannot be deleted."] = "هذا العميل داخل مسار التحصيل ولا يمكن حذفه.",
+            ["Commission rule was not found."] = "قاعدة العمولة غير موجودة.",
+            ["Data-entry client was not found."] = "عميل إدخال البيانات غير موجود."
         };
 
     private static readonly IReadOnlyDictionary<string, string> ArabicCodes =
@@ -588,6 +635,9 @@ public static partial class ApiTextLocalizer
         var match = MappedColumnRegex().Match(value);
         if (match.Success) return $"لم يتم العثور على العمود المرتبط بـ{LocalizeField(match.Groups[1].Value)} في صف العناوين المحدد.";
 
+        match = MasterDataLookupRegex().Match(value);
+        if (match.Success) return $"{LocalizeField(match.Groups[1].Value)}: القيمة «{match.Groups[2].Value}» غير موجودة في البيانات الأساسية.";
+
         match = ImportLimitRegex().Match(value);
         if (match.Success) return $"لا يمكن أن يتجاوز استيراد الحضور {match.Groups[1].Value} {TranslateImportUnit(match.Groups[2].Value)}.";
 
@@ -716,6 +766,9 @@ public static partial class ApiTextLocalizer
 
     [GeneratedRegex(@"^Mapped (.+) column was not found in the selected header row\.$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex MappedColumnRegex();
+
+    [GeneratedRegex(@"^(Department|Position) not found: (.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex MasterDataLookupRegex();
 
     [GeneratedRegex(@"^Attendance imports cannot exceed ([\d,]+) (columns|characters|data rows|employee/day groups)\.$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ImportLimitRegex();

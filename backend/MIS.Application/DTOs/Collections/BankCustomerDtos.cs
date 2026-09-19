@@ -61,6 +61,7 @@ public sealed record BankCustomerDetailsDto(
     string? AlternativeMobile,
     string? NationalId,
     string? Address,
+    string? SecondaryAddress,
     string? Governorate,
     string? Area,
     string OrganizationName,

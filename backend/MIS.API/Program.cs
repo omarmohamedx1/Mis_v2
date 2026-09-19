@@ -1,8 +1,10 @@
 using MIS.API.Configuration;
 using MIS.API.Middleware;
+using MIS.Infrastructure.Authentication;
 using MIS.Infrastructure.Persistence.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 
 // The Windows EventLog provider can be registered by the default host even when the
 // process identity cannot write to the Event Log. A logging failure must never mask
@@ -29,6 +31,7 @@ app.Use(async (context, next) =>
 });
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.UseRouting();
 app.UseCors(ApiServiceCollectionExtensions.FrontendCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
@@ -46,9 +49,14 @@ if (app.Environment.IsDevelopment())
         .AllowAnonymous();
 }
 
+using (var scope = app.Services.CreateScope())
+{
+    await JwtSigningKeyAccessor.InitializeAsync(scope.ServiceProvider);
+}
+
 if (app.Environment.IsDevelopment())
 {
-    await ApplicationDbSeeder.SeedDevelopmentDataAsync(app.Services, app.Configuration);
+    await ApplicationDbSeeder.SeedDevelopmentDataAsync(app.Services);
 }
 
 app.Run();

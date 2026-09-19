@@ -5,6 +5,7 @@ using MIS.Application.DTOs.Hr;
 using MIS.Application.Interfaces;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
+using MIS.Domain.Hr;
 using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
@@ -24,12 +25,14 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
     private readonly ApplicationDbContext _dbContext;
     private readonly IHrAuditService _audit;
     private readonly ICurrentUserContext _currentUser;
+    private readonly IHrEmployeeRepository _employees;
 
-    public HrEmployeeProfileService(ApplicationDbContext dbContext, IHrAuditService audit, ICurrentUserContext currentUser)
+    public HrEmployeeProfileService(ApplicationDbContext dbContext, IHrAuditService audit, ICurrentUserContext currentUser, IHrEmployeeRepository employees)
     {
         _dbContext = dbContext;
         _audit = audit;
         _currentUser = currentUser;
+        _employees = employees;
     }
 
     public async Task<EmployeeProfileDto> GetProfileAsync(Guid employeeId, CancellationToken cancellationToken)
@@ -53,7 +56,7 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
             .ThenByDescending(item => item.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var canManageCompensation = _currentUser.Roles.Contains(SystemRoleNames.HrManager, StringComparer.OrdinalIgnoreCase);
+        var canManageCompensation = CanAccessCompensation;
         var compensation = canManageCompensation
             ? await _dbContext.EmployeeCompensations
                 .AsNoTracking()
@@ -79,8 +82,16 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
             .CountAsync(item => item.EmployeeId == employeeId, cancellationToken);
         var delegationCount = await _dbContext.EmployeeDelegations.AsNoTracking()
             .CountAsync(item => item.EmployeeId == employeeId, cancellationToken);
+        var organizations = await (
+            from assignment in _dbContext.EmployeeOrganizationAssignments.AsNoTracking()
+            where assignment.EmployeeId == employeeId
+            join organization in _dbContext.CollectionClientOrganizations.AsNoTracking() on assignment.OrganizationId equals organization.Id
+            orderby assignment.IsPrimary descending, organization.NameArabic
+            select new EmployeeOrganizationAssignmentDto(
+                organization.Id, organization.Code, organization.NameArabic, organization.NameEnglish, organization.OrganizationType))
+            .ToArrayAsync(cancellationToken);
 
-        return Map(employee, contract, compensation, emergencyContact, canManageCompensation, documentCount, attendanceCount, leaveCount, absenceCount, delegationCount);
+        return Map(employee, contract, compensation, emergencyContact, canManageCompensation, documentCount, attendanceCount, leaveCount, absenceCount, delegationCount, organizations);
     }
 
     public async Task<EmployeeReportingLineDto> GetReportingLineAsync(Guid employeeId, CancellationToken cancellationToken)
@@ -120,10 +131,11 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
             throw new HrValidationException("Date of birth must be a valid past date.");
         }
 
+        var gender = request.Gender is "Male" or "Female" ? request.Gender : null;
         var normalizedNationalId = EgyptianHrDataValidator.NormalizeNationalId(
             request.NationalId,
             request.DateOfBirth,
-            request.Gender);
+            gender);
         if (normalizedNationalId is not null && await _dbContext.Employees.AnyAsync(
                 item => item.Id != employeeId && item.NationalId == normalizedNationalId,
                 cancellationToken))
@@ -141,18 +153,23 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
             employee.MaritalStatus
         };
         var now = DateTimeOffset.UtcNow;
-        employee.UpdatePersonalInformation(
-            request.FullNameArabic,
-            request.FullNameEnglish,
-            normalizedNationalId,
-            request.DateOfBirth,
-            request.Gender,
-            request.MaritalStatus,
-            employee.ProfilePhotoStorageKey,
-            now);
-
-        var canonicalName = Normalize(request.FullNameEnglish) ?? Normalize(request.FullNameArabic) ?? employee.FullName;
-        employee.Update(employee.EmployeeNumber, canonicalName, employee.DepartmentId, employee.IsActive, now);
+        var names = EmployeeName.FillMissing(null, request.FullNameArabic, request.FullNameEnglish);
+        try
+        {
+            employee.UpdatePersonalInformation(
+                EmployeeName.RequireArabic(names.Arabic),
+                EmployeeName.RequireEnglish(names.English),
+                normalizedNationalId,
+                request.DateOfBirth,
+                gender,
+                request.MaritalStatus,
+                employee.ProfilePhotoStorageKey,
+                now);
+        }
+        catch (ArgumentException error)
+        {
+            throw new HrValidationException(error.Message);
+        }
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await AuditEmployeeAsync("EmployeePersonalUpdated", employee, oldValue, request, "Updated personal information.", cancellationToken);
@@ -216,6 +233,8 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
             request.DirectManagerId,
             request.HireDate,
             DateTimeOffset.UtcNow);
+        employee.UpdateWorkAssignment(request.WorkNumber, request.PackageType, DateTimeOffset.UtcNow);
+        await _employees.ReplaceOrganizationAssignmentsAsync(employeeId, request.OrganizationIds, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
         var newValue = await GetEmploymentAuditSnapshotAsync(employeeId, cancellationToken);
         await AuditEmployeeAsync("EmployeeEmploymentUpdated", employee, oldValue, newValue, "Updated employment information.", cancellationToken);
@@ -321,7 +340,7 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
         UpdateEmployeeCompensationRequest request,
         CancellationToken cancellationToken)
     {
-        if (!_currentUser.Roles.Contains(SystemRoleNames.HrManager, StringComparer.OrdinalIgnoreCase))
+        if (!CanAccessCompensation)
             throw new HrForbiddenException("Only an HR manager can access employee compensation and banking information.");
         _ = await GetTrackedEmployeeAsync(employeeId, cancellationToken);
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
@@ -557,6 +576,8 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
             throw new HrValidationException("The selected branch does not exist or is inactive.");
         if (request.EmploymentTypeId.HasValue && !await _dbContext.EmploymentTypes.AnyAsync(item => item.Id == request.EmploymentTypeId && item.IsActive, cancellationToken))
             throw new HrValidationException("The selected employment type does not exist or is inactive.");
+        if (!await _employees.OrganizationsExistAsync(request.OrganizationIds, cancellationToken))
+            throw new HrValidationException("One or more assigned organizations are invalid or inactive.");
 
         if (!request.DirectManagerId.HasValue) return;
         if (request.DirectManagerId == employeeId) throw new HrValidationException("An employee cannot be their own direct manager.");
@@ -613,7 +634,9 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
                 item.DirectManager == null
                     ? null
                     : item.DirectManager.FullNameEnglish ?? item.DirectManager.FullNameArabic ?? item.DirectManager.FullName,
-                item.HireDate))
+                item.HireDate,
+                item.WorkNumber,
+                item.PackageType))
             .SingleAsync(cancellationToken);
 
     private static object CompensationAuditMetadata(EmployeeCompensation compensation) => new
@@ -663,13 +686,15 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
         int attendanceCount,
         int leaveCount,
         int absenceCount,
-        int delegationCount)
+        int delegationCount,
+        IReadOnlyList<EmployeeOrganizationAssignmentDto> organizations)
     {
         var isArabic = ApiTextLocalizer.IsArabic;
+        var names = EmployeeName.FillMissing(employee.FullName, employee.FullNameArabic, employee.FullNameEnglish);
         return new EmployeeProfileDto(
         employee.Id,
         employee.EmployeeNumber,
-        GetDisplayName(employee),
+        EmployeeName.Display(isArabic, employee.FullName, names.Arabic, names.English),
         employee.Status,
             employee.IsActive,
             employee.IsArchived,
@@ -678,8 +703,8 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
         !string.IsNullOrWhiteSpace(employee.ProfilePhotoStorageKey),
         canManageCompensation,
         new EmployeePersonalInformationDto(
-            employee.FullNameArabic,
-            employee.FullNameEnglish,
+            names.Arabic,
+            names.English,
             employee.NationalId,
             employee.DateOfBirth,
             employee.Gender,
@@ -706,7 +731,10 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
             employee.OperationalRole,
             employee.FingerprintEnrollmentDate,
             employee.TerminationDate,
-            employee.Status),
+            employee.Status,
+            organizations,
+            employee.WorkNumber,
+            employee.PackageType),
         contract is null ? null : new EmployeeContractInformationDto(
             contract.Id,
             contract.ContractTypeId,
@@ -742,10 +770,14 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
         employee.UpdatedAt);
     }
 
+    private bool CanAccessCompensation =>
+        _currentUser.Roles.Contains(SystemRoleNames.Admin, StringComparer.OrdinalIgnoreCase) ||
+        _currentUser.Permissions.Contains("*") ||
+        _currentUser.Roles.Contains(SystemRoleNames.HrManager, StringComparer.OrdinalIgnoreCase) ||
+        _currentUser.Roles.Contains(SystemRoleNames.HrOfficer, StringComparer.OrdinalIgnoreCase);
+
     private static string GetDisplayName(Employee employee) =>
-        ApiTextLocalizer.IsArabic
-            ? employee.FullNameArabic ?? employee.FullName
-            : employee.FullNameEnglish ?? employee.FullName;
+        EmployeeName.Display(ApiTextLocalizer.IsArabic, employee.FullName, employee.FullNameArabic, employee.FullNameEnglish);
 
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
@@ -765,7 +797,9 @@ public sealed class HrEmployeeProfileService : IHrEmployeeProfileService
         string? EmploymentType,
         Guid? DirectManagerId,
         string? DirectManager,
-        DateOnly? HireDate);
+        DateOnly? HireDate,
+        string? WorkNumber,
+        string? PackageType);
 
     private sealed record CompensationSnapshot(
         decimal BasicSalary,

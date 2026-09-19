@@ -1,6 +1,6 @@
 import type { AuthenticatedUser } from '../auth/types/auth';
 
-export type ModuleId = 'admin' | 'hr' | 'collections' | 'finance' | 'accounting' | 'data-entry';
+export type ModuleId = 'admin' | 'hr' | 'collections' | 'finance' | 'data-entry' | 'legal';
 
 export interface AccessibleModule {
   id: ModuleId;
@@ -9,15 +9,25 @@ export interface AccessibleModule {
 
 const moduleOrder: AccessibleModule[] = [
   { id: 'data-entry', homePath: '/data-entry/dashboard' },
-  { id: 'accounting', homePath: '/accounting/dashboard' },
   { id: 'finance', homePath: '/finance/dashboard' },
   { id: 'collections', homePath: '/collections/dashboard' },
+  { id: 'legal', homePath: '/legal/dashboard' },
   { id: 'hr', homePath: '/hr/dashboard' },
   { id: 'admin', homePath: '/admin/dashboard' },
 ];
 
 function hasPermission(user: AuthenticatedUser, ...permissions: string[]) {
   return user.permissions.includes('*') || permissions.some(permission => user.permissions.includes(permission));
+}
+
+export function isSystemAdmin(user: AuthenticatedUser | null | undefined) {
+  return Boolean(user?.roles.includes('Admin') || user?.permissions.includes('*'));
+}
+
+export function hasHrFeature(user: AuthenticatedUser | null | undefined, permissions: string[], roles: string[] = ['HrManager', 'HrOfficer']) {
+  if (!user) return false;
+  if (user.roles.includes('Admin') || user.permissions.includes('*')) return true;
+  return roles.some((role) => user.roles.includes(role)) || hasPermission(user, ...permissions);
 }
 
 export function canAccessModule(user: AuthenticatedUser, moduleId: ModuleId) {
@@ -32,10 +42,10 @@ export function canAccessModule(user: AuthenticatedUser, moduleId: ModuleId) {
       return isAdmin || user.department === 'COLLECTIONS' || hasPermission(user, 'collections.access') || user.roles.some(role => role.startsWith('Collections'));
     case 'finance':
       return isAdmin || user.department === 'ACCOUNTING' || hasPermission(user, 'finance.access', 'accounting.access');
-    case 'accounting':
-      return isAdmin || user.department === 'ACCOUNTING' || hasPermission(user, 'accounting.access');
     case 'data-entry':
       return isAdmin || user.department === 'DATA_ENTRY' || hasPermission(user, 'data_entry.access') || user.roles.includes('DataEntry');
+    case 'legal':
+      return isAdmin || user.department === 'LEGAL' || hasPermission(user, 'legal.access', 'legal.case.manage') || user.roles.includes('LegalOfficer');
   }
 }
 
@@ -52,9 +62,11 @@ export function canAccessDepartment(user: AuthenticatedUser, department: string)
     case 'COLLECTIONS':
       return canAccessModule(user, 'collections');
     case 'ACCOUNTING':
-      return canAccessModule(user, 'accounting') || canAccessModule(user, 'finance');
+      return canAccessModule(user, 'finance');
     case 'DATA_ENTRY':
       return canAccessModule(user, 'data-entry');
+    case 'LEGAL':
+      return canAccessModule(user, 'legal');
     default:
       return user.department === department;
   }

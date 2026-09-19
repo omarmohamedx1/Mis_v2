@@ -14,7 +14,7 @@ public sealed record DistributionMutationRequest(IReadOnlyCollection<Guid> CaseI
 public sealed record DistributionPreviewDto(int CaseCount, decimal TotalOutstanding, Guid? CollectorId,
     string? CollectorName, IReadOnlyCollection<string> PreviousCollectors);
 public sealed record DistributionResultDto(int CaseCount, Guid? CollectorId, string? CollectorName);
-public sealed record AutoDistributionRequest(IReadOnlyCollection<Guid> CaseIds, IReadOnlyCollection<Guid> CollectorIds, string Method, string Reason);
+public sealed record AutoDistributionRequest(IReadOnlyCollection<Guid>? CaseIds, IReadOnlyCollection<Guid> CollectorIds, string Method, string Reason);
 public sealed record AutoDistributionCollectorDto(Guid CollectorId, string CollectorName, int CaseCount, decimal OutstandingAmount);
 public sealed record AutoDistributionPreviewDto(string Method, int TotalCases, decimal TotalOutstanding,
     IReadOnlyCollection<AutoDistributionCollectorDto> Collectors);

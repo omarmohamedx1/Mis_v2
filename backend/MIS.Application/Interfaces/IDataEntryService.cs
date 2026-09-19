@@ -12,6 +12,7 @@ public interface IDataEntryService
     Task<DataEntryClientPageDto> ListClientsAsync(string? search, int page, int pageSize, CancellationToken token);
     Task<DataEntryClientDetailsDto> GetClientAsync(Guid customerId, CancellationToken token);
     Task<DataEntryClientDetailsDto> CreateManualClientAsync(CreateDataEntryClientRequest request, CancellationToken token);
+    Task DeleteClientAsync(Guid customerId, CancellationToken token);
 
     Task<DataEntryImportUploadDto> UploadImportAsync(HrUploadFile file, CancellationToken token);
     Task<DataEntryImportPreviewDto> PreviewImportAsync(Guid uploadId, DataEntryImportMappingRequest mapping, CancellationToken token);
@@ -26,4 +27,11 @@ public interface IDataEntryService
 
     Task<IReadOnlyList<DataEntryNotificationDto>> ListNotificationsAsync(CancellationToken token);
     Task MarkNotificationReadAsync(Guid notificationId, CancellationToken token);
+
+    Task<IReadOnlyList<DataEntryDocumentDto>> ListClientDocumentsAsync(Guid customerId, CancellationToken token);
+    Task<IReadOnlyList<DataEntryDocumentDto>> ListBatchDocumentsAsync(Guid batchId, CancellationToken token);
+    Task<IReadOnlyList<DataEntryDocumentDto>> ListCaseDocumentsAsync(Guid caseId, CancellationToken token);
+    Task<DataEntryDocumentDto> UploadClientDocumentAsync(Guid customerId, HrUploadFile file, string? note, CancellationToken token);
+    Task<DataEntryDocumentDownloadDto> DownloadDocumentAsync(Guid documentId, CancellationToken token);
+    Task DeleteDocumentAsync(Guid documentId, CancellationToken token);
 }

@@ -67,4 +67,36 @@ public sealed class UserAccountTests
         Assert.Equal("REVOKED", grant.Status);
         Assert.Equal("Review completed; access no longer required", grant.RevocationReason);
     }
+
+    [Fact]
+    public void AdministratorIssuedPasswordRequiresChangeUntilTheUserCompletesIt()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var user = new User("operator", "operator@mis.local", "hash", "Operator", Guid.NewGuid(), now);
+
+        Assert.False(user.MustChangePassword);
+        user.RequirePasswordChange(now.AddSeconds(1));
+        Assert.True(user.MustChangePassword);
+
+        user.ClearMustChangePassword(now.AddSeconds(2));
+        Assert.False(user.MustChangePassword);
+        Assert.Equal(now.AddSeconds(2), user.UpdatedAt);
+    }
+
+    [Fact]
+    public void UserCanLinkOneEmployeeAndUnlinkIt()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var user = new User("collector", "collector@mis.local", "hash", "Collector", Guid.NewGuid(), now);
+        var employeeId = Guid.NewGuid();
+
+        user.LinkEmployee(employeeId, now.AddSeconds(1));
+        Assert.Equal(employeeId, user.EmployeeId);
+        Assert.Throws<InvalidOperationException>(() => user.LinkEmployee(Guid.NewGuid(), now.AddSeconds(2)));
+
+        user.UnlinkEmployee(now.AddSeconds(3));
+        Assert.Null(user.EmployeeId);
+        user.LinkEmployee(Guid.NewGuid(), now.AddSeconds(4));
+        Assert.NotEqual(employeeId, user.EmployeeId);
+    }
 }

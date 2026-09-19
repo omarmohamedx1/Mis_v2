@@ -151,6 +151,10 @@ public sealed class BankCustomerService(ApplicationDbContext db, ICurrentUserCon
             x.OriginalAmount, x.OutstandingBalance, x.OverdueBalance, x.Paid, x.OutstandingBalance, x.DaysPastDue,
             x.Status, x.AssignedCollectorId, x.Collector, x.AssignmentDate, x.LastPaymentAt, x.NextFollowUpAt)).ToArray();
 
+        var (address1, address2) = CollectionFileRowMapper.SeparateAddresses(
+            ar ? customer.AddressArabic ?? customer.AddressEnglish : customer.AddressEnglish ?? customer.AddressArabic,
+            customer.SecondaryAddress);
+
         return new BankCustomerDetailsDto(
             customer.Id,
             customer.CustomerCode,
@@ -160,7 +164,8 @@ public sealed class BankCustomerService(ApplicationDbContext db, ICurrentUserCon
             customer.PrimaryPhone,
             customer.AlternatePhone,
             customer.NationalId,
-            ar ? customer.AddressArabic ?? customer.AddressEnglish : customer.AddressEnglish ?? customer.AddressArabic,
+            address1,
+            address2,
             customer.Governorate,
             customer.Area,
             ar ? customer.Organization.NameArabic : customer.Organization.NameEnglish,

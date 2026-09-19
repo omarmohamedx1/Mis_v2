@@ -24,6 +24,15 @@ public sealed class AbsenceImportService(
     private sealed record Uploaded(string FileName, string StorageKey, string Extension);
     private sealed record PreviewSaved(Guid PreviewId, string StorageKey, int TotalRows);
 
+    public Task<HrImportFileTemplate> BuildTemplateAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(new HrImportFileTemplate(
+            HrImportWorkbookBuilder.BuildAbsence(),
+            "Absence_Import_Template.xlsx",
+            HrImportWorkbookBuilder.ExcelContentType));
+    }
+
     public async Task<AbsenceImportUpload> UploadAsync(HrUploadFile file, CancellationToken cancellationToken)
     {
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();

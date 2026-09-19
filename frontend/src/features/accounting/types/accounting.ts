@@ -127,3 +127,17 @@ export type AccountingLookupEmployee = {
   departmentName?: string | null;
   positionName?: string | null;
 };
+
+export type AccountingCommissionRule = {
+  id: string;
+  code: string;
+  nameArabic: string;
+  nameEnglish: string;
+  scope: string;
+  basis: string;
+  percentage?: number | null;
+  fixedAmount?: number | null;
+  effectiveFrom: string;
+  isActive: boolean;
+  version: number;
+};

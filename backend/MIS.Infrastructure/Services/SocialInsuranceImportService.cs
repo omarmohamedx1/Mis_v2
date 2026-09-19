@@ -12,12 +12,27 @@ namespace MIS.Infrastructure.Services;
 public sealed class SocialInsuranceImportService(ApplicationDbContext db, IHrFileStorage storage, IHrAuditService audit,
     ICurrentUserContext user, IWorkingCalendarCalculator calendar) : ISocialInsuranceImportService
 {
-    private void Access() { if (!user.Roles.Any(r => r is "HrManager" or "HrOfficer") && !user.Permissions.Contains("hr.social_insurance.manage")) throw new HrForbiddenException("Social insurance management permission is required."); }
+    private void Access()
+    {
+        if (user.Roles.Contains("Admin") || user.Permissions.Contains("*")) return;
+        if (!user.Roles.Any(r => r is "HrManager" or "HrOfficer") && !user.Permissions.Contains("hr.social_insurance.manage"))
+            throw new HrForbiddenException("Social insurance management permission is required.");
+    }
     private const string Entity = "SocialInsuranceImport";
     private const long MaximumBytes = 20 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private sealed record Uploaded(string FileName, string StorageKey, string Extension);
     private sealed record PreviewSaved(Guid PreviewId, string StorageKey, int TotalRows);
+
+    public Task<HrImportFileTemplate> BuildTemplateAsync(CancellationToken cancellationToken)
+    {
+        Access();
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(new HrImportFileTemplate(
+            HrImportWorkbookBuilder.BuildSocialInsurance(),
+            "Social_Insurance_Import_Template.xlsx",
+            HrImportWorkbookBuilder.ExcelContentType));
+    }
 
     public async Task<SocialInsuranceImportUpload> UploadAsync(HrUploadFile file, CancellationToken cancellationToken)
     {

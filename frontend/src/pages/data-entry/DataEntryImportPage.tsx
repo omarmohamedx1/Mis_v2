@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { Download, FileUp } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { PageHeader } from '../../components/common/PageHeader';
-import { FileInput } from '../../components/forms/FileInput';
+import { useToast } from '../../components/common/Toast';
 import { SelectInput } from '../../components/forms/SelectInput';
-import { TextInput } from '../../components/forms/TextInput';
-import { DataEntryRowStatus, useDataEntryText } from '../../features/data-entry/dataEntryUi';
+import { DataEntryDeskFields } from '../../features/data-entry/DataEntryDeskFields';
+import { DataEntryPipeline, DataEntryRowStatus, useDataEntryText } from '../../features/data-entry/dataEntryUi';
 import { dataEntryService } from '../../features/data-entry/services/dataEntryService';
 import {
   DATA_ENTRY_IMPORT_FIELDS,
@@ -19,19 +20,19 @@ import {
 } from '../../features/data-entry/types/dataEntry';
 import { getApiErrorMessage } from '../../services/apiClient';
 
-const fieldMeta: Record<DataEntryImportField, { en: string; ar: string; pattern: RegExp }> = {
-  CustomerCode: { en: 'Customer Number', ar: 'رقم العميل', pattern: /^(customer.?code|customer.?id|customer.?number|كود.?العميل|رقم.?العميل)$/i },
-  CustomerName: { en: 'Customer Name', ar: 'اسم العميل', pattern: /^(name|customer.?name|client.?name|اسم.?العميل|الاسم)$/i },
+const fieldMeta: Record<DataEntryImportField, { en: string; ar: string; required?: boolean; pattern: RegExp }> = {
+  CustomerCode: { en: 'Customer number', ar: 'رقم العميل', pattern: /^(customer.?code|customer.?id|customer.?number|كود.?العميل|رقم.?العميل)$/i },
+  CustomerName: { en: 'Customer name', ar: 'اسم العميل', required: true, pattern: /^(name|customer.?name|client.?name|اسم.?العميل|الاسم)$/i },
   NationalId: { en: 'National ID', ar: 'الرقم القومي', pattern: /^(national.?id|id.?number|nid|الرقم.?القومي)$/i },
-  MobileNumber: { en: 'Mobile Number', ar: 'رقم الموبايل', pattern: /^(mobile|phone|phone.?number|رقم.?الموبايل|رقم.?الهاتف)$/i },
+  MobileNumber: { en: 'Mobile number', ar: 'رقم الموبايل', pattern: /^(mobile|phone|phone.?number|رقم.?الموبايل|رقم.?الهاتف)$/i },
   Address: { en: 'Address', ar: 'العنوان', pattern: /^(address|العنوان)$/i },
   Feedback: { en: 'Feedback', ar: 'فيدباك', pattern: /^(feedback|فيدباك|تعليق)$/i },
   Notes: { en: 'Notes', ar: 'ملاحظات', pattern: /^(notes|ملاحظات|ملاحظة)$/i },
-  AccountNumber: { en: 'Account Number', ar: 'رقم الحساب', pattern: /^(account|account.?no|account.?number|رقم.?الحساب)$/i },
-  ContractNumber: { en: 'Contract Number', ar: 'رقم العقد', pattern: /^(contract|contract.?no|contract.?number|رقم.?العقد)$/i },
-  OutstandingAmount: { en: 'Outstanding Amount', ar: 'المديونية', pattern: /^(outstanding|outstanding.?amount|المديونية|المبلغ.?المستحق)$/i },
-  OverdueAmount: { en: 'Overdue Amount', ar: 'المتأخر', pattern: /^(overdue|overdue.?amount|المتأخر)$/i },
-  DaysPastDue: { en: 'Days Past Due', ar: 'أيام التأخر', pattern: /^(dpd|days.?past.?due|أيام.?التأخر)$/i },
+  AccountNumber: { en: 'Account number', ar: 'رقم الحساب', required: true, pattern: /^(account|account.?no|account.?number|رقم.?الحساب)$/i },
+  ContractNumber: { en: 'Contract number', ar: 'رقم العقد', pattern: /^(contract|contract.?no|contract.?number|رقم.?العقد)$/i },
+  OutstandingAmount: { en: 'Outstanding amount', ar: 'المديونية', pattern: /^(outstanding|outstanding.?amount|المديونية|المبلغ.?المستحق)$/i },
+  OverdueAmount: { en: 'Overdue amount', ar: 'المتأخر', pattern: /^(overdue|overdue.?amount|المتأخر)$/i },
+  DaysPastDue: { en: 'Days past due', ar: 'أيام التأخر', pattern: /^(dpd|days.?past.?due|أيام.?التأخر)$/i },
 };
 
 function mappingFor(
@@ -60,8 +61,20 @@ function mappingFor(
   };
 }
 
+function downloadTemplate(arabic: boolean) {
+  const headers = DATA_ENTRY_IMPORT_FIELDS.map((key) => (arabic ? fieldMeta[key].ar : fieldMeta[key].en));
+  const blob = new Blob([`${headers.join(',')}\n`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = arabic ? 'قالب-ادخال-البيانات.csv' : 'data-entry-template.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function DataEntryImportPage() {
   const d = useDataEntryText();
+  const toast = useToast();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -73,10 +86,12 @@ export function DataEntryImportPage() {
   const [primaryClassification, setPrimaryClassification] = useState('');
   const [subClassification, setSubClassification] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [upload, setUpload] = useState<DataEntryImportUpload | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
   const [mapping, setMapping] = useState<DataEntryImportMappingRequest | null>(null);
   const [preview, setPreview] = useState<DataEntryImportPreview | null>(null);
+  const [onlyInvalid, setOnlyInvalid] = useState(false);
 
   useEffect(() => {
     dataEntryService.organizations().then((items) => {
@@ -93,9 +108,7 @@ export function DataEntryImportPage() {
     }
     dataEntryService.portfolios(organizationId).then((items) => {
       setPortfolios(items);
-      setPortfolioId(items[0]?.id ?? '');
-      setPrimaryClassification(items[0]?.primaryClassification ?? '');
-      setSubClassification(items[0]?.subClassification ?? '');
+      setPortfolioId('');
     }).catch(() => {
       setPortfolios([]);
       setPortfolioId('');
@@ -103,12 +116,10 @@ export function DataEntryImportPage() {
   }, [organizationId]);
 
   useEffect(() => {
-    const selected = portfolios.find((item) => item.id === portfolioId);
-    if (selected) {
-      setPrimaryClassification(selected.primaryClassification ?? '');
-      setSubClassification(selected.subClassification ?? '');
-    }
-  }, [portfolioId, portfolios]);
+    const selected = portfolios.find((item) =>
+      item.primaryClassification === primaryClassification && item.subClassification === subClassification);
+    setPortfolioId(selected?.id ?? '');
+  }, [primaryClassification, portfolios, subClassification]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -122,8 +133,13 @@ export function DataEntryImportPage() {
     }
   }
 
+  function takeFile(next?: File | null) {
+    if (!next) return;
+    setFile(next);
+  }
+
   async function sendFile() {
-    if (!file || !organizationId) return;
+    if (!file || !organizationId || !primaryClassification || !subClassification) return;
     if (!/\.(xlsx|xls|csv)$/i.test(file.name) || file.size > 20 * 1024 * 1024) {
       setError(d.text('الملف غير مدعوم أو أكبر من 20 ميجابايت', 'Unsupported file or larger than 20MB'));
       return;
@@ -133,33 +149,37 @@ export function DataEntryImportPage() {
       setUpload(data);
       setMapping(mappingFor(data, 0, organizationId, portfolioId, primaryClassification, subClassification));
       setSheetIndex(0);
-      setStep(2);
+      setStep(1);
     });
   }
 
   const labels = [
-    d.text('الجهة', 'Organization'),
-    d.text('رفع الملف', 'Upload file'),
+    d.text('الجهة والملف', 'Organization & file'),
     d.text('ربط الأعمدة', 'Column mapping'),
-    d.text('المعاينة', 'Preview'),
+    d.text('المعاينة والإرسال', 'Preview & send'),
   ];
-
-  const orgLabel = (org: DataEntryOrganization) => (d.ar ? org.nameArabic : org.nameEnglish) || org.code;
-  const portfolioLabel = (item: DataEntryPortfolio) => (d.ar ? item.nameArabic : item.nameEnglish) || item.code;
-  const needsClassification = portfolios.length === 0;
+  const deskReady = Boolean(organizationId && primaryClassification && subClassification);
+  const previewRows = useMemo(() => {
+    if (!preview) return [];
+    return onlyInvalid ? preview.rows.filter((row) => row.status !== 'READY' && row.status !== 'EXISTING_CUSTOMER') : preview.rows;
+  }, [onlyInvalid, preview]);
+  const missingRequired = mapping && (!mapping.columns.CustomerName || !mapping.columns.AccountNumber);
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title={d.text('رفع البيانات', 'Import Data')}
-        description={d.text('رفع ملف عملاء ثم ربط الأعمدة والمعاينة قبل الإرسال.', 'Upload a client file, map columns, preview, then confirm.')}
+        title={d.text('رفع ملف للتحصيل', 'Upload a file to collections')}
+        description={d.text('ارفع ملف العملاء، راجع الربط، ثم أرسل الدفعة لمراجعة التحصيل حتى تُنشأ الحالات.', 'Upload the client file, review mapping, then send the batch for collections review so cases can be created.')}
+        actions={
+          <Button fullWidth={false} leftIcon={<Download className="h-4 w-4" />} variant="outline" onClick={() => downloadTemplate(d.ar)}>
+            {d.text('تنزيل القالب', 'Download template')}
+          </Button>
+        }
       />
+      <DataEntryPipeline current="enter" />
       <div className="flex flex-wrap gap-2">
         {labels.map((label, index) => (
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-bold ${step === index ? 'bg-mis-primary text-white' : 'bg-slate-100 text-slate-500'}`}
-            key={label}
-          >
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${step === index ? 'bg-mis-primary text-white' : 'bg-slate-100 text-slate-500'}`} key={label}>
             {index + 1}. {label}
           </span>
         ))}
@@ -168,67 +188,48 @@ export function DataEntryImportPage() {
 
       {step === 0 ? (
         <Card className="space-y-4 p-6">
-          <SelectInput
-            label={d.text('الجهة', 'Organization')}
-            required
-            value={organizationId}
-            onChange={(event) => setOrganizationId(event.target.value)}
+          <DataEntryDeskFields
+            organizationId={organizationId}
+            organizations={organizations}
+            portfolios={portfolios}
+            primaryClassification={primaryClassification}
+            subClassification={subClassification}
+            onOrganizationChange={(id) => {
+              setOrganizationId(id);
+              setPrimaryClassification('');
+              setSubClassification('');
+              setPortfolioId('');
+            }}
+            onPrimaryChange={(value) => {
+              setPrimaryClassification(value);
+              setSubClassification('');
+            }}
+            onSubChange={setSubClassification}
+          />
+          <label
+            className={`flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 text-center ${dragOver ? 'border-mis-primary bg-mis-pale' : 'border-mis-border bg-slate-50'}`}
+            onDragOver={(event) => { event.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragOver(false);
+              takeFile(event.dataTransfer.files?.[0] ?? null);
+            }}
           >
-            {organizations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {orgLabel(org)}
-              </option>
-            ))}
-          </SelectInput>
-          {portfolios.length > 0 ? (
-            <SelectInput
-              label={d.text('المحفظة', 'Portfolio')}
-              value={portfolioId}
-              onChange={(event) => setPortfolioId(event.target.value)}
-            >
-              <option value="">—</option>
-              {portfolios.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {portfolioLabel(item)}
-                </option>
-              ))}
-            </SelectInput>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              <TextInput
-                label={d.text('التصنيف الرئيسي', 'Primary classification')}
-                value={primaryClassification}
-                onChange={(event) => setPrimaryClassification(event.target.value)}
-              />
-              <TextInput
-                label={d.text('التصنيف الفرعي', 'Sub classification')}
-                value={subClassification}
-                onChange={(event) => setSubClassification(event.target.value)}
-              />
-            </div>
-          )}
-          <Button disabled={!organizationId || (needsClassification && !primaryClassification.trim())} fullWidth={false} onClick={() => setStep(1)}>
-            {d.text('التالي', 'Next')}
+            <FileUp className="mb-2 h-8 w-8 text-mis-primary" />
+            <p className="font-bold text-mis-navy">{file ? file.name : d.text('اسحب الملف هنا أو اضغط للاختيار', 'Drop the file here or click to choose')}</p>
+            <p className="mt-1 text-sm text-slate-500">{d.text('Excel أو CSV حتى 20 ميجابايت', 'Excel or CSV up to 20MB')}</p>
+            <input accept=".csv,.xlsx,.xls" className="hidden" type="file" onChange={(event) => takeFile(event.target.files?.[0] ?? null)} />
+          </label>
+          <Button disabled={busy || !file || !deskReady} fullWidth={false} isLoading={busy} onClick={() => void sendFile()}>
+            {d.text('رفع ومتابعة الربط', 'Upload and map columns')}
           </Button>
         </Card>
       ) : null}
 
-      {step === 1 ? (
+      {step === 1 && upload && mapping ? (
         <Card className="space-y-4 p-6">
-          <FileInput accept=".csv,.xlsx,.xls" label={d.text('الملف', 'File')} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-          <div className="flex gap-2">
-            <Button disabled={busy} fullWidth={false} variant="outline" onClick={() => setStep(0)}>
-              {d.text('رجوع', 'Back')}
-            </Button>
-            <Button disabled={busy || !file} fullWidth={false} isLoading={busy} onClick={() => void sendFile()}>
-              {d.text('رفع ومعاينة', 'Upload & continue')}
-            </Button>
-          </div>
-        </Card>
-      ) : null}
-
-      {step === 2 && upload && mapping ? (
-        <Card className="space-y-4 p-6">
+          {missingRequired ? <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{d.text('اربط اسم العميل ورقم الحساب حتى يستطيع التحصيل إنشاء الحالة بعد القبول.', 'Map customer name and account number so collections can create the case after acceptance.')}</p> : null}
           {upload.sheets.length > 1 ? (
             <SelectInput
               label={d.text('الورقة', 'Sheet')}
@@ -240,9 +241,7 @@ export function DataEntryImportPage() {
               }}
             >
               {upload.sheets.map((sheet, index) => (
-                <option key={sheet.sheetName ?? index} value={index}>
-                  {sheet.sheetName ?? `Sheet ${index + 1}`}
-                </option>
+                <option key={sheet.sheetName ?? index} value={index}>{sheet.sheetName ?? `Sheet ${index + 1}`}</option>
               ))}
             </SelectInput>
           ) : null}
@@ -250,90 +249,70 @@ export function DataEntryImportPage() {
             {DATA_ENTRY_IMPORT_FIELDS.map((key) => (
               <SelectInput
                 key={key}
-                label={d.ar ? fieldMeta[key].ar : fieldMeta[key].en}
+                label={`${d.ar ? fieldMeta[key].ar : fieldMeta[key].en}${fieldMeta[key].required ? ` *` : ''}`}
                 value={mapping.columns[key] ?? ''}
-                onChange={(event) =>
-                  setMapping({
-                    ...mapping,
-                    columns: { ...mapping.columns, [key]: event.target.value || null },
-                  })
-                }
+                onChange={(event) => setMapping({ ...mapping, columns: { ...mapping.columns, [key]: event.target.value || null } })}
               >
                 <option value="">—</option>
                 {(upload.sheets[sheetIndex]?.detectedColumns ?? []).map((column) => (
-                  <option key={column} value={column}>
-                    {column}
-                  </option>
+                  <option key={column} value={column}>{column}</option>
                 ))}
               </SelectInput>
             ))}
           </div>
           <div className="flex gap-2">
-            <Button disabled={busy} fullWidth={false} variant="outline" onClick={() => setStep(1)}>
-              {d.text('رجوع', 'Back')}
-            </Button>
+            <Button disabled={busy} fullWidth={false} variant="outline" onClick={() => setStep(0)}>{d.text('رجوع', 'Back')}</Button>
             <Button
-              disabled={busy}
+              disabled={busy || Boolean(missingRequired)}
               fullWidth={false}
               isLoading={busy}
-              onClick={() =>
-                void run(async () => {
-                  const payload: DataEntryImportMappingRequest = {
-                    ...mapping,
-                    organizationId,
-                    portfolioId: portfolioId || null,
-                    primaryClassification: needsClassification ? primaryClassification || null : mapping.primaryClassification,
-                    subClassification: needsClassification ? subClassification || null : mapping.subClassification,
-                  };
-                  setPreview(await dataEntryService.previewImport(upload.uploadId, payload));
-                  setStep(3);
-                })
-              }
+              onClick={() => void run(async () => {
+                const payload: DataEntryImportMappingRequest = {
+                  ...mapping,
+                  organizationId,
+                  portfolioId: portfolioId || null,
+                  primaryClassification: primaryClassification || null,
+                  subClassification: subClassification || null,
+                };
+                setPreview(await dataEntryService.previewImport(upload.uploadId, payload));
+                setOnlyInvalid(false);
+                setStep(2);
+              })}
             >
-              {d.text('معاينة', 'Preview')}
+              {d.text('معاينة قبل الإرسال', 'Preview before send')}
             </Button>
           </div>
         </Card>
       ) : null}
 
-      {step === 3 && preview && upload ? (
+      {step === 2 && preview && upload ? (
         <Card className="space-y-4 p-6">
-          <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-            <span>{d.text('الإجمالي', 'Total')}: {d.number(preview.totalRows)}</span>
-            <span>{d.text('جاهز', 'Ready')}: {d.number(preview.readyRows)}</span>
-            <span>{d.text('موجود', 'Existing')}: {d.number(preview.existingCustomerRows)}</span>
-            <span>{d.text('غير صالح', 'Invalid')}: {d.number(preview.invalidRows)}</span>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl bg-slate-50 p-3 text-sm"><p className="text-slate-500">{d.text('الإجمالي', 'Total')}</p><p className="font-bold text-mis-navy">{d.number(preview.totalRows)}</p></div>
+            <div className="rounded-xl bg-emerald-50 p-3 text-sm"><p className="text-emerald-700">{d.text('جاهز للتحصيل', 'Ready for collections')}</p><p className="font-bold text-emerald-800">{d.number(preview.readyRows + preview.existingCustomerRows)}</p></div>
+            <div className="rounded-xl bg-amber-50 p-3 text-sm"><p className="text-amber-700">{d.text('عميل موجود', 'Existing')}</p><p className="font-bold text-amber-800">{d.number(preview.existingCustomerRows)}</p></div>
+            <div className="rounded-xl bg-rose-50 p-3 text-sm"><p className="text-rose-700">{d.text('غير صالح', 'Invalid')}</p><p className="font-bold text-rose-800">{d.number(preview.invalidRows)}</p></div>
           </div>
+          <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600">
+            <input checked={onlyInvalid} type="checkbox" onChange={(event) => setOnlyInvalid(event.target.checked)} />
+            {d.text('عرض غير الصالح فقط', 'Show invalid only')}
+          </label>
           <div className="overflow-x-auto rounded-xl border border-mis-border">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
-                  {[
-                    d.text('رقم العميل', 'Customer Number'),
-                    d.text('الاسم', 'Name'),
-                    d.text('الرقم القومي', 'National ID'),
-                    d.text('الموبايل', 'Mobile'),
-                    d.text('الحالة', 'Status'),
-                  ].map((label) => (
-                    <th className="px-3 py-2 text-start" key={label}>
-                      {label}
-                    </th>
+                  {[d.text('رقم العميل', 'Customer number'), d.text('الاسم', 'Name'), d.text('الرقم القومي', 'National ID'), d.text('الموبايل', 'Mobile'), d.text('الحالة', 'Status')].map((label) => (
+                    <th className="px-3 py-2 text-start" key={label}>{label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-mis-border">
-                {preview.rows.slice(0, 100).map((row) => (
+                {previewRows.slice(0, 200).map((row) => (
                   <tr key={row.rowNumber}>
-                    <td className="px-3 py-2" data-bidi="ltr">
-                      {row.customerNumber || '—'}
-                    </td>
+                    <td className="px-3 py-2" data-bidi="ltr">{row.customerNumber || '—'}</td>
                     <td className="px-3 py-2">{row.customerName}</td>
-                    <td className="px-3 py-2" data-bidi="ltr">
-                      {row.nationalId || '—'}
-                    </td>
-                    <td className="px-3 py-2" data-bidi="ltr">
-                      {row.mobileNumber || '—'}
-                    </td>
+                    <td className="px-3 py-2" data-bidi="ltr">{row.nationalId || '—'}</td>
+                    <td className="px-3 py-2" data-bidi="ltr">{row.mobileNumber || '—'}</td>
                     <td className="px-3 py-2">
                       <DataEntryRowStatus value={row.status} />
                       {row.errorMessage ? <p className="mt-1 text-xs text-amber-700">{row.errorMessage}</p> : null}
@@ -343,22 +322,22 @@ export function DataEntryImportPage() {
               </tbody>
             </table>
           </div>
+          <p className="text-sm text-slate-500">
+            {d.text('التأكيد يرسل الصفوف الصالحة لمراجعة التحصيل فورًا. الصفوف غير الصالحة تبقى في السجل للمراجعة.', 'Confirm sends valid rows to collections review immediately. Invalid rows stay in the record for review.')}
+          </p>
           <div className="flex gap-2">
-            <Button disabled={busy} fullWidth={false} variant="outline" onClick={() => setStep(2)}>
-              {d.text('رجوع', 'Back')}
-            </Button>
+            <Button disabled={busy} fullWidth={false} variant="outline" onClick={() => setStep(1)}>{d.text('رجوع', 'Back')}</Button>
             <Button
               disabled={busy || preview.readyRows + preview.existingCustomerRows < 1}
               fullWidth={false}
               isLoading={busy}
-              onClick={() =>
-                void run(async () => {
-                  await dataEntryService.confirmImport({ uploadId: preview.uploadId, previewId: preview.previewId });
-                  navigate('/data-entry/history');
-                })
-              }
+              onClick={() => void run(async () => {
+                await dataEntryService.confirmImport({ uploadId: preview.uploadId, previewId: preview.previewId });
+                toast.success(d.text('تم إرسال الدفعة لمراجعة التحصيل', 'Batch sent for collections review'));
+                navigate('/data-entry/history?status=SUBMITTED');
+              })}
             >
-              {d.text('تأكيد الإرسال', 'Confirm')}
+              {d.text(`إرسال ${preview.readyRows + preview.existingCustomerRows} للتحصيل`, `Send ${preview.readyRows + preview.existingCustomerRows} to collections`)}
             </Button>
           </div>
         </Card>

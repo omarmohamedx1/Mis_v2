@@ -12,7 +12,7 @@ export function BankDirectoryCard({ bank, basePath = '/banks', openLabel }: { ba
     <Link
       aria-label={`${openLabel ?? ct('openBank')}: ${name}`}
       className="group relative flex min-h-48 flex-col overflow-hidden rounded-[1.75rem] border border-mis-border bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-mis-sky hover:shadow-panel focus-visible:border-mis-blue"
-      to={`${basePath}/${bank.id}/overview`}
+      to={`${basePath}/${bank.id}`}
     >
       <span className="absolute inset-x-0 top-0 h-1 bg-mis-primary opacity-0 transition-opacity group-hover:opacity-100" />
       <div className="flex items-start justify-between gap-5">

@@ -80,6 +80,13 @@ public sealed class HrMasterDataController : ControllerBase
         return Ok(await _service.SetActiveAsync(category, id, request.IsActive, cancellationToken));
     }
 
+    [HttpDelete("{category}/{id:guid}")]
+    public async Task<IActionResult> Delete(string category, Guid id, CancellationToken cancellationToken)
+    {
+        await _service.DeleteAsync(category, id, cancellationToken);
+        return NoContent();
+    }
+
     private static void ValidatePaging(int page, int pageSize, string? search)
     {
         if (page < 1 || pageSize is < 1 or > 100)

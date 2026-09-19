@@ -25,6 +25,7 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
   const [selectedLabel, setSelectedLabel] = useState(initialSelection ? `${initialSelection.employeeNumber} - ${initialSelection.fullName}` : '');
   const [options, setOptions] = useState<EmployeeListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     if (previousValueRef.current && !value && query === selectedLabel) {
@@ -45,8 +46,15 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
     function close(event: MouseEvent) {
       if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false);
     }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onKey);
+    };
   }, []);
 
   useEffect(() => {
@@ -54,17 +62,19 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
     const search = value && query === selectedLabel ? '' : query.trim();
     const timer = window.setTimeout(async () => {
       setLoading(true);
+      setLoadError('');
       try {
-        const result = await hrEmployeeService.getEmployees({ departmentId: '', includeInactive, page: 1, pageSize: 12, search, status: 'active' });
+        const result = await hrEmployeeService.getEmployees({ departmentId: '', includeInactive, page: 1, pageSize: 12, search, status: includeInactive ? 'all' : 'active' });
         setOptions(result.items);
       } catch {
         setOptions([]);
+        setLoadError(t('employeeSearchLoadError'));
       } finally {
         setLoading(false);
       }
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [includeInactive, language, open, query, selectedLabel, value]);
+  }, [includeInactive, language, open, query, selectedLabel, t, value]);
 
   function select(employee: EmployeeListItem) {
     const next = `${employee.employeeNumber} - ${employee.fullName}`;
@@ -108,8 +118,8 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
         {value ? <button aria-label={t('clearSelection')} className="absolute end-10 top-2.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" onClick={clear} type="button"><X className="h-4 w-4" /></button> : null}
         <button aria-label={t('openEmployeeList')} className="absolute end-2 top-2.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" disabled={disabled} onClick={() => setOpen((current) => !current)} type="button"><ChevronDown className="h-4 w-4" /></button>
         {open ? (
-          <div className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-mis-border bg-white p-1 shadow-panel" id={`${id}-options`} role="listbox">
-            {loading ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('loading')}</p> : options.length === 0 ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('noEmployeesFound')}</p> : options.map((employee) => (
+          <div className="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-mis-border bg-white p-1 shadow-panel" id={`${id}-options`} role="listbox">
+            {loading ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('loading')}</p> : loadError ? <p className="px-3 py-4 text-center text-sm text-red-600" role="alert">{loadError}</p> : options.length === 0 ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('noEmployeesFound')}</p> : options.map((employee) => (
               <button className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-start text-sm hover:bg-mis-pale" key={employee.id} onClick={() => select(employee)} role="option" type="button">
                 <span className="min-w-0"><span className="block truncate font-semibold text-mis-navy">{employee.fullName}</span><span className="block text-xs text-slate-500">{employee.employeeNumber} - {employee.departmentName}</span></span>
                 {employee.id === value ? <Check className="h-4 w-4 flex-none text-mis-primary" aria-hidden="true" /> : null}

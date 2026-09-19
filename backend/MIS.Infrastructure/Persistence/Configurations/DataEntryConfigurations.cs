@@ -70,3 +70,24 @@ public sealed class DataEntryNotificationConfiguration : IEntityTypeConfiguratio
         b.HasOne(x => x.RecipientUser).WithMany().HasForeignKey(x => x.RecipientUserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+public sealed class DataEntryDocumentConfiguration : IEntityTypeConfiguration<DataEntryDocument>
+{
+    public void Configure(EntityTypeBuilder<DataEntryDocument> b)
+    {
+        b.ToTable("DataEntryDocuments");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.OriginalFileName).HasMaxLength(260).IsRequired();
+        b.Property(x => x.ContentType).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Sha256Hash).HasMaxLength(64).IsRequired();
+        b.Property(x => x.StorageKey).HasMaxLength(500).IsRequired();
+        b.Property(x => x.Note).HasMaxLength(500);
+        b.HasIndex(x => new { x.CustomerId, x.UploadedAt });
+        b.HasIndex(x => x.BatchId);
+        b.HasIndex(x => x.CaseId);
+        b.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.Batch).WithMany(x => x.Documents).HasForeignKey(x => x.BatchId).OnDelete(DeleteBehavior.SetNull);
+        b.HasOne(x => x.Case).WithMany().HasForeignKey(x => x.CaseId).OnDelete(DeleteBehavior.SetNull);
+        b.HasOne(x => x.UploadedByUser).WithMany().HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}

@@ -57,6 +57,15 @@ export interface AbsenceImportHistory {
 const base = '/hr/absences/imports';
 
 export const absenceImportService = {
+  async downloadTemplate() {
+    const response = await apiClient.get<Blob>(`${base}/template`, { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Absence_Import_Template.xlsx';
+    link.click();
+    URL.revokeObjectURL(url);
+  },
   upload(file: File) {
     const form = new FormData();
     form.append('file', file);

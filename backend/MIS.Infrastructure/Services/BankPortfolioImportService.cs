@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MIS.Application.Common;
@@ -10,9 +11,9 @@ using MIS.Application.DTOs.Collections;
 using MIS.Application.Interfaces;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
+using MIS.Domain.Hr;
 using MIS.Domain.Services;
 using MIS.Infrastructure.Persistence;
-using Npgsql;
 
 namespace MIS.Infrastructure.Services;
 
@@ -124,50 +125,61 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
 
         var imported = 0; var skipped = 0; var invalid = 0; var now = DateTimeOffset.UtcNow;
         var org = portfolio.Organization ?? await _db.CollectionClientOrganizations.SingleAsync(x => x.Id == bankId, token);
+        var collectorDirectory = await _db.Users.AsNoTracking().CollectorIdentities().SelectIdentityCandidates().ToArrayAsync(token);
+        var collectorTeams = await CollectionImportAssignment.ActiveTeamIdsAsync(_db, token);
 
         foreach (var row in previewRows)
         {
-            if (row.Status == "Existing") { skipped++; continue; }
-            if (row.Status != "Ready") { invalid++; continue; }
+            if (row.Status == "Error") { invalid++; continue; }
 
             var source = parsed.First(x => x.RowNumber == row.RowNumber);
+            var file = CollectionFileRowMapper.Read(source);
             var customerCode = row.CustomerCode!;
             var account = row.AccountReference!;
             var outstanding = row.OutstandingBalance!.Value;
-            var overdueText = Get(source, "overduebalance", "overdue", "المتأخر", "الرصيدالمتأخر");
-            var overdue = ParseMoney(overdueText) ?? outstanding;
-            var dpd = ParseInt(Get(source, "dayspastdue", "dpd", "أيامالتأخر", "ايامالتأخر")) ?? 0;
-            var bucket = buckets.FirstOrDefault(x => x.MinimumDays.HasValue && dpd >= x.MinimumDays && (!x.MaximumDays.HasValue || dpd <= x.MaximumDays))
-                ?? buckets.OrderBy(x => x.SortOrder).First();
-            var nameAr = Get(source, "namearabic", "customernamearabic", "اسمالعميلبالعربية", "اسمالعميل");
-            var nameEn = Get(source, "nameenglish", "customernameenglish", "customername");
-            var national = Digits(Get(source, "nationalid", "الرقمالقومي"));
-            var phone = NormalizePhone(Get(source, "phone", "mobile", "رقمالهاتف", "الموبايل"));
-            var contract = NullIfEmpty(Get(source, "contractreference", "contractnumber", "رقمالعقد"));
-            var product = NullIfEmpty(Get(source, "producttype", "loantype", "نوعالمنتج"));
-            var displayName = string.IsNullOrWhiteSpace(nameAr) ? nameEn : nameAr;
-
+            var overdue = file.Overdue ?? outstanding;
+            var bucketsForMatch = buckets.Select((bucket, index) => new CollectionBucketMatcher.BucketCandidate(index, bucket.Code, bucket.NameArabic, bucket.NameEnglish, bucket.MinimumDays, bucket.MaximumDays, bucket.SortOrder)).ToArray();
+            var matched = CollectionBucketMatcher.Resolve(bucketsForMatch, file.DaysPastDue, file.BucketText) ?? throw new HrConflictException("No delinquency bucket is configured for this organization.");
+            var bucket = buckets[matched.Index];
+            var dpd = file.DaysPastDue ?? Math.Max(0, bucket.MinimumDays ?? 0);
             if (!customers.TryGetValue(customerCode, out var customer))
             {
-                customer = new CollectionCustomer(bankId, customerCode, nameAr ?? string.Empty, nameEn ?? string.Empty, now);
+                customer = new CollectionCustomer(bankId, customerCode, file.NameArabic ?? string.Empty, file.NameEnglish ?? string.Empty, now);
                 customers[customerCode] = customer;
                 _db.CollectionCustomers.Add(customer);
             }
-            customer.ApplyImportedContact(nameAr, nameEn, NullIfEmpty(national), NullIfEmpty(phone));
+            customer.ApplyImportedContact(file.NameArabic, file.NameEnglish, file.NationalId, file.Mobile1);
+            customer.ApplyImportedProfile(file.Mobile2, file.Mobile3, file.Region, file.Area, file.City, file.Address1, file.Employer, file.JobTitle, file.Feedback, CollectionFileRowMapper.HasArabic(file.Address1 ?? file.Address2), file.Address2);
 
-            if (cases.ContainsKey(account)) { skipped++; continue; }
-
-            var collectionCase = new CollectionCase(portfolio.Id, customer.Id,
-                BuildCaseNumber(org.Code, portfolio.Code, account),
-                account, outstanding, outstanding, overdue, dpd, bucket.Id, now);
-            collectionCase.ApplyImportedReferences(contract, ClassifiedPortfolio.ProductTypeOrDefault(portfolio, product), now);
-            collectionCase.LinkImport(entity.Id);
-            cases[account] = collectionCase;
-            _db.CollectionCases.Add(collectionCase);
-            _db.CollectionCaseBucketHistory.Add(new CaseBucketHistory(collectionCase.Id, null, bucket.Id, "Portfolio import", CollectionsValues.AssignmentSources.Import, _user.UserId, now));
+            CollectionCase collectionCase;
+            if (!cases.TryGetValue(account, out collectionCase!))
+            {
+                collectionCase = new CollectionCase(portfolio.Id, customer.Id,
+                    BuildCaseNumber(org.Code, portfolio.Code, account),
+                    account, outstanding, outstanding, overdue, dpd, bucket.Id, now);
+                collectionCase.ApplyImportedReferences(file.Contract, ClassifiedPortfolio.ProductTypeOrDefault(portfolio, file.Product), now);
+                collectionCase.LinkImport(entity.Id);
+                cases[account] = collectionCase;
+                _db.CollectionCases.Add(collectionCase);
+                _db.CollectionCaseBucketHistory.Add(new CaseBucketHistory(collectionCase.Id, null, bucket.Id, "Portfolio import", CollectionsValues.AssignmentSources.Import, _user.UserId, now));
+                imported++;
+            }
+            else
+            {
+                var previousBucket = collectionCase.CurrentBucketId;
+                collectionCase.ApplyImportedBalances(outstanding, overdue, dpd, bucket.Id, now);
+                collectionCase.ApplyImportedReferences(file.Contract, ClassifiedPortfolio.ProductTypeOrDefault(portfolio, file.Product), now);
+                if (previousBucket != bucket.Id)
+                    _db.CollectionCaseBucketHistory.Add(new CaseBucketHistory(collectionCase.Id, previousBucket, bucket.Id, "Authoritative portfolio import", CollectionsValues.AssignmentSources.Import, _user.UserId, now));
+                skipped++;
+            }
+            collectionCase.ApplyImportedProfile(file.CardNumber, file.StatusText, file.Stage, file.CreditLimit, file.PurchaseLimit, file.ActivationDate, file.LastPaymentAmount, CollectionFileRowMapper.ToTimestamp(file.LastPaymentDate), file.LastTransactionDate, file.LastTransactionAmount, CollectionFileRowMapper.Serialize(source.Values), now);
+            collectionCase.ApplyImportedDeskFields(file.PreviousCollector, file.FileCollector, file.BucketText,
+                CollectorIdentity.UniqueMatch(collectorDirectory, file.PreviousCollector),
+                CollectorIdentity.UniqueMatch(collectorDirectory, file.FileCollector));
+            CollectionImportAssignment.TryAssign(_db, collectionCase, collectorTeams, _user.UserId, now);
             var priority = CollectionRules.CalculatePriority(collectionCase.OutstandingBalance, collectionCase.DaysPastDue, false, false, 999);
             collectionCase.SetPriority(priority.Score, string.Join(" + ", priority.Reasons), now);
-            imported++;
         }
 
         entity.Confirm(now);
@@ -243,30 +255,70 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
     public async Task DeleteAsync(Guid bankId, Guid importId, CancellationToken token)
     {
         EnsureImportPermission(); _ = await RequireAccessibleBankAsync(bankId, token);
-        var storageKey = await _db.BankPortfolioImports.AsNoTracking()
-            .Where(item => item.Id == importId && item.BankId == bankId)
-            .Select(item => item.StorageKey)
-            .SingleOrDefaultAsync(token)
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        var entity = await _db.BankPortfolioImports.SingleOrDefaultAsync(item => item.Id == importId && item.BankId == bankId, token)
             ?? throw new HrNotFoundException("Portfolio import was not found for this bank.");
 
-        try
+        var caseIds = await _db.CollectionCases.Where(item => item.SourceImportId == importId).Select(item => item.Id).ToListAsync(token);
+        var attachmentKeys = new List<string>();
+        if (caseIds.Count > 0)
         {
-            var deleted = await _db.BankPortfolioImports
-                .Where(item => item.Id == importId && item.BankId == bankId)
-                .ExecuteDeleteAsync(token);
-            if (deleted == 0) throw new HrNotFoundException("Portfolio import was not found for this bank.");
-        }
-        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.ForeignKeyViolation)
-        {
-            throw new HrConflictException("This portfolio import is in use and cannot be deleted.");
+            if (await _db.CollectionPaymentAllocations.AnyAsync(item => caseIds.Contains(item.CaseId), token)
+                || await _db.CollectionPayments.AnyAsync(item => caseIds.Contains(item.CaseId) && item.Status != CollectionsValues.PaymentStatuses.Rejected, token))
+                throw new HrConflictException("This portfolio has collection payments and cannot be deleted. Archive it instead.");
+
+            var complaintIds = await _db.CollectionComplaints.Where(item => caseIds.Contains(item.CaseId)).Select(item => item.Id).ToListAsync(token);
+            var paymentIds = await _db.CollectionPayments.Where(item => caseIds.Contains(item.CaseId)).Select(item => item.Id).ToListAsync(token);
+            attachmentKeys = await _db.CollectionAttachments
+                .Where(item => caseIds.Contains(item.CaseId)
+                    || (item.ComplaintId != null && complaintIds.Contains(item.ComplaintId.Value))
+                    || (item.PaymentId != null && paymentIds.Contains(item.PaymentId.Value)))
+                .Select(item => item.StorageKey)
+                .ToListAsync(token);
+
+            if (complaintIds.Count > 0)
+                await _db.CollectionComplaintNotes.Where(item => complaintIds.Contains(item.ComplaintId)).ExecuteDeleteAsync(token);
+            await _db.CollectionAttachments.Where(item => caseIds.Contains(item.CaseId)
+                || (item.ComplaintId != null && complaintIds.Contains(item.ComplaintId.Value))
+                || (item.PaymentId != null && paymentIds.Contains(item.PaymentId.Value))).ExecuteDeleteAsync(token);
+            if (complaintIds.Count > 0)
+                await _db.CollectionComplaints.Where(item => complaintIds.Contains(item.Id)).ExecuteDeleteAsync(token);
+            await _db.AccountingTransportationClaims
+                .Where(item => item.CaseId != null && caseIds.Contains(item.CaseId.Value))
+                .ExecuteUpdateAsync(set => set.SetProperty(item => item.CaseId, (Guid?)null), token);
+            var visitIds = await _db.CollectionFieldVisits.Where(item => caseIds.Contains(item.CaseId)).Select(item => item.Id).ToListAsync(token);
+            if (visitIds.Count > 0)
+                await _db.AccountingTransportationClaims
+                    .Where(item => item.FieldVisitId != null && visitIds.Contains(item.FieldVisitId.Value))
+                    .ExecuteUpdateAsync(set => set.SetProperty(item => item.FieldVisitId, (Guid?)null), token);
+            await _db.CollectionDcrs.Where(item => caseIds.Contains(item.CaseId)).ExecuteDeleteAsync(token);
+            await _db.CollectionFieldVisits.Where(item => caseIds.Contains(item.CaseId)).ExecuteDeleteAsync(token);
+            await _db.CollectionPromisesToPay.Where(item => caseIds.Contains(item.CaseId)).ExecuteDeleteAsync(token);
+            await _db.CollectionActivities.Where(item => caseIds.Contains(item.CaseId)).ExecuteDeleteAsync(token);
+            await _db.CollectionAssignmentHistory.Where(item => caseIds.Contains(item.CaseId)).ExecuteDeleteAsync(token);
+            await _db.CollectionCaseBucketHistory.Where(item => caseIds.Contains(item.CaseId)).ExecuteDeleteAsync(token);
+            if (paymentIds.Count > 0)
+                await _db.CollectionPayments.Where(item => paymentIds.Contains(item.Id)).ExecuteDeleteAsync(token);
+            await _db.CollectionAuditLogs.Where(item => item.CaseId != null && caseIds.Contains(item.CaseId.Value)).ExecuteDeleteAsync(token);
+            await _db.CollectionCases.Where(item => item.SourceImportId == importId).ExecuteDeleteAsync(token);
         }
 
-        try { await _files.DeleteAsync(storageKey, CancellationToken.None); }
-        catch (Exception exception)
+        var storageKey = entity.StorageKey;
+        _db.CollectionAuditLogs.Add(new CollectionAuditLog(_user.UserId, "PortfolioImportDeleted", nameof(BankPortfolioImport), importId, null,
+            JsonSerializer.Serialize(new { entity.PortfolioName, entity.OriginalFileName, entity.RowCount, CasesRemoved = caseIds.Count }), null, "BANK_WORKSPACE", DateTimeOffset.UtcNow));
+        await _db.SaveChangesAsync(token);
+        await _db.BankPortfolioImports.Where(item => item.Id == importId && item.BankId == bankId).ExecuteDeleteAsync(token);
+        await transaction.CommitAsync(token);
+
+        foreach (var key in attachmentKeys.Append(storageKey).Distinct(StringComparer.Ordinal))
         {
-            _logger.LogError(exception,
-                "Portfolio import {ImportId} for bank {BankId} was deleted, but storage cleanup failed for key {StorageKey}.",
-                importId, bankId, storageKey);
+            try { await _files.DeleteAsync(key, CancellationToken.None); }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception,
+                    "Portfolio import {ImportId} for bank {BankId} was deleted, but storage cleanup failed for key {StorageKey}.",
+                    importId, bankId, key);
+            }
         }
     }
 
@@ -353,37 +405,34 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
             .Select(x => new { x.NationalId, x.CustomerCode })
             .ToDictionaryAsync(x => x.NationalId!, x => x.CustomerCode, StringComparer.OrdinalIgnoreCase, token);
         var buckets = await _db.CollectionBucketDefinitions.AsNoTracking()
-            .Where(x => x.OrganizationId == organizationId && x.IsActive && (x.PortfolioId == null || x.PortfolioId == portfolioId) && x.MinimumDays != null)
+            .Where(x => x.OrganizationId == organizationId && x.IsActive && (x.PortfolioId == null || x.PortfolioId == portfolioId))
             .ToArrayAsync(token);
         var batchAccounts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var rows = new List<BankPortfolioImportPreviewRowDto>(parsed.Count);
 
+        var bucketCandidates = buckets.Select((bucket, index) => new CollectionBucketMatcher.BucketCandidate(index, bucket.Code, bucket.NameArabic, bucket.NameEnglish, bucket.MinimumDays, bucket.MaximumDays, bucket.SortOrder)).ToArray();
         foreach (var source in parsed)
         {
             var errors = new List<string>();
-            var account = Get(source, "accountreference", "accountnumber", "رقمالحساب", "مرجعالحساب");
-            var customerCode = Get(source, "customercode", "customerid", "كودالعميل");
-            var ar = Get(source, "namearabic", "customernamearabic", "اسمالعميلبالعربية", "اسمالعميل");
-            var en = Get(source, "nameenglish", "customernameenglish", "customername");
-            var national = Digits(Get(source, "nationalid", "الرقمالقومي"));
-            var phone = NormalizePhone(Get(source, "phone", "mobile", "رقمالهاتف", "الموبايل"));
-            var outstandingText = Get(source, "outstandingbalance", "outstanding", "الرصيدالقائم", "المديونية");
-            var overdueText = Get(source, "overduebalance", "overdue", "المتأخر", "الرصيدالمتأخر");
-            var dpdText = Get(source, "dayspastdue", "dpd", "أيامالتأخر", "ايامالتأخر");
-            var outstanding = ParseMoney(outstandingText);
-            var overdue = string.IsNullOrWhiteSpace(overdueText) ? outstanding : ParseMoney(overdueText);
-            var dpd = ParseInt(dpdText);
+            var file = CollectionFileRowMapper.Read(source);
+            var account = file.Account;
+            var customerCode = file.CustomerCode;
+            var national = file.NationalId ?? string.Empty;
+            var phone = file.Mobile1 ?? string.Empty;
+            var outstanding = file.Outstanding;
+            var overdue = file.Overdue ?? outstanding;
+            var dpd = file.DaysPastDue;
 
-            if (string.IsNullOrWhiteSpace(account)) errors.Add("Account reference is required.");
+            if (string.IsNullOrWhiteSpace(account)) errors.Add("A case, card, or account number is required.");
             else if (!batchAccounts.Add(account)) errors.Add("Duplicate account reference in this file.");
             if (string.IsNullOrWhiteSpace(customerCode))
-                customerCode = BuildCustomerCode(national, phone, string.IsNullOrWhiteSpace(ar) ? en : ar, account);
-            if (string.IsNullOrWhiteSpace(ar) && string.IsNullOrWhiteSpace(en)) errors.Add("At least one customer name is required.");
-            if (!outstanding.HasValue || outstanding < 0) errors.Add("Outstanding balance is missing or invalid.");
-            if (!overdue.HasValue || overdue < 0) errors.Add("Overdue balance is missing or invalid.");
-            if (!dpd.HasValue || dpd < 0) errors.Add("Days past due is missing or invalid.");
-            else if (buckets.Length > 0 && !buckets.Any(x => dpd >= x.MinimumDays && (!x.MaximumDays.HasValue || dpd <= x.MaximumDays)))
-                errors.Add("No configured bucket matches days past due.");
+                customerCode = BuildCustomerCode(national, phone, file.NameArabic ?? file.NameEnglish ?? string.Empty, account);
+            if (string.IsNullOrWhiteSpace(file.NameArabic) && string.IsNullOrWhiteSpace(file.NameEnglish)) errors.Add("At least one customer name is required.");
+            if (!outstanding.HasValue || outstanding < 0) errors.Add("Current balance is missing or invalid.");
+            if (overdue < 0) errors.Add("Total dues is invalid.");
+            if (dpd.HasValue && dpd < 0) errors.Add("Days past due is invalid.");
+            if (!dpd.HasValue && string.IsNullOrWhiteSpace(file.BucketText)) errors.Add("Either days past due or a bucket label is required.");
+            if (bucketCandidates.Length == 0) errors.Add("No delinquency bucket is configured for this organization.");
             if (!string.IsNullOrWhiteSpace(national) && national.Length != 14) errors.Add("Egyptian national ID must contain 14 digits.");
             if (!string.IsNullOrWhiteSpace(phone) && (phone.Length != 11 || !phone.StartsWith("01", StringComparison.Ordinal)))
                 errors.Add("Egyptian mobile must contain 11 digits and start with 01.");
@@ -392,56 +441,17 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
                 errors.Add("National ID is already linked to another customer code.");
 
             var existing = !string.IsNullOrWhiteSpace(account) && existingAccounts.Contains(account);
-            if (existing) errors.Add("Account already exists.");
-
-            var status = errors.Count == 0 ? "Ready" : existing && errors.Count == 1 ? "Existing" : "Error";
+            var status = errors.Count > 0 ? "Error" : existing ? "Existing" : "Ready";
             var name = ApiTextLocalizer.IsArabic
-                ? (string.IsNullOrWhiteSpace(ar) ? en : ar)
-                : (string.IsNullOrWhiteSpace(en) ? ar : en);
+                ? (string.IsNullOrWhiteSpace(file.NameArabic) ? file.NameEnglish : file.NameArabic)
+                : (string.IsNullOrWhiteSpace(file.NameEnglish) ? file.NameArabic : file.NameEnglish);
             rows.Add(new BankPortfolioImportPreviewRowDto(
                 source.RowNumber, NullIfEmpty(name), NullIfEmpty(customerCode), NullIfEmpty(account),
-                outstanding, status, errors.Select(error => ApiTextLocalizer.Localize(error) ?? error).ToArray()));
+                outstanding, status, errors.Select(error => ApiTextLocalizer.Localize(error) ?? error).ToArray(),
+                NullIfEmpty(national), file.CardNumber, file.BucketText, file.StatusText, overdue));
         }
 
         return rows;
-    }
-
-    private static string Get(ParsedCollectionRow row, params string[] aliases)
-    {
-        foreach (var alias in aliases)
-            if (row.Values.TryGetValue(CollectionImportParser.NormalizeHeader(alias), out var value))
-                return value.Trim();
-        return string.Empty;
-    }
-
-    private static decimal? ParseMoney(string value)
-    {
-        value = Digits(value).Replace(",", string.Empty).Replace("ج.م", string.Empty).Trim();
-        return decimal.TryParse(value, NumberStyles.Number | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var result) ? result : null;
-    }
-
-    private static int? ParseInt(string value)
-    {
-        value = Digits(value).Replace(",", string.Empty).Trim();
-        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result) ? result : null;
-    }
-
-    private static string Digits(string value)
-    {
-        const string arabic = "٠١٢٣٤٥٦٧٨٩"; const string eastern = "۰۱۲۳۴۵۶۷۸۹";
-        var builder = new StringBuilder(value.Length);
-        foreach (var c in value)
-        {
-            var index = arabic.IndexOf(c); if (index < 0) index = eastern.IndexOf(c);
-            builder.Append(index >= 0 ? (char)('0' + index) : c);
-        }
-        return builder.ToString();
-    }
-
-    private static string NormalizePhone(string value)
-    {
-        var digits = new string(Digits(value).Where(char.IsDigit).ToArray());
-        return digits.StartsWith("20") && digits.Length == 12 ? "0" + digits[2..] : digits;
     }
 
     private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

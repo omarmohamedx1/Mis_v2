@@ -1,5 +1,6 @@
 import { apiClient } from '../../../services/apiClient';
 import { isMasterDataCategory, type MasterDataCategory, type MasterDataItem, type MasterDataLookup, type MasterDataQuery, type PagedMasterData, type SaveMasterDataRequest } from '../types/masterData';
+import { loadAllHrPages } from './hrPaging';
 
 export const hrMasterDataService = {
   async getCategories(): Promise<MasterDataCategory[]> {
@@ -8,15 +9,17 @@ export const hrMasterDataService = {
   },
 
   async getPaged(query: MasterDataQuery): Promise<PagedMasterData> {
-    const { data } = await apiClient.get<PagedMasterData>(`/hr/master/${query.category}`, {
+    return loadAllHrPages(async (page, pageSize) => {
+      const { data } = await apiClient.get<PagedMasterData>(`/hr/master/${query.category}`, {
       params: {
         isActive: query.isActive ?? undefined,
-        page: query.page,
-        pageSize: query.pageSize,
+        page,
+        pageSize,
         search: query.search || undefined,
       },
     });
-    return data;
+      return data;
+    });
   },
 
   async getLookup(category: MasterDataCategory, includeInactive = false): Promise<MasterDataLookup[]> {
@@ -42,5 +45,9 @@ export const hrMasterDataService = {
   async setActive(category: MasterDataCategory, id: string, isActive: boolean): Promise<MasterDataItem> {
     const { data } = await apiClient.patch<MasterDataItem>(`/hr/master/${category}/${id}/active`, { isActive });
     return data;
+  },
+
+  async delete(category: MasterDataCategory, id: string): Promise<void> {
+    await apiClient.delete(`/hr/master/${category}/${id}`);
   },
 };
