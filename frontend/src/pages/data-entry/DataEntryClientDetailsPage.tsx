@@ -1,4 +1,4 @@
-import { ArrowUpRight, History, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -8,19 +8,11 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { PageHeader } from '../../components/common/PageHeader';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
-import { DataEntryDeskLabel } from '../../features/data-entry/DataEntryDeskFields';
 import { DataEntryDocumentsPanel } from '../../features/data-entry/DataEntryDocumentsPanel';
-import { DataEntryBatchStatus, DataEntryPipeline, useDataEntryText } from '../../features/data-entry/dataEntryUi';
+import { useDataEntryText } from '../../features/data-entry/dataEntryUi';
 import { dataEntryService } from '../../features/data-entry/services/dataEntryService';
 import type { DataEntryClientDetails, DataEntryDocument } from '../../features/data-entry/types/dataEntry';
-import { canAccessModule } from '../../features/modules/moduleAccess';
 import { getApiErrorMessage } from '../../services/apiClient';
-
-function hasValue(value: unknown) {
-  if (value === null || value === undefined) return false;
-  if (typeof value === 'string') return value.trim().length > 0;
-  return true;
-}
 
 function DetailSection({ title, rows }: { title: string; rows: [string, string][] }) {
   const visible = rows.filter(([, value]) => value && value !== '—');
@@ -52,7 +44,6 @@ export function DataEntryClientDetailsPage() {
   const [error, setError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const canCollections = user ? canAccessModule(user, 'collections') : false;
   const canUpload = Boolean(user?.roles.some((role) => ['Admin', 'DataEntry'].includes(role)) || user?.permissions.includes('data_entry.manage') || user?.permissions.includes('data_entry.access'));
 
   useEffect(() => {
@@ -75,8 +66,20 @@ export function DataEntryClientDetailsPage() {
     data.customerNameArabic ||
     data.customerNameEnglish ||
     data.customerNumber;
-  const moneyOrDash = (value?: number | null) => (hasValue(value) ? d.money(Number(value)) : '—');
-  const inCollections = Boolean(data.caseId || data.caseNumber);
+  const phones = (data.phones ?? []).map((phone) => phone.trim()).filter(Boolean);
+  const shownPhones = phones.length
+    ? phones
+    : [data.mobileNumber, data.alternateMobile].filter((value): value is string => Boolean(value?.trim()));
+  const known = new Set(['id', 'name', 'tell', 'tel', 'telephone', 'all address', 'address', 'feedback', 'data', 'notes']);
+  const extraFields = Object.entries(data.fields ?? {}).filter(([key, value]) => value?.trim() && !known.has(key.trim().toLowerCase()));
+  const column = (...names: string[]) => {
+    const fields = data.fields ?? {};
+    for (const name of names) {
+      const hit = Object.entries(fields).find(([key]) => key.trim().toLowerCase() === name.trim().toLowerCase());
+      if (hit?.[1]?.trim()) return hit[1];
+    }
+    return '';
+  };
 
   return (
     <div className="space-y-5">
@@ -87,118 +90,38 @@ export function DataEntryClientDetailsPage() {
           </Link>
         }
         title={displayName}
-        description={
-          <span data-bidi="ltr">
-            {d.text('رقم العميل', 'Customer number')}: {data.customerNumber}
-          </span>
-        }
+        description={data.nationalId ? <span data-bidi="ltr">{data.nationalId}</span> : d.text('بيانات الحالة كما رُفعت', 'Case data as uploaded')}
         actions={
-          <div className="flex flex-wrap gap-2">
-            {inCollections && canCollections && data.caseId ? (
-              <Button fullWidth={false} leftIcon={<ArrowUpRight className="h-4 w-4" />} onClick={() => navigate(`/collections/cases/${data.caseId}`)}>{d.text('فتح الحالة في التحصيل', 'Open case in collections')}</Button>
-            ) : data.batchId ? (
-              <Button fullWidth={false} leftIcon={<History className="h-4 w-4" />} variant="outline" onClick={() => navigate('/data-entry/history')}>{d.text('متابعة الدفعة', 'Follow the batch')}</Button>
-            ) : null}
-            {!inCollections ? (
-              <Button fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} variant="danger" onClick={() => setDeleteOpen(true)}>{d.text('حذف العميل', 'Delete client')}</Button>
-            ) : null}
-          </div>
+          <Button fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} variant="danger" onClick={() => setDeleteOpen(true)}>{d.text('حذف العميل', 'Delete client')}</Button>
         }
       />
 
-      <DataEntryPipeline current={data.batchStatus} />
-
-      <section className={`rounded-2xl border px-5 py-4 text-sm ${data.batchStatus === 'REJECTED' ? 'border-rose-200 bg-rose-50 text-rose-800' : inCollections ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-        {data.batchStatus === 'REJECTED'
-          ? d.text('الدفعة مرفوضة من التحصيل. راجع السجل ثم أعد الإدخال أو الرفع.', 'Collections rejected this batch. Check history, then enter or upload again.')
-          : inCollections
-            ? d.text(`العميل متاح في التحصيل${data.caseNumber ? ` — الحالة ${data.caseNumber}` : '.'}`, `This client is available in collections${data.caseNumber ? ` — case ${data.caseNumber}` : '.'}`)
-            : d.text('العميل أُرسل للتحصيل وما زال بانتظار قبول المشرف لإنشاء الحالة.', 'The client was sent to collections and is waiting for supervisor acceptance to create the case.')}
-      </section>
-
       <div className="space-y-4">
-        <DetailSection
-          title={d.text('أساسي', 'Basic')}
-          rows={[
-            [d.text('رقم العميل', 'Customer number'), data.customerNumber],
-            [d.text('الاسم بالعربية', 'Arabic name'), data.customerNameArabic || '—'],
-            [d.text('الاسم بالإنجليزية', 'English name'), data.customerNameEnglish || '—'],
-            [d.text('الرقم القومي', 'National ID'), data.nationalId || '—'],
-            [d.text('المصدر', 'Source'), data.source ? d.source(data.source) : '—'],
-            [d.text('أنشئ بواسطة', 'Created by'), data.createdBy || '—'],
-            [d.text('تاريخ الإنشاء', 'Created at'), d.dateTime(data.createdAt)],
-          ]}
-        />
-        <DetailSection
-          title={d.text('الاتصال', 'Contact')}
-          rows={[
-            [d.text('الموبايل', 'Mobile'), data.mobileNumber || '—'],
-            [d.text('موبايل بديل', 'Alternate mobile'), data.alternateMobile || '—'],
-          ]}
-        />
-        <DetailSection title={d.text('العنوان', 'Address')} rows={[[d.text('العنوان', 'Address'), data.address || '—']]} />
-        <DetailSection title={d.text('فيدباك', 'Feedback')} rows={[[d.text('فيدباك', 'Feedback'), data.feedback || '—']]} />
-        <DetailSection title={d.text('ملاحظات', 'Notes')} rows={[[d.text('ملاحظات', 'Notes'), data.notes || '—']]} />
         <section className="rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
-          <h2 className="text-base font-bold text-mis-navy">{d.text('الجهة', 'Organization')}</h2>
-          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            {[
-              [d.text('الجهة', 'Organization'), data.organizationName],
-              [d.text('نوع الجهة', 'Organization type'), data.organizationType || '—'],
-              [d.text('كود المحفظة', 'Portfolio code'), data.portfolioCode || '—'],
-              [d.text('المحفظة', 'Portfolio'), data.portfolioName || '—'],
-            ].filter(([, value]) => value && value !== '—').map(([label, value]) => (
-              <div className="rounded-xl bg-slate-50 p-3" key={label}>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-                <dd className="mt-1 break-words text-sm font-semibold text-mis-navy">{value}</dd>
-              </div>
+          <h2 className="text-base font-bold text-mis-navy">{d.text('التليفونات', 'Phones')}</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {shownPhones.map((number) => (
+              <span className="rounded-full bg-slate-100 px-3 py-1 font-mono text-sm text-mis-navy" data-bidi="ltr" key={number}>{number}</span>
             ))}
-            <div className="rounded-xl bg-slate-50 p-3 sm:col-span-2">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{d.text('مكتب التحصيل', 'Collections desk')}</dt>
-              <dd className="mt-1 break-words text-sm font-semibold text-mis-navy">
-                <DataEntryDeskLabel primary={data.primaryClassification} sub={data.subClassification} />
-              </dd>
-            </div>
-          </dl>
+            {!shownPhones.length ? <span className="text-sm text-slate-400">—</span> : null}
+          </div>
         </section>
         <DetailSection
-          title={d.text('الحساب / الحالة', 'Account / case')}
+          title={d.text('بيانات الحالة', 'Case data')}
           rows={[
-            [d.text('رقم الحالة', 'Case number'), data.caseNumber || '—'],
-            [d.text('حالة الحالة', 'Case status'), data.caseStatus ? d.caseStatus(data.caseStatus) : '—'],
-            [d.text('رقم الحساب', 'Account number'), data.accountNumber || '—'],
-            [d.text('رقم العقد', 'Contract number'), data.contractNumber || '—'],
+            [d.text('الرقم القومي', 'National ID'), column('ID', 'National ID') || data.nationalId || '—'],
+            [d.text('الاسم', 'Name'), displayName],
+            [d.text('العنوان', 'Address'), column('All Address', 'Address') || data.address || '—'],
+            [d.text('فيدباك', 'Feedback'), column('FEEDBACK', 'Feedback') || data.feedback || '—'],
+            [d.text('بيانات', 'Data'), column('Data', 'Notes') || data.notes || '—'],
           ]}
         />
-        {(hasValue(data.outstandingBalance) || hasValue(data.overdueBalance) || hasValue(data.daysPastDue)) && (
+        {extraFields.length ? (
           <DetailSection
-            title={d.text('مالي', 'Financial')}
-            rows={[
-              [d.text('المديونية', 'Outstanding'), moneyOrDash(data.outstandingBalance)],
-              [d.text('المتأخر', 'Overdue'), moneyOrDash(data.overdueBalance)],
-              [d.text('أيام التأخر', 'Days past due'), hasValue(data.daysPastDue) ? d.number(Number(data.daysPastDue)) : '—'],
-            ]}
+            title={d.text('أعمدة إضافية', 'Extra columns')}
+            rows={extraFields.map(([label, value]) => [label, value])}
           />
-        )}
-        {(hasValue(data.batchNumber) || hasValue(data.batchStatus)) && (
-          <section className="rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
-            <h2 className="text-base font-bold text-mis-navy">{d.text('الدفعة المرسلة للتحصيل', 'Batch sent to collections')}</h2>
-            <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-              {hasValue(data.batchNumber) ? (
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{d.text('رقم الدفعة', 'Batch number')}</dt>
-                  <dd className="mt-1 text-sm font-semibold text-mis-navy" data-bidi="ltr">{data.batchNumber}</dd>
-                </div>
-              ) : null}
-              {hasValue(data.batchStatus) ? (
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{d.text('حالة الدفعة', 'Batch status')}</dt>
-                  <dd className="mt-1"><DataEntryBatchStatus value={data.batchStatus!} /></dd>
-                </div>
-              ) : null}
-            </dl>
-          </section>
-        )}
+        ) : null}
         <DataEntryDocumentsPanel
           canUpload={canUpload}
           documents={documents}
@@ -225,7 +148,7 @@ export function DataEntryClientDetailsPage() {
       <ConfirmDialog
         confirmLabel={d.text('حذف', 'Delete')}
         isConfirming={deleting}
-        message={d.text('حذف هذا العميل نهائيًا؟ الحذف متاح فقط قبل إنشاء حالة التحصيل.', 'Permanently delete this client? Allowed only before a collections case is created.')}
+        message={d.text('حذف هذا العميل من القائمة؟', 'Remove this client from the list?')}
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() => {
           setDeleting(true);

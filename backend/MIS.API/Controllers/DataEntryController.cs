@@ -31,8 +31,8 @@ public sealed class DataEntryController(IDataEntryService dataEntry) : Controlle
 
     [HttpGet("clients")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]
-    public Task<DataEntryClientPageDto> Clients([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken token = default)
-        => dataEntry.ListClientsAsync(search, page, pageSize, token);
+    public Task<DataEntryClientPageDto> Clients([FromQuery] string? search, [FromQuery] bool? hasPhone, [FromQuery] bool? hasAddress, [FromQuery] bool? hasFeedback, [FromQuery] bool? hasData, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken token = default)
+        => dataEntry.ListClientsAsync(search, hasPhone, hasAddress, hasFeedback, hasData, page, pageSize, token);
 
     [HttpGet("clients/{customerId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]

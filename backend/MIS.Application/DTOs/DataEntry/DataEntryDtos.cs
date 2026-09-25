@@ -14,7 +14,13 @@ public sealed record DataEntryClientListItemDto(
     string? CaseNumber,
     Guid? CaseId,
     string? CaseStatus,
-    string? BatchStatus);
+    string? BatchStatus,
+    IReadOnlyList<string>? Phones = null,
+    string? NationalId = null,
+    string? Address = null,
+    string? Feedback = null,
+    string? Data = null,
+    IReadOnlyDictionary<string, string>? Fields = null);
 public sealed record DataEntryClientPageDto(IReadOnlyList<DataEntryClientListItemDto> Items, int Page, int PageSize, int TotalCount);
 
 public sealed record DataEntryClientDetailsDto(
@@ -48,7 +54,9 @@ public sealed record DataEntryClientDetailsDto(
     string? CaseStatus,
     Guid? BatchId,
     string? BatchNumber,
-    string? BatchStatus);
+    string? BatchStatus,
+    IReadOnlyList<string>? Phones = null,
+    IReadOnlyDictionary<string, string>? Fields = null);
 
 public sealed record CreateDataEntryClientRequest(
     Guid OrganizationId,

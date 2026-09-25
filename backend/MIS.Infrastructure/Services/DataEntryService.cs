@@ -44,10 +44,10 @@ public sealed class DataEntryService(
         ["CustomerCode"] = ["customercode", "customerid", "customernumber", "كودالعميل", "رقمالعميل", "رقمالعميل"],
         ["CustomerName"] = ["customername", "name", "fullname", "اسمالعميل", "الاسم", "اسمالعميلبالعربية", "اسمالعميلبالانجليزية"],
         ["NationalId"] = ["nationalid", "nid", "الرقمالقومي", "قومي", "الرقم_القومي"],
-        ["MobileNumber"] = ["mobilenumber", "mobile", "phone", "phonenumber", "موبايل", "رقمالموبايل", "الهاتف", "رقمالهاتف"],
-        ["Address"] = ["address", "عنوان", "العنوان"],
+        ["MobileNumber"] = ["mobilenumber", "mobile", "phone", "phonenumber", "tell", "tel", "telephone", "موبايل", "رقمالموبايل", "الهاتف", "رقمالهاتف", "تليفون", "تلفون"],
+        ["Address"] = ["address", "alladdress", "عنوان", "العنوان", "العنوانبالكامل"],
         ["Feedback"] = ["feedback", "تعليق", "ملاحظاتالعميل", "فيدباك"],
-        ["Notes"] = ["notes", "ملاحظات", "ملاحظة"],
+        ["Notes"] = ["notes", "data", "ملاحظات", "ملاحظة", "بيانات", "داتا"],
         ["AccountNumber"] = ["accountnumber", "account", "accountreference", "رقمالحساب", "الحساب"],
         ["ContractNumber"] = ["contractnumber", "contract", "contractreference", "رقمالعقد", "العقد"],
         ["OutstandingAmount"] = ["outstandingamount", "outstanding", "remainingamount", "remaining", "المديونية", "الرصيد", "المبلغالمستحق"],
@@ -72,8 +72,11 @@ public sealed class DataEntryService(
         decimal? OverdueAmount,
         int? DaysPastDue,
         string Status,
-        string? ErrorMessage);
+        string? ErrorMessage,
+        IReadOnlyList<string> Phones,
+        IReadOnlyDictionary<string, string> Fields);
     private sealed record PreviewPayload(DataEntryImportMappingRequest Mapping, Guid PortfolioId, IReadOnlyList<StagedRow> Rows);
+    private sealed record RowProfile(IReadOnlyList<string> Phones, IReadOnlyDictionary<string, string> Columns);
 
     private bool IsAdmin => user.Roles.Contains(SystemRoleNames.Admin, StringComparer.OrdinalIgnoreCase);
     private bool HasStar => user.Permissions.Contains("*", StringComparer.OrdinalIgnoreCase);
@@ -116,7 +119,7 @@ public sealed class DataEntryService(
             .ToArrayAsync(token);
     }
 
-    public async Task<DataEntryClientPageDto> ListClientsAsync(string? search, int page, int pageSize, CancellationToken token)
+    public async Task<DataEntryClientPageDto> ListClientsAsync(string? search, bool? hasPhone, bool? hasAddress, bool? hasFeedback, bool? hasData, int page, int pageSize, CancellationToken token)
     {
         EnsureAccess();
         (page, pageSize) = NormalizePage(page, pageSize);
@@ -126,13 +129,32 @@ public sealed class DataEntryService(
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
+            var rowMatches = db.DataEntryRows.AsNoTracking()
+                .Where(r => r.CollectionCustomerId != null && r.FieldsJson != null && r.FieldsJson.Contains(term))
+                .Select(r => r.CollectionCustomerId!.Value);
             query = query.Where(c =>
                 c.CustomerCode.Contains(term) ||
                 (c.NationalId != null && c.NationalId.Contains(term)) ||
                 (c.FullNameArabic != null && c.FullNameArabic.Contains(term)) ||
                 (c.FullNameEnglish != null && c.FullNameEnglish.Contains(term)) ||
-                (c.PrimaryPhone != null && c.PrimaryPhone.Contains(term)));
+                (c.PrimaryPhone != null && c.PrimaryPhone.Contains(term)) ||
+                (c.AlternatePhone != null && c.AlternatePhone.Contains(term)) ||
+                (c.AddressArabic != null && c.AddressArabic.Contains(term)) ||
+                (c.AddressEnglish != null && c.AddressEnglish.Contains(term)) ||
+                (c.Feedback != null && c.Feedback.Contains(term)) ||
+                (c.Notes != null && c.Notes.Contains(term)) ||
+                rowMatches.Contains(c.Id));
         }
+
+        if (hasPhone == true)
+            query = query.Where(c => c.PrimaryPhone != null || c.AlternatePhone != null
+                || db.DataEntryRows.Any(r => r.CollectionCustomerId == c.Id && r.FieldsJson != null && r.FieldsJson.Contains("\"phones\":[\"")));
+        if (hasAddress == true)
+            query = query.Where(c => c.AddressArabic != null || c.AddressEnglish != null);
+        if (hasFeedback == true)
+            query = query.Where(c => c.Feedback != null && c.Feedback != "");
+        if (hasData == true)
+            query = query.Where(c => c.Notes != null && c.Notes != "");
 
         var arabic = ApiTextLocalizer.IsArabic;
         var total = await query.CountAsync(token);
@@ -152,7 +174,23 @@ public sealed class DataEntryService(
                 db.CollectionCases.Where(x => x.CustomerId == c.Id).OrderByDescending(x => x.CreatedAt).Select(x => x.Status).FirstOrDefault(),
                 db.DataEntryRows.Where(r => r.CollectionCustomerId == c.Id).OrderByDescending(r => r.CreatedAt).Select(r => r.Batch.Status).FirstOrDefault()))
             .ToArrayAsync(token);
-        return new DataEntryClientPageDto(items, page, pageSize, total);
+        var profiles = await LoadProfilesAsync(items.Select(item => item.Id).ToArray(), token);
+        var enriched = items.Select(item =>
+        {
+            profiles.TryGetValue(item.Id, out var profile);
+            var phones = profile?.Phones ?? [];
+            var columns = profile?.Columns ?? new Dictionary<string, string>();
+            return item with
+            {
+                Phones = phones,
+                NationalId = FirstColumn(columns, "ID", "National ID"),
+                Address = FirstColumn(columns, "All Address", "Address"),
+                Feedback = FirstColumn(columns, "FEEDBACK", "Feedback"),
+                Data = FirstColumn(columns, "Data", "Notes"),
+                Fields = columns,
+            };
+        }).ToArray();
+        return new DataEntryClientPageDto(enriched, page, pageSize, total);
     }
 
     public async Task<DataEntryClientDetailsDto> GetClientAsync(Guid customerId, CancellationToken token)
@@ -214,7 +252,9 @@ public sealed class DataEntryService(
             collectionCase?.Status,
             row?.BatchId,
             row?.Batch.BatchNumber,
-            row?.Batch.Status);
+            row?.Batch.Status,
+            ReadProfile(row?.FieldsJson)?.Phones,
+            ReadProfile(row?.FieldsJson)?.Columns);
     }
 
     public async Task<DataEntryClientDetailsDto> CreateManualClientAsync(CreateDataEntryClientRequest request, CancellationToken token)
@@ -466,9 +506,9 @@ public sealed class DataEntryService(
             string V(string key) => indexes.TryGetValue(key, out var i) && i < cells.Length ? cells[i].Trim() : "";
             var customerName = V("CustomerName");
             var rawNational = V("NationalId");
-            var rawMobile = V("MobileNumber");
+            var phones = SplitPhones(V("MobileNumber"));
             string? national = null;
-            string? mobile = null;
+            string? mobile = phones.FirstOrDefault();
             string? status = null;
             string? error = null;
 
@@ -478,26 +518,32 @@ public sealed class DataEntryService(
                 error = "Customer name is required.";
             }
 
-            if (status is null && !string.IsNullOrWhiteSpace(rawNational))
+            if (!string.IsNullOrWhiteSpace(rawNational))
             {
                 try { national = EgyptianHrDataValidator.NormalizeNationalId(rawNational, null, null); }
-                catch (HrValidationException ex)
+                catch (HrValidationException)
                 {
-                    status = DataEntryValues.RowStatuses.InvalidNationalId;
-                    error = ex.Message;
+                    var digits = new string(rawNational.Where(char.IsDigit).ToArray());
+                    national = string.IsNullOrWhiteSpace(digits) ? rawNational.Trim() : digits;
                 }
             }
 
-            if (status is null && !string.IsNullOrWhiteSpace(rawMobile))
+            if (!string.IsNullOrWhiteSpace(mobile))
             {
-                try { mobile = EgyptianHrDataValidator.NormalizePhone(rawMobile, "Mobile number"); }
-                catch (HrValidationException ex)
-                {
-                    status = DataEntryValues.RowStatuses.InvalidMobile;
-                    error = ex.Message;
-                }
+                try { mobile = EgyptianHrDataValidator.NormalizePhone(mobile, "Mobile number"); }
+                catch (HrValidationException) { /* keep the number as written in the sheet */ }
             }
 
+            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (var columnIndex = 0; columnIndex < table.Headers.Length; columnIndex++)
+            {
+                var header = table.Headers[columnIndex];
+                if (string.IsNullOrWhiteSpace(header) || columnIndex >= cells.Length) continue;
+                var value = cells[columnIndex].Trim();
+                if (value.Length > 0) fields[header] = value;
+            }
+
+            var rawMobile = V("MobileNumber");
             var customerCode = string.IsNullOrWhiteSpace(V("CustomerCode"))
                 ? BuildCustomerCode(national ?? rawNational, mobile ?? rawMobile, customerName, V("AccountNumber"))
                 : V("CustomerCode").Trim();
@@ -533,16 +579,18 @@ public sealed class DataEntryService(
                 customerName,
                 NullIfEmpty(national),
                 NullIfEmpty(mobile),
-                NullIfEmpty(V("Address")),
-                NullIfEmpty(V("Feedback")),
-                NullIfEmpty(V("Notes")),
+                NullIfEmpty(Clip(V("Address"), 600)),
+                NullIfEmpty(Clip(V("Feedback"), 2000)),
+                NullIfEmpty(Clip(V("Notes"), 2000)),
                 NullIfEmpty(V("AccountNumber")),
                 NullIfEmpty(V("ContractNumber")),
                 ParseMoney(V("OutstandingAmount")),
                 ParseMoney(V("OverdueAmount")),
                 ParseInt(V("DaysPastDue")),
                 status!,
-                error));
+                error,
+                phones,
+                fields));
         }
 
         var previewId = Guid.NewGuid();
@@ -648,6 +696,7 @@ public sealed class DataEntryService(
                 staged.OverdueAmount,
                 staged.DaysPastDue,
                 staged.ErrorMessage);
+            row.RememberFields(ProfileJson(staged.Phones, staged.Fields));
             db.DataEntryRows.Add(row);
 
             if (!isImportable)
@@ -670,8 +719,8 @@ public sealed class DataEntryService(
                     : staged.CustomerCode!;
                 customer = new CollectionCustomer(saved.OrganizationId, code, staged.CustomerName, staged.CustomerName, now);
                 customer.ApplyImportedContact(staged.CustomerName, staged.CustomerName, staged.NationalId, staged.MobileNumber);
-                if (!string.IsNullOrWhiteSpace(staged.Address))
-                    customer.UpdatePortfolioContact(customer.PrimaryPhone, customer.AlternatePhone, staged.Address, ApiTextLocalizer.IsArabic);
+                if (!string.IsNullOrWhiteSpace(staged.Address) || staged.Phones.Count > 1)
+                    customer.UpdatePortfolioContact(customer.PrimaryPhone, staged.Phones.ElementAtOrDefault(1), staged.Address, ApiTextLocalizer.IsArabic);
                 customer.ApplyDataEntryDetails(staged.Feedback, staged.Notes, DataEntryValues.Sources.Imported, user.UserId);
                 db.CollectionCustomers.Add(customer);
                 customersByCode[customer.CustomerCode] = customer;
@@ -1204,6 +1253,79 @@ public sealed class DataEntryService(
     private static DataEntryImportPreviewRowDto ToPreviewRow(StagedRow row) =>
         new(row.RowNumber, row.CustomerCode, row.CustomerName, row.NationalId, row.MobileNumber, row.Status, row.ErrorMessage);
 
+    private async Task<Dictionary<Guid, RowProfile>> LoadProfilesAsync(IReadOnlyCollection<Guid> ids, CancellationToken token)
+    {
+        if (ids.Count == 0) return [];
+        var rows = await db.DataEntryRows.AsNoTracking()
+            .Where(row => row.CollectionCustomerId != null && ids.Contains(row.CollectionCustomerId.Value))
+            .OrderByDescending(row => row.CreatedAt)
+            .Select(row => new { CustomerId = row.CollectionCustomerId!.Value, row.FieldsJson, row.NationalId, row.MobileNumber, row.Address, row.Feedback, row.Notes })
+            .ToListAsync(token);
+        var result = new Dictionary<Guid, RowProfile>();
+        foreach (var row in rows)
+        {
+            if (result.ContainsKey(row.CustomerId)) continue;
+            var profile = ReadProfile(row.FieldsJson);
+            var phones = profile?.Phones?.Where(phone => !string.IsNullOrWhiteSpace(phone)).ToArray() ?? SplitPhones(row.MobileNumber);
+            var columns = new Dictionary<string, string>(profile?.Columns ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrWhiteSpace(row.NationalId) && FirstColumn(columns, "ID", "National ID") is null)
+                columns["ID"] = row.NationalId;
+            if (!string.IsNullOrWhiteSpace(row.Address) && FirstColumn(columns, "All Address", "Address") is null)
+                columns["All Address"] = row.Address;
+            if (!string.IsNullOrWhiteSpace(row.Feedback) && FirstColumn(columns, "FEEDBACK", "Feedback") is null)
+                columns["FEEDBACK"] = row.Feedback;
+            if (!string.IsNullOrWhiteSpace(row.Notes) && FirstColumn(columns, "Data", "Notes") is null)
+                columns["Data"] = row.Notes;
+            result[row.CustomerId] = new RowProfile(phones, columns);
+        }
+        return result;
+    }
+
+    private static string? ProfileJson(IReadOnlyList<string> phones, IReadOnlyDictionary<string, string> columns)
+    {
+        if (phones.Count == 0 && columns.Count == 0) return null;
+        return JsonSerializer.Serialize(new RowProfile(phones, columns), Json);
+    }
+
+    private static RowProfile? ReadProfile(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<RowProfile>(json, Json); }
+        catch (JsonException) { return null; }
+    }
+
+    private static string? FirstColumn(IReadOnlyDictionary<string, string> columns, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (columns.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value)) return value;
+        }
+        foreach (var pair in columns)
+        {
+            if (names.Any(name => NormalizeHeader(pair.Key) == NormalizeHeader(name)) && !string.IsNullOrWhiteSpace(pair.Value))
+                return pair.Value;
+        }
+        return null;
+    }
+
+    private static string[] SplitPhones(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+        var found = new List<string>();
+        foreach (var part in raw.Split(['/', '|', '،', ',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var digits = new string(part.Where(char.IsDigit).ToArray());
+            if (digits.Length >= 8 && !found.Contains(digits)) found.Add(digits);
+        }
+        return found.ToArray();
+    }
+
+    private static string Clip(string? value, int max)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= max) return value ?? "";
+        return value[..max];
+    }
+
     private static Dictionary<string, string?> SuggestColumns(string[] headers, Dictionary<string, string?>? existing)
     {
         var result = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -1215,6 +1337,15 @@ public sealed class DataEntryService(
         foreach (var field in Fields)
         {
             if (!string.IsNullOrWhiteSpace(result[field])) continue;
+            if (field == "NationalId")
+            {
+                var idHeader = headers.FirstOrDefault(header => NormalizeHeader(header) == "id");
+                if (idHeader is not null)
+                {
+                    result[field] = idHeader;
+                    continue;
+                }
+            }
             if (!HeaderAliases.TryGetValue(field, out var aliases)) continue;
             var match = headers.FirstOrDefault(header =>
             {

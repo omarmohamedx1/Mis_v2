@@ -9,7 +9,7 @@ public interface IDataEntryService
     Task<IReadOnlyList<DataEntryOrganizationDto>> ListOrganizationsAsync(CancellationToken token);
     Task<IReadOnlyList<DataEntryPortfolioDto>> ListPortfoliosAsync(Guid organizationId, CancellationToken token);
 
-    Task<DataEntryClientPageDto> ListClientsAsync(string? search, int page, int pageSize, CancellationToken token);
+    Task<DataEntryClientPageDto> ListClientsAsync(string? search, bool? hasPhone, bool? hasAddress, bool? hasFeedback, bool? hasData, int page, int pageSize, CancellationToken token);
     Task<DataEntryClientDetailsDto> GetClientAsync(Guid customerId, CancellationToken token);
     Task<DataEntryClientDetailsDto> CreateManualClientAsync(CreateDataEntryClientRequest request, CancellationToken token);
     Task DeleteClientAsync(Guid customerId, CancellationToken token);

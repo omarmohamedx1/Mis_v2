@@ -5,7 +5,7 @@ import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { DataEntryBatchStatus, DataEntryKpi, DataEntryPipeline, useDataEntryText } from '../../features/data-entry/dataEntryUi';
+import { DataEntryBatchStatus, DataEntryKpi, useDataEntryText } from '../../features/data-entry/dataEntryUi';
 import { dataEntryService } from '../../features/data-entry/services/dataEntryService';
 import type { DataEntryBatchListItem, DataEntryDashboard } from '../../features/data-entry/types/dataEntry';
 
@@ -36,10 +36,10 @@ export function DataEntryDashboardPage() {
   }
 
   const kpis = [
-    { to: '/data-entry/clients', label: d.text('عملائي', 'My clients'), value: data.myClients, tone: 'blue' as const, hint: d.text('موجودون في التحصيل بعد الإرسال', 'Available in collections after submit') },
-    { to: '/data-entry/history?status=SUBMITTED', label: d.text('بانتظار التحصيل', 'Awaiting collections'), value: data.submittedBatches, tone: 'amber' as const, hint: d.text('مراجعة المشرف', 'Supervisor review') },
-    { to: '/data-entry/history?status=ACCEPTED', label: d.text('مقبول في التحصيل', 'Accepted in collections'), value: data.acceptedBatches + data.distributedBatches, tone: 'green' as const, hint: d.text('حالات جاهزة للعمل', 'Cases ready to work') },
-    { to: '/data-entry/history?status=REJECTED', label: d.text('مرفوض', 'Rejected'), value: data.rejectedBatches, tone: 'red' as const, hint: d.text('راجع السبب وأعد الإرسال', 'Check the reason and send again') },
+    { to: '/data-entry/clients', label: d.text('العملاء', 'Clients'), value: data.myClients, tone: 'blue' as const, hint: d.text('الحالات المرفوعة', 'Uploaded cases') },
+    { to: '/data-entry/history?status=SUBMITTED', label: d.text('بانتظار المراجعة', 'Waiting review'), value: data.submittedBatches, tone: 'amber' as const, hint: d.text('ملفات محفوظة', 'Saved files') },
+    { to: '/data-entry/history?status=ACCEPTED', label: d.text('محفوظ', 'Saved'), value: data.acceptedBatches + data.distributedBatches, tone: 'green' as const, hint: d.text('جاهز للعرض', 'Ready to view') },
+    { to: '/data-entry/history?status=REJECTED', label: d.text('مرفوض', 'Rejected'), value: data.rejectedBatches, tone: 'red' as const, hint: d.text('راجع السبب وأعد الرفع', 'Check the reason and upload again') },
   ];
 
   return (
@@ -47,9 +47,9 @@ export function DataEntryDashboardPage() {
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[.18em] text-mis-primary">{d.text('إدخال البيانات', 'DATA ENTRY')}</p>
-          <h1 className="mt-2 text-3xl font-bold text-mis-navy">{d.text('مكتب الإدخال إلى التحصيل', 'Entry desk to collections')}</h1>
+          <h1 className="mt-2 text-3xl font-bold text-mis-navy">{d.text('بيانات العملاء', 'Client cases')}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            {d.text('أدخل العملاء أو ارفع الملف، ثم تُرسل الدفعة لمراجعة التحصيل. بعد القبول تظهر الحالات عند فرق التحصيل.', 'Enter clients or upload a file, then the batch goes to collections review. After acceptance, cases appear for collection teams.')}
+            {d.text('ارفع شيت العملاء كما هو. كل الأعمدة تظهر، وأرقام التليفون الموجودة في نفس الخلية تتفصل وتعرض كلها.', 'Upload the client sheet as it is. Every column shows, and phone numbers in the same cell are split and listed.')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -58,8 +58,6 @@ export function DataEntryDashboardPage() {
           <Button fullWidth={false} leftIcon={<UsersRound className="h-4 w-4" />} variant="outline" onClick={() => navigate('/data-entry/clients')}>{d.text('إضافة عميل', 'Add client')}</Button>
         </div>
       </header>
-
-      <DataEntryPipeline current={data.submittedBatches ? 'SUBMITTED' : data.acceptedBatches ? 'ACCEPTED' : data.distributedBatches ? 'DISTRIBUTED' : 'enter'} />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => (
@@ -71,7 +69,7 @@ export function DataEntryDashboardPage() {
 
       <section className="overflow-hidden rounded-2xl border border-mis-border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-mis-border px-5 py-4">
-          <h2 className="text-lg font-bold text-mis-navy">{d.text('آخر الدفعات المرسلة للتحصيل', 'Latest batches sent to collections')}</h2>
+          <h2 className="text-lg font-bold text-mis-navy">{d.text('آخر الملفات المرفوعة', 'Latest uploaded files')}</h2>
           <Link className="inline-flex items-center gap-1 text-sm font-bold text-mis-primary" to="/data-entry/history">
             {d.text('كل السجل', 'Full history')}
             <ArrowUpRight className="h-4 w-4" />
@@ -107,7 +105,7 @@ export function DataEntryDashboardPage() {
             compact
             icon={<History className="h-5 w-5" />}
             title={d.text('لم تُرسل دفعات بعد', 'No batches sent yet')}
-            description={d.text('ابدأ بإضافة عميل أو رفع ملف ليصل للتحصيل.', 'Start by adding a client or uploading a file so it can reach collections.')}
+            description={d.text('ابدأ برفع شيت العملاء أو إضافة عميل.', 'Start by uploading a client sheet or adding a client.')}
             action={<Button fullWidth={false} leftIcon={<FileUp className="h-4 w-4" />} onClick={() => navigate('/data-entry/import')}>{d.text('رفع ملف', 'Upload file')}</Button>}
           />
         )}

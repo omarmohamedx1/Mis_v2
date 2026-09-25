@@ -63,8 +63,8 @@ export function DataEntryHistoryPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title={d.text('سجل الإرسال للتحصيل', 'Collections send history')}
-        description={d.text('كل دفعة هنا وصلت أو في طريقها لمراجعة التحصيل. القبول ينشئ الحالات عند فرق التحصيل.', 'Every batch here is in or on its way to collections review. Acceptance creates cases for collection teams.')}
+        title={d.text('سجل الرفع', 'Upload history')}
+        description={d.text('الملفات التي رُفعت من إدخال البيانات، مع حالة كل ملف.', 'Files uploaded from data entry, with the status of each file.')}
         actions={
           <SelectInput
             containerClassName="min-w-[200px]"
@@ -133,7 +133,7 @@ export function DataEntryHistoryPage() {
               compact
               icon={<History className="h-5 w-5" />}
               title={d.text('لا توجد دفعات', 'No batches')}
-              description={d.text('ارفع ملفًا أو أضف عميلًا لإرسال دفعة للتحصيل.', 'Upload a file or add a client to send a batch to collections.')}
+              description={d.text('ارفع ملف العملاء أو أضف عميلًا ليظهر هنا.', 'Upload a client file or add a client to see it here.')}
               action={<Button fullWidth={false} leftIcon={<FileUp className="h-4 w-4" />} onClick={() => navigate('/data-entry/import')}>{d.text('رفع ملف', 'Upload file')}</Button>}
             />
           ) : null}
@@ -175,7 +175,7 @@ export function DataEntryHistoryPage() {
                   <p className="mt-1 font-semibold text-mis-navy">{d.source(details.summary.source)}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-3 text-sm sm:col-span-2 lg:col-span-4">
-                  <p className="text-slate-500">{d.text('مكتب التحصيل', 'Collections desk')}</p>
+                  <p className="text-slate-500">{d.text('الجهة', 'Organization')}</p>
                   <p className="mt-1 font-semibold text-mis-navy">
                     {details.summary.organizationName} · <DataEntryDeskLabel primary={details.summary.primaryClassification} sub={details.summary.subClassification} />
                   </p>
@@ -189,7 +189,7 @@ export function DataEntryHistoryPage() {
               ) : null}
               {details.summary.status === 'ACCEPTED' || details.summary.status === 'DISTRIBUTED' ? (
                 <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-                  {d.text('البيانات وصلت للتحصيل. الحالات تظهر لفرق التحصيل بعد القبول.', 'The data reached collections. Cases appear for collection teams after acceptance.')}
+                  {d.text('الملف اتحفظ والعملاء ظاهرين في القائمة.', 'The file is saved and the clients show in the list.')}
                 </p>
               ) : null}
               <DataEntryDocumentsPanel

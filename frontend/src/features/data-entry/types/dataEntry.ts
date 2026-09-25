@@ -19,6 +19,12 @@ export interface DataEntryClientListItem {
   caseId?: string | null;
   caseStatus?: string | null;
   batchStatus?: string | null;
+  phones?: string[] | null;
+  nationalId?: string | null;
+  address?: string | null;
+  feedback?: string | null;
+  data?: string | null;
+  fields?: Record<string, string> | null;
 }
 
 export interface DataEntryPagedResult<T> {
@@ -60,6 +66,8 @@ export interface DataEntryClientDetails {
   batchId?: string | null;
   batchNumber?: string | null;
   batchStatus?: string | null;
+  phones?: string[] | null;
+  fields?: Record<string, string> | null;
 }
 
 export interface CreateDataEntryClientInput {

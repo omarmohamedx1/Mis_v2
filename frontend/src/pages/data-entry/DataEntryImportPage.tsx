@@ -229,7 +229,7 @@ export function DataEntryImportPage() {
           await dataEntryService.confirmImport({ uploadId: preview.uploadId, previewId: preview.previewId, excludedRowNumbers: [] });
           setConfirmOpen(false);
           toast.success(d.text('تم حفظ العملاء', 'Clients saved'));
-          navigate('/data-entry/files');
+          navigate('/data-entry/clients');
         })}
         open={confirmOpen}
         title={d.text('حفظ العملاء', 'Save clients')}

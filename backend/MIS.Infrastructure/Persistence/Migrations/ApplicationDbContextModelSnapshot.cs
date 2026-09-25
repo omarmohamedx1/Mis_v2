@@ -3212,6 +3212,9 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<string>("FieldsJson")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsValid")
                         .HasColumnType("boolean");
 

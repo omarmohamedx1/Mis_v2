@@ -47,6 +47,7 @@ public sealed class DataEntryRowConfiguration : IEntityTypeConfiguration<DataEnt
         b.Property(x => x.OverdueBalance).HasPrecision(18, 2);
         b.Property(x => x.Status).HasMaxLength(40).IsRequired();
         b.Property(x => x.ErrorMessage).HasMaxLength(1000);
+        b.Property(x => x.FieldsJson).HasColumnType("text");
         b.HasIndex(x => new { x.BatchId, x.RowNumber }).IsUnique();
         b.HasIndex(x => x.CollectionCustomerId);
         b.HasOne(x => x.Batch).WithMany(x => x.Rows).HasForeignKey(x => x.BatchId).OnDelete(DeleteBehavior.Cascade);

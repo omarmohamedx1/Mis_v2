@@ -195,12 +195,18 @@ public sealed class DataEntryRow
     public int? DaysPastDue { get; private set; }
     public string Status { get; private set; } = DataEntryValues.RowStatuses.Ready;
     public string? ErrorMessage { get; private set; }
+    public string? FieldsJson { get; private set; }
     public bool IsValid { get; private set; }
     public Guid? CollectionCustomerId { get; private set; }
     public CollectionCustomer? CollectionCustomer { get; private set; }
     public Guid? CollectionCaseId { get; private set; }
     public CollectionCase? CollectionCase { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
+
+    public void RememberFields(string? fieldsJson)
+    {
+        FieldsJson = string.IsNullOrWhiteSpace(fieldsJson) ? null : fieldsJson;
+    }
 
     public void LinkCustomer(Guid customerId)
     {

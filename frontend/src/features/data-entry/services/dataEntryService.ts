@@ -32,9 +32,17 @@ export const dataEntryService = {
     return (await apiClient.get<DataEntryPortfolio[]>(`/data-entry/organizations/${organizationId}/portfolios`)).data;
   },
 
-  async clients(search?: string) {
+  async clients(search?: string, filters?: { hasPhone?: boolean; hasAddress?: boolean; hasFeedback?: boolean; hasData?: boolean }) {
     return loadAllPages((page, pageSize) => apiClient.get<DataEntryPagedResult<DataEntryClientListItem>>('/data-entry/clients', {
-      params: { search: search || undefined, page, pageSize },
+      params: {
+        search: search || undefined,
+        hasPhone: filters?.hasPhone || undefined,
+        hasAddress: filters?.hasAddress || undefined,
+        hasFeedback: filters?.hasFeedback || undefined,
+        hasData: filters?.hasData || undefined,
+        page,
+        pageSize,
+      },
     }).then((r) => r.data), 200);
   },
 
