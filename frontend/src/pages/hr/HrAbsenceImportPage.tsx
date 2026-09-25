@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Eye, CheckCircle2, Download, FileSpreadsheet } from 'lucide-react';
+import { Eye, CheckCircle2, Download, FileSpreadsheet } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -83,10 +83,12 @@ export function HrAbsenceImportPage() {
     }
   }
 
-  async function sendFile() {
-    if (!file) return;
+  async function sendFile(selected?: File | null) {
+    const target = selected ?? file;
+    if (!target) return;
+    setFile(target);
     await run(async () => {
-      const data = await absenceImportService.upload(file);
+      const data = await absenceImportService.upload(target);
       const index = preferredHrImportSheetIndex(data.sheets);
       const next = mappingFor(data, index);
       setUpload(data);
@@ -188,11 +190,8 @@ export function HrAbsenceImportPage() {
                 file={file}
                 hint={text('Uploading does not save absence records.', 'رفع الملف لا يحفظ سجلات الغياب.')}
                 label={text('Absence Excel / CSV file', 'ملف الغياب Excel / CSV')}
-                onFile={setFile}
+                onFile={(next) => { if (next) void sendFile(next); else setFile(null); }}
               />
-              <Button disabled={!file} isLoading={busy} type="submit" leftIcon={<Upload className="h-4 w-4" />}>
-                {text('Read file automatically', 'اقرأ الملف تلقائيًا')}
-              </Button>
             </form>
           </Card>
           <Card className="border-sky-200 bg-sky-50/60" padding="lg">

@@ -51,16 +51,29 @@ export function CollectionImportsPage() {
   const loadHistory = () => collectionsService.imports({ page: 1, pageSize: 20 }).then(setHistory);
   useEffect(() => {
     Promise.all([collectionsService.clients({ pageSize: 100 }), collectionsService.portfolios(), collectionsService.imports({ pageSize: 20 })])
-      .then(([c, p, h]) => { setClients(c.items); setPortfolios(p); setHistory(h); })
+      .then(([c, p, h]) => {
+        setClients(c.items);
+        setPortfolios(p);
+        setHistory(h);
+        if (c.items[0]) setOrganizationId((current) => current || c.items[0].id);
+        const firstBook = p.find((item) => !c.items[0] || item.organizationId === c.items[0].id) ?? p[0];
+        if (firstBook) setPortfolioId((current) => current || firstBook.id);
+      })
       .catch(() => setError(ct('loadError')));
   }, [ct]);
 
-  const upload = async () => {
-    if (!file || !organizationId || !portfolioId) return;
+  const upload = async (selected?: File | null, orgId = organizationId, bookId = portfolioId) => {
+    const target = selected ?? file;
+    if (!target) return;
+    setFile(target);
+    if (!orgId || !bookId) {
+      setError(ct('selectClient'));
+      return;
+    }
     setSaving(true);
     setError('');
     try {
-      const batch = await collectionsService.uploadImport(organizationId, portfolioId, file);
+      const batch = await collectionsService.uploadImport(orgId, bookId, target);
       setPreview(await collectionsService.importPreview(batch.id, { pageSize: 100 }));
       setExcludedRows([]);
       setSelectedRows([]);
@@ -110,11 +123,8 @@ export function CollectionImportsPage() {
           </Field>
         </div>
         <div className="mt-5">
-          <ExcelDropzone arabic={ar} busy={saving} file={file} label={ct('file')} onFile={setFile} />
+          <ExcelDropzone arabic={ar} busy={saving} file={file} label={ct('file')} onFile={(next) => { if (next) void upload(next); else { setFile(null); setPreview(undefined); } }} />
         </div>
-        <Button className="mt-4" disabled={saving || !file || !organizationId || !portfolioId} fullWidth={false} isLoading={saving} onClick={() => void upload()}>
-          {saving ? ct('loading') : ct('uploadPreview')}
-        </Button>
         {error ? <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{error}</p> : null}
       </section>
       {preview ? (

@@ -76,10 +76,12 @@ export function BankCustomerImportPage() {
     try { await action(); } catch (reason) { setError(getApiErrorMessage(reason, ct('saveError'))); } finally { setBusy(false); }
   }
 
-  async function sendFile() {
-    if (!file) return;
+  async function sendFile(selected?: File | null) {
+    const target = selected ?? file;
+    if (!target) return;
+    setFile(target);
     await run(async () => {
-      const data = await collectionsService.uploadBankCustomerImport(bank.id, file);
+      const data = await collectionsService.uploadBankCustomerImport(bank.id, target);
       const indexes = defaultSelectedSheetIndexes(data.sheets);
       const next = mappingFor(data, indexes, portfolioId);
       setUpload(data);
@@ -117,8 +119,7 @@ export function BankCustomerImportPage() {
           <SelectInput label={ct('selectPortfolio')} onChange={(event) => setPortfolioId(event.target.value)} value={portfolioId}>
             {portfolios.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </SelectInput>
-          <ExcelDropzone arabic={ar} busy={busy} file={file} label={ct('file')} onFile={setFile} />
-          <Button disabled={busy || !file} fullWidth={false} isLoading={busy} onClick={() => void sendFile()}>{ct('uploadPreview')}</Button>
+          <ExcelDropzone arabic={ar} busy={busy} file={file} label={ct('file')} onFile={(next) => { if (next) void sendFile(next); else setFile(null); }} />
         </Card>
       ) : null}
 

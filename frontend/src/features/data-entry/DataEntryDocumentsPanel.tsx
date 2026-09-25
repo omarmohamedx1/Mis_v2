@@ -50,7 +50,6 @@ export function DataEntryDocumentsPanel({
   const d = useDataEntryText();
   const toast = useToast();
   const [label, setLabel] = useState('');
-  const [labelError, setLabelError] = useState('');
   const [busyId, setBusyId] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
   const previewRef = useRef<Preview | null>(null);
@@ -67,12 +66,7 @@ export function DataEntryDocumentsPanel({
 
   async function takeFile(file?: File | null) {
     if (!file || !onUpload) return;
-    const description = label.trim();
-    if (!description) {
-      setLabelError(d.text('اكتب الملف ده عبارة عن إيه قبل الرفع.', 'Write what this file is before uploading it.'));
-      return;
-    }
-    setLabelError('');
+    const description = label.trim() || file.name.replace(/\.[^.]+$/, '') || file.name;
     try {
       await onUpload(file, description);
       setLabel('');
@@ -131,7 +125,7 @@ export function DataEntryDocumentsPanel({
       {canUpload ? (
         <div className="mt-4 space-y-3 rounded-2xl border border-dashed border-mis-border bg-slate-50 p-4">
           <label className="block text-sm font-semibold text-mis-navy" htmlFor="client-file-label">
-            {d.text('الملف ده عبارة عن إيه؟', 'What is this file?')}
+            {d.text('وصف الملف اختياري', 'File description, optional')}
           </label>
           <div className="flex flex-wrap gap-2">
             {presets.map(([arabic, english]) => {
@@ -142,7 +136,7 @@ export function DataEntryDocumentsPanel({
                   className={`rounded-full px-3 py-1 text-xs font-bold ${active ? 'bg-mis-primary text-white' : 'bg-white text-slate-600 ring-1 ring-mis-border hover:text-mis-navy'}`}
                   key={arabic}
                   type="button"
-                  onClick={() => { setLabel(value); setLabelError(''); }}
+                  onClick={() => setLabel(value)}
                 >
                   {value}
                 </button>
@@ -153,12 +147,11 @@ export function DataEntryDocumentsPanel({
             className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm"
             id="client-file-label"
             maxLength={500}
-            placeholder={d.text('مثال: شهادة ميلاد، أو أي وصف تاني', 'Example: birth certificate, or any other description')}
+            placeholder={d.text('لو سبتها فاضية، اسم الملف هو الوصف', 'Leave empty and the file name is used')}
             value={label}
-            onChange={(event) => { setLabel(event.target.value); setLabelError(''); }}
+            onChange={(event) => setLabel(event.target.value)}
           />
-          {labelError ? <p className="text-sm text-rose-700">{labelError}</p> : null}
-          <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-5 text-sm font-semibold ${label.trim() ? 'border-mis-primary bg-white text-mis-navy hover:bg-mis-pale' : 'border-mis-border bg-white text-slate-500'}`}>
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-mis-primary bg-white px-4 py-5 text-sm font-semibold text-mis-navy hover:bg-mis-pale">
             <Upload className="h-4 w-4" />
             {uploading
               ? d.text('جارٍ الرفع...', 'Uploading...')

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Eye, CheckCircle2, Download, FileSpreadsheet } from 'lucide-react';
+import { Eye, CheckCircle2, Download, FileSpreadsheet } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
@@ -83,10 +83,12 @@ export function HrSocialInsuranceImportPage() {
     }
   }
 
-  async function sendFile() {
-    if (!file) return;
+  async function sendFile(selected?: File | null) {
+    const target = selected ?? file;
+    if (!target) return;
+    setFile(target);
     await run(async () => {
-      const data = await socialInsuranceImportService.upload(file);
+      const data = await socialInsuranceImportService.upload(target);
       const indexes = defaultSelectedSheetIndexes(data.sheets);
       const next = mappingFor(data, indexes);
       setUpload(data);
@@ -144,8 +146,7 @@ export function HrSocialInsuranceImportPage() {
         <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
           <Card padding="lg">
             <form className="mx-auto max-w-2xl space-y-5" onSubmit={(event) => { event.preventDefault(); void sendFile(); }}>
-              <ExcelDropzone arabic={ar} busy={busy} file={file} hint={text('Uploading does not save insurance records.', 'رفع الملف لا يحفظ سجلات التأمين.')} label={text('Insurance Excel / CSV file', 'ملف التأمينات Excel / CSV')} onFile={setFile} />
-              <Button disabled={!file} isLoading={busy} type="submit" leftIcon={<Upload className="h-4 w-4" />}>{text('Read file automatically', 'اقرأ الملف تلقائيًا')}</Button>
+              <ExcelDropzone arabic={ar} busy={busy} file={file} hint={text('The file is read as soon as you choose it.', 'الملف يتقرا أول ما تختاره.')} label={text('Insurance Excel / CSV file', 'ملف التأمينات Excel / CSV')} onFile={(next) => { if (next) void sendFile(next); else setFile(null); }} />
             </form>
           </Card>
           <Card className="border-sky-200 bg-sky-50/60" padding="lg">

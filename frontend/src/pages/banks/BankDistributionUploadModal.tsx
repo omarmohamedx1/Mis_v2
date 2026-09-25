@@ -79,7 +79,15 @@ export function BankDistributionUploadModal({ bankId, open, onClose, onCompleted
     try {
       const data = await collectionsService.uploadDistributionImport(bankId, file);
       const indexes = defaultSelectedSheetIndexes(data.sheets);
-      setUpload(data); setSelectedSheets(indexes); setMapping(buildMapping(data, indexes)); setStep(1);
+      const next = buildMapping(data, indexes);
+      setUpload(data); setSelectedSheets(indexes); setMapping(next);
+      const recognized = Boolean(next.columns.CaseNumber || next.columns.AccountReference || next.columns.CustomerCode || next.columns.CustomerName);
+      if (mode === 'FILE' && recognized) {
+        setPreview(await collectionsService.previewDistributionImport(bankId, data.id, next));
+        setStep(2);
+      } else {
+        setStep(1);
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error, ct('distributionActionError')));
     } finally {
