@@ -11,10 +11,9 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { useToast } from '../../components/common/Toast';
 import { TextAreaInput } from '../../components/forms/TextAreaInput';
 import { TextInput } from '../../components/forms/TextInput';
-import { DataEntryDeskFields } from '../../features/data-entry/DataEntryDeskFields';
 import { useDataEntryText } from '../../features/data-entry/dataEntryUi';
 import { dataEntryService } from '../../features/data-entry/services/dataEntryService';
-import type { DataEntryClientListItem, DataEntryOrganization, DataEntryPortfolio } from '../../features/data-entry/types/dataEntry';
+import type { DataEntryClientListItem, DataEntryPortfolio } from '../../features/data-entry/types/dataEntry';
 import { getApiErrorMessage } from '../../services/apiClient';
 
 export function DataEntryClientsPage() {
@@ -238,8 +237,6 @@ function PhoneList({ numbers }: { numbers: string[] }) {
 
 function AddClientModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const d = useDataEntryText();
-  const [organizations, setOrganizations] = useState<DataEntryOrganization[]>([]);
-  const [portfolios, setPortfolios] = useState<DataEntryPortfolio[]>([]);
   const [organizationId, setOrganizationId] = useState('');
   const [portfolioId, setPortfolioId] = useState('');
   const [primaryClassification, setPrimaryClassification] = useState('');
@@ -257,34 +254,22 @@ function AddClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
   const [error, setError] = useState('');
 
   useEffect(() => {
-    dataEntryService.organizations().then((items) => {
-      setOrganizations(items);
-      if (items[0]) setOrganizationId(items[0].id);
-    }).catch(() => setOrganizations([]));
+    let cancelled = false;
+    dataEntryService.organizations().then(async (items) => {
+      const org = items[0];
+      if (!org || cancelled) return;
+      setOrganizationId(org.id);
+      const books = await dataEntryService.portfolios(org.id).catch(() => [] as DataEntryPortfolio[]);
+      const book = books[0];
+      if (!book || cancelled) return;
+      setPortfolioId(book.id);
+      setPrimaryClassification(book.primaryClassification ?? '');
+      setSubClassification(book.subClassification ?? '');
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    if (!organizationId) {
-      setPortfolios([]);
-      setPortfolioId('');
-      return;
-    }
-    dataEntryService.portfolios(organizationId).then((items) => {
-      setPortfolios(items);
-      setPortfolioId('');
-    }).catch(() => {
-      setPortfolios([]);
-      setPortfolioId('');
-    });
-  }, [organizationId]);
-
-  useEffect(() => {
-    const selected = portfolios.find((item) =>
-      item.primaryClassification === primaryClassification && item.subClassification === subClassification);
-    setPortfolioId(selected?.id ?? '');
-  }, [portfolios, primaryClassification, subClassification]);
-
-  const deskReady = Boolean(organizationId && primaryClassification && subClassification);
+  const deskReady = Boolean(organizationId && portfolioId);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -340,26 +325,6 @@ function AddClientModal({ onClose, onCreated }: { onClose: () => void; onCreated
       </p>
       <form className="grid gap-4 sm:grid-cols-2" id="add-data-entry-client" onSubmit={(event) => void submit(event)}>
         {error ? <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700 sm:col-span-2">{error}</div> : null}
-        <div className="sm:col-span-2">
-          <DataEntryDeskFields
-            organizationId={organizationId}
-            organizations={organizations}
-            portfolios={portfolios}
-            primaryClassification={primaryClassification}
-            subClassification={subClassification}
-            onOrganizationChange={(id) => {
-              setOrganizationId(id);
-              setPrimaryClassification('');
-              setSubClassification('');
-              setPortfolioId('');
-            }}
-            onPrimaryChange={(value) => {
-              setPrimaryClassification(value);
-              setSubClassification('');
-            }}
-            onSubChange={setSubClassification}
-          />
-        </div>
         <TextInput containerClassName="sm:col-span-2" label={d.text('اسم العميل', 'Customer name')} required value={customerName} onChange={(event) => setCustomerName(event.target.value)} />
         <TextInput label={d.text('الرقم القومي', 'National ID')} value={nationalId} onChange={(event) => setNationalId(event.target.value)} />
         <TextInput label={d.text('الموبايل', 'Mobile')} type="tel" value={mobileNumber} onChange={(event) => setMobileNumber(event.target.value)} />

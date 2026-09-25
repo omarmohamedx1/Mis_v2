@@ -26,7 +26,7 @@ export function DataEntryLayout() {
   return (
     <ModuleLayoutShell
       collapseLabel={ar ? 'طي القائمة' : 'Collapse navigation'}
-      companyLabel={ar ? 'شركة MIS للتحصيل' : 'MIS Collection Firm'}
+      companyLabel="MIS"
       expandLabel={ar ? 'توسيع القائمة' : 'Expand navigation'}
       headerTitle={ar ? 'إدخال البيانات' : 'Data Entry'}
       isRtl={isRtl}
@@ -46,7 +46,7 @@ export function DataEntryLayout() {
       profilePath="/data-entry/profile"
       signOutLabel={ar ? 'تسجيل الخروج' : 'Sign out'}
       storageKey="mis.data-entry.sidebar"
-      theme="collections"
+      theme="admin"
       userName={user?.fullName}
     />
   );

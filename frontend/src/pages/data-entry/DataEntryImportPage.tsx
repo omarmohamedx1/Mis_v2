@@ -12,7 +12,6 @@ import type {
   DataEntryImportMappingRequest,
   DataEntryImportPreview,
   DataEntryImportUpload,
-  DataEntryOrganization,
   DataEntryPortfolio,
   DataEntrySheetPreview,
 } from '../../features/data-entry/types/dataEntry';
@@ -56,10 +55,8 @@ export function DataEntryImportPage() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [organizations, setOrganizations] = useState<DataEntryOrganization[]>([]);
-  const [portfolios, setPortfolios] = useState<DataEntryPortfolio[]>([]);
   const [organizationId, setOrganizationId] = useState('');
-  const [portfolioId, setPortfolioId] = useState('');
+  const [portfolio, setPortfolio] = useState<DataEntryPortfolio>();
   const [file, setFile] = useState<File | null>(null);
   const [upload, setUpload] = useState<DataEntryImportUpload | null>(null);
   const [sheet, setSheet] = useState<DataEntrySheetPreview | null>(null);
@@ -69,28 +66,16 @@ export function DataEntryImportPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
-    dataEntryService.organizations().then((items) => {
-      setOrganizations(items);
-      if (items[0]) setOrganizationId(items[0].id);
-    }).catch(() => setOrganizations([]));
+    let cancelled = false;
+    dataEntryService.organizations().then(async (items) => {
+      const org = items[0];
+      if (!org || cancelled) return;
+      setOrganizationId(org.id);
+      const books = await dataEntryService.portfolios(org.id).catch(() => [] as DataEntryPortfolio[]);
+      if (!cancelled) setPortfolio(books[0]);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    if (!organizationId) {
-      setPortfolios([]);
-      setPortfolioId('');
-      return;
-    }
-    dataEntryService.portfolios(organizationId).then((items) => {
-      setPortfolios(items);
-      setPortfolioId(items[0]?.id ?? '');
-    }).catch(() => {
-      setPortfolios([]);
-      setPortfolioId('');
-    });
-  }, [organizationId]);
-
-  const portfolio = portfolios.find((item) => item.id === portfolioId) ?? portfolios[0];
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -126,28 +111,16 @@ export function DataEntryImportPage() {
   const detectedColumns = upload ? [...new Set(upload.sheets.flatMap((item) => item.detectedColumns ?? []))] : [];
   const nameMissing = Boolean(mapping && !mapping.columns.CustomerName);
   const readyCount = preview?.rows.filter((row) => row.status === 'READY' || row.status === 'EXISTING_CUSTOMER').length ?? 0;
-  const portfolioLabel = (item: DataEntryPortfolio) => (d.ar ? item.nameArabic : item.nameEnglish) || item.code;
-  const orgLabel = (item: DataEntryOrganization) => (d.ar ? item.nameArabic : item.nameEnglish) || item.code;
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={d.text('رفع العملاء', 'Upload clients')}
-        description={d.text('اختار ملف الإكسل. البيانات تظهر فورًا، والأعمدة بتتعرّف لوحدها.', 'Choose the spreadsheet. The rows appear at once, and the columns are recognized on their own.')}
+        description={d.text('اسحب ملف العملاء. البيانات تظهر فورًا، وبعد الحفظ تقدر ترفع ملفات لكل عميل.', 'Drop the client file. The rows appear at once, and after saving you can upload files for each client.')}
       />
       {error ? <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <Card className="space-y-4 p-6">
-        {organizations.length > 1 ? (
-          <SelectInput label={d.text('الجهة', 'Organization')} value={organizationId} onChange={(event) => setOrganizationId(event.target.value)}>
-            {organizations.map((item) => <option key={item.id} value={item.id}>{orgLabel(item)}</option>)}
-          </SelectInput>
-        ) : null}
-        {portfolios.length > 1 ? (
-          <SelectInput label={d.text('المحفظة', 'Portfolio')} value={portfolioId} onChange={(event) => setPortfolioId(event.target.value)}>
-            {portfolios.map((item) => <option key={item.id} value={item.id}>{portfolioLabel(item)}</option>)}
-          </SelectInput>
-        ) : null}
         <ExcelDropzone
           arabic={d.ar}
           busy={busy}
@@ -191,10 +164,14 @@ export function DataEntryImportPage() {
         ) : null}
         {upload && mapping ? (
           <Button
-            disabled={busy || !organizationId || !portfolio || nameMissing}
+            disabled={busy || nameMissing}
             fullWidth={false}
             isLoading={busy}
             onClick={() => void run(async () => {
+              if (!organizationId || !portfolio) {
+                setError(d.text('تعذر تجهيز الحفظ. أعد فتح الصفحة وحاول مرة أخرى.', 'Could not prepare the save. Reopen the page and try again.'));
+                return;
+              }
               const payload: DataEntryImportMappingRequest = {
                 ...mapping,
                 organizationId,

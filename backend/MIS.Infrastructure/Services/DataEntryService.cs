@@ -334,18 +334,15 @@ public sealed class DataEntryService(
         row.LinkCustomer(customer.Id);
         db.DataEntryRows.Add(row);
         batch.SetCounts(1, 1, 0, now);
-        batch.MarkSubmitted(now);
         if (createdCustomer) batch.AddCreatedCounts(1, 0, now);
-
-        await NotifySupervisorsAsync(batch, now, token);
         await audit.WriteAsync(new AuditWriteRequest(
             "ManualClientCreated", BatchEntity, batch.Id.ToString(), null, null,
             new { CustomerId = customer.Id, BatchId = batch.Id, batch.BatchNumber, SkippedExisting = !createdCustomer },
             $"Manual data-entry client {(createdCustomer ? "created" : "linked")} for batch {batch.BatchNumber}."), token);
         await audit.WriteAsync(new AuditWriteRequest(
-            "BatchSubmitted", BatchEntity, batch.Id.ToString(), null, null,
+            "BatchSaved", BatchEntity, batch.Id.ToString(), null, null,
             new { batch.Id, batch.BatchNumber, batch.Status },
-            $"Manual data-entry batch {batch.BatchNumber} submitted."), token);
+            $"Manual data-entry batch {batch.BatchNumber} saved."), token);
 
         await db.SaveChangesAsync(token);
         await transaction.CommitAsync(token);
@@ -358,15 +355,15 @@ public sealed class DataEntryService(
         var customer = await db.CollectionCustomers.SingleOrDefaultAsync(x => x.Id == customerId, token)
             ?? throw new HrNotFoundException("Data-entry client was not found.");
         if (await db.CollectionCases.AnyAsync(x => x.CustomerId == customerId, token))
-            throw new HrConflictException("This client already has a collections case and cannot be deleted.");
+            throw new HrConflictException("This client cannot be deleted.");
 
         var rows = await db.DataEntryRows.Include(x => x.Batch)
             .Where(x => x.CollectionCustomerId == customerId)
             .ToListAsync(token);
         if (rows.Any(row => row.CollectionCaseId is not null))
-            throw new HrConflictException("This client already has a collections case and cannot be deleted.");
+            throw new HrConflictException("This client cannot be deleted.");
         if (rows.Any(row => row.Batch.Status is DataEntryValues.BatchStatuses.Accepted or DataEntryValues.BatchStatuses.Distributed))
-            throw new HrConflictException("This client is already in the collections pipeline and cannot be deleted.");
+            throw new HrConflictException("This client cannot be deleted.");
 
         var batchIds = rows.Select(row => row.BatchId).Distinct().ToArray();
         db.DataEntryRows.RemoveRange(rows);
@@ -739,19 +736,16 @@ public sealed class DataEntryService(
 
         batch.SetCounts(valid + invalid, valid, invalid, now);
         if (valid <= 0)
-            throw new HrValidationException("A batch with no valid rows cannot be submitted.");
-        batch.MarkSubmitted(now);
+            throw new HrValidationException("The file has no clients that can be saved.");
         if (createdCustomers > 0) batch.AddCreatedCounts(createdCustomers, 0, now);
-
-        await NotifySupervisorsAsync(batch, now, token);
         await audit.WriteAsync(new AuditWriteRequest(
             "ImportConfirmed", Entity, request.UploadId.ToString(), null, null,
             new { batch.Id, batch.BatchNumber, createdCustomers, valid, invalid },
             $"Data entry import confirmed into batch {batch.BatchNumber}."), token);
         await audit.WriteAsync(new AuditWriteRequest(
-            "BatchSubmitted", BatchEntity, batch.Id.ToString(), null, null,
+            "BatchSaved", BatchEntity, batch.Id.ToString(), null, null,
             new { batch.Id, batch.BatchNumber, batch.Status },
-            $"Data entry batch {batch.BatchNumber} submitted."), token);
+            $"Data entry batch {batch.BatchNumber} saved."), token);
 
         await db.SaveChangesAsync(token);
         await transaction.CommitAsync(token);
@@ -1109,6 +1103,7 @@ public sealed class DataEntryService(
             .Include(x => x.UploadedByUser)
             .AsQueryable();
         if (mineOnly) query = query.Where(x => x.UploadedByUserId == user.UserId);
+        else query = query.Where(x => x.Status != DataEntryValues.BatchStatuses.Draft);
         if (!string.IsNullOrWhiteSpace(status))
         {
             var normalized = status.Trim().ToUpperInvariant();
@@ -1132,31 +1127,6 @@ public sealed class DataEntryService(
         if (!CanReview())
             rows = rows.Where(r => r.Batch.UploadedByUserId == user.UserId);
         return rows.Select(r => r.CollectionCustomerId!.Value);
-    }
-
-    private async Task NotifySupervisorsAsync(DataEntryBatch batch, DateTimeOffset now, CancellationToken token)
-    {
-        var roleRecipients = await db.Users.AsNoTracking()
-            .Where(u => u.IsActive && u.UserRoles.Any(ur => ur.Role.Name == SystemRoleNames.CollectionsSupervisor))
-            .Select(u => u.Id)
-            .ToListAsync(token);
-        var teamSupervisors = await db.CollectionTeams.AsNoTracking()
-            .Where(t => t.IsActive && t.SupervisorId != null)
-            .Select(t => t.SupervisorId!.Value)
-            .Distinct()
-            .ToListAsync(token);
-
-        var recipientIds = roleRecipients.Concat(teamSupervisors).Distinct().ToArray();
-        var messageAr = $"تم إرسال دفعة إدخال بيانات {batch.BatchNumber} للمراجعة.";
-        var messageEn = $"Data entry batch {batch.BatchNumber} was submitted for review.";
-        foreach (var recipientId in recipientIds)
-        {
-            var exists = await db.DataEntryNotifications.AnyAsync(
-                x => x.BatchId == batch.Id && x.RecipientUserId == recipientId && x.Kind == DataEntryValues.NotificationKinds.BatchSubmitted, token);
-            if (exists) continue;
-            db.DataEntryNotifications.Add(new DataEntryNotification(
-                batch.Id, recipientId, DataEntryValues.NotificationKinds.BatchSubmitted, messageAr, messageEn, now));
-        }
     }
 
     private async Task<CollectionPortfolio> ResolvePortfolioAsync(

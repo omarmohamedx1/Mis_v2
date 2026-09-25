@@ -5,7 +5,7 @@ import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { DataEntryBatchStatus, DataEntryKpi, useDataEntryText } from '../../features/data-entry/dataEntryUi';
+import { DataEntryKpi, useDataEntryText } from '../../features/data-entry/dataEntryUi';
 import { dataEntryService } from '../../features/data-entry/services/dataEntryService';
 import type { DataEntryBatchListItem, DataEntryDashboard } from '../../features/data-entry/types/dataEntry';
 
@@ -35,11 +35,10 @@ export function DataEntryDashboardPage() {
     return <div className="grid min-h-[440px] place-items-center"><LoadingSpinner /></div>;
   }
 
+  const uploadedFiles = data.draftBatches + data.submittedBatches + data.acceptedBatches + data.distributedBatches + data.rejectedBatches;
   const kpis = [
     { to: '/data-entry/clients', label: d.text('العملاء', 'Clients'), value: data.myClients, tone: 'blue' as const, hint: d.text('الحالات المرفوعة', 'Uploaded cases') },
-    { to: '/data-entry/history?status=SUBMITTED', label: d.text('بانتظار المراجعة', 'Waiting review'), value: data.submittedBatches, tone: 'amber' as const, hint: d.text('ملفات محفوظة', 'Saved files') },
-    { to: '/data-entry/history?status=ACCEPTED', label: d.text('محفوظ', 'Saved'), value: data.acceptedBatches + data.distributedBatches, tone: 'green' as const, hint: d.text('جاهز للعرض', 'Ready to view') },
-    { to: '/data-entry/history?status=REJECTED', label: d.text('مرفوض', 'Rejected'), value: data.rejectedBatches, tone: 'red' as const, hint: d.text('راجع السبب وأعد الرفع', 'Check the reason and upload again') },
+    { to: '/data-entry/history', label: d.text('الملفات', 'Files'), value: uploadedFiles, tone: 'green' as const, hint: d.text('شيتات العملاء المحفوظة', 'Saved client sheets') },
   ];
 
   return (
@@ -59,7 +58,7 @@ export function DataEntryDashboardPage() {
         </div>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2">
         {kpis.map((kpi) => (
           <Link key={kpi.to} className="block transition hover:-translate-y-0.5" to={kpi.to}>
             <DataEntryKpi hint={kpi.hint} label={kpi.label} tone={kpi.tone} value={d.number(kpi.value)} />
@@ -80,20 +79,16 @@ export function DataEntryDashboardPage() {
             <table className="w-full min-w-[44rem] text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 text-start">{d.text('الدفعة', 'Batch')}</th>
-                  <th className="px-4 py-3 text-start">{d.text('الجهة', 'Organization')}</th>
+                  <th className="px-4 py-3 text-start">{d.text('الملف', 'File')}</th>
                   <th className="px-4 py-3 text-end">{d.text('العملاء', 'Clients')}</th>
-                  <th className="px-4 py-3 text-start">{d.text('الحالة', 'Status')}</th>
                   <th className="px-4 py-3 text-start">{d.text('التاريخ', 'Date')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-mis-border">
                 {batches.map((batch) => (
                   <tr key={batch.id}>
-                    <td className="px-4 py-3 font-semibold text-mis-navy" data-bidi="ltr">{batch.batchNumber}</td>
-                    <td className="px-4 py-3">{batch.organizationName}</td>
+                    <td className="px-4 py-3 font-semibold text-mis-navy">{batch.fileName || batch.batchNumber}</td>
                     <td className="px-4 py-3 text-end" data-bidi="ltr">{d.number(batch.customerCount || batch.validRows)}</td>
-                    <td className="px-4 py-3"><DataEntryBatchStatus value={batch.status} /></td>
                     <td className="px-4 py-3">{d.dateTime(batch.createdAt)}</td>
                   </tr>
                 ))}
@@ -104,7 +99,7 @@ export function DataEntryDashboardPage() {
           <EmptyState
             compact
             icon={<History className="h-5 w-5" />}
-            title={d.text('لم تُرسل دفعات بعد', 'No batches sent yet')}
+            title={d.text('لا توجد ملفات بعد', 'No files yet')}
             description={d.text('ابدأ برفع شيت العملاء أو إضافة عميل.', 'Start by uploading a client sheet or adding a client.')}
             action={<Button fullWidth={false} leftIcon={<FileUp className="h-4 w-4" />} onClick={() => navigate('/data-entry/import')}>{d.text('رفع ملف', 'Upload file')}</Button>}
           />
