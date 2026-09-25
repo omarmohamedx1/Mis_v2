@@ -1,4 +1,4 @@
-import { ArrowUpRight, FileUp, History, UsersRound } from 'lucide-react';
+import { ArrowUpRight, FileUp, History, Paperclip, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -53,8 +53,9 @@ export function DataEntryDashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button fullWidth={false} leftIcon={<UsersRound className="h-4 w-4" />} onClick={() => navigate('/data-entry/clients')}>{d.text('إضافة عميل', 'Add client')}</Button>
-          <Button fullWidth={false} leftIcon={<FileUp className="h-4 w-4" />} variant="outline" onClick={() => navigate('/data-entry/import')}>{d.text('رفع ملف', 'Upload file')}</Button>
+          <Button fullWidth={false} leftIcon={<FileUp className="h-4 w-4" />} onClick={() => navigate('/data-entry/import')}>{d.text('رفع العملاء', 'Upload clients')}</Button>
+          <Button fullWidth={false} leftIcon={<Paperclip className="h-4 w-4" />} variant="outline" onClick={() => navigate('/data-entry/files')}>{d.text('ملفات العملاء', 'Client files')}</Button>
+          <Button fullWidth={false} leftIcon={<UsersRound className="h-4 w-4" />} variant="outline" onClick={() => navigate('/data-entry/clients')}>{d.text('إضافة عميل', 'Add client')}</Button>
         </div>
       </header>
 

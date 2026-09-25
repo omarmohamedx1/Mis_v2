@@ -63,6 +63,11 @@ public sealed class DataEntryController(IDataEntryService dataEntry) : Controlle
         return Ok(await dataEntry.UploadImportAsync(new HrUploadFile(file.FileName, file.ContentType, file.Length, stream), token));
     }
 
+    [HttpGet("import/{uploadId:guid}/sheet")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
+    public Task<DataEntrySheetPreviewDto> Sheet(Guid uploadId, [FromQuery] string? sheetName, CancellationToken token)
+        => dataEntry.ReadSheetAsync(uploadId, sheetName, token);
+
     [HttpPost("import/{uploadId:guid}/preview")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
     public Task<DataEntryImportPreviewDto> Preview(Guid uploadId, [FromBody] DataEntryImportMappingRequest mapping, CancellationToken token)
@@ -145,7 +150,7 @@ public sealed class DataEntryController(IDataEntryService dataEntry) : Controlle
         => dataEntry.ListCaseDocumentsAsync(caseId, token);
 
     [HttpGet("documents/{documentId:guid}/download")]
-    [Authorize(Policy = AuthorizationPolicies.DataEntryBatchReview)]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]
     public async Task<IActionResult> DownloadDocument(Guid documentId, CancellationToken token)
     {
         var file = await dataEntry.DownloadDocumentAsync(documentId, token);

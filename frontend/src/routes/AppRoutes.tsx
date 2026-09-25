@@ -88,6 +88,7 @@ const DataEntryDashboardPage = lazy(() => import('../pages/data-entry/DataEntryD
 const DataEntryClientsPage = lazy(() => import('../pages/data-entry/DataEntryClientsPage').then((module) => ({ default: module.DataEntryClientsPage })));
 const DataEntryClientDetailsPage = lazy(() => import('../pages/data-entry/DataEntryClientDetailsPage').then((module) => ({ default: module.DataEntryClientDetailsPage })));
 const DataEntryImportPage = lazy(() => import('../pages/data-entry/DataEntryImportPage').then((module) => ({ default: module.DataEntryImportPage })));
+const DataEntryFilesPage = lazy(() => import('../pages/data-entry/DataEntryFilesPage').then((module) => ({ default: module.DataEntryFilesPage })));
 const DataEntryHistoryPage = lazy(() => import('../pages/data-entry/DataEntryHistoryPage').then((module) => ({ default: module.DataEntryHistoryPage })));
 const LegalDashboardPage = lazy(() => import('../pages/legal/LegalDashboardPage').then((module) => ({ default: module.LegalDashboardPage })));
 const LegalCasesPage = lazy(() => import('../pages/legal/LegalCasesPage').then((module) => ({ default: module.LegalCasesPage })));
@@ -196,6 +197,7 @@ export function AppRoutes() {
           <Route path="clients" element={<DataEntryClientsPage />} />
           <Route path="clients/:id" element={<DataEntryClientDetailsPage />} />
           <Route path="import" element={<DataEntryImportPage />} />
+          <Route path="files" element={<DataEntryFilesPage />} />
           <Route path="history" element={<DataEntryHistoryPage />} />
           <Route path="profile" element={<AccountProfilePage />} />
         </Route>

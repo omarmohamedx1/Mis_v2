@@ -107,6 +107,15 @@ export interface DataEntryImportUpload {
   sheets: DataEntryImportSheet[];
 }
 
+export interface DataEntrySheetPreview {
+  fileName: string;
+  sheetName: string;
+  columns: string[];
+  rows: string[][];
+  totalRows: number;
+  truncated: boolean;
+}
+
 export type DataEntryImportField =
   | 'CustomerCode'
   | 'CustomerName'

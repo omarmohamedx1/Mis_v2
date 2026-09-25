@@ -53,8 +53,7 @@ export function DataEntryClientDetailsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const canCollections = user ? canAccessModule(user, 'collections') : false;
-  const canUpload = Boolean(user?.roles.some((role) => ['Admin', 'DataEntry'].includes(role)) || user?.permissions.includes('data_entry.manage'));
-  const canReview = Boolean(user?.roles.some((role) => ['Admin', 'CollectionsSupervisor', 'CollectionsOperationsManager'].includes(role)) || user?.permissions.includes('collections.data_batch.review'));
+  const canUpload = Boolean(user?.roles.some((role) => ['Admin', 'DataEntry'].includes(role)) || user?.permissions.includes('data_entry.manage') || user?.permissions.includes('data_entry.access'));
 
   useEffect(() => {
     if (!id) return;
@@ -201,10 +200,10 @@ export function DataEntryClientDetailsPage() {
           </section>
         )}
         <DataEntryDocumentsPanel
-          canDownload={canReview}
           canUpload={canUpload}
           documents={documents}
-          emptyHint={d.text('ارفع عقد، كشف، أو ملف بيانات إضافي ليراجعه المشرف مع الحالة.', 'Upload a contract, statement, or extra data file for the supervisor to review with the case.')}
+          canDownload
+          emptyHint={d.text('ارفع شهادة ميلاد أو أي ورق، واكتب الملف عبارة عن إيه. الملف يفتح هنا بعد الرفع.', 'Upload a birth certificate or any paper, and write what the file is. It opens here after upload.')}
           uploading={uploading}
           onDelete={canUpload ? async (documentId) => {
             await dataEntryService.deleteDocument(documentId);
@@ -216,7 +215,7 @@ export function DataEntryClientDetailsPage() {
             try {
               const created = await dataEntryService.uploadClientDocument(id, file, note);
               setDocuments((current) => [created, ...current]);
-              toast.success(d.text('تم رفع الملف للمشرف.', 'File sent for supervisor review.'));
+              toast.success(d.text('تم رفع الملف ويمكن فتحه الآن.', 'File uploaded and ready to open.'));
             } finally {
               setUploading(false);
             }

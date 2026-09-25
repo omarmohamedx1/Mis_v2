@@ -1,4 +1,4 @@
-import { apiClient, downloadApiFile, requestFormData } from '../../../services/apiClient';
+import { apiClient, downloadApiFile, requestApiFile, requestFormData } from '../../../services/apiClient';
 import { loadAllPages } from '../../../utils/loadAllPages';
 import type {
   ConfirmDataEntryImportInput,
@@ -11,6 +11,7 @@ import type {
   DataEntryImportMappingRequest,
   DataEntryImportPreview,
   DataEntryImportUpload,
+  DataEntrySheetPreview,
   DataEntryNotification,
   DataEntryOrganization,
   DataEntryPagedResult,
@@ -53,6 +54,12 @@ export const dataEntryService = {
     const form = new FormData();
     form.append('file', file);
     return requestFormData<DataEntryImportUpload>('/data-entry/import/upload', form);
+  },
+
+  async sheetPreview(uploadId: string, sheetName?: string | null) {
+    return (await apiClient.get<DataEntrySheetPreview>(`/data-entry/import/${uploadId}/sheet`, {
+      params: { sheetName: sheetName || undefined },
+    })).data;
   },
 
   async previewImport(uploadId: string, mapping: DataEntryImportMappingRequest) {
@@ -116,6 +123,10 @@ export const dataEntryService = {
 
   async caseDocuments(caseId: string) {
     return (await apiClient.get<DataEntryDocument[]>(`/data-entry/cases/${caseId}/documents`)).data;
+  },
+
+  async openDocument(documentId: string) {
+    return requestApiFile(`/data-entry/documents/${documentId}/download`);
   },
 
   async downloadDocument(documentId: string, fileName: string) {

@@ -23,7 +23,14 @@ public sealed class DataEntryService(
 {
     private const string Entity = "DataEntryImport";
     private const string BatchEntity = "DataEntryBatch";
+    private const int MaximumDocuments = 40;
+    private const int SheetPreviewRows = 400;
     private const long MaximumBytes = ExcelImportLimits.MaximumBytes;
+    private static readonly HashSet<string> BlockedDocumentExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".exe", ".bat", ".cmd", ".com", ".msi", ".scr", ".ps1", ".vbs", ".js", ".jar",
+        ".dll", ".hta", ".reg", ".lnk", ".cpl", ".msc", ".app", ".dmg", ".sh"
+    };
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     internal static readonly string[] Fields =
@@ -361,12 +368,50 @@ public sealed class DataEntryService(
                 new Uploaded(stored.OriginalFileName, stored.StorageKey, extension),
                 "Data entry import uploaded."), token);
             return new DataEntryImportUploadDto(id, stored.OriginalFileName,
-                sheets.Select(s => new DataEntryImportSheetDto(s.SheetName, s.SuggestedHeaderRowNumber, s.DetectedColumns.ToArray())).ToArray());
+                sheets.Select(s => new DataEntryImportSheetDto(s.SheetName ?? "Sheet1", s.SuggestedHeaderRowNumber, s.DetectedColumns.ToArray())).ToArray());
         }
         catch
         {
             await storage.DeleteAsync(stored.StorageKey, CancellationToken.None);
             throw;
+        }
+    }
+
+    public async Task<DataEntrySheetPreviewDto> ReadSheetAsync(Guid uploadId, string? sheetName, CancellationToken token)
+    {
+        EnsureManage();
+        var upload = Read<Uploaded>((await OwnedUpload(uploadId, token)).NewValue);
+        await using var stream = await storage.OpenReadAsync(upload.StorageKey, token);
+        var sheets = await new AttendanceImportParser(calendar).InspectAsync(stream, upload.Extension, token);
+        var selected = sheets.FirstOrDefault(sheet =>
+                !string.IsNullOrWhiteSpace(sheetName) && string.Equals(sheet.SheetName, sheetName, StringComparison.OrdinalIgnoreCase))
+            ?? sheets.FirstOrDefault()
+            ?? throw new HrValidationException("The file has no readable sheet.");
+        var displayName = string.IsNullOrWhiteSpace(selected.SheetName) ? "Sheet1" : selected.SheetName;
+        try
+        {
+            var table = await AttendanceImportParser.ReadTableAsync(
+                stream,
+                upload.Extension,
+                selected.SheetName,
+                selected.SuggestedHeaderRowNumber,
+                selected.SuggestedHeaderRowNumber + 1,
+                token);
+            var rows = table.Rows
+                .Take(SheetPreviewRows)
+                .Select(row => (IReadOnlyList<string>)row)
+                .ToArray();
+            return new DataEntrySheetPreviewDto(
+                upload.FileName,
+                displayName,
+                table.Headers,
+                rows,
+                table.Rows.Count,
+                table.Rows.Count > SheetPreviewRows);
+        }
+        catch (HrValidationException ex) when (ex.Message.Contains("No employee data", StringComparison.OrdinalIgnoreCase))
+        {
+            return new DataEntrySheetPreviewDto(upload.FileName, displayName, selected.DetectedColumns.ToArray(), [], 0, false);
         }
     }
 
@@ -884,13 +929,16 @@ public sealed class DataEntryService(
         if (!await ScopeClientIds().AnyAsync(id => id == customerId, token))
             throw new HrForbiddenException("You do not have permission to attach files to this client.");
         if (file.Length <= 0 || file.Length > MaximumBytes)
-            throw new HrValidationException("Supporting files must be between 1 byte and 20 MB.");
-        if (!string.IsNullOrWhiteSpace(note) && note.Trim().Length > 500)
-            throw new HrValidationException("The note cannot exceed 500 characters.");
+            throw new HrValidationException("Supporting files must be between 1 byte and 50 MB.");
+        var label = note?.Trim();
+        if (string.IsNullOrWhiteSpace(label))
+            throw new HrValidationException("Write what this file is before uploading it.");
+        if (label.Length > 500)
+            throw new HrValidationException("The file description cannot exceed 500 characters.");
 
         var count = await db.DataEntryDocuments.CountAsync(x => x.CustomerId == customerId, token);
-        if (count >= 12)
-            throw new HrValidationException("A client can have at most 12 supporting files.");
+        if (count >= MaximumDocuments)
+            throw new HrValidationException("A client can have at most 40 supporting files.");
 
         await using var buffer = await BufferUploadAsync(file.Content, token);
         var detectedType = await DetectDocumentTypeAsync(buffer, file.FileName, token);
@@ -901,7 +949,7 @@ public sealed class DataEntryService(
             .Select(x => new { x.BatchId, x.CollectionCaseId })
             .FirstOrDefaultAsync(token);
         var stored = await storage.SaveAsync("data-entry-documents", file.FileName, detectedType, buffer, MaximumBytes, token);
-        var document = new DataEntryDocument(customerId, row?.BatchId, row?.CollectionCaseId, stored.OriginalFileName, detectedType, stored.Length, stored.Sha256Hash, stored.StorageKey, user.UserId, DateTimeOffset.UtcNow, note);
+        var document = new DataEntryDocument(customerId, row?.BatchId, row?.CollectionCaseId, stored.OriginalFileName, detectedType, stored.Length, stored.Sha256Hash, stored.StorageKey, user.UserId, DateTimeOffset.UtcNow, label);
         db.DataEntryDocuments.Add(document);
         try
         {
@@ -917,9 +965,11 @@ public sealed class DataEntryService(
 
     public async Task<DataEntryDocumentDownloadDto> DownloadDocumentAsync(Guid documentId, CancellationToken token)
     {
-        EnsureReview();
+        EnsureAccess();
         var document = await db.DataEntryDocuments.AsNoTracking().SingleOrDefaultAsync(x => x.Id == documentId, token)
             ?? throw new HrNotFoundException("Document was not found.");
+        if (!CanReview() && !await ScopeClientIds().AnyAsync(id => id == document.CustomerId, token))
+            throw new HrForbiddenException("You do not have permission to open this file.");
         var content = await storage.OpenReadAsync(document.StorageKey, token);
         return new DataEntryDocumentDownloadDto(content, document.ContentType, document.OriginalFileName);
     }
@@ -957,7 +1007,6 @@ public sealed class DataEntryService(
 
     private async Task<IReadOnlyList<DataEntryDocumentDto>> ProjectDocuments(IQueryable<DataEntryDocument> query, CancellationToken token)
     {
-        var canDownload = CanReview();
         var rows = await query.Select(x => new
         {
             x.Id, x.CustomerId, x.BatchId, x.CaseId, x.OriginalFileName, x.ContentType, x.FileSize, x.Note,
@@ -965,30 +1014,42 @@ public sealed class DataEntryService(
         }).ToArrayAsync(token);
         return rows.Select(x => new DataEntryDocumentDto(
             x.Id, x.CustomerId, x.BatchId, x.CaseId, x.OriginalFileName, x.ContentType, x.FileSize, x.Note,
-            x.UploadedBy, x.UploadedAt, canDownload)).ToArray();
+            x.UploadedBy, x.UploadedAt, true)).ToArray();
     }
 
-    private static async Task<string> DetectDocumentTypeAsync(Stream stream, string fileName, CancellationToken token)
+    private static Task<string> DetectDocumentTypeAsync(Stream stream, string fileName, CancellationToken token)
     {
         if (!stream.CanSeek) throw new HrValidationException("The uploaded file stream must be seekable.");
+        token.ThrowIfCancellationRequested();
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
-        var header = new byte[8];
-        var read = await stream.ReadAsync(header, token);
+        if (BlockedDocumentExtensions.Contains(extension))
+            throw new HrValidationException("Programs and scripts cannot be stored. Upload the document, scan, or spreadsheet itself.");
         stream.Position = 0;
-        var pdf = read >= 5 && header.AsSpan(0, 5).SequenceEqual("%PDF-"u8);
-        var jpeg = read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
-        var png = read >= 8 && header.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
-        var zip = read >= 2 && header[0] == 0x50 && header[1] == 0x4B;
-        return extension switch
+        var contentType = extension switch
         {
-            ".pdf" when pdf => "application/pdf",
-            ".jpg" or ".jpeg" when jpeg => "image/jpeg",
-            ".png" when png => "image/png",
-            ".xlsx" when zip => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".pdf" => "application/pdf",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".bmp" => "image/bmp",
+            ".tif" or ".tiff" => "image/tiff",
+            ".heic" or ".heif" => "image/heic",
+            ".svg" => "image/svg+xml",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ".xls" => "application/vnd.ms-excel",
             ".csv" => "text/csv",
-            _ => throw new HrValidationException("Only PDF, JPEG, PNG, Excel, and CSV files are accepted for case supporting data."),
+            ".txt" => "text/plain",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".ppt" => "application/vnd.ms-powerpoint",
+            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ".zip" => "application/zip",
+            ".rar" => "application/vnd.rar",
+            ".7z" => "application/x-7z-compressed",
+            _ => "application/octet-stream",
         };
+        return Task.FromResult(contentType);
     }
 
     private async Task<DataEntryBatchPageDto> ListBatchesInternalAsync(string? status, int page, int pageSize, bool mineOnly, CancellationToken token)

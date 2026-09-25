@@ -70,6 +70,13 @@ public sealed record DataEntryPortfolioDto(Guid Id, string Code, string NameArab
 
 public sealed record DataEntryImportUploadDto(Guid UploadId, string FileName, IReadOnlyList<DataEntryImportSheetDto> Sheets);
 public sealed record DataEntryImportSheetDto(string SheetName, int SuggestedHeaderRowNumber, IReadOnlyList<string> DetectedColumns);
+public sealed record DataEntrySheetPreviewDto(
+    string FileName,
+    string SheetName,
+    IReadOnlyList<string> Columns,
+    IReadOnlyList<IReadOnlyList<string>> Rows,
+    int TotalRows,
+    bool Truncated);
 public sealed record DataEntryImportMappingRequest(
     Guid OrganizationId,
     Guid? PortfolioId,

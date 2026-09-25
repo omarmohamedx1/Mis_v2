@@ -1,4 +1,4 @@
-import { FileUp, Plus, Search, Trash2, UsersRound } from 'lucide-react';
+import { FileUp, Paperclip, Plus, Search, Trash2, UsersRound } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -60,7 +60,10 @@ export function DataEntryClientsPage() {
               {d.text('إضافة عميل', 'Add client')}
             </Button>
             <Button fullWidth={false} leftIcon={<FileUp className="h-4 w-4" />} size="md" type="button" variant="outline" onClick={() => navigate('/data-entry/import')}>
-              {d.text('رفع ملف', 'Upload file')}
+              {d.text('رفع العملاء', 'Upload clients')}
+            </Button>
+            <Button fullWidth={false} leftIcon={<Paperclip className="h-4 w-4" />} size="md" type="button" variant="outline" onClick={() => navigate('/data-entry/files')}>
+              {d.text('ملفات العملاء', 'Client files')}
             </Button>
           </>
         }

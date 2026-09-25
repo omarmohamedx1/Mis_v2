@@ -1,4 +1,4 @@
-import { FileUp, History, LayoutDashboard, UsersRound } from 'lucide-react';
+import { FileUp, History, LayoutDashboard, Paperclip, UsersRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -7,7 +7,8 @@ import { ModuleLayoutShell, type ModuleNavigationItem } from './ModuleLayoutShel
 const links = [
   ['/data-entry/dashboard', 'لوحة التحكم', 'Dashboard', LayoutDashboard],
   ['/data-entry/clients', 'العملاء', 'Clients', UsersRound],
-  ['/data-entry/import', 'رفع البيانات', 'Import Data', FileUp],
+  ['/data-entry/import', 'رفع العملاء', 'Upload clients', FileUp],
+  ['/data-entry/files', 'ملفات العملاء', 'Client files', Paperclip],
   ['/data-entry/history', 'سجل الرفع', 'Upload History', History],
 ] as const;
 
@@ -31,7 +32,7 @@ export function DataEntryLayout() {
       isRtl={isRtl}
       languageLabel={ar ? 'English' : 'العربية'}
       moduleName={ar ? 'إدخال البيانات' : 'MIS Data Entry'}
-      moduleSubtitle={ar ? 'العملاء يصلون للتحصيل بعد المراجعة' : 'Clients reach collections after review'}
+      moduleSubtitle={ar ? 'ملف العملاء منفصل عن مستندات كل عميل' : 'The client file is separate from each client’s papers'}
       navigation={navigation}
       navigationLabel={ar ? 'قائمة إدخال البيانات' : 'Data entry navigation'}
       onLanguageToggle={() => setLanguage(ar ? 'en' : 'ar')}

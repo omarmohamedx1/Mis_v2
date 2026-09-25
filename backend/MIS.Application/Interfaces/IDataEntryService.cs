@@ -15,6 +15,7 @@ public interface IDataEntryService
     Task DeleteClientAsync(Guid customerId, CancellationToken token);
 
     Task<DataEntryImportUploadDto> UploadImportAsync(HrUploadFile file, CancellationToken token);
+    Task<DataEntrySheetPreviewDto> ReadSheetAsync(Guid uploadId, string? sheetName, CancellationToken token);
     Task<DataEntryImportPreviewDto> PreviewImportAsync(Guid uploadId, DataEntryImportMappingRequest mapping, CancellationToken token);
     Task<DataEntryBatchListItemDto> ConfirmImportAsync(ConfirmDataEntryImportRequest request, CancellationToken token);
 
