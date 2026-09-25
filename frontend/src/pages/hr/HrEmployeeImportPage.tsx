@@ -6,7 +6,6 @@ import { Card } from '../../components/common/Card';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { FileInput } from '../../components/forms/FileInput';
 import { TextInput } from '../../components/forms/TextInput';
 import { SelectInput } from '../../components/forms/SelectInput';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -18,6 +17,14 @@ import {
   missingRequiredEmployeeImportFields,
   pickEmployeeImportSheetIndex,
 } from '../../features/hr/employeeImportAutoMap';
+import {
+  ExcelColumnReview,
+  ExcelDropzone,
+  ExcelPreviewToolbar,
+  ExcelSheetPicker,
+  importCopy,
+  rememberExtraColumns,
+} from '../../features/import';
 import { hrEmployeeService } from '../../features/hr/services/hrEmployeeService';
 import { hrMasterDataService } from '../../features/hr/services/hrMasterDataService';
 import type { DepartmentOption, EmployeeOrganizationAssignment } from '../../features/hr/types/employee';
@@ -34,14 +41,17 @@ import {
 
 type WizardStep = 'upload' | 'missing' | 'advanced' | 'working' | 'preview' | 'done';
 
-function buildMapping(upload: EmployeeImportUpload, index: number): EmployeeImportMapping {
-  const sheet = upload.sheets[index];
+function buildMapping(upload: EmployeeImportUpload, indexes: number[]): EmployeeImportMapping {
+  const selected = indexes.length ? indexes : [0];
+  const sheet = upload.sheets[selected[0]];
+  const columns = selected.flatMap((index) => upload.sheets[index]?.detectedColumns ?? []);
   return {
     sheetName: sheet.sheetName,
     headerRow: sheet.suggestedHeaderRowNumber,
     firstDataRow: sheet.suggestedHeaderRowNumber + 1,
     dateFormat: null,
-    columns: autoMapEmployeeImportColumns(sheet.detectedColumns),
+    columns: autoMapEmployeeImportColumns(columns),
+    sheetNames: selected.map((index) => upload.sheets[index]?.sheetName).filter((name): name is string => Boolean(name)),
   };
 }
 
@@ -57,6 +67,12 @@ export function HrEmployeeImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [upload, setUpload] = useState<EmployeeImportUpload | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
+  const [selectedSheets, setSelectedSheets] = useState<number[]>([0]);
+  const [extraColumns, setExtraColumns] = useState<string[]>([]);
+  const [excludedRows, setExcludedRows] = useState<number[]>([]);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [mapping, setMapping] = useState<EmployeeImportMapping | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
   const [preview, setPreview] = useState<EmployeeImportPreview | null>(null);
@@ -142,18 +158,19 @@ export function HrEmployeeImportPage() {
   async function sendFile(selected?: File | null) {
     const nextFile = selected ?? file;
     if (!nextFile) return;
-    if (!/\.(xlsx|xls|csv)$/i.test(nextFile.name) || nextFile.size > 20 * 1024 * 1024) {
-      setError(text('Choose CSV, XLS, or XLSX, maximum 20 MB.', 'اختر CSV أو XLS أو XLSX بحد أقصى 20 ميجابايت.'));
-      return;
-    }
     setFile(nextFile);
     await run(async () => {
       setStep('working');
       setPhase(text('Reading file…', 'جاري قراءة الملف…'));
       const data = await employeeImportService.upload(nextFile);
       const index = pickEmployeeImportSheetIndex(data.sheets);
-      const next = buildMapping(data, index);
-      await autoImportWith(data, next, index);
+      const selected = [index];
+      const next = buildMapping(data, selected);
+      setSelectedSheets(selected);
+      setExtraColumns([]);
+      setExcludedRows([]);
+      setSelectedRows([]);
+      await autoImportWith(data, next, selected[0] ?? index);
     });
   }
 
@@ -214,15 +231,15 @@ export function HrEmployeeImportPage() {
       ? preview.rows.filter((row) => row.status === 'Error' || row.status === 'Existing')
       : preview.rows
     : [];
-  const importableCount = preview?.rows.filter((row) => row.status === 'Ready' || row.status === 'Warning').length ?? 0;
+  const importableCount = preview?.rows.filter((row) => (row.status === 'Ready' || row.status === 'Warning') && !excludedRows.includes(row.row)).length ?? 0;
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={text('Import Employees', 'استيراد موظفين')}
         description={text(
-          'Choose an employee Excel file and it uploads immediately. Fix any row errors here, then confirm. Existing employees are never overwritten.',
-          'اختار ملف الموظفين وهيترفع ويتراجع لوحده. صحّح الأخطاء من هنا بعدين أكّد. الموظفين الموجودين مش هيتعدلوا.',
+          'Drop any employee Excel file. Columns and sheets are recognized automatically. Review, edit or remove rows, then confirm. Existing employees are never overwritten.',
+          'ارفع أي ملف موظفين. الأعمدة والشيتات بتتعرف لوحدها. راجع وعدّل أو شيل صفوف، بعدين أكّد. الموظفين الموجودين مش هيتعدلوا.',
         )}
         actions={<div className="flex flex-wrap gap-2"><Button fullWidth={false} isLoading={downloadingTemplate} leftIcon={<Download className="h-4 w-4" />} onClick={() => void downloadTemplate()} variant="outline">{text('Download Excel template', 'تنزيل قالب Excel')}</Button>{link}</div>}
       />
@@ -263,17 +280,14 @@ export function HrEmployeeImportPage() {
                 <p className="mt-1 text-sm text-slate-600">{text('No extra upload click. Review the preview, fix errors in place, then confirm.', 'من غير زرار رفع إضافي. راجع المعاينة، صحّح الأخطاء هنا، وبعدين أكّد.')}</p>
               </div>
             </div>
-            <FileInput
-              accept=".xlsx,.xls,.csv"
+            <ExcelDropzone
+              arabic={ar}
+              busy={busy}
+              file={file}
+              hint={text('The file starts as soon as you drop it. Up to 50 MB.', 'الملف بيشتغل أول ما تفلته. حتى 50 ميجابايت.')}
               label={text('Employee Excel / CSV file', 'ملف الموظفين Excel / CSV')}
-              hint={text('The file starts processing as soon as you choose it. Maximum 20 MB and 2,000 rows.', 'الملف بيشتغل أول ما تختاره. بحد أقصى 20 ميجابايت و2000 صف.')}
-              onChange={(event) => {
-                const next = event.target.files?.[0] ?? null;
-                void sendFile(next);
-              }}
-              required
+              onFile={(next) => { if (next) void sendFile(next); else setFile(null); }}
             />
-            <p className="text-sm text-slate-500">{text('You can also drop the file on this card.', 'تقدر كمان تسحب الملف وتفلته هنا.')}</p>
             </div>
           </Card>
           <Card className="border-sky-200 bg-sky-50/60" padding="lg">
@@ -359,7 +373,8 @@ export function HrEmployeeImportPage() {
               onChange={(event) => {
                 const index = Number(event.target.value);
                 setSheetIndex(index);
-                setMapping(buildMapping(upload, index));
+                setSelectedSheets([index]);
+                setMapping(buildMapping(upload, [index]));
               }}
             >
               {upload.sheets.map((sheet, index) => (
@@ -437,6 +452,49 @@ export function HrEmployeeImportPage() {
 
       {step === 'preview' && preview ? (
         <>
+          {upload && mapping ? (
+            <div className="space-y-4">
+              <ExcelSheetPicker
+                arabic={ar}
+                onChange={(indexes) => {
+                  const nextIndexes = indexes.length ? indexes : [sheetIndex];
+                  setSelectedSheets(nextIndexes);
+                  setSheetIndex(nextIndexes[0] ?? 0);
+                  setMapping(buildMapping(upload, nextIndexes));
+                }}
+                selected={selectedSheets}
+                sheets={upload.sheets}
+              />
+              <ExcelColumnReview
+                arabic={ar}
+                detectedColumns={[...new Set(selectedSheets.flatMap((index) => upload.sheets[index]?.detectedColumns ?? []))]}
+                extraSelected={extraColumns}
+                fields={employeeImportFields.map((field) => ({ key: field.key, en: field.en, ar: field.ar, required: field.requiredInFile, aliases: field.aliases }))}
+                mapping={mapping.columns}
+                onExtraSelected={setExtraColumns}
+                onToggleAdvanced={() => setShowAdvanced((value) => !value)}
+                showAdvanced={showAdvanced}
+                advanced={
+                  <p className="text-sm text-slate-500">
+                    {text('Use Advanced Manual Mapping below only if a rare file was not recognized.', 'التعيين اليدوي المتقدم تحت للحالات النادرة بس.')}
+                  </p>
+                }
+              />
+              {selectedSheets.join(',') !== String(sheetIndex) || extraColumns.length ? (
+                <Button
+                  fullWidth={false}
+                  variant="outline"
+                  onClick={() => void run(async () => {
+                    const next = buildMapping(upload, selectedSheets);
+                    setMapping(next);
+                    await autoImportWith(upload, next, selectedSheets[0] ?? 0);
+                  })}
+                >
+                  {text('Re-read selected sheets', 'إعادة قراءة الشيتات المحددة')}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           {missing.length ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
               <p className="font-semibold">{text('Some columns were not recognized. You can still fix those values in the table.', 'بعض الأعمدة مش متعرفة. تقدر تعدّل القيم دي في الجدول.')}</p>
@@ -462,18 +520,24 @@ export function HrEmployeeImportPage() {
               </Card>
             ))}
           </div>
+          <ExcelPreviewToolbar
+            arabic={ar}
+            excludedCount={excludedRows.length}
+            onExclude={() => setExcludedRows((current) => [...new Set([...current, ...selectedRows])])}
+            onRestore={() => {
+              setExcludedRows((current) => current.filter((row) => !selectedRows.includes(row)));
+              setSelectedRows([]);
+            }}
+            readyCount={importableCount}
+            selectedCount={selectedRows.length}
+          />
           <div className="flex flex-wrap gap-3">
             <Button
               disabled={busy || importableCount === 0}
               fullWidth={false}
-              isLoading={busy}
-              onClick={() => void run(async () => {
-                const confirmed = await employeeImportService.confirm(preview.id, preview.previewId);
-                setResult(confirmed);
-                setStep('done');
-              })}
+              onClick={() => setConfirmOpen(true)}
             >
-              {text(`Confirm import (${importableCount})`, `تأكيد استيراد (${importableCount})`)}
+              {importCopy.confirmAction(ar, importableCount)}
             </Button>
             <Button fullWidth={false} variant="outline" onClick={() => setShowErrorsOnly((value) => !value)}>
               {showErrorsOnly ? text('Show all rows', 'عرض كل الصفوف') : text('Show errors', 'عرض الأخطاء')}
@@ -500,6 +564,7 @@ export function HrEmployeeImportPage() {
                 <thead className="bg-mis-surface">
                   <tr>
                     {[
+                      text('Select', 'تحديد'),
                       text('Action', 'الإجراء'),
                       text('Employee Number', 'رقم الموظف'),
                       text('Arabic name', 'الاسم بالعربية'),
@@ -527,14 +592,32 @@ export function HrEmployeeImportPage() {
                 </thead>
                 <tbody className="divide-y divide-mis-border">
                   {previewRows.map((row) => (
-                    <tr className={`border-t border-mis-border ${row.status === 'Error' ? 'bg-red-50/40' : row.status === 'Warning' ? 'bg-amber-50/30' : ''}`} key={row.row}>
+                    <tr className={`border-t border-mis-border ${excludedRows.includes(row.row) ? 'bg-slate-100 opacity-60' : row.status === 'Error' ? 'bg-red-50/40' : row.status === 'Warning' ? 'bg-amber-50/30' : ''}`} key={row.row}>
+                      <td className="p-3">
+                        <input
+                          aria-label={importCopy.selectRow(ar)}
+                          checked={selectedRows.includes(row.row)}
+                          onChange={() => setSelectedRows((current) => current.includes(row.row) ? current.filter((item) => item !== row.row) : [...current, row.row])}
+                          type="checkbox"
+                        />
+                      </td>
                       <td className="p-3">
                         {row.status === 'Existing' ? null : (
-                          <button className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-mis-primary hover:bg-mis-pale" onClick={() => setEditRow(row.row)} type="button">
-                            <Pencil className="h-3.5 w-3.5" />
-                            {text('Edit', 'تعديل')}
-                          </button>
+                          <div className="flex flex-wrap gap-1">
+                            <button className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-mis-primary hover:bg-mis-pale" onClick={() => setEditRow(row.row)} type="button">
+                              <Pencil className="h-3.5 w-3.5" />
+                              {importCopy.editRow(ar)}
+                            </button>
+                            <button
+                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-rose-700 hover:bg-rose-50"
+                              onClick={() => setExcludedRows((current) => current.includes(row.row) ? current.filter((item) => item !== row.row) : [...current, row.row])}
+                              type="button"
+                            >
+                              {excludedRows.includes(row.row) ? importCopy.restoreRow(ar) : importCopy.removeRow(ar)}
+                            </button>
+                          </div>
                         )}
+                        {excludedRows.includes(row.row) ? <p className="mt-1 text-xs text-slate-500">{importCopy.excludedBadge(ar)}</p> : null}
                       </td>
                       <td className="p-3">
                         <bdi>{row.employee.employeeNumber}</bdi>
@@ -689,6 +772,23 @@ export function HrEmployeeImportPage() {
           </table>
         </div>
       </Card>
+      <ConfirmDialog
+        confirmLabel={importCopy.confirmAction(ar, importableCount)}
+        confirmVariant="primary"
+        isConfirming={busy}
+        message={importCopy.confirmMessage(ar, importableCount)}
+        onCancel={() => { if (!busy) setConfirmOpen(false); }}
+        onConfirm={() => void run(async () => {
+          if (!preview) return;
+          rememberExtraColumns('employees', extraColumns);
+          const confirmed = await employeeImportService.confirm(preview.id, preview.previewId, excludedRows);
+          setResult(confirmed);
+          setConfirmOpen(false);
+          setStep('done');
+        })}
+        open={confirmOpen}
+        title={importCopy.confirmTitle(ar)}
+      />
       <ConfirmDialog
         confirmLabel={text('Delete', 'مسح')}
         isConfirming={deletingHistory}

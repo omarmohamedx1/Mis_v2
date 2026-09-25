@@ -16,7 +16,7 @@ import type { BankPortfolioImport, BankPortfolioImportPage, BankPortfolioReplace
 import { getApiErrorMessage, getApiErrorStatus } from '../../services/apiClient';
 import type { BankWorkspaceContext } from './BankWorkspaceLayout';
 
-const maximumBytes = 20 * 1024 * 1024;
+const maximumBytes = 50 * 1024 * 1024;
 const maximumNotesLength = 1000;
 const supportedExtensions = ['.xlsx', '.xls', '.csv'];
 const extension = (name: string) => name.slice(name.lastIndexOf('.')).toLowerCase();

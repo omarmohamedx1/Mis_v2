@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MIS.API.Authorization;
+using MIS.Application.Common;
 using MIS.Application.DTOs.Hr;
 using MIS.Application.Interfaces;
 
@@ -38,7 +39,7 @@ public sealed class HrLeavesController : ControllerBase
     }
 
     [HttpPost("imports/review")]
-    [RequestSizeLimit(15 * 1024 * 1024)]
+    [RequestSizeLimit(ExcelImportLimits.RequestBytes)]
     public async Task<ActionResult<LeaveImportReviewDto>> ReviewImport(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0) return BadRequest("A non-empty leave sheet is required.");
@@ -47,8 +48,8 @@ public sealed class HrLeavesController : ControllerBase
     }
 
     [HttpPost("imports/{importId:guid}/confirm")]
-    public async Task<ActionResult<LeaveImportResultDto>> ConfirmImport(Guid importId, CancellationToken cancellationToken)
-        => Ok(await _service.ConfirmImportAsync(importId, cancellationToken));
+    public async Task<ActionResult<LeaveImportResultDto>> ConfirmImport(Guid importId, [FromBody] ConfirmLeaveImportRequest? request, CancellationToken cancellationToken)
+        => Ok(await _service.ConfirmImportAsync(importId, cancellationToken, request?.ExcludedRows));
 
     [HttpGet("imports/template")]
     public async Task<IActionResult> DownloadImportTemplate(CancellationToken cancellationToken)

@@ -157,6 +157,7 @@ public sealed record LeaveImportReviewDto(Guid ImportId, string FileName, int To
     int WarningRows, int ErrorRows, IReadOnlyCollection<LeaveImportRowDto> Rows);
 
 public sealed record LeaveImportResultDto(int ImportedRecords);
+public sealed record ConfirmLeaveImportRequest(IReadOnlyCollection<int>? ExcludedRows = null);
 public sealed record LeaveTemplateDto(byte[] Content, string FileName, string ContentType);
 
 public sealed class ApproveLeaveRequest

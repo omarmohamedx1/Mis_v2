@@ -21,7 +21,7 @@ public sealed class HrEmployeeImportsController(IEmployeeImportService service) 
 
     [HttpPost]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(21 * 1024 * 1024)]
+    [RequestSizeLimit(ExcelImportLimits.RequestBytes)]
     public async Task<ActionResult<EmployeeImportUpload>> Upload(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null) throw new HrValidationException("Select an employee import file.");
@@ -33,7 +33,7 @@ public sealed class HrEmployeeImportsController(IEmployeeImportService service) 
     [HttpPost("{id:guid}/revise")]
     public async Task<ActionResult<EmployeeImportPreview>> Revise(Guid id, ReviseEmployeeImportRequest request, CancellationToken cancellationToken) => Ok(await service.ReviseAsync(id, request, cancellationToken));
     [HttpPost("{id:guid}/confirm")]
-    public async Task<ActionResult<EmployeeImportResult>> Confirm(Guid id, ConfirmEmployeeImportRequest request, CancellationToken cancellationToken) => Ok(await service.ConfirmAsync(id, request.PreviewId, cancellationToken));
+    public async Task<ActionResult<EmployeeImportResult>> Confirm(Guid id, ConfirmEmployeeImportRequest request, CancellationToken cancellationToken) => Ok(await service.ConfirmAsync(id, request.PreviewId, cancellationToken, request.ExcludedRows));
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<EmployeeImportHistory>>> History(CancellationToken cancellationToken) => Ok(await service.HistoryAsync(cancellationToken));
 

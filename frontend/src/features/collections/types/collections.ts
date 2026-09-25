@@ -46,7 +46,7 @@ export interface BankCustomerDetails {
 export interface BankCustomerImportSheet { sheetName?: string | null; suggestedHeaderRowNumber: number; detectedColumns: string[] }
 export interface BankCustomerImportUpload { id: string; fileName: string; sheets: BankCustomerImportSheet[] }
 export interface BankCustomerImportMapping {
-  sheetName?: string | null; headerRow: number; firstDataRow: number; portfolioId?: string | null; columns: Record<string, string>;
+  sheetName?: string | null; headerRow: number; firstDataRow: number; portfolioId?: string | null; columns: Record<string, string>; sheetNames?: string[];
 }
 export interface BankCustomerImportRow {
   row: number; customerName: string; mobile?: string | null; nationalId?: string | null; accountReference?: string | null;
@@ -71,7 +71,7 @@ export interface BankDistributionImportSheet { sheetName?: string | null; sugges
 export interface BankDistributionImportUpload { id: string; fileName: string; sheets: BankDistributionImportSheet[] }
 export interface BankDistributionImportMapping {
   sheetName?: string | null; headerRow: number; firstDataRow: number; mode: 'FILE' | 'AUTO';
-  columns: Record<string, string>; collectorIds?: string[] | null; reassignExisting?: boolean; reason?: string | null;
+  columns: Record<string, string>; collectorIds?: string[] | null; reassignExisting?: boolean; reason?: string | null; sheetNames?: string[];
 }
 export interface BankDistributionImportRow {
   row: number; caseId?: string | null; caseNumber?: string | null; accountReference?: string | null; customerName?: string | null;
@@ -117,7 +117,7 @@ export interface CollectionCollectorBook { id: string; name: string; loginCode: 
 export interface CollectionCollectorDashboard { unassignedCases: number; unassignedOutstanding: number; unassignedOverdue: number; unassignedByOrganization: CollectionCollectorOrgSlice[]; collectors: CollectionCollectorBook[] }
 export interface ClientCard { id: string; code: string; name: string; organizationType: string; logoUrl?: string; activePortfolios: number; totalCases: number; totalOutstanding: number; assignedCases: number; unassignedCases: number; activeCollectors: number; collectedToday: number; achievementPercent: number; promiseAmount: number; brokenPromiseAmount: number; health: string; isActive: boolean }
 export interface CollectionCase { id: string; caseNumber: string; customerCode: string; customerName: string; accountReference: string; clientName: string; portfolioName: string; outstandingBalance: number; overdueBalance: number; daysPastDue: number; bucket: string; status: string; priority: string; priorityScore: number; priorityExplanation: string; assignedCollectorId?: string; assignedCollectorName?: string; nextFollowUpAt?: string; nationalId?: string; cardNumber?: string; importStatusText?: string; importBucketLabel?: string; primaryPhone?: string; alternatePhone?: string; tertiaryPhone?: string; governorate?: string; area?: string; fileCollectorName?: string; lastPaymentAt?: string; lastPaymentAmount?: number; organizationType?: string; relatedOrganizationNames?: string[] }
-export interface CollectionFileSnapshot { action?: string; ptpDate?: string; ptpAmount?: string; payment?: string; update?: string; keep?: string; feedback?: string }
+export interface CollectionFileSnapshot { action?: string; ptpDate?: string; ptpAmount?: string; payment?: string; update?: string; keep?: string; feedback?: string; extraFields?: Record<string, string> }
 export interface RelatedCreditorCase { caseId: string; organizationId: string; organizationName: string; organizationType: string; caseNumber: string; accountReference: string; outstandingBalance: number; status: string; portfolioName: string }
 export interface NationalIdLookup { nationalId: string; organizationCount: number; caseCount: number; totalOutstanding: number; cases: RelatedCreditorCase[] }
 export interface Activity { id: string; type: string; result?: string; notes?: string; channel?: string; createdBy: string; createdAt: string; nextFollowUpAt?: string }
@@ -165,7 +165,7 @@ export interface ArchivePortfolioPage { items:ArchivePortfolioItem[];totalCount:
 export interface CollectionAudit { id: string; userName: string; action: string; entityType: string; entityId: string; caseId?: string; beforeJson?: string; afterJson?: string; source?: string; occurredAt: string }
 export interface PortfolioLookup { id: string; organizationId: string; code: string; name: string; currencyCode: string; isActive: boolean }
 export interface ImportBatch { id: string; organizationId: string; organizationName: string; portfolioId: string; portfolioName: string; fileName: string; status: string; totalRows: number; validRows: number; invalidRows: number; insertedRows: number; updatedRows: number; skippedRows: number; uploadedBy: string; uploadedAt: string; previewedAt?: string; confirmedAt?: string; failureReason?: string }
-export interface ImportRow { id: string; rowNumber: number; accountReference: string; customerCode: string; customerName?: string; outstandingBalance?: number; overdueBalance?: number; daysPastDue?: number; isValid: boolean; errors: string[] }
+export interface ImportRow { id: string; rowNumber: number; accountReference: string; customerCode: string; customerName?: string; outstandingBalance?: number; overdueBalance?: number; daysPastDue?: number; isValid: boolean; errors: string[]; sheetName?: string | null; extraFields?: Record<string, string> }
 export interface ImportPreview { batch: ImportBatch; rows: PagedResult<ImportRow> }
 export interface ClientConfiguration { id: string; code: string; nameArabic: string; nameEnglish: string; organizationType: string; logoUrl?: string; contactEmail?: string; contactPhone?: string; ptpGraceDays?: number; ptpToleranceAmount?: number; isActive: boolean }
 export interface SaveClientConfiguration { code: string; nameArabic: string; nameEnglish: string; organizationType: string; contactEmail?: string; contactPhone?: string; ptpGraceDays?: number; ptpToleranceAmount?: number; isActive: boolean }

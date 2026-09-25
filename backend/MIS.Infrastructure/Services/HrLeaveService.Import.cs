@@ -21,7 +21,7 @@ public sealed partial class HrLeaveService
 
     public async Task<LeaveImportReviewDto> ReviewImportAsync(Stream stream, string fileName, long length, CancellationToken cancellationToken)
     {
-        if (length <= 0 || length > 15 * 1024 * 1024) throw new HrValidationException("Leave sheet must be between 1 byte and 15 MB.");
+        if (length <= 0 || length > ExcelImportLimits.MaximumBytes) throw new HrValidationException("Leave sheet must be between 1 byte and 50 MB.");
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (extension is not (".xlsx" or ".xls" or ".csv")) throw new HrValidationException("Only XLSX, XLS, and CSV leave sheets are supported.");
         List<string[]> raw;
@@ -73,14 +73,17 @@ public sealed partial class HrLeaveService
         return Review(id, Path.GetFileName(fileName), rows);
     }
 
-    public async Task<LeaveImportResultDto> ConfirmImportAsync(Guid importId, CancellationToken cancellationToken)
+    public async Task<LeaveImportResultDto> ConfirmImportAsync(Guid importId, CancellationToken cancellationToken, IReadOnlyCollection<int>? excludedRows = null)
     {
         if (!Imports.TryRemove(importId, out var staged) || staged.UserId != _currentUser.UserId || staged.ExpiresAt < DateTimeOffset.UtcNow)
             throw new HrValidationException("This leave import has expired or was already confirmed.");
-        if (staged.Rows.Any(x => x.Error is not null)) throw new HrValidationException("Resolve all row errors before importing.");
+        var excluded = (excludedRows ?? []).ToHashSet();
+        var rows = staged.Rows.Where(row => !excluded.Contains(row.Number)).ToArray();
+        if (rows.Length == 0) throw new HrValidationException("Select at least one leave row to import.");
+        if (rows.Any(x => x.Error is not null)) throw new HrValidationException("Resolve all row errors before importing.");
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
         var now = DateTimeOffset.UtcNow;
-        foreach (var row in staged.Rows)
+        foreach (var row in rows)
         {
             await EnsureRequestReferencesAsync(row.EmployeeId!.Value, row.LeaveTypeId!.Value, null, cancellationToken);
             await EnsureEmployeeLifecycleRangeAsync(row.EmployeeId.Value, row.Start!.Value, row.End!.Value, cancellationToken);
@@ -90,9 +93,9 @@ public sealed partial class HrLeaveService
         }
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _audit.WriteAsync(new AuditWriteRequest("LeaveSheetImported", nameof(LeaveRequest), importId.ToString(), null, null,
-            new { staged.FileName, ImportedRecords = staged.Rows.Count }, $"Imported {staged.Rows.Count} pending leave requests from {staged.FileName}."), cancellationToken);
+            new { staged.FileName, ImportedRecords = rows.Length }, $"Imported {rows.Length} pending leave requests from {staged.FileName}."), cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return new(staged.Rows.Count);
+        return new(rows.Length);
     }
 
     public async Task<LeaveTemplateDto> BuildImportTemplateAsync(CancellationToken cancellationToken)

@@ -13,7 +13,7 @@ namespace MIS.API.Controllers;
 [Authorize]
 public sealed class DataEntryController(IDataEntryService dataEntry) : ControllerBase
 {
-    private const long RequestLimit = 21 * 1024 * 1024;
+    private const long RequestLimit = ExcelImportLimits.RequestBytes;
 
     [HttpGet("dashboard")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]

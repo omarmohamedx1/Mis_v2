@@ -23,7 +23,7 @@ public sealed class DataEntryService(
 {
     private const string Entity = "DataEntryImport";
     private const string BatchEntity = "DataEntryBatch";
-    private const long MaximumBytes = 20 * 1024 * 1024;
+    private const long MaximumBytes = ExcelImportLimits.MaximumBytes;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     internal static readonly string[] Fields =
@@ -347,7 +347,7 @@ public sealed class DataEntryService(
         EnsureManage();
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (file.Length <= 0 || file.Length > MaximumBytes || extension is not (".csv" or ".xls" or ".xlsx"))
-            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 20 MB.");
+            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 50 MB.");
 
         var stored = await storage.SaveAsync($"data-entry-imports/{user.UserId:N}", file.FileName, file.ContentType, file.Content, MaximumBytes, token);
         try
@@ -388,7 +388,7 @@ public sealed class DataEntryService(
             mapping.OrganizationId, mapping.PortfolioId, mapping.PrimaryClassification, mapping.SubClassification, token);
 
         await using var stream = await storage.OpenReadAsync(upload.StorageKey, token);
-        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token);
+        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token, sheetNames: mapping.SheetNames);
         var columns = SuggestColumns(table.Headers, mapping.Columns);
         if (!columns.TryGetValue("CustomerName", out var mappedName) || string.IsNullOrWhiteSpace(mappedName))
             throw new HrValidationException("Map the customer name column.");
@@ -581,8 +581,10 @@ public sealed class DataEntryService(
         var createdCustomers = 0;
         var valid = 0;
         var invalid = 0;
+        var excluded = (request.ExcludedRowNumbers ?? []).ToHashSet();
         foreach (var staged in payload.Rows)
         {
+            if (excluded.Contains(staged.RowNumber)) continue;
             var isImportable = DataEntryValues.RowStatuses.Importable.Contains(staged.Status);
             var row = new DataEntryRow(
                 batch.Id,
@@ -641,7 +643,7 @@ public sealed class DataEntryService(
             row.LinkCustomer(customer.Id);
         }
 
-        batch.SetCounts(payload.Rows.Count, valid, invalid, now);
+        batch.SetCounts(valid + invalid, valid, invalid, now);
         if (valid <= 0)
             throw new HrValidationException("A batch with no valid rows cannot be submitted.");
         batch.MarkSubmitted(now);

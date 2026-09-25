@@ -30,6 +30,6 @@ public interface IHrLeaveService
         CancellationToken cancellationToken);
 
     Task<LeaveImportReviewDto> ReviewImportAsync(Stream stream, string fileName, long length, CancellationToken cancellationToken);
-    Task<LeaveImportResultDto> ConfirmImportAsync(Guid importId, CancellationToken cancellationToken);
+    Task<LeaveImportResultDto> ConfirmImportAsync(Guid importId, CancellationToken cancellationToken, IReadOnlyCollection<int>? excludedRows = null);
     Task<LeaveTemplateDto> BuildImportTemplateAsync(CancellationToken cancellationToken);
 }

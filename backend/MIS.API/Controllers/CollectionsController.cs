@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MIS.API.Authorization;
+using MIS.Application.Common;
 using MIS.Application.DTOs.Collections;
 using MIS.Application.Interfaces;
 
@@ -217,7 +218,7 @@ public sealed class CollectionImportsController : ControllerBase
     [HttpGet("portfolios")]
     public Task<IReadOnlyCollection<PortfolioLookupDto>> Portfolios([FromQuery] Guid? organizationId, CancellationToken token) => _service.GetPortfoliosAsync(organizationId, token);
     [HttpPost]
-    [RequestSizeLimit(21 * 1024 * 1024)]
+    [RequestSizeLimit(ExcelImportLimits.RequestBytes)]
     public async Task<ActionResult<CollectionImportBatchDto>> Upload([FromForm] Guid organizationId, [FromForm] Guid portfolioId, [FromForm] IFormFile file, CancellationToken token)
     {
         if (file is null || file.Length == 0) return BadRequest(MIS.Application.Common.ApiErrorResponse.Failure("A non-empty CSV or XLSX file is required.")); await using var stream = file.OpenReadStream(); var value = await _service.UploadAsync(organizationId, portfolioId, file.FileName, file.ContentType ?? "application/octet-stream", file.Length, stream, token); return Created($"/api/collections/imports/{value.Id}", value);

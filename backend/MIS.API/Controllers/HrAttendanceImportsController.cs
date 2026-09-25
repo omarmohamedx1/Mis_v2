@@ -12,7 +12,7 @@ namespace MIS.API.Controllers;
 [Authorize(Policy = AuthorizationPolicies.HrDepartment)]
 public sealed class HrAttendanceImportsController : ControllerBase
 {
-    private const long MaximumImportBytes = 20 * 1024 * 1024;
+    private const long MaximumImportBytes = ExcelImportLimits.MaximumBytes;
     private readonly IHrAttendanceImportService _service;
 
     public HrAttendanceImportsController(IHrAttendanceImportService service)
@@ -33,7 +33,7 @@ public sealed class HrAttendanceImportsController : ControllerBase
     public async Task<ActionResult<AttendanceImportUploadDto>> Upload(IFormFile file, CancellationToken cancellationToken)
     {
         if (file.Length <= 0) throw new HrValidationException("Select a non-empty CSV or Excel file.");
-        if (file.Length > MaximumImportBytes) throw new HrValidationException("Attendance import files cannot exceed 20 MB.");
+        if (file.Length > MaximumImportBytes) throw new HrValidationException("Attendance import files cannot exceed 50 MB.");
 
         await using var stream = file.OpenReadStream();
         var uploaded = await _service.UploadAsync(

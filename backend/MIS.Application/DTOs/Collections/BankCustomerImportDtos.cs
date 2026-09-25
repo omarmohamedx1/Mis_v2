@@ -19,6 +19,7 @@ public sealed class BankCustomerImportMapping
     [Range(2, 101)] public int FirstDataRow { get; init; } = 2;
     public Guid? PortfolioId { get; init; }
     public Dictionary<string, string?> Columns { get; init; } = new();
+    public List<string>? SheetNames { get; init; }
 }
 
 public sealed record BankCustomerImportPreview(

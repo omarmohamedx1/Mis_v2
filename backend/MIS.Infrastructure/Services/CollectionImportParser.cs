@@ -15,11 +15,14 @@ internal static class CollectionImportParser
     public const int MaximumColumns = 100;
     static CollectionImportParser() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-    public static async Task<IReadOnlyCollection<ParsedCollectionRow>> ParseAsync(Stream stream, string extension, CancellationToken token)
+    public static async Task<IReadOnlyCollection<ParsedCollectionRow>> ParseAsync(Stream stream, string extension, CancellationToken token, IReadOnlyCollection<string>? sheetNames = null)
     {
         if (!stream.CanSeek) throw new HrValidationException("The stored import file must be seekable."); stream.Position = 0;
-        return extension switch { ".csv" => await ParseCsvAsync(stream, token), ".xlsx" => ParseWorkbook(stream, false, token), ".xls" => ParseWorkbook(stream, true, token), _ => throw new HrValidationException("Only CSV, XLSX, and XLS collection imports are supported.") };
+        return extension switch { ".csv" => await ParseCsvAsync(stream, token), ".xlsx" => ParseWorkbook(stream, false, token, sheetNames), ".xls" => ParseWorkbook(stream, true, token, sheetNames), _ => throw new HrValidationException("Only CSV, XLSX, and XLS collection imports are supported.") };
     }
+
+    internal static bool IsInstructionSheet(string? name) =>
+        !string.IsNullOrWhiteSpace(name) && System.Text.RegularExpressions.Regex.IsMatch(name, "instruction|تعليمات|reference data|مرجع", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     private static async Task<IReadOnlyCollection<ParsedCollectionRow>> ParseCsvAsync(Stream stream, CancellationToken token)
     {
@@ -30,7 +33,7 @@ internal static class CollectionImportParser
         if (rows.Count == 0) throw new HrValidationException("The import file does not contain data rows."); return rows;
     }
 
-    private static IReadOnlyCollection<ParsedCollectionRow> ParseWorkbook(Stream stream, bool legacy, CancellationToken token)
+    private static IReadOnlyCollection<ParsedCollectionRow> ParseWorkbook(Stream stream, bool legacy, CancellationToken token, IReadOnlyCollection<string>? sheetNames)
     {
         var signature = new byte[8]; _ = stream.Read(signature);
         var valid = legacy
@@ -41,22 +44,38 @@ internal static class CollectionImportParser
         using var reader = legacy
             ? ExcelReaderFactory.CreateBinaryReader(stream, new ExcelReaderConfiguration { LeaveOpen = true })
             : ExcelReaderFactory.CreateOpenXmlReader(stream, new ExcelReaderConfiguration { LeaveOpen = true });
-        if (!reader.Read()) throw new HrValidationException("The workbook is empty.");
-        if (reader.FieldCount > MaximumColumns) throw new HrValidationException($"Collection imports cannot exceed {MaximumColumns} columns.");
-        var rawHeaders = Enumerable.Range(0, reader.FieldCount).Select(i => Limit(reader.GetValue(i)?.ToString())).ToArray();
-        var headers = ValidateHeaders(rawHeaders);
+        var wanted = sheetNames?.Where(name => !string.IsNullOrWhiteSpace(name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var rows = new List<ParsedCollectionRow>();
-        var rowNumber = 1;
-        while (reader.Read())
+        var globalRow = 0;
+        var anySheet = false;
+        do
         {
             token.ThrowIfCancellationRequested();
-            rowNumber++;
-            if (rows.Count >= MaximumRows) throw new HrValidationException($"Collection imports cannot exceed {MaximumRows:N0} rows.");
-            var values = headers.Select((header, index) => (header, value: Limit(Convert.ToString(reader.GetValue(index), CultureInfo.InvariantCulture)))).ToDictionary(x => x.header, x => x.value, StringComparer.OrdinalIgnoreCase);
-            if (values.Values.All(string.IsNullOrWhiteSpace)) continue;
-            rows.Add(new ParsedCollectionRow(rowNumber, values));
-        }
-        if (rows.Count == 0) throw new HrValidationException("The workbook does not contain data rows in its first sheet.");
+            var sheetName = reader.Name ?? string.Empty;
+            var selected = wanted is { Count: > 0 }
+                ? wanted.Contains(sheetName)
+                : !IsInstructionSheet(sheetName);
+            if (!selected) continue;
+            anySheet = true;
+            if (!reader.Read()) continue;
+            if (reader.FieldCount > MaximumColumns) throw new HrValidationException($"Collection imports cannot exceed {MaximumColumns} columns.");
+            var rawHeaders = Enumerable.Range(0, reader.FieldCount).Select(i => Limit(reader.GetValue(i)?.ToString())).ToArray();
+            if (rawHeaders.All(string.IsNullOrWhiteSpace)) continue;
+            var headers = ValidateHeaders(rawHeaders);
+            var rowNumber = 1;
+            while (reader.Read())
+            {
+                token.ThrowIfCancellationRequested();
+                rowNumber++;
+                if (rows.Count >= MaximumRows) throw new HrValidationException($"Collection imports cannot exceed {MaximumRows:N0} rows.");
+                var values = headers.Select((header, index) => (header, value: Limit(Convert.ToString(reader.GetValue(index), CultureInfo.InvariantCulture)))).ToDictionary(x => x.header, x => x.value, StringComparer.OrdinalIgnoreCase);
+                if (values.Values.All(string.IsNullOrWhiteSpace)) continue;
+                if (!string.IsNullOrWhiteSpace(sheetName)) values["_sheet"] = sheetName;
+                rows.Add(new ParsedCollectionRow(++globalRow, values));
+            }
+        } while (reader.NextResult());
+        if (!anySheet) throw new HrValidationException("The selected worksheet was not found.");
+        if (rows.Count == 0) throw new HrValidationException("The workbook does not contain data rows.");
         return rows;
     }
 

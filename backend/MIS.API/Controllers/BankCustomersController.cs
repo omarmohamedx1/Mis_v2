@@ -14,7 +14,7 @@ namespace MIS.API.Controllers;
 [Authorize(Policy = AuthorizationPolicies.CollectionsAccess)]
 public sealed class BankCustomersController(IBankCustomerService customers, IBankCustomerImportService imports) : ControllerBase
 {
-    private const long RequestLimit = 21 * 1024 * 1024;
+    private const long RequestLimit = ExcelImportLimits.RequestBytes;
 
     [HttpGet]
     public Task<BankCustomerPageDto> Get(Guid organizationId, [FromQuery] BankCustomerQuery query, CancellationToken token)
@@ -48,10 +48,11 @@ public sealed class BankCustomersController(IBankCustomerService customers, IBan
     [HttpPost("import/{id:guid}/confirm")]
     [Authorize(Policy = AuthorizationPolicies.CollectionsImportManage)]
     public Task<BankCustomerImportResult> Confirm(Guid organizationId, Guid id, [FromBody] ConfirmBankCustomerImportRequest request, CancellationToken token)
-        => imports.ConfirmAsync(organizationId, id, request.PreviewId, token);
+        => imports.ConfirmAsync(organizationId, id, request.PreviewId, token, request.ExcludedRows);
 }
 
 public sealed class ConfirmBankCustomerImportRequest
 {
     public Guid PreviewId { get; init; }
+    public IReadOnlyCollection<int>? ExcludedRows { get; init; }
 }

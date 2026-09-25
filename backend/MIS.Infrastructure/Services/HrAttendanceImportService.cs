@@ -14,7 +14,7 @@ namespace MIS.Infrastructure.Services;
 
 public sealed class HrAttendanceImportService : IHrAttendanceImportService
 {
-    private const long MaximumImportBytes = 20 * 1024 * 1024;
+    private const long MaximumImportBytes = ExcelImportLimits.MaximumBytes;
     private const int ProcessingBatchSize = 500;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase) { ".csv", ".xls", ".xlsx" };
@@ -858,7 +858,7 @@ public sealed class HrAttendanceImportService : IHrAttendanceImportService
         if (file.Content is null || !file.Content.CanRead) throw new HrValidationException("Attendance file content is unavailable.");
         if (string.IsNullOrWhiteSpace(file.FileName)) throw new HrValidationException("Attendance file name is required.");
         if (file.Length <= 0) throw new HrValidationException("Select a non-empty attendance file.");
-        if (file.Length > MaximumImportBytes) throw new HrValidationException("Attendance import files cannot exceed 20 MB.");
+        if (file.Length > MaximumImportBytes) throw new HrValidationException("Attendance import files cannot exceed 50 MB.");
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(extension)) throw new HrValidationException("Only CSV, XLS, and XLSX attendance files are supported.");
         return extension;

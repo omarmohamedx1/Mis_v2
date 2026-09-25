@@ -1,8 +1,9 @@
-import { Download, FileUp } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { PageHeader } from '../../components/common/PageHeader';
 import { useToast } from '../../components/common/Toast';
 import { SelectInput } from '../../components/forms/SelectInput';
@@ -18,6 +19,18 @@ import {
   type DataEntryOrganization,
   type DataEntryPortfolio,
 } from '../../features/data-entry/types/dataEntry';
+import {
+  ExcelColumnReview,
+  ExcelDropzone,
+  ExcelPreviewToolbar,
+  ExcelSheetPicker,
+  autoMapImportColumns,
+  dataEntryImportCatalog,
+  defaultSelectedSheetIndexes,
+  importCopy,
+  rememberExtraColumns,
+  sheetNamesFromIndexes,
+} from '../../features/import';
 import { getApiErrorMessage } from '../../services/apiClient';
 
 const fieldMeta: Record<DataEntryImportField, { en: string; ar: string; required?: boolean; pattern: RegExp }> = {
@@ -37,13 +50,15 @@ const fieldMeta: Record<DataEntryImportField, { en: string; ar: string; required
 
 function mappingFor(
   upload: DataEntryImportUpload,
-  sheetIndex: number,
+  indexes: number[],
   organizationId: string,
   portfolioId: string,
   primaryClassification: string,
   subClassification: string,
 ): DataEntryImportMappingRequest {
-  const sheet = upload.sheets[sheetIndex];
+  const selected = indexes.length ? indexes : [0];
+  const sheet = upload.sheets[selected[0]];
+  const columns = [...new Set(selected.flatMap((index) => upload.sheets[index]?.detectedColumns ?? []))];
   return {
     organizationId,
     portfolioId: portfolioId || null,
@@ -53,11 +68,9 @@ function mappingFor(
     headerRow: sheet.suggestedHeaderRowNumber,
     firstDataRow: sheet.suggestedHeaderRowNumber + 1,
     columns: Object.fromEntries(
-      DATA_ENTRY_IMPORT_FIELDS.map((key) => [
-        key,
-        sheet.detectedColumns.find((column) => fieldMeta[key].pattern.test(column.trim())) ?? null,
-      ]),
+      Object.entries(autoMapImportColumns(dataEntryImportCatalog, columns)).map(([key, value]) => [key, value || null]),
     ),
+    sheetNames: sheetNamesFromIndexes(upload.sheets, selected),
   };
 }
 
@@ -86,12 +99,16 @@ export function DataEntryImportPage() {
   const [primaryClassification, setPrimaryClassification] = useState('');
   const [subClassification, setSubClassification] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [dragOver, setDragOver] = useState(false);
   const [upload, setUpload] = useState<DataEntryImportUpload | null>(null);
-  const [sheetIndex, setSheetIndex] = useState(0);
+  const [selectedSheets, setSelectedSheets] = useState<number[]>([0]);
   const [mapping, setMapping] = useState<DataEntryImportMappingRequest | null>(null);
   const [preview, setPreview] = useState<DataEntryImportPreview | null>(null);
   const [onlyInvalid, setOnlyInvalid] = useState(false);
+  const [extraColumns, setExtraColumns] = useState<string[]>([]);
+  const [excludedRows, setExcludedRows] = useState<number[]>([]);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     dataEntryService.organizations().then((items) => {
@@ -133,23 +150,26 @@ export function DataEntryImportPage() {
     }
   }
 
-  function takeFile(next?: File | null) {
-    if (!next) return;
-    setFile(next);
-  }
-
   async function sendFile() {
     if (!file || !organizationId || !primaryClassification || !subClassification) return;
-    if (!/\.(xlsx|xls|csv)$/i.test(file.name) || file.size > 20 * 1024 * 1024) {
-      setError(d.text('الملف غير مدعوم أو أكبر من 20 ميجابايت', 'Unsupported file or larger than 20MB'));
-      return;
-    }
     await run(async () => {
       const data = await dataEntryService.uploadImport(file);
+      const indexes = defaultSelectedSheetIndexes(data.sheets);
+      const next = mappingFor(data, indexes, organizationId, portfolioId, primaryClassification, subClassification);
       setUpload(data);
-      setMapping(mappingFor(data, 0, organizationId, portfolioId, primaryClassification, subClassification));
-      setSheetIndex(0);
-      setStep(1);
+      setMapping(next);
+      setSelectedSheets(indexes);
+      setExcludedRows([]);
+      setSelectedRows([]);
+      setExtraColumns([]);
+      setShowAdvanced(false);
+      if (next.columns.CustomerName && next.columns.AccountNumber) {
+        setPreview(await dataEntryService.previewImport(data.uploadId, next));
+        setOnlyInvalid(false);
+        setStep(2);
+      } else {
+        setStep(1);
+      }
     });
   }
 
@@ -164,6 +184,8 @@ export function DataEntryImportPage() {
     return onlyInvalid ? preview.rows.filter((row) => row.status !== 'READY' && row.status !== 'EXISTING_CUSTOMER') : preview.rows;
   }, [onlyInvalid, preview]);
   const missingRequired = mapping && (!mapping.columns.CustomerName || !mapping.columns.AccountNumber);
+  const detectedColumns = upload ? [...new Set(selectedSheets.flatMap((index) => upload.sheets[index]?.detectedColumns ?? []))] : [];
+  const readyCount = preview?.rows.filter((row) => (row.status === 'READY' || row.status === 'EXISTING_CUSTOMER') && !excludedRows.includes(row.rowNumber)).length ?? 0;
 
   return (
     <div className="space-y-5">
@@ -206,21 +228,7 @@ export function DataEntryImportPage() {
             }}
             onSubChange={setSubClassification}
           />
-          <label
-            className={`flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 text-center ${dragOver ? 'border-mis-primary bg-mis-pale' : 'border-mis-border bg-slate-50'}`}
-            onDragOver={(event) => { event.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragOver(false);
-              takeFile(event.dataTransfer.files?.[0] ?? null);
-            }}
-          >
-            <FileUp className="mb-2 h-8 w-8 text-mis-primary" />
-            <p className="font-bold text-mis-navy">{file ? file.name : d.text('اسحب الملف هنا أو اضغط للاختيار', 'Drop the file here or click to choose')}</p>
-            <p className="mt-1 text-sm text-slate-500">{d.text('Excel أو CSV حتى 20 ميجابايت', 'Excel or CSV up to 20MB')}</p>
-            <input accept=".csv,.xlsx,.xls" className="hidden" type="file" onChange={(event) => takeFile(event.target.files?.[0] ?? null)} />
-          </label>
+          <ExcelDropzone arabic={d.ar} busy={busy} file={file} label={d.text('ملف العملاء', 'Client file')} onFile={setFile} />
           <Button disabled={busy || !file || !deskReady} fullWidth={false} isLoading={busy} onClick={() => void sendFile()}>
             {d.text('رفع ومتابعة الربط', 'Upload and map columns')}
           </Button>
@@ -230,21 +238,27 @@ export function DataEntryImportPage() {
       {step === 1 && upload && mapping ? (
         <Card className="space-y-4 p-6">
           {missingRequired ? <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{d.text('اربط اسم العميل ورقم الحساب حتى يستطيع التحصيل إنشاء الحالة بعد القبول.', 'Map customer name and account number so collections can create the case after acceptance.')}</p> : null}
-          {upload.sheets.length > 1 ? (
-            <SelectInput
-              label={d.text('الورقة', 'Sheet')}
-              value={String(sheetIndex)}
-              onChange={(event) => {
-                const index = Number(event.target.value);
-                setSheetIndex(index);
-                setMapping(mappingFor(upload, index, organizationId, portfolioId, primaryClassification, subClassification));
-              }}
-            >
-              {upload.sheets.map((sheet, index) => (
-                <option key={sheet.sheetName ?? index} value={index}>{sheet.sheetName ?? `Sheet ${index + 1}`}</option>
-              ))}
-            </SelectInput>
-          ) : null}
+          <ExcelSheetPicker
+            arabic={d.ar}
+            onChange={(indexes) => {
+              const nextIndexes = indexes.length ? indexes : [0];
+              setSelectedSheets(nextIndexes);
+              setMapping(mappingFor(upload, nextIndexes, organizationId, portfolioId, primaryClassification, subClassification));
+            }}
+            selected={selectedSheets}
+            sheets={upload.sheets}
+          />
+          <ExcelColumnReview
+            arabic={d.ar}
+            detectedColumns={detectedColumns}
+            extraSelected={extraColumns}
+            fields={dataEntryImportCatalog}
+            mapping={mapping.columns}
+            onExtraSelected={setExtraColumns}
+            onToggleAdvanced={() => setShowAdvanced((value) => !value)}
+            showAdvanced={showAdvanced}
+          />
+          {showAdvanced ? (
           <div className="grid gap-3 md:grid-cols-2">
             {DATA_ENTRY_IMPORT_FIELDS.map((key) => (
               <SelectInput
@@ -254,12 +268,13 @@ export function DataEntryImportPage() {
                 onChange={(event) => setMapping({ ...mapping, columns: { ...mapping.columns, [key]: event.target.value || null } })}
               >
                 <option value="">—</option>
-                {(upload.sheets[sheetIndex]?.detectedColumns ?? []).map((column) => (
+                {detectedColumns.map((column) => (
                   <option key={column} value={column}>{column}</option>
                 ))}
               </SelectInput>
             ))}
           </div>
+          ) : null}
           <div className="flex gap-2">
             <Button disabled={busy} fullWidth={false} variant="outline" onClick={() => setStep(0)}>{d.text('رجوع', 'Back')}</Button>
             <Button
@@ -287,6 +302,14 @@ export function DataEntryImportPage() {
 
       {step === 2 && preview && upload ? (
         <Card className="space-y-4 p-6">
+          <ExcelPreviewToolbar
+            arabic={d.ar}
+            excludedCount={excludedRows.length}
+            onExclude={() => setExcludedRows((current) => [...new Set([...current, ...selectedRows])])}
+            onRestore={() => { setExcludedRows((current) => current.filter((row) => !selectedRows.includes(row))); setSelectedRows([]); }}
+            readyCount={readyCount}
+            selectedCount={selectedRows.length}
+          />
           <div className="grid gap-3 sm:grid-cols-4">
             <div className="rounded-xl bg-slate-50 p-3 text-sm"><p className="text-slate-500">{d.text('الإجمالي', 'Total')}</p><p className="font-bold text-mis-navy">{d.number(preview.totalRows)}</p></div>
             <div className="rounded-xl bg-emerald-50 p-3 text-sm"><p className="text-emerald-700">{d.text('جاهز للتحصيل', 'Ready for collections')}</p><p className="font-bold text-emerald-800">{d.number(preview.readyRows + preview.existingCustomerRows)}</p></div>
@@ -301,14 +324,15 @@ export function DataEntryImportPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
-                  {[d.text('رقم العميل', 'Customer number'), d.text('الاسم', 'Name'), d.text('الرقم القومي', 'National ID'), d.text('الموبايل', 'Mobile'), d.text('الحالة', 'Status')].map((label) => (
+                  {[d.text('تحديد', 'Select'), d.text('رقم العميل', 'Customer number'), d.text('الاسم', 'Name'), d.text('الرقم القومي', 'National ID'), d.text('الموبايل', 'Mobile'), d.text('الحالة', 'Status')].map((label) => (
                     <th className="px-3 py-2 text-start" key={label}>{label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-mis-border">
                 {previewRows.slice(0, 200).map((row) => (
-                  <tr key={row.rowNumber}>
+                  <tr className={excludedRows.includes(row.rowNumber) ? 'bg-slate-100 opacity-60' : ''} key={row.rowNumber}>
+                    <td className="px-3 py-2"><input checked={selectedRows.includes(row.rowNumber)} onChange={() => setSelectedRows((current) => current.includes(row.rowNumber) ? current.filter((item) => item !== row.rowNumber) : [...current, row.rowNumber])} type="checkbox" /></td>
                     <td className="px-3 py-2" data-bidi="ltr">{row.customerNumber || '—'}</td>
                     <td className="px-3 py-2">{row.customerName}</td>
                     <td className="px-3 py-2" data-bidi="ltr">{row.nationalId || '—'}</td>
@@ -328,20 +352,33 @@ export function DataEntryImportPage() {
           <div className="flex gap-2">
             <Button disabled={busy} fullWidth={false} variant="outline" onClick={() => setStep(1)}>{d.text('رجوع', 'Back')}</Button>
             <Button
-              disabled={busy || preview.readyRows + preview.existingCustomerRows < 1}
+              disabled={busy || readyCount < 1}
               fullWidth={false}
               isLoading={busy}
-              onClick={() => void run(async () => {
-                await dataEntryService.confirmImport({ uploadId: preview.uploadId, previewId: preview.previewId });
-                toast.success(d.text('تم إرسال الدفعة لمراجعة التحصيل', 'Batch sent for collections review'));
-                navigate('/data-entry/history?status=SUBMITTED');
-              })}
+              onClick={() => setConfirmOpen(true)}
             >
-              {d.text(`إرسال ${preview.readyRows + preview.existingCustomerRows} للتحصيل`, `Send ${preview.readyRows + preview.existingCustomerRows} to collections`)}
+              {d.text(`إرسال ${readyCount} للتحصيل`, `Send ${readyCount} to collections`)}
             </Button>
           </div>
         </Card>
       ) : null}
+      <ConfirmDialog
+        confirmLabel={importCopy.confirmAction(d.ar, readyCount)}
+        confirmVariant="primary"
+        isConfirming={busy}
+        message={importCopy.confirmMessage(d.ar, readyCount)}
+        onCancel={() => { if (!busy) setConfirmOpen(false); }}
+        onConfirm={() => void run(async () => {
+          if (!preview) return;
+          rememberExtraColumns('data-entry', extraColumns);
+          await dataEntryService.confirmImport({ uploadId: preview.uploadId, previewId: preview.previewId, excludedRowNumbers: excludedRows });
+          setConfirmOpen(false);
+          toast.success(d.text('تم إرسال الدفعة لمراجعة التحصيل', 'Batch sent for collections review'));
+          navigate('/data-entry/history?status=SUBMITTED');
+        })}
+        open={confirmOpen}
+        title={importCopy.confirmTitle(d.ar)}
+      />
     </div>
   );
 }

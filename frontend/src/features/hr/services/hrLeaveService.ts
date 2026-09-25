@@ -21,8 +21,8 @@ export const hrLeaveService = {
     return data;
   },
 
-  async confirmImport(importId: string): Promise<LeaveImportResult> {
-    const { data } = await apiClient.post<LeaveImportResult>(`/hr/leaves/imports/${importId}/confirm`);
+  async confirmImport(importId: string, excludedRows?: number[]): Promise<LeaveImportResult> {
+    const { data } = await apiClient.post<LeaveImportResult>(`/hr/leaves/imports/${importId}/confirm`, { excludedRows });
     return data;
   },
 

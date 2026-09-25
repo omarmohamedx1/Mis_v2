@@ -23,7 +23,7 @@ public sealed class BankCustomerImportService(
     ICollectionsClassificationContext classification) : IBankCustomerImportService
 {
     private const string Entity = "BankCustomerImport";
-    private const long MaximumBytes = 20 * 1024 * 1024;
+    private const long MaximumBytes = ExcelImportLimits.MaximumBytes;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     internal static readonly string[] Fields =
@@ -55,7 +55,7 @@ public sealed class BankCustomerImportService(
         await RequireOrganizationAsync(organizationId, token);
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (file.Length <= 0 || file.Length > MaximumBytes || extension is not (".csv" or ".xls" or ".xlsx"))
-            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 20 MB.");
+            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 50 MB.");
 
         var stored = await storage.SaveAsync($"bank-customer-imports/{organizationId:N}", file.FileName, file.ContentType, file.Content, MaximumBytes, token);
         try
@@ -99,7 +99,7 @@ public sealed class BankCustomerImportService(
 
         var portfolio = await ResolvePortfolioAsync(organizationId, mapping.PortfolioId, token);
         await using var stream = await storage.OpenReadAsync(upload.StorageKey, token);
-        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token);
+        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token, sheetNames: mapping.SheetNames);
         var indexes = new Dictionary<string, int>();
         foreach (var pair in mapping.Columns.Where(pair => !string.IsNullOrWhiteSpace(pair.Value)))
         {
@@ -191,7 +191,7 @@ public sealed class BankCustomerImportService(
         };
     }
 
-    public async Task<BankCustomerImportResult> ConfirmAsync(Guid organizationId, Guid id, Guid previewId, CancellationToken token)
+    public async Task<BankCustomerImportResult> ConfirmAsync(Guid organizationId, Guid id, Guid previewId, CancellationToken token, IReadOnlyCollection<int>? excludedRows = null)
     {
         EnsurePermission();
         await RequireOrganizationAsync(organizationId, token);
@@ -221,7 +221,7 @@ public sealed class BankCustomerImportService(
             .OrderByDescending(x => x.PortfolioId != null).ThenBy(x => x.SortOrder).ToArrayAsync(token);
 
         await using var source = await storage.OpenReadAsync(upload.StorageKey, token);
-        var table = await AttendanceImportParser.ReadTableAsync(source, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token);
+        var table = await AttendanceImportParser.ReadTableAsync(source, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token, sheetNames: mapping.SheetNames);
         var indexes = mapping.Columns.Where(p => !string.IsNullOrWhiteSpace(p.Value))
             .ToDictionary(p => p.Key, p => Array.FindIndex(table.Headers, h => h == p.Value));
         if (indexes.Values.Any(i => i < 0)) throw new HrValidationException("A mapped source column was not found.");
@@ -229,9 +229,12 @@ public sealed class BankCustomerImportService(
         var customers = await db.CollectionCustomers.Where(x => x.OrganizationId == organizationId).ToDictionaryAsync(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase, token);
         var cases = await db.CollectionCases.Where(x => x.PortfolioId == portfolio.Id).ToDictionaryAsync(x => x.AccountReference, StringComparer.OrdinalIgnoreCase, token);
         var imported = 0; var skipped = 0; var failed = 0; var now = DateTimeOffset.UtcNow;
+        var excluded = (excludedRows ?? []).ToHashSet();
+        var rowNumber = mapping.FirstDataRow;
 
         foreach (var cells in table.Rows)
         {
+            if (excluded.Contains(rowNumber++)) { skipped++; continue; }
             string V(string key) => indexes.TryGetValue(key, out var i) && i >= 0 && i < cells.Length ? cells[i].Trim() : "";
             var account = V("AccountNumber");
             if (string.IsNullOrWhiteSpace(account) || cases.ContainsKey(account)) { skipped++; continue; }

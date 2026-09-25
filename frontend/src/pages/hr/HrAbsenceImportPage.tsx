@@ -5,12 +5,13 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { FileInput } from '../../components/forms/FileInput';
 import { TextInput } from '../../components/forms/TextInput';
 import { SelectInput } from '../../components/forms/SelectInput';
 import { useLocalization } from '../../context/LocalizationContext';
 import { getApiErrorMessage } from '../../services/apiClient';
 import { preferredHrImportSheetIndex } from '../../features/hr/preferredHrImportSheet';
+import { ExcelDropzone, ExcelPreviewToolbar, ExcelSheetPicker, autoMapImportColumns, absenceImportCatalog, importCopy, rememberExtraColumns } from '../../features/import';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import {
   absenceImportService,
   type AbsenceImportHistory,
@@ -39,7 +40,7 @@ function mappingFor(upload: AbsenceImportUpload, index: number): AbsenceImportMa
     headerRow: sheet.suggestedHeaderRowNumber,
     firstDataRow: sheet.suggestedHeaderRowNumber + 1,
     dateFormat: null,
-    columns: Object.fromEntries(fields.map(([key, , , pattern]) => [key, sheet.detectedColumns.find((column) => pattern.test(column.trim())) ?? ''])),
+    columns: autoMapImportColumns(absenceImportCatalog, sheet.detectedColumns),
   };
 }
 
@@ -58,6 +59,10 @@ export function HrAbsenceImportPage() {
   const [result, setResult] = useState<AbsenceImportResult | null>(null);
   const [history, setHistory] = useState<AbsenceImportHistory[]>([]);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [selectedSheets, setSelectedSheets] = useState<number[]>([0]);
+  const [excludedRows, setExcludedRows] = useState<number[]>([]);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     void absenceImportService
@@ -80,17 +85,23 @@ export function HrAbsenceImportPage() {
 
   async function sendFile() {
     if (!file) return;
-    if (!/\.(xlsx|xls|csv)$/i.test(file.name) || file.size > 20 * 1024 * 1024) {
-      setError(text('Choose CSV, XLS, or XLSX, maximum 20 MB.', 'اختر CSV أو XLS أو XLSX بحد أقصى 20 ميجابايت.'));
-      return;
-    }
     await run(async () => {
       const data = await absenceImportService.upload(file);
       const index = preferredHrImportSheetIndex(data.sheets);
+      const next = mappingFor(data, index);
       setUpload(data);
       setSheetIndex(index);
-      setMapping(mappingFor(data, index));
-      setStep(1);
+      setSelectedSheets([index]);
+      setExcludedRows([]);
+      setSelectedRows([]);
+      const mapped = { ...next, sheetNames: next.sheetName ? [next.sheetName] : undefined };
+      setMapping(mapped);
+      if (next.columns.AbsenceDate) {
+        setPreview(await absenceImportService.preview(data.id, mapped));
+        setStep(2);
+      } else {
+        setStep(1);
+      }
     });
   }
 
@@ -171,15 +182,16 @@ export function HrAbsenceImportPage() {
                 void sendFile();
               }}
             >
-              <FileInput
-                accept=".xlsx,.xls,.csv"
+              <ExcelDropzone
+                arabic={ar}
+                busy={busy}
+                file={file}
+                hint={text('Uploading does not save absence records.', 'رفع الملف لا يحفظ سجلات الغياب.')}
                 label={text('Absence Excel / CSV file', 'ملف الغياب Excel / CSV')}
-                hint={text('Maximum 20 MB. Uploading does not save absence records.', 'بحد أقصى 20 ميجابايت. رفع الملف لا يحفظ سجلات الغياب.')}
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                required
+                onFile={setFile}
               />
-              <Button isLoading={busy} type="submit" leftIcon={<Upload className="h-4 w-4" />}>
-                {text('Upload and Continue', 'رفع ومتابعة')}
+              <Button disabled={!file} isLoading={busy} type="submit" leftIcon={<Upload className="h-4 w-4" />}>
+                {text('Read file automatically', 'اقرأ الملف تلقائيًا')}
               </Button>
             </form>
           </Card>
@@ -201,6 +213,20 @@ export function HrAbsenceImportPage() {
 
       {step === 1 && upload && mapping ? (
         <Card padding="lg">
+          <div className="mb-5">
+            <ExcelSheetPicker
+              arabic={ar}
+              onChange={(indexes) => {
+                const nextIndex = indexes[0] ?? 0;
+                setSelectedSheets(indexes.length ? indexes : [nextIndex]);
+                setSheetIndex(nextIndex);
+                const next = mappingFor(upload, nextIndex);
+                setMapping({ ...next, sheetNames: (indexes.length ? indexes : [nextIndex]).map((item) => upload.sheets[item]?.sheetName).filter((name): name is string => Boolean(name)) });
+              }}
+              selected={selectedSheets}
+              sheets={upload.sheets}
+            />
+          </div>
           <form
             className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
             onSubmit={(event) => {
@@ -263,6 +289,14 @@ export function HrAbsenceImportPage() {
 
       {step === 2 && preview ? (
         <>
+          <ExcelPreviewToolbar
+            arabic={ar}
+            excludedCount={excludedRows.length}
+            onExclude={() => setExcludedRows((current) => [...new Set([...current, ...selectedRows])])}
+            onRestore={() => { setExcludedRows((current) => current.filter((row) => !selectedRows.includes(row))); setSelectedRows([]); }}
+            readyCount={preview.rows.filter((row) => (row.status === 'Ready' || row.status === 'Warning') && !excludedRows.includes(row.row)).length}
+            selectedCount={selectedRows.length}
+          />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {(['Ready', 'Warning', 'Error', 'Existing'] as const).map((status) => (
               <Card key={status} className="p-4">
@@ -277,6 +311,7 @@ export function HrAbsenceImportPage() {
                 <thead className="bg-mis-surface">
                   <tr>
                     {[
+                      text('Select', 'تحديد'),
                       text('Employee Number', 'رقم الموظف'),
                       text('Employee Name', 'اسم الموظف'),
                       text('Mobile Number', 'رقم الموبايل'),
@@ -293,7 +328,8 @@ export function HrAbsenceImportPage() {
                 </thead>
                 <tbody>
                   {preview.rows.map((row) => (
-                    <tr key={row.row} className="border-t border-mis-border">
+                    <tr key={row.row} className={`border-t border-mis-border ${excludedRows.includes(row.row) ? 'bg-slate-100 opacity-60' : ''}`}>
+                      <td className="p-3"><input checked={selectedRows.includes(row.row)} onChange={() => setSelectedRows((current) => current.includes(row.row) ? current.filter((item) => item !== row.row) : [...current, row.row])} type="checkbox" /></td>
                       <td className="p-3">{row.employeeNumber || '—'}</td>
                       <td className="p-3">
                         {row.employeeName || '—'}
@@ -330,12 +366,7 @@ export function HrAbsenceImportPage() {
               fullWidth={false}
               isLoading={busy}
               disabled={!preview.rows.some((row) => row.status === 'Ready' || row.status === 'Warning')}
-              onClick={() =>
-                void run(async () => {
-                  setResult(await absenceImportService.confirm(preview.id, preview.previewId));
-                  setStep(3);
-                })
-              }
+              onClick={() => setConfirmOpen(true)}
             >
               {text('Confirm Import', 'تأكيد الاستيراد')}
             </Button>
@@ -399,6 +430,22 @@ export function HrAbsenceImportPage() {
           </table>
         </div>
       </Card>
+      <ConfirmDialog
+        confirmLabel={importCopy.confirmAction(ar, preview?.rows.filter((row) => (row.status === 'Ready' || row.status === 'Warning') && !excludedRows.includes(row.row)).length ?? 0)}
+        confirmVariant="primary"
+        isConfirming={busy}
+        message={importCopy.confirmMessage(ar, preview?.rows.filter((row) => (row.status === 'Ready' || row.status === 'Warning') && !excludedRows.includes(row.row)).length ?? 0)}
+        onCancel={() => { if (!busy) setConfirmOpen(false); }}
+        onConfirm={() => void run(async () => {
+          if (!preview) return;
+          rememberExtraColumns('absences', []);
+          setResult(await absenceImportService.confirm(preview.id, preview.previewId, excludedRows));
+          setConfirmOpen(false);
+          setStep(3);
+        })}
+        open={confirmOpen}
+        title={importCopy.confirmTitle(ar)}
+      />
     </div>
   );
 }

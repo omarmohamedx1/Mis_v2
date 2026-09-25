@@ -107,9 +107,12 @@ internal sealed class AttendanceImportParser
             do
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var selected = string.IsNullOrWhiteSpace(mapping.SheetName)
-                    ? !selectedSheetFound
-                    : string.Equals(reader.Name, mapping.SheetName.Trim(), StringComparison.OrdinalIgnoreCase);
+                var wanted = mapping.SheetNames?.Where(name => !string.IsNullOrWhiteSpace(name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var selected = wanted is { Count: > 0 }
+                    ? wanted.Contains(reader.Name ?? string.Empty)
+                    : string.IsNullOrWhiteSpace(mapping.SheetName)
+                        ? !selectedSheetFound
+                        : string.Equals(reader.Name, mapping.SheetName.Trim(), StringComparison.OrdinalIgnoreCase);
                 if (!selected) continue;
 
                 selectedSheetFound = true;
@@ -132,7 +135,7 @@ internal sealed class AttendanceImportParser
                         accumulator.Add(rowNumber, cells, headers, columns);
                     }
                 }
-                break;
+                if (wanted is null || wanted.Count <= 1) break;
             } while (reader.NextResult());
 
             if (!selectedSheetFound) throw new HrValidationException("The selected worksheet was not found.");
@@ -150,7 +153,8 @@ internal sealed class AttendanceImportParser
 
     internal static async Task<(string[] Headers, List<string[]> Rows)> ReadTableAsync(Stream stream, string extension,
         string? sheetName, int headerRow, int firstDataRow, CancellationToken cancellationToken,
-        IReadOnlyCollection<string>? preserveZeroPaddingColumns = null)
+        IReadOnlyCollection<string>? preserveZeroPaddingColumns = null,
+        IReadOnlyCollection<string>? sheetNames = null)
     {
         if (headerRow < 1 || headerRow > 1000 || firstDataRow <= headerRow || firstDataRow > 2000)
             throw new HrValidationException("Invalid header or first data row.");
@@ -159,7 +163,7 @@ internal sealed class AttendanceImportParser
         var rows = new List<string[]>();
         void Add(int number, string[] cells)
         {
-            if (number == headerRow) headers = BuildHeaders(cells);
+            if (number == headerRow && headers is null) headers = BuildHeaders(cells);
             if (number >= firstDataRow && cells.Any(cell => !string.IsNullOrWhiteSpace(cell)))
             {
                 if (rows.Count >= 2000) throw new HrValidationException("Employee imports cannot exceed 2000 rows.");
@@ -174,19 +178,27 @@ internal sealed class AttendanceImportParser
         {
             using var reader = ExcelReaderFactory.CreateReader(stream, new ExcelReaderConfiguration { LeaveOpen = true });
             var found = false;
+            var wanted = sheetNames?.Where(name => !string.IsNullOrWhiteSpace(name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
             do
             {
-                if (!string.IsNullOrWhiteSpace(sheetName) && !string.Equals(reader.Name, sheetName, StringComparison.OrdinalIgnoreCase)) continue;
+                var current = reader.Name ?? string.Empty;
+                var selected = wanted is { Count: > 0 }
+                    ? wanted.Contains(current)
+                    : string.IsNullOrWhiteSpace(sheetName) || string.Equals(current, sheetName, StringComparison.OrdinalIgnoreCase);
+                if (!selected) continue;
                 found = true;
                 var number = 0;
+                string[]? sheetHeaders = null;
                 while (reader.Read())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var cells = ReadExcelCells(reader);
+                    if (++number == headerRow) sheetHeaders = BuildHeaders(cells);
                     // Employee identity columns opt in; other imports retain their existing conversions.
-                    var preservedIndexes = headers is null || preserveZeroPaddingColumns is null
+                    var activeHeaders = sheetHeaders ?? headers;
+                    var preservedIndexes = activeHeaders is null || preserveZeroPaddingColumns is null
                         ? []
-                        : preserveZeroPaddingColumns.Select(column => Array.IndexOf(headers, column)).Where(index => index >= 0).Distinct();
+                        : preserveZeroPaddingColumns.Select(column => Array.IndexOf(activeHeaders, column)).Where(index => index >= 0).Distinct();
                     foreach (var preservedIndex in preservedIndexes)
                     {
                         if (preservedIndex >= cells.Length || reader.GetValue(preservedIndex) is not double numericValue) continue;
@@ -194,9 +206,10 @@ internal sealed class AttendanceImportParser
                         if (format is { Length: > 1 and <= 32 } && format.All(c => c == '0') && numericValue >= 0 && Math.Truncate(numericValue) == numericValue)
                             cells[preservedIndex] = numericValue.ToString(format, CultureInfo.InvariantCulture);
                     }
-                    Add(++number, cells);
+                    Add(number, cells);
+                    if (number == headerRow && headers is null) headers = sheetHeaders;
                 }
-                break;
+                if (wanted is null || wanted.Count <= 1) break;
             } while (reader.NextResult());
             if (!found) throw new HrValidationException("The selected worksheet was not found.");
         }

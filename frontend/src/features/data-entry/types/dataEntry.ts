@@ -130,6 +130,7 @@ export interface DataEntryImportMappingRequest {
   headerRow: number;
   firstDataRow: number;
   columns: Record<string, string | null>;
+  sheetNames?: string[];
 }
 
 export interface DataEntryImportPreviewRow {
@@ -157,6 +158,7 @@ export interface DataEntryImportPreview {
 export interface ConfirmDataEntryImportInput {
   uploadId: string;
   previewId: string;
+  excludedRowNumbers?: number[];
 }
 
 export interface DataEntryBatchListItem {

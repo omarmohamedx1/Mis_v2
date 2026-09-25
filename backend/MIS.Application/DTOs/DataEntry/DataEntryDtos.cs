@@ -78,7 +78,8 @@ public sealed record DataEntryImportMappingRequest(
     string SheetName,
     int HeaderRow,
     int FirstDataRow,
-    Dictionary<string, string?> Columns);
+    Dictionary<string, string?> Columns,
+    IReadOnlyCollection<string>? SheetNames = null);
 
 public sealed record DataEntryImportPreviewDto(
     Guid UploadId,
@@ -100,7 +101,7 @@ public sealed record DataEntryImportPreviewRowDto(
     Guid? CollectionCustomerId = null,
     Guid? CollectionCaseId = null);
 
-public sealed record ConfirmDataEntryImportRequest(Guid UploadId, Guid PreviewId);
+public sealed record ConfirmDataEntryImportRequest(Guid UploadId, Guid PreviewId, IReadOnlyCollection<int>? ExcludedRowNumbers = null);
 
 public sealed record DataEntryBatchListItemDto(
     Guid Id,

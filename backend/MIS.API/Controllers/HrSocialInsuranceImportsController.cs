@@ -21,7 +21,7 @@ public sealed class HrSocialInsuranceImportsController(ISocialInsuranceImportSer
 
     [HttpPost]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(21 * 1024 * 1024)]
+    [RequestSizeLimit(ExcelImportLimits.RequestBytes)]
     public async Task<ActionResult<SocialInsuranceImportUpload>> Upload(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null) throw new HrValidationException("Select an insurance import file.");
@@ -31,7 +31,7 @@ public sealed class HrSocialInsuranceImportsController(ISocialInsuranceImportSer
     [HttpPost("{id:guid}/preview")]
     public async Task<ActionResult<SocialInsuranceImportPreview>> Preview(Guid id, SocialInsuranceImportMapping mapping, CancellationToken cancellationToken) => Ok(await service.PreviewAsync(id, mapping, cancellationToken));
     [HttpPost("{id:guid}/confirm")]
-    public async Task<ActionResult<SocialInsuranceImportResult>> Confirm(Guid id, ConfirmSocialInsuranceImportRequest request, CancellationToken cancellationToken) => Ok(await service.ConfirmAsync(id, request.PreviewId, cancellationToken));
+    public async Task<ActionResult<SocialInsuranceImportResult>> Confirm(Guid id, ConfirmSocialInsuranceImportRequest request, CancellationToken cancellationToken) => Ok(await service.ConfirmAsync(id, request.PreviewId, cancellationToken, request.ExcludedRows));
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<SocialInsuranceImportHistory>>> History(CancellationToken cancellationToken) => Ok(await service.HistoryAsync(cancellationToken));
 }

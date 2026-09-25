@@ -23,6 +23,7 @@ public sealed class BankDistributionImportMapping
     public IReadOnlyCollection<Guid>? CollectorIds { get; init; }
     public bool ReassignExisting { get; init; }
     [MaxLength(500)] public string? Reason { get; init; }
+    public List<string>? SheetNames { get; init; }
 }
 
 public sealed record BankDistributionImportPreview(

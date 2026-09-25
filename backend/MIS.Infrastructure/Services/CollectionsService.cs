@@ -1008,9 +1008,10 @@ public sealed class CollectionsService : ICollectionsService
             var values = CollectionFileRowMapper.Deserialize(rawJson);
             if (values is null || values.Count == 0) return null;
             var file = CollectionFileRowMapper.Read(values);
-            if (file.Action is null && file.PtpDate is null && file.PtpAmount is null && file.Payment is null && file.Update is null && file.Keep is null && file.Feedback is null)
+            var extras = CollectionFileRowMapper.ExtraFields(values);
+            if (file.Action is null && file.PtpDate is null && file.PtpAmount is null && file.Payment is null && file.Update is null && file.Keep is null && file.Feedback is null && extras.Count == 0)
                 return null;
-            return new CollectionFileSnapshotDto(file.Action, file.PtpDate, file.PtpAmount, file.Payment, file.Update, file.Keep, file.Feedback);
+            return new CollectionFileSnapshotDto(file.Action, file.PtpDate, file.PtpAmount, file.Payment, file.Update, file.Keep, file.Feedback, extras);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

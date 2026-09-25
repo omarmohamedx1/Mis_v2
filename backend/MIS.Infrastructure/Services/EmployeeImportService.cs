@@ -14,7 +14,7 @@ public sealed class EmployeeImportService(ApplicationDbContext db, IHrFileStorag
     ICurrentUserContext user, IEmployeeCreationService creation, IWorkingCalendarCalculator calendar) : IEmployeeImportService
 {
     private const string Entity = "EmployeeImport";
-    private const long MaximumBytes = 20 * 1024 * 1024;
+    private const long MaximumBytes = ExcelImportLimits.MaximumBytes;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private sealed record Uploaded(string FileName, string StorageKey, string Extension);
     private sealed record PreviewSaved(Guid PreviewId, string StorageKey, int TotalRows);
@@ -133,7 +133,7 @@ public sealed class EmployeeImportService(ApplicationDbContext db, IHrFileStorag
     {
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (file.Length <= 0 || file.Length > MaximumBytes || extension is not (".csv" or ".xls" or ".xlsx"))
-            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 20 MB.");
+            throw new HrValidationException(ExcelImportLimits.SizeMessage);
         var stored = await storage.SaveAsync("employee-imports", file.FileName, file.ContentType, file.Content, MaximumBytes, cancellationToken);
         try
         {
@@ -163,7 +163,7 @@ public sealed class EmployeeImportService(ApplicationDbContext db, IHrFileStorag
         var identityColumns = new[] { mapping.Columns.GetValueOrDefault("MobileNumber"), mapping.Columns.GetValueOrDefault("NationalId") }
             .Where(column => !string.IsNullOrWhiteSpace(column)).Cast<string>().ToArray();
         var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow,
-            mapping.FirstDataRow, cancellationToken, identityColumns);
+            mapping.FirstDataRow, cancellationToken, identityColumns, mapping.SheetNames);
         var indexes = new Dictionary<string, int>();
         foreach (var pair in mapping.Columns.Where(pair => !string.IsNullOrWhiteSpace(pair.Value)))
         {
@@ -250,7 +250,7 @@ public sealed class EmployeeImportService(ApplicationDbContext db, IHrFileStorag
         return await SavePreviewAsync(id, evaluated, cancellationToken);
     }
 
-    public async Task<EmployeeImportResult> ConfirmAsync(Guid id, Guid previewId, CancellationToken cancellationToken)
+    public async Task<EmployeeImportResult> ConfirmAsync(Guid id, Guid previewId, CancellationToken cancellationToken, IReadOnlyCollection<int>? excludedRows = null)
     {
         await OwnedUpload(id, cancellationToken);
         // The advisory transaction lock serializes confirmations of this batch, including retries.
@@ -266,9 +266,10 @@ public sealed class EmployeeImportService(ApplicationDbContext db, IHrFileStorag
         var preview = await JsonSerializer.DeserializeAsync<EmployeeImportPreview>(stream, Json, cancellationToken)
             ?? throw new HrValidationException("The employee preview could not be read.");
         var imported = 0; var skipped = 0; var failed = 0;
+        var excluded = (excludedRows ?? []).ToHashSet();
         foreach (var row in preview.Rows)
         {
-            if (row.Status is not ("Ready" or "Warning")) { skipped++; continue; }
+            if (excluded.Contains(row.Row) || row.Status is not ("Ready" or "Warning")) { skipped++; continue; }
             await transaction.CreateSavepointAsync("employee_row", cancellationToken);
             try { await creation.CreateAsync(row.Employee, cancellationToken); imported++; }
             catch (Exception error) when (error is HrException or ArgumentException or DbUpdateException)

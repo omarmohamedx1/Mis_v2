@@ -1,5 +1,4 @@
-import { Upload } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -7,9 +6,10 @@ import { useToast } from '../../components/common/Toast';
 import { useCollectionsLocalization } from '../../features/collections/localization/collectionsTranslations';
 import { collectionsService } from '../../features/collections/services/collectionsService';
 import type { BankPortfolioImport, BankPortfolioImportConfirmResult, BankPortfolioImportDataPreview } from '../../features/collections/types/collections';
+import { ExcelDropzone } from '../../features/import';
 import { getApiErrorMessage } from '../../services/apiClient';
 
-const maximumBytes = 20 * 1024 * 1024;
+const maximumBytes = 50 * 1024 * 1024;
 const supportedExtensions = ['.xlsx', '.xls', '.csv'];
 const extension = (name: string) => name.slice(name.lastIndexOf('.')).toLowerCase();
 
@@ -24,7 +24,6 @@ type Props = {
 export function BankPortfolioUploadModal({ bankId, bankName, open, onClose, onImported }: Props) {
   const { language, ct } = useCollectionsLocalization();
   const toast = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<'upload' | 'review' | 'success'>('upload');
   const [candidate, setCandidate] = useState<BankPortfolioImport>();
   const [preview, setPreview] = useState<BankPortfolioImportDataPreview>();
@@ -39,7 +38,6 @@ export function BankPortfolioUploadModal({ bankId, bankName, open, onClose, onIm
   useEffect(() => {
     if (!open) {
       setStage('upload'); setCandidate(undefined); setPreview(undefined); setResult(undefined); setNotes('');
-      if (inputRef.current) inputRef.current.value = '';
     }
   }, [open]);
 
@@ -71,7 +69,6 @@ export function BankPortfolioUploadModal({ bankId, bankName, open, onClose, onIm
       toast.error(getApiErrorMessage(error, ct('portfolioUploadFailed')));
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
     }
   }, [bankId, ct, toast, validateFile]);
 
@@ -107,9 +104,7 @@ export function BankPortfolioUploadModal({ bankId, bankName, open, onClose, onIm
         <div className="space-y-4">
           <p className="text-sm text-slate-500">{ct('importPortfolioDescription')}</p>
           <p className="text-xs font-semibold uppercase tracking-wide text-mis-primary">{bankName}</p>
-          <p className="text-sm text-slate-500">{ct('supportedPortfolioFiles')}</p>
-          <Button fullWidth={false} isLoading={uploading} leftIcon={<Upload className="h-4 w-4" />} onClick={() => inputRef.current?.click()}>{ct('uploadPortfolioFile')}</Button>
-          <input ref={inputRef} accept=".xlsx,.xls,.csv" className="sr-only" onChange={(event) => void upload(event.target.files?.[0])} type="file" />
+          <ExcelDropzone arabic={language === 'ar'} busy={uploading} file={null} label={ct('uploadPortfolioFile')} onFile={(next) => { if (next) void upload(next); }} />
         </div>
       ) : null}
 

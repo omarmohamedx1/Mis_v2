@@ -7,6 +7,7 @@ export interface AbsenceImportMapping {
   firstDataRow: number;
   dateFormat: string | null;
   columns: Record<string, string>;
+  sheetNames?: string[];
 }
 
 export interface AbsenceImportUpload {
@@ -74,8 +75,8 @@ export const absenceImportService = {
   async preview(id: string, mapping: AbsenceImportMapping) {
     return (await apiClient.post<AbsenceImportPreview>(`${base}/${id}/preview`, mapping)).data;
   },
-  async confirm(id: string, previewId: string) {
-    return (await apiClient.post<AbsenceImportResult>(`${base}/${id}/confirm`, { previewId })).data;
+  async confirm(id: string, previewId: string, excludedRows?: number[]) {
+    return (await apiClient.post<AbsenceImportResult>(`${base}/${id}/confirm`, { previewId, excludedRows })).data;
   },
   async history() {
     return (await apiClient.get<AbsenceImportHistory[]>(base)).data;

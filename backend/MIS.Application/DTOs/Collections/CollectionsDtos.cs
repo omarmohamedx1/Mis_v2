@@ -45,7 +45,8 @@ public sealed record CollectionCaseListItemDto(
     IReadOnlyCollection<string>? RelatedOrganizationNames = null);
 
 public sealed record CollectionFileSnapshotDto(
-    string? Action, string? PtpDate, string? PtpAmount, string? Payment, string? Update, string? Keep, string? Feedback);
+    string? Action, string? PtpDate, string? PtpAmount, string? Payment, string? Update, string? Keep, string? Feedback,
+    IReadOnlyDictionary<string, string>? ExtraFields = null);
 
 public sealed record RelatedCreditorCaseDto(
     Guid CaseId, Guid OrganizationId, string OrganizationName, string OrganizationType,

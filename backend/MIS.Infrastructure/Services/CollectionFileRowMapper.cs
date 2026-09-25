@@ -140,6 +140,31 @@ internal static class CollectionFileRowMapper
 
     public static string SnapshotValue(IReadOnlyDictionary<string, string> values, params string[] aliases) => Get(values, aliases);
 
+    public static bool IsKnownColumn(string? header)
+    {
+        var key = CollectionImportParser.NormalizeHeader(header);
+        if (string.IsNullOrWhiteSpace(key) || key is "_sheet") return true;
+        return KnownHeaders.Contains(key);
+    }
+
+    public static IReadOnlyDictionary<string, string> ExtraFields(IReadOnlyDictionary<string, string>? values)
+    {
+        if (values is null || values.Count == 0) return new Dictionary<string, string>();
+        return values
+            .Where(item => !IsKnownColumn(item.Key) && !string.IsNullOrWhiteSpace(item.Value))
+            .ToDictionary(item => item.Key, item => item.Value.Trim(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    public static (string? SheetName, IReadOnlyDictionary<string, string> ExtraFields) DescribeExtras(string? json)
+    {
+        var values = Deserialize(json);
+        if (values is null) return (null, new Dictionary<string, string>());
+        values.TryGetValue("_sheet", out var sheet);
+        return (string.IsNullOrWhiteSpace(sheet) ? null : sheet, ExtraFields(values));
+    }
+
+    private static readonly HashSet<string> KnownHeaders = Columns.All.Select(CollectionImportParser.NormalizeHeader).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     public static Dictionary<string, string>? Deserialize(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
@@ -232,6 +257,15 @@ internal static class CollectionFileRowMapper
         public static readonly string[] Payment = { "paymant", "payment", "المدفوع", "السداد" };
         public static readonly string[] Update = { "update", "التحديث" };
         public static readonly string[] Keep = { "keep", "truefalse", "truefulse", "trufalse" };
+        public static readonly string[] All =
+        [
+            ..Account, ..Card, ..CustomerCode, ..NameGeneric, ..NameAr, ..NameEn, ..National,
+            ..Mobile1, ..Mobile2, ..Mobile3, ..Contract, ..Product, ..Outstanding, ..Overdue, ..Dpd,
+            ..Bucket, ..Status, ..Feedback, ..Region, ..Area, ..Address1, ..Address2, ..City,
+            ..Corporate, ..JobTitle, ..Stage, ..CreditLimit, ..PurchaseLimit, ..ActivationDate,
+            ..LastPaymentDate, ..LastPaymentAmount, ..LastTxnDate, ..LastTxnAmount, ..OldCollector,
+            ..Collector, ..Action, ..PtpDate, ..PtpAmount, ..Payment, ..Update, ..Keep
+        ];
     }
 
     private static string First(IReadOnlyDictionary<string, string> values, string[] aliases) => Get(values, aliases);

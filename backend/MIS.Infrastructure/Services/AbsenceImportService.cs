@@ -18,7 +18,7 @@ public sealed class AbsenceImportService(
     IWorkingCalendarCalculator calendar) : IAbsenceImportService
 {
     private const string Entity = "AbsenceImport";
-    private const long MaximumBytes = 20 * 1024 * 1024;
+    private const long MaximumBytes = ExcelImportLimits.MaximumBytes;
     private const decimal PayrollMonthDivisor = 30m;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private sealed record Uploaded(string FileName, string StorageKey, string Extension);
@@ -37,7 +37,7 @@ public sealed class AbsenceImportService(
     {
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (file.Length <= 0 || file.Length > MaximumBytes || extension is not (".csv" or ".xls" or ".xlsx"))
-            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 20 MB.");
+            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 50 MB.");
         var stored = await storage.SaveAsync("absence-imports", file.FileName, file.ContentType, file.Content, MaximumBytes, cancellationToken);
         try
         {
@@ -75,7 +75,7 @@ public sealed class AbsenceImportService(
         if (selected.Distinct().Count() != selected.Length) throw new HrValidationException("Map each source column only once. / لا يمكن تعيين العمود أكثر من مرة");
 
         await using var stream = await storage.OpenReadAsync(upload.StorageKey, cancellationToken);
-        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, cancellationToken);
+        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, cancellationToken, sheetNames: mapping.SheetNames);
         var indexes = new Dictionary<string, int>();
         foreach (var pair in mapping.Columns.Where(pair => !string.IsNullOrWhiteSpace(pair.Value)))
         {
@@ -133,7 +133,7 @@ public sealed class AbsenceImportService(
         return preview with { Rows = preview.Rows.Select(row => row with { Errors = row.Errors.Select(message => ApiTextLocalizer.Localize(message)).ToArray() }).ToArray() };
     }
 
-    public async Task<AbsenceImportResult> ConfirmAsync(Guid id, Guid previewId, CancellationToken cancellationToken)
+    public async Task<AbsenceImportResult> ConfirmAsync(Guid id, Guid previewId, CancellationToken cancellationToken, IReadOnlyCollection<int>? excludedRows = null)
     {
         await OwnedUpload(id, cancellationToken);
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -149,9 +149,10 @@ public sealed class AbsenceImportService(
             ?? throw new HrValidationException("The absence preview could not be read.");
 
         var imported = 0; var skipped = 0; var failed = 0;
+        var excluded = (excludedRows ?? []).ToHashSet();
         foreach (var row in preview.Rows)
         {
-            if (row.Status is not ("Ready" or "Warning")) { skipped++; continue; }
+            if (excluded.Contains(row.Row) || row.Status is not ("Ready" or "Warning")) { skipped++; continue; }
             await transaction.CreateSavepointAsync("absence_row", cancellationToken);
             try
             {

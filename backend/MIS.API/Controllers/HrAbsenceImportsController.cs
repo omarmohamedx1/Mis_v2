@@ -21,7 +21,7 @@ public sealed class HrAbsenceImportsController(IAbsenceImportService service) : 
 
     [HttpPost]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(21 * 1024 * 1024)]
+    [RequestSizeLimit(ExcelImportLimits.RequestBytes)]
     public async Task<ActionResult<AbsenceImportUpload>> Upload(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null) throw new HrValidationException("Select an absence import file.");
@@ -35,7 +35,7 @@ public sealed class HrAbsenceImportsController(IAbsenceImportService service) : 
 
     [HttpPost("{id:guid}/confirm")]
     public async Task<ActionResult<AbsenceImportResult>> Confirm(Guid id, ConfirmAbsenceImportRequest request, CancellationToken cancellationToken) =>
-        Ok(await service.ConfirmAsync(id, request.PreviewId, cancellationToken));
+        Ok(await service.ConfirmAsync(id, request.PreviewId, cancellationToken, request.ExcludedRows));
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<AbsenceImportHistory>>> History(CancellationToken cancellationToken) =>

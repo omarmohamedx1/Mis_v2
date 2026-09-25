@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MIS.API.Authorization;
+using MIS.Application.Common;
 using MIS.Application.DTOs.Collections;
 using MIS.Application.Interfaces;
 
@@ -23,7 +24,7 @@ public sealed class BankPortfolioImportsController : ControllerBase
     public Task<BankPortfolioImportDto> Get(Guid bankId, Guid importId, CancellationToken token) => _imports.GetAsync(bankId, importId, token);
 
     [HttpPost]
-    [RequestSizeLimit(21 * 1024 * 1024)]
+    [RequestSizeLimit(ExcelImportLimits.RequestBytes)]
     public async Task<ActionResult<BankPortfolioImportDto>> Upload(Guid bankId, [FromForm] IFormFile file, CancellationToken token)
     {
         if (file is null || file.Length == 0) return BadRequest(MIS.Application.Common.ApiErrorResponse.Failure("A non-empty XLSX, XLS, or CSV file is required."));
@@ -44,7 +45,7 @@ public sealed class BankPortfolioImportsController : ControllerBase
     public Task<BankPortfolioImportDto> Update(Guid bankId, Guid importId, UpdateBankPortfolioImportRequest request, CancellationToken token) => _imports.UpdateNotesAsync(bankId, importId, request.Notes, token);
 
     [HttpPost("{importId:guid}/replacement")]
-    [RequestSizeLimit(21 * 1024 * 1024)]
+    [RequestSizeLimit(ExcelImportLimits.RequestBytes)]
     public async Task<BankPortfolioReplacementPreviewDto> PreviewReplacement(Guid bankId, Guid importId, [FromForm] IFormFile file, CancellationToken token)
     {
         if (file is null || file.Length == 0) throw new MIS.Application.Common.HrValidationException("A non-empty XLSX, XLS, or CSV file is required.");

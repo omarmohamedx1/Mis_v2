@@ -1,7 +1,7 @@
 import { apiClient, requestFormData } from '../../../services/apiClient';
 import type { AttendanceImportSheet } from '../types/attendance';
 
-export interface EmployeeImportMapping { sheetName: string | null; headerRow: number; firstDataRow: number; dateFormat: string | null; columns: Record<string, string> }
+export interface EmployeeImportMapping { sheetName: string | null; headerRow: number; firstDataRow: number; dateFormat: string | null; columns: Record<string, string>; sheetNames?: string[] }
 export interface EmployeeImportUpload { id: string; fileName: string; sheets: AttendanceImportSheet[] }
 export interface EmployeeImportEmployee {
   employeeNumber: string;
@@ -57,7 +57,7 @@ export const employeeImportService = {
   async revise(id: string, previewId: string, rows: Array<{ row: number; employee: EmployeeImportEmployee }>) {
     return (await apiClient.post<EmployeeImportPreview>(`${base}/${id}/revise`, { previewId, rows })).data;
   },
-  async confirm(id: string, previewId: string) { return (await apiClient.post<EmployeeImportResult>(`${base}/${id}/confirm`, { previewId })).data; },
+  async confirm(id: string, previewId: string, excludedRows?: number[]) { return (await apiClient.post<EmployeeImportResult>(`${base}/${id}/confirm`, { previewId, excludedRows })).data; },
   async history() { return (await apiClient.get<EmployeeImportHistory[]>(base)).data; },
   async deleteHistory(id: string) { await apiClient.delete(`${base}/${id}`); },
 };

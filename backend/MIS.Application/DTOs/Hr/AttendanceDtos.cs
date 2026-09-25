@@ -313,6 +313,8 @@ public sealed class AttendanceImportColumnMappingRequest
 
     [Required, StringLength(100)]
     public string TimeZoneId { get; init; } = string.Empty;
+
+    public List<string>? SheetNames { get; init; }
 }
 
 public sealed record AttendanceImportSummaryDto(

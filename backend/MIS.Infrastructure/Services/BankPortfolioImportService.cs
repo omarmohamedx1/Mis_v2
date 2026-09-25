@@ -19,7 +19,7 @@ namespace MIS.Infrastructure.Services;
 
 public sealed class BankPortfolioImportService : IBankPortfolioImportService
 {
-    public const long MaximumBytes = 20 * 1024 * 1024;
+    public const long MaximumBytes = ExcelImportLimits.MaximumBytes;
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserContext _user;
     private readonly IHrFileStorage _files;
@@ -37,7 +37,7 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
     {
         EnsureImportPermission();
         var bank = await RequireAccessibleBankAsync(bankId, token);
-        if (length <= 0 || length > MaximumBytes) throw new HrValidationException("Portfolio files must be between 1 byte and 20 MB.");
+        if (length <= 0 || length > MaximumBytes) throw new HrValidationException("Portfolio files must be between 1 byte and 50 MB.");
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (extension is not (".xlsx" or ".xls" or ".csv")) throw new HrValidationException("Only XLSX, XLS, and CSV portfolio files are supported.");
 
@@ -206,7 +206,7 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         EnsureImportPermission(); var bank = await RequireAccessibleBankAsync(bankId, token);
         _ = await _db.BankPortfolioImports.AsNoTracking().SingleOrDefaultAsync(item => item.Id == importId && item.BankId == bankId, token)
             ?? throw new HrNotFoundException("Portfolio import was not found for this bank.");
-        if (length <= 0 || length > MaximumBytes) throw new HrValidationException("Portfolio files must be between 1 byte and 20 MB.");
+        if (length <= 0 || length > MaximumBytes) throw new HrValidationException("Portfolio files must be between 1 byte and 50 MB.");
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (extension is not (".xlsx" or ".xls" or ".csv")) throw new HrValidationException("Only XLSX, XLS, and CSV portfolio files are supported.");
         var stored = await _files.SaveAsync($"bank-portfolio-imports/{bank.Id:N}/replacements", fileName, contentType, content, MaximumBytes, token);

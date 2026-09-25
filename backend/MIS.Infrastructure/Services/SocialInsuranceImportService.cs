@@ -19,7 +19,7 @@ public sealed class SocialInsuranceImportService(ApplicationDbContext db, IHrFil
             throw new HrForbiddenException("Social insurance management permission is required.");
     }
     private const string Entity = "SocialInsuranceImport";
-    private const long MaximumBytes = 20 * 1024 * 1024;
+    private const long MaximumBytes = ExcelImportLimits.MaximumBytes;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private sealed record Uploaded(string FileName, string StorageKey, string Extension);
     private sealed record PreviewSaved(Guid PreviewId, string StorageKey, int TotalRows);
@@ -39,7 +39,7 @@ public sealed class SocialInsuranceImportService(ApplicationDbContext db, IHrFil
         Access();
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (file.Length <= 0 || file.Length > MaximumBytes || extension is not (".csv" or ".xls" or ".xlsx"))
-            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 20 MB.");
+            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 50 MB.");
         var stored = await storage.SaveAsync("insurance-imports", file.FileName, file.ContentType, file.Content, MaximumBytes, cancellationToken);
         try
         {
@@ -71,7 +71,7 @@ public sealed class SocialInsuranceImportService(ApplicationDbContext db, IHrFil
         var selected = mapping.Columns.Values.Where(v => !string.IsNullOrWhiteSpace(v)).ToArray();
         if (selected.Distinct().Count() != selected.Length) throw new HrValidationException("Map each source column only once. / لا يمكن تعيين العمود أكثر من مرة");
         await using var stream = await storage.OpenReadAsync(upload.StorageKey, cancellationToken);
-        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, cancellationToken);
+        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, cancellationToken, sheetNames: mapping.SheetNames);
         var indexes = new Dictionary<string, int>();
         foreach (var pair in mapping.Columns.Where(pair => !string.IsNullOrWhiteSpace(pair.Value)))
         {
@@ -99,7 +99,7 @@ public sealed class SocialInsuranceImportService(ApplicationDbContext db, IHrFil
         return preview with { Rows = preview.Rows.Select(row => row with { Errors = row.Errors.Select(message => ApiTextLocalizer.Localize(message)).ToArray() }).ToArray() };
     }
 
-    public async Task<SocialInsuranceImportResult> ConfirmAsync(Guid id, Guid previewId, CancellationToken cancellationToken)
+    public async Task<SocialInsuranceImportResult> ConfirmAsync(Guid id, Guid previewId, CancellationToken cancellationToken, IReadOnlyCollection<int>? excludedRows = null)
     {
         Access();
         await OwnedUpload(id, cancellationToken);
@@ -116,9 +116,10 @@ public sealed class SocialInsuranceImportService(ApplicationDbContext db, IHrFil
         var preview = await JsonSerializer.DeserializeAsync<SocialInsuranceImportPreview>(stream, Json, cancellationToken)
             ?? throw new HrValidationException("The insurance preview could not be read.");
         var imported = 0; var skipped = 0; var failed = 0;
+        var excluded = (excludedRows ?? []).ToHashSet();
         foreach (var row in preview.Rows)
         {
-            if (row.Status is not ("Ready" or "Warning")) { skipped++; continue; }
+            if (excluded.Contains(row.Row) || row.Status is not ("Ready" or "Warning")) { skipped++; continue; }
             await transaction.CreateSavepointAsync("insurance_row", cancellationToken);
             try {
                 if (!await db.Employees.AnyAsync(e => e.Id == row.Record.EmployeeId, cancellationToken)) throw new HrValidationException("Employee not found.");

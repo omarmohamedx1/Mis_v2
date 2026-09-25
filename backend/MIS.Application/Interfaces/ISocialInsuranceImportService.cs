@@ -7,6 +7,6 @@ public interface ISocialInsuranceImportService
     Task<HrImportFileTemplate> BuildTemplateAsync(CancellationToken cancellationToken);
     Task<SocialInsuranceImportUpload> UploadAsync(HrUploadFile file, CancellationToken cancellationToken);
     Task<SocialInsuranceImportPreview> PreviewAsync(Guid id, SocialInsuranceImportMapping mapping, CancellationToken cancellationToken);
-    Task<SocialInsuranceImportResult> ConfirmAsync(Guid id, Guid previewId, CancellationToken cancellationToken);
+    Task<SocialInsuranceImportResult> ConfirmAsync(Guid id, Guid previewId, CancellationToken cancellationToken, IReadOnlyCollection<int>? excludedRows = null);
     Task<IReadOnlyCollection<SocialInsuranceImportHistory>> HistoryAsync(CancellationToken cancellationToken);
 }

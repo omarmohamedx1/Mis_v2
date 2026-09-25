@@ -14,7 +14,7 @@ namespace MIS.API.Controllers;
 [Authorize(Policy = AuthorizationPolicies.CollectionsAssignmentManage)]
 public sealed class BankDistributionImportController(IBankDistributionImportService imports) : ControllerBase
 {
-    private const long RequestLimit = 21 * 1024 * 1024;
+    private const long RequestLimit = ExcelImportLimits.RequestBytes;
 
     [HttpGet("collectors")]
     public Task<IReadOnlyCollection<DistributionCollectorDto>> Collectors(Guid organizationId, CancellationToken token)
@@ -36,11 +36,12 @@ public sealed class BankDistributionImportController(IBankDistributionImportServ
 
     [HttpPost("{id:guid}/confirm")]
     public Task<BankDistributionImportResult> Confirm(Guid organizationId, Guid id, [FromBody] ConfirmBankDistributionImportRequest request, CancellationToken token)
-        => imports.ConfirmAsync(organizationId, id, request.PreviewId, request.ReassignExisting, token);
+        => imports.ConfirmAsync(organizationId, id, request.PreviewId, request.ReassignExisting, token, request.ExcludedRows);
 }
 
 public sealed class ConfirmBankDistributionImportRequest
 {
     public Guid PreviewId { get; init; }
     public bool ReassignExisting { get; init; }
+    public IReadOnlyCollection<int>? ExcludedRows { get; init; }
 }

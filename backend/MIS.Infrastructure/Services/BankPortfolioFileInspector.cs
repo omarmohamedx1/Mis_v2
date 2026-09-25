@@ -60,16 +60,22 @@ internal static class BankPortfolioFileInspector
         using var reader = legacy
             ? ExcelReaderFactory.CreateBinaryReader(stream, new ExcelReaderConfiguration { LeaveOpen = true })
             : ExcelReaderFactory.CreateOpenXmlReader(stream, new ExcelReaderConfiguration { LeaveOpen = true });
-        if (!reader.Read()) throw new HrValidationException("The workbook is empty.");
-        ValidateColumnCount(reader.FieldCount);
         var count = 0;
-        while (reader.Read())
+        do
         {
             token.ThrowIfCancellationRequested();
-            var populated = Enumerable.Range(0, reader.FieldCount).Any(index => !string.IsNullOrWhiteSpace(reader.GetValue(index)?.ToString()));
-            if (!populated) continue;
-            if (++count > MaximumRows) throw new HrValidationException($"Portfolio files cannot exceed {MaximumRows:N0} data rows.");
-        }
+            if (CollectionImportParser.IsInstructionSheet(reader.Name)) continue;
+            var first = reader.Read();
+            if (!first) continue;
+            ValidateColumnCount(reader.FieldCount);
+            while (reader.Read())
+            {
+                token.ThrowIfCancellationRequested();
+                var populated = Enumerable.Range(0, reader.FieldCount).Any(index => !string.IsNullOrWhiteSpace(reader.GetValue(index)?.ToString()));
+                if (!populated) continue;
+                if (++count > MaximumRows) throw new HrValidationException($"Portfolio files cannot exceed {MaximumRows:N0} data rows.");
+            }
+        } while (reader.NextResult());
         return RequireRows(count);
     }
 

@@ -23,7 +23,7 @@ public sealed class BankDistributionImportService(
     ICollectionsClassificationContext classification) : IBankDistributionImportService
 {
     private const string Entity = "BankDistributionImport";
-    private const long MaximumBytes = 20 * 1024 * 1024;
+    private const long MaximumBytes = ExcelImportLimits.MaximumBytes;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     internal static readonly string[] Fields =
@@ -60,7 +60,7 @@ public sealed class BankDistributionImportService(
         await RequireAccessAsync(organizationId, token);
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (file.Length <= 0 || file.Length > MaximumBytes || extension is not (".csv" or ".xls" or ".xlsx"))
-            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 20 MB.");
+            throw new HrValidationException("Choose a CSV, XLS, or XLSX file no larger than 50 MB.");
 
         var stored = await storage.SaveAsync($"bank-distribution-imports/{organizationId:N}", file.FileName, file.ContentType, file.Content, MaximumBytes, token);
         try
@@ -104,7 +104,7 @@ public sealed class BankDistributionImportService(
         var orgName = ApiTextLocalizer.IsArabic ? org.NameArabic : org.NameEnglish;
 
         await using var stream = await storage.OpenReadAsync(upload.StorageKey, token);
-        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token);
+        var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token, sheetNames: mapping.SheetNames);
         var indexes = mapping.Columns.Where(p => !string.IsNullOrWhiteSpace(p.Value))
             .ToDictionary(p => p.Key, p => Array.FindIndex(table.Headers, h => h == p.Value));
         if (indexes.Values.Any(i => i < 0)) throw new HrValidationException("A mapped source column was not found.");
@@ -220,7 +220,7 @@ public sealed class BankDistributionImportService(
         return preview;
     }
 
-    public async Task<BankDistributionImportResult> ConfirmAsync(Guid organizationId, Guid id, Guid previewId, bool reassignExisting, CancellationToken token)
+    public async Task<BankDistributionImportResult> ConfirmAsync(Guid organizationId, Guid id, Guid previewId, bool reassignExisting, CancellationToken token, IReadOnlyCollection<int>? excludedRows = null)
     {
         EnsurePermission();
         await RequireAccessAsync(organizationId, token);
@@ -254,9 +254,11 @@ public sealed class BankDistributionImportService(
 
         var assigned = 0; var reassigned = 0; var skipped = 0; var failed = 0; var now = DateTimeOffset.UtcNow;
         var teamCache = new Dictionary<Guid, Guid?>();
+        var excluded = (excludedRows ?? []).ToHashSet();
 
         foreach (var row in payload.Preview.Rows)
         {
+            if (excluded.Contains(row.Row)) { skipped++; continue; }
             if (row.Status == "AlreadyAssigned" && !allowReassign) { skipped++; continue; }
             if (row.CaseId is null || row.NewCollectorId is null || row.Status is not ("Ready" or "AlreadyAssigned")) { failed++; continue; }
             if (!cases.TryGetValue(row.CaseId.Value, out var item) || !collectors.TryGetValue(row.NewCollectorId.Value, out var collector))
