@@ -263,7 +263,8 @@ export function DataEntryClientsPage() {
             .then((result) => {
               toast.success(d.text(`اتحذف ${result.deleted} عميل${result.skipped ? `، وتساب ${result.skipped}` : ''}.`, `Deleted ${result.deleted} client${result.deleted === 1 ? '' : 's'}${result.skipped ? `, left ${result.skipped}` : ''}.`));
               setDeleteAllOpen(false);
-              setReloadKey((value) => value + 1);
+              if (result.skipped) setReloadKey((value) => value + 1);
+              else setItems([]);
             })
             .catch((reason) => toast.error(getApiErrorMessage(reason, d.text('تعذر حذف العملاء.', 'Could not delete the clients.'))))
             .finally(() => setDeleting(false));

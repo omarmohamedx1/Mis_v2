@@ -397,29 +397,76 @@ public sealed class DataEntryService(
             null,
             $"Deleted unused data-entry client {customer.CustomerCode}."), token);
         await db.SaveChangesAsync(token);
-        foreach (var storageKey in storageKeys)
-        {
-            try { await storage.DeleteAsync(storageKey, CancellationToken.None); } catch { /* the row removal is authoritative */ }
-        }
+        await DeleteStoredFilesAsync(storageKeys);
     }
 
     public async Task<DeleteDataEntryClientsResult> DeleteAllClientsAsync(CancellationToken token)
     {
         EnsureManage();
-        var ids = await ScopeClientIds().Distinct().ToListAsync(token);
-        var deleted = 0;
-        var skipped = 0;
-        foreach (var id in ids)
+        var allIds = await ScopeClientIds().Distinct().ToListAsync(token);
+        if (allIds.Count == 0) return new DeleteDataEntryClientsResult(0, 0);
+
+        var blocked = await db.CollectionCases.AsNoTracking()
+            .Where(x => allIds.Contains(x.CustomerId))
+            .Select(x => x.CustomerId)
+            .Union(db.DataEntryRows.AsNoTracking()
+                .Where(row => row.CollectionCustomerId != null
+                    && allIds.Contains(row.CollectionCustomerId.Value)
+                    && (row.CollectionCaseId != null
+                        || row.Batch.Status == DataEntryValues.BatchStatuses.Accepted
+                        || row.Batch.Status == DataEntryValues.BatchStatuses.Distributed))
+                .Select(row => row.CollectionCustomerId!.Value))
+            .ToListAsync(token);
+        var blockedIds = blocked.ToHashSet();
+        var deletable = allIds.Where(id => !blockedIds.Contains(id)).ToArray();
+        if (deletable.Length == 0) return new DeleteDataEntryClientsResult(0, allIds.Count);
+
+        var storageKeys = await db.DataEntryDocuments.AsNoTracking()
+            .Where(document => deletable.Contains(document.CustomerId))
+            .Select(document => document.StorageKey)
+            .ToListAsync(token);
+        var batchIds = await db.DataEntryRows.AsNoTracking()
+            .Where(row => row.CollectionCustomerId != null && deletable.Contains(row.CollectionCustomerId.Value))
+            .Select(row => row.BatchId)
+            .Distinct()
+            .ToListAsync(token);
+
+        await using var transaction = await db.Database.BeginTransactionAsync(token);
+        await db.DataEntryDocuments.Where(document => deletable.Contains(document.CustomerId)).ExecuteDeleteAsync(token);
+        await db.DataEntryRows.Where(row => row.CollectionCustomerId != null && deletable.Contains(row.CollectionCustomerId.Value)).ExecuteDeleteAsync(token);
+        if (batchIds.Count > 0)
         {
-            try
-            {
-                await DeleteClientAsync(id, token);
-                deleted++;
-            }
-            catch (HrConflictException) { skipped++; }
-            catch (HrNotFoundException) { skipped++; }
+            var emptyBatchIds = await db.DataEntryBatches
+                .Where(batch => batchIds.Contains(batch.Id) && !db.DataEntryRows.Any(row => row.BatchId == batch.Id))
+                .Select(batch => batch.Id)
+                .ToListAsync(token);
+            if (emptyBatchIds.Count > 0)
+                await db.DataEntryBatches.Where(batch => emptyBatchIds.Contains(batch.Id)).ExecuteDeleteAsync(token);
         }
-        return new DeleteDataEntryClientsResult(deleted, skipped);
+        await db.CollectionCustomers.Where(customer => deletable.Contains(customer.Id)).ExecuteDeleteAsync(token);
+        await audit.WriteAsync(new AuditWriteRequest(
+            "DataEntryClientsDeleted",
+            nameof(CollectionCustomer),
+            user.UserId.ToString(),
+            null,
+            new { Count = deletable.Length },
+            null,
+            $"Deleted {deletable.Length} data-entry clients."), token);
+        await db.SaveChangesAsync(token);
+        await transaction.CommitAsync(token);
+        await DeleteStoredFilesAsync(storageKeys);
+        return new DeleteDataEntryClientsResult(deletable.Length, allIds.Count - deletable.Length);
+    }
+
+    private async Task DeleteStoredFilesAsync(IReadOnlyList<string> storageKeys)
+    {
+        foreach (var chunk in storageKeys.Chunk(12))
+        {
+            await Task.WhenAll(chunk.Select(async key =>
+            {
+                try { await storage.DeleteAsync(key, CancellationToken.None); } catch { /* the row removal is authoritative */ }
+            }));
+        }
     }
 
     public async Task<DataEntryClientDetailsDto> UpdateClientAsync(Guid customerId, UpdateDataEntryClientRequest request, CancellationToken token)
