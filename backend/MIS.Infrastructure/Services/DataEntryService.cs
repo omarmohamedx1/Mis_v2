@@ -664,6 +664,15 @@ public sealed class DataEntryService(
         await using var stream = await storage.OpenReadAsync(upload.StorageKey, token);
         var table = await AttendanceImportParser.ReadTableAsync(stream, upload.Extension, mapping.SheetName, mapping.HeaderRow, mapping.FirstDataRow, token, sheetNames: mapping.SheetNames);
         var columns = SuggestColumns(table.Headers, mapping.Columns);
+        var excludedHeaders = new HashSet<string>(mapping.ExcludedColumns ?? [], StringComparer.OrdinalIgnoreCase);
+        if (excludedHeaders.Count > 0)
+        {
+            foreach (var key in columns.Keys.ToArray())
+            {
+                if (key.Equals("CustomerName", StringComparison.OrdinalIgnoreCase)) continue;
+                if (columns[key] is string header && excludedHeaders.Contains(header)) columns[key] = null;
+            }
+        }
         if (!columns.TryGetValue("CustomerName", out var mappedName) || string.IsNullOrWhiteSpace(mappedName))
             throw new HrValidationException("Map the customer name column.");
         mapping = mapping with { Columns = columns };
@@ -723,11 +732,12 @@ public sealed class DataEntryService(
                 catch (HrValidationException) { /* keep the number as written in the sheet */ }
             }
 
+            var excluded = new HashSet<string>(mapping.ExcludedColumns ?? [], StringComparer.OrdinalIgnoreCase);
             var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (var columnIndex = 0; columnIndex < table.Headers.Length; columnIndex++)
             {
                 var header = table.Headers[columnIndex];
-                if (string.IsNullOrWhiteSpace(header) || columnIndex >= cells.Length) continue;
+                if (string.IsNullOrWhiteSpace(header) || excluded.Contains(header) || columnIndex >= cells.Length) continue;
                 var value = cells[columnIndex].Trim();
                 if (value.Length > 0) fields[header] = value;
             }

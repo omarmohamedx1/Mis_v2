@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -64,6 +65,7 @@ export function DataEntryImportPage() {
   const [mapping, setMapping] = useState<DataEntryImportMappingRequest | null>(null);
   const [preview, setPreview] = useState<DataEntryImportPreview | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +98,7 @@ export function DataEntryImportPage() {
     setMapping(null);
     setPreview(null);
     setActiveSheet('');
+    setHiddenColumns([]);
     if (!next) return;
     await run(async () => {
       const data = await dataEntryService.uploadImport(next);
@@ -151,7 +154,26 @@ export function DataEntryImportPage() {
             })}
           </div>
         ) : null}
-        {sheet ? <SheetGrid count={d.number} rowsLabel={d.text('صف', 'rows')} sheet={sheet} /> : null}
+        {sheet ? (
+          <SheetGrid
+            count={d.number}
+            hidden={hiddenColumns}
+            nameColumn={mapping?.columns.CustomerName ?? ''}
+            rowsLabel={d.text('صف', 'rows')}
+            sheet={sheet}
+            onHide={(column) => setHiddenColumns((current) => current.includes(column) ? current : [...current, column])}
+          />
+        ) : null}
+        {hiddenColumns.length ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-semibold text-slate-500">{d.text('أعمدة اتشالت قبل الحفظ', 'Columns removed before save')}</span>
+            {hiddenColumns.map((column) => (
+              <button className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-mis-navy" key={column} type="button" onClick={() => setHiddenColumns((current) => current.filter((item) => item !== column))}>
+                {column} ×
+              </button>
+            ))}
+          </div>
+        ) : null}
         {nameMissing && mapping ? (
           <SelectInput
             label={d.text('عمود اسم العميل', 'Customer name column')}
@@ -178,6 +200,7 @@ export function DataEntryImportPage() {
                 portfolioId: portfolio?.id ?? null,
                 primaryClassification: portfolio?.primaryClassification ?? null,
                 subClassification: portfolio?.subClassification ?? null,
+                excludedColumns: hiddenColumns,
               };
               const next = await dataEntryService.previewImport(upload.uploadId, payload);
               setMapping(payload);
@@ -215,7 +238,8 @@ export function DataEntryImportPage() {
   );
 }
 
-function SheetGrid({ sheet, rowsLabel, count }: { sheet: DataEntrySheetPreview; rowsLabel: string; count: (value: number) => string }) {
+function SheetGrid({ sheet, rowsLabel, count, hidden, nameColumn, onHide }: { sheet: DataEntrySheetPreview; rowsLabel: string; count: (value: number) => string; hidden: string[]; nameColumn: string; onHide: (column: string) => void }) {
+  const visible = sheet.columns.map((column, index) => ({ column, index })).filter((item) => !hidden.includes(item.column));
   return (
     <div className="space-y-2">
       <p className="text-sm font-semibold text-slate-600">
@@ -228,8 +252,17 @@ function SheetGrid({ sheet, rowsLabel, count }: { sheet: DataEntrySheetPreview; 
           <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="px-3 py-2 text-start">#</th>
-              {sheet.columns.map((column, index) => (
-                <th className="whitespace-nowrap px-3 py-2 text-start" key={`${column}-${index}`}>{column || '—'}</th>
+              {visible.map((item) => (
+                <th className="whitespace-nowrap px-3 py-2 text-start" key={`${item.column}-${item.index}`}>
+                  <span className="inline-flex items-center gap-1">
+                    {item.column || '—'}
+                    {item.column && item.column !== nameColumn ? (
+                      <button className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-600" type="button" onClick={() => onHide(item.column)}>
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
+                  </span>
+                </th>
               ))}
             </tr>
           </thead>
@@ -237,8 +270,8 @@ function SheetGrid({ sheet, rowsLabel, count }: { sheet: DataEntrySheetPreview; 
             {sheet.rows.map((row, rowIndex) => (
               <tr key={rowIndex}>
                 <td className="px-3 py-2 text-slate-400">{rowIndex + 1}</td>
-                {sheet.columns.map((_, columnIndex) => (
-                  <td className="whitespace-nowrap px-3 py-2 text-mis-navy" key={columnIndex}>{row[columnIndex] || '—'}</td>
+                {visible.map((item) => (
+                  <td className="whitespace-nowrap px-3 py-2 text-mis-navy" key={item.index}>{row[item.index] || '—'}</td>
                 ))}
               </tr>
             ))}

@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { DataEntryDocumentsPanel } from '../../features/data-entry/DataEntryDocumentsPanel';
 import { EditClientSheetModal } from '../../features/data-entry/EditClientSheetModal';
 import { useDataEntryText } from '../../features/data-entry/dataEntryUi';
+import { readNationalIdCard } from '../../features/data-entry/nationalIdCard';
 import { dataEntryService } from '../../features/data-entry/services/dataEntryService';
 import type { DataEntryClientDetails, DataEntryDocument } from '../../features/data-entry/types/dataEntry';
 import { getApiErrorMessage } from '../../services/apiClient';
@@ -113,15 +114,15 @@ export function DataEntryClientDetailsPage() {
           </div>
         </section>
         <DetailSection
-          title={d.text('بيانات الحالة', 'Case data')}
+          title={d.text('بيانات الملف', 'File data')}
           rows={[
             [d.text('الرقم القومي', 'National ID'), column('ID', 'National ID') || data.nationalId || '—'],
             [d.text('الاسم', 'Name'), displayName],
             [d.text('العنوان', 'Address'), column('All Address', 'Address') || data.address || '—'],
             [d.text('فيدباك', 'Feedback'), column('FEEDBACK', 'Feedback') || data.feedback || '—'],
-            [d.text('بيانات', 'Data'), column('Data', 'Notes') || data.notes || '—'],
           ]}
         />
+        <NationalIdSection arabic={d.ar} id={column('ID', 'National ID') || data.nationalId} text={d.text} />
         {extraFields.length ? (
           <DetailSection
             title={d.text('أعمدة إضافية', 'Extra columns')}
@@ -192,5 +193,22 @@ export function DataEntryClientDetailsPage() {
         />
       ) : null}
     </div>
+  );
+}
+
+function NationalIdSection({ id, arabic, text }: { id?: string | null; arabic: boolean; text: (arabic: string, english: string) => string }) {
+  const card = readNationalIdCard(id);
+  if (!card) return null;
+  const birth = new Intl.DateTimeFormat(arabic ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).format(card.birthDate);
+  return (
+    <DetailSection
+      title={text('من الرقم القومي', 'From the national ID')}
+      rows={[
+        [text('تاريخ الميلاد', 'Date of birth'), birth],
+        [text('النوع', 'Gender'), card.gender === 'male' ? text('ذكر', 'Male') : text('أنثى', 'Female')],
+        [text('السن', 'Age'), String(card.age)],
+        [text('المحافظة', 'Governorate'), arabic ? card.governorateAr : card.governorateEn],
+      ]}
+    />
   );
 }

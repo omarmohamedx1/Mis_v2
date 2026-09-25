@@ -1,4 +1,4 @@
-import { FileUp, Paperclip, Pencil, Plus, Search, Trash2, UsersRound, X } from 'lucide-react';
+import { FileUp, Paperclip, Pencil, Plus, Search, Trash2, UsersRound } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -35,9 +35,6 @@ export function DataEntryClientsPage() {
   const [columnQuery, setColumnQuery] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [editTarget, setEditTarget] = useState<DataEntryClientListItem | null>(null);
-  const [newColumn, setNewColumn] = useState('');
-  const [columnBusy, setColumnBusy] = useState(false);
-  const [deleteColumn, setDeleteColumn] = useState<string | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
 
   useEffect(() => {
@@ -99,7 +96,7 @@ export function DataEntryClientsPage() {
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,16rem)_minmax(0,12rem)_minmax(0,1fr)_auto]">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,16rem)_minmax(0,12rem)_minmax(0,1fr)]">
           <label className="block text-sm">
             <span className="mb-1 block font-semibold text-slate-600">{d.text('العمود', 'Column')}</span>
             <select className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={column} onChange={(event) => setColumn(event.target.value)}>
@@ -118,19 +115,6 @@ export function DataEntryClientsPage() {
             <span className="mb-1 block font-semibold text-slate-600">{d.text('يحتوي على', 'Contains')}</span>
             <input className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={columnSearch} onChange={(event) => setColumnSearch(event.target.value)} />
           </label>
-          <form className="flex items-end gap-2" onSubmit={(event) => {
-            event.preventDefault();
-            const name = newColumn.trim();
-            if (!name || columnBusy) return;
-            setColumnBusy(true);
-            dataEntryService.addColumn(name)
-              .then(() => { setNewColumn(''); setReloadKey((value) => value + 1); toast.success(d.text('تمت إضافة العمود.', 'Column added.')); })
-              .catch((reason) => toast.error(getApiErrorMessage(reason, d.text('تعذر إضافة العمود.', 'Could not add the column.'))))
-              .finally(() => setColumnBusy(false));
-          }}>
-            <TextInput label={d.text('عمود جديد', 'New column')} value={newColumn} onChange={(event) => setNewColumn(event.target.value)} />
-            <Button disabled={columnBusy || !newColumn.trim()} fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} size="md" type="submit">{d.text('إضافة', 'Add')}</Button>
-          </form>
         </div>
       </div>
 
@@ -145,16 +129,7 @@ export function DataEntryClientsPage() {
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
                   {tableColumns(items, d.text).map((item) => (
-                    <th className="px-4 py-3 text-start" key={item.key}>
-                      <span className="inline-flex items-center gap-1">
-                        {item.label}
-                        {item.key !== 'name' ? (
-                          <button className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-600" type="button" onClick={() => setDeleteColumn(item.deleteKey)}>
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        ) : null}
-                      </span>
-                    </th>
+                    <th className="px-4 py-3 text-start" key={item.key}>{item.label}</th>
                   ))}
                   <th className="px-4 py-3" />
                 </tr>
@@ -167,7 +142,6 @@ export function DataEntryClientsPage() {
                     <td className="px-4 py-3"><PhoneList numbers={clientPhones(item)} /></td>
                     <td className="max-w-xs px-4 py-3 text-slate-700">{item.address || fieldValue(item, 'All Address', 'Address') || '—'}</td>
                     <td className="max-w-xs px-4 py-3 text-slate-700">{item.feedback || fieldValue(item, 'FEEDBACK', 'Feedback') || '—'}</td>
-                    <td className="max-w-xs px-4 py-3 text-slate-700">{item.data || fieldValue(item, 'Data', 'Notes') || '—'}</td>
                     {extraColumns(items).map((columnName) => (
                       <td className="max-w-xs px-4 py-3 text-slate-700" key={columnName}>{item.fields?.[columnName] || '—'}</td>
                     ))}
@@ -232,26 +206,6 @@ export function DataEntryClientsPage() {
           }}
         />
       ) : null}
-      <ConfirmDialog
-        confirmLabel={d.text('حذف العمود', 'Delete column')}
-        isConfirming={columnBusy}
-        message={d.text(`حذف عمود ${deleteColumn ?? ''} من كل العملاء؟`, `Remove the ${deleteColumn ?? ''} column from every client?`)}
-        onCancel={() => setDeleteColumn(null)}
-        onConfirm={() => {
-          if (!deleteColumn) return;
-          setColumnBusy(true);
-          dataEntryService.deleteColumn(deleteColumn)
-            .then(() => {
-              toast.success(d.text('تم حذف العمود.', 'Column removed.'));
-              setDeleteColumn(null);
-              setReloadKey((value) => value + 1);
-            })
-            .catch((reason) => toast.error(getApiErrorMessage(reason, d.text('تعذر حذف العمود.', 'Could not remove the column.'))))
-            .finally(() => setColumnBusy(false));
-        }}
-        open={Boolean(deleteColumn)}
-        title={d.text('حذف العمود', 'Delete column')}
-      />
       <ConfirmDialog
         confirmLabel={d.text('حذف الكل', 'Delete all')}
         isConfirming={deleting}
@@ -330,20 +284,18 @@ function sheetColumns(items: DataEntryClientListItem[], text: (arabic: string, e
     { key: 'phone', label: text('التليفون', 'Phone') },
     { key: 'address', label: text('العنوان', 'Address') },
     { key: 'feedback', label: text('فيدباك', 'Feedback') },
-    { key: 'data', label: text('بيانات', 'Data') },
     ...extraColumns(items).map((name) => ({ key: name, label: name })),
   ];
 }
 
 function tableColumns(items: DataEntryClientListItem[], text: (arabic: string, english: string) => string) {
   return [
-    { key: 'id', label: text('الرقم القومي', 'National ID'), deleteKey: 'ID' },
-    { key: 'name', label: text('الاسم', 'Name'), deleteKey: 'Name' },
-    { key: 'phone', label: text('التليفونات', 'Phones'), deleteKey: 'Tell' },
-    { key: 'address', label: text('العنوان', 'Address'), deleteKey: 'All Address' },
-    { key: 'feedback', label: text('فيدباك', 'Feedback'), deleteKey: 'FEEDBACK' },
-    { key: 'data', label: text('بيانات', 'Data'), deleteKey: 'Data' },
-    ...extraColumns(items).map((name) => ({ key: name, label: name, deleteKey: name })),
+    { key: 'id', label: text('الرقم القومي', 'National ID') },
+    { key: 'name', label: text('الاسم', 'Name') },
+    { key: 'phone', label: text('التليفونات', 'Phones') },
+    { key: 'address', label: text('العنوان', 'Address') },
+    { key: 'feedback', label: text('فيدباك', 'Feedback') },
+    ...extraColumns(items).map((name) => ({ key: name, label: name })),
   ];
 }
 

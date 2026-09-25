@@ -148,6 +148,7 @@ export interface DataEntryImportMappingRequest {
   firstDataRow: number;
   columns: Record<string, string | null>;
   sheetNames?: string[];
+  excludedColumns?: string[];
 }
 
 export interface DataEntryImportPreviewRow {

@@ -106,7 +106,8 @@ public sealed record DataEntryImportMappingRequest(
     int HeaderRow,
     int FirstDataRow,
     Dictionary<string, string?> Columns,
-    IReadOnlyCollection<string>? SheetNames = null);
+    IReadOnlyCollection<string>? SheetNames = null,
+    IReadOnlyCollection<string>? ExcludedColumns = null);
 
 public sealed record DataEntryImportPreviewDto(
     Guid UploadId,

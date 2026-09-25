@@ -30,6 +30,8 @@ export function EditClientSheetModal({ client, onClose, onSaved }: { client: Cli
   const [feedback, setFeedback] = useState(client.feedback ?? '');
   const [data, setData] = useState(client.data ?? '');
   const [fields, setFields] = useState<Record<string, string>>(Object.fromEntries(extras));
+  const [detailName, setDetailName] = useState('');
+  const [detailValue, setDetailValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -78,7 +80,6 @@ export function EditClientSheetModal({ client, onClose, onSaved }: { client: Cli
         <TextAreaInput containerClassName="sm:col-span-2" label={d.text('التليفونات كما في الملف', 'Phones as in the file')} rows={3} value={phones} onChange={(event) => setPhones(event.target.value)} />
         <TextAreaInput containerClassName="sm:col-span-2" label={d.text('العنوان', 'Address')} rows={2} value={address} onChange={(event) => setAddress(event.target.value)} />
         <TextAreaInput containerClassName="sm:col-span-2" label={d.text('فيدباك', 'Feedback')} rows={2} value={feedback} onChange={(event) => setFeedback(event.target.value)} />
-        <TextAreaInput containerClassName="sm:col-span-2" label={d.text('بيانات', 'Data')} rows={2} value={data} onChange={(event) => setData(event.target.value)} />
         {Object.entries(fields).map(([key, value]) => (
           <TextAreaInput
             containerClassName="sm:col-span-2"
@@ -89,6 +90,28 @@ export function EditClientSheetModal({ client, onClose, onSaved }: { client: Cli
             onChange={(event) => setFields((current) => ({ ...current, [key]: event.target.value }))}
           />
         ))}
+        <div className="grid gap-3 rounded-xl border border-dashed border-mis-border p-3 sm:col-span-2 sm:grid-cols-[1fr_1fr_auto]">
+          <TextInput label={d.text('تفصيلة جديدة', 'New detail')} placeholder={d.text('مثال: السن', 'Example: age')} value={detailName} onChange={(event) => setDetailName(event.target.value)} />
+          <TextInput label={d.text('القيمة', 'Value')} value={detailValue} onChange={(event) => setDetailValue(event.target.value)} />
+          <div className="flex items-end">
+            <Button
+              disabled={!detailName.trim()}
+              fullWidth={false}
+              size="md"
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const name = detailName.trim();
+                if (!name) return;
+                setFields((current) => ({ ...current, [name]: detailValue.trim() }));
+                setDetailName('');
+                setDetailValue('');
+              }}
+            >
+              {d.text('إضافة للعميل', 'Add for this client')}
+            </Button>
+          </div>
+        </div>
       </form>
     </Modal>
   );
