@@ -660,40 +660,53 @@ public sealed class DataEntryService(
             upload.StorageKey);
         db.DataEntryBatches.Add(batch);
 
-        var customersByCode = await db.CollectionCustomers
+        var existingCustomers = await db.CollectionCustomers
             .Where(x => x.OrganizationId == saved.OrganizationId)
-            .ToDictionaryAsync(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase, token);
-        var customersByNational = customersByCode.Values
-            .Where(x => !string.IsNullOrWhiteSpace(x.NationalId))
-            .GroupBy(x => x.NationalId!, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            .ToListAsync(token);
+        var customersByCode = new Dictionary<string, CollectionCustomer>(StringComparer.OrdinalIgnoreCase);
+        var customersByNational = new Dictionary<string, CollectionCustomer>(StringComparer.OrdinalIgnoreCase);
+        foreach (var existing in existingCustomers)
+        {
+            customersByCode.TryAdd(existing.CustomerCode, existing);
+            if (!string.IsNullOrWhiteSpace(existing.NationalId))
+                customersByNational.TryAdd(existing.NationalId, existing);
+        }
 
         var createdCustomers = 0;
         var valid = 0;
         var invalid = 0;
         var excluded = (request.ExcludedRowNumbers ?? []).ToHashSet();
-        foreach (var staged in payload.Rows)
+        foreach (var staged in payload.Rows ?? [])
         {
             if (excluded.Contains(staged.RowNumber)) continue;
             var isImportable = DataEntryValues.RowStatuses.Importable.Contains(staged.Status);
+            var phones = staged.Phones ?? [];
+            var fields = staged.Fields ?? new Dictionary<string, string>();
+            var customerName = Fit(staged.CustomerName, 200) ?? $"Row {staged.RowNumber}";
+            var nationalId = Fit(staged.NationalId, 32);
+            var mobile = Fit(staged.MobileNumber, 32);
+            var address = Fit(staged.Address, 600);
+            var feedback = Fit(staged.Feedback, 2000);
+            var notes = Fit(staged.Notes, 2000);
+            var customerCode = Fit(staged.CustomerCode, 100);
             var row = new DataEntryRow(
                 batch.Id,
                 staged.RowNumber,
-                string.IsNullOrWhiteSpace(staged.CustomerName) ? $"Row {staged.RowNumber}" : staged.CustomerName,
+                customerName,
                 staged.Status,
-                staged.CustomerCode,
-                staged.NationalId,
-                staged.MobileNumber,
-                staged.Address,
-                staged.Feedback,
-                staged.Notes,
-                staged.AccountNumber,
-                staged.ContractNumber,
+                customerCode,
+                nationalId,
+                mobile,
+                address,
+                feedback,
+                notes,
+                Fit(staged.AccountNumber, 100),
+                Fit(staged.ContractNumber, 100),
                 staged.OutstandingAmount,
                 staged.OverdueAmount,
                 staged.DaysPastDue,
-                staged.ErrorMessage);
-            row.RememberFields(ProfileJson(staged.Phones, staged.Fields));
+                Fit(staged.ErrorMessage, 1000));
+            row.RememberFields(ProfileJson(phones, fields));
             db.DataEntryRows.Add(row);
 
             if (!isImportable)
@@ -704,21 +717,21 @@ public sealed class DataEntryService(
 
             valid++;
             CollectionCustomer? customer = null;
-            if (!string.IsNullOrWhiteSpace(staged.NationalId) && customersByNational.TryGetValue(staged.NationalId, out var byNational))
+            if (!string.IsNullOrWhiteSpace(nationalId) && customersByNational.TryGetValue(nationalId, out var byNational))
                 customer = byNational;
-            else if (!string.IsNullOrWhiteSpace(staged.CustomerCode) && customersByCode.TryGetValue(staged.CustomerCode, out var byCode))
+            else if (!string.IsNullOrWhiteSpace(customerCode) && customersByCode.TryGetValue(customerCode, out var byCode))
                 customer = byCode;
 
             if (customer is null)
             {
-                var code = string.IsNullOrWhiteSpace(staged.CustomerCode)
-                    ? BuildCustomerCode(staged.NationalId, staged.MobileNumber, staged.CustomerName, staged.AccountNumber ?? staged.RowNumber.ToString())
-                    : staged.CustomerCode!;
-                customer = new CollectionCustomer(saved.OrganizationId, code, staged.CustomerName, staged.CustomerName, now);
-                customer.ApplyImportedContact(staged.CustomerName, staged.CustomerName, staged.NationalId, staged.MobileNumber);
-                if (!string.IsNullOrWhiteSpace(staged.Address) || staged.Phones.Count > 1)
-                    customer.UpdatePortfolioContact(customer.PrimaryPhone, staged.Phones.ElementAtOrDefault(1), staged.Address, ApiTextLocalizer.IsArabic);
-                customer.ApplyDataEntryDetails(staged.Feedback, staged.Notes, DataEntryValues.Sources.Imported, user.UserId);
+                var code = Fit(string.IsNullOrWhiteSpace(customerCode)
+                    ? BuildCustomerCode(nationalId, mobile, customerName, staged.AccountNumber ?? staged.RowNumber.ToString())
+                    : customerCode, 100)!;
+                customer = new CollectionCustomer(saved.OrganizationId, code, customerName, customerName, now);
+                customer.ApplyImportedContact(customerName, customerName, nationalId, mobile);
+                if (!string.IsNullOrWhiteSpace(address) || phones.Count > 1)
+                    customer.UpdatePortfolioContact(customer.PrimaryPhone, Fit(phones.ElementAtOrDefault(1), 32), address, ApiTextLocalizer.IsArabic);
+                customer.ApplyDataEntryDetails(feedback, notes, DataEntryValues.Sources.Imported, user.UserId);
                 db.CollectionCustomers.Add(customer);
                 customersByCode[customer.CustomerCode] = customer;
                 if (!string.IsNullOrWhiteSpace(customer.NationalId))
@@ -728,7 +741,7 @@ public sealed class DataEntryService(
             else
             {
                 // SKIP: do not overwrite existing customer identity data.
-                customer.ApplyDataEntryDetails(staged.Feedback, staged.Notes, DataEntryValues.Sources.Imported, user.UserId);
+                customer.ApplyDataEntryDetails(feedback, notes, DataEntryValues.Sources.Imported, user.UserId);
             }
 
             row.LinkCustomer(customer.Id);
@@ -1288,6 +1301,13 @@ public sealed class DataEntryService(
             if (digits.Length >= 8 && !found.Contains(digits)) found.Add(digits);
         }
         return found.ToArray();
+    }
+
+    private static string? Fit(string? value, int max)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var trimmed = value.Trim();
+        return trimmed.Length <= max ? trimmed : trimmed[..max];
     }
 
     private static string Clip(string? value, int max)
