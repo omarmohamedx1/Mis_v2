@@ -32,18 +32,33 @@ export const dataEntryService = {
     return (await apiClient.get<DataEntryPortfolio[]>(`/data-entry/organizations/${organizationId}/portfolios`)).data;
   },
 
-  async clients(search?: string, filters?: { hasPhone?: boolean; hasAddress?: boolean; hasFeedback?: boolean; hasData?: boolean }) {
+  async clients(search?: string, filters?: { column?: string; value?: string; presence?: 'filled' | 'empty' }) {
     return loadAllPages((page, pageSize) => apiClient.get<DataEntryPagedResult<DataEntryClientListItem>>('/data-entry/clients', {
       params: {
         search: search || undefined,
-        hasPhone: filters?.hasPhone || undefined,
-        hasAddress: filters?.hasAddress || undefined,
-        hasFeedback: filters?.hasFeedback || undefined,
-        hasData: filters?.hasData || undefined,
+        column: filters?.column || undefined,
+        value: filters?.value || undefined,
+        presence: filters?.presence || undefined,
         page,
         pageSize,
       },
     }).then((r) => r.data), 200);
+  },
+
+  async updateClient(customerId: string, input: { customerName: string; nationalId?: string | null; phones?: string | null; address?: string | null; feedback?: string | null; data?: string | null; fields?: Record<string, string> }) {
+    return (await apiClient.put<DataEntryClientDetails>(`/data-entry/clients/${customerId}`, input)).data;
+  },
+
+  async addColumn(name: string) {
+    await apiClient.post('/data-entry/clients/columns', { name });
+  },
+
+  async deleteColumn(name: string) {
+    await apiClient.delete('/data-entry/clients/columns', { params: { name } });
+  },
+
+  async deleteAllClients() {
+    return (await apiClient.delete<{ deleted: number; skipped: number }>('/data-entry/clients')).data;
   },
 
   async client(customerId: string) {

@@ -122,6 +122,19 @@ public sealed class CollectionCustomer
     }
     public void UpdatePortfolioContact(string? primaryPhone, string? alternatePhone, string? address, bool arabic)
     { PrimaryPhone = Normalize(primaryPhone); AlternatePhone = Normalize(alternatePhone); if (arabic) AddressArabic = Normalize(address); else AddressEnglish = Normalize(address); }
+    public void ReplaceSheetContact(string name, string? nationalId, string? primaryPhone, string? alternatePhone, string? address, string? feedback, string? notes, bool arabic)
+    {
+        FullNameArabic = Normalize(name) ?? FullNameArabic;
+        FullNameEnglish = Normalize(name) ?? FullNameEnglish;
+        NationalId = Normalize(nationalId);
+        PrimaryPhone = Normalize(primaryPhone);
+        AlternatePhone = Normalize(alternatePhone);
+        if (arabic) AddressArabic = Normalize(address);
+        else AddressEnglish = Normalize(address);
+        Feedback = Normalize(feedback);
+        Notes = Normalize(notes);
+    }
+
     public void ApplyDataEntryDetails(string? feedback, string? notes, string? source, Guid? createdByUserId)
     {
         Feedback = Normalize(feedback) ?? Feedback;

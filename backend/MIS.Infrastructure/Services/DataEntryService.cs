@@ -77,6 +77,7 @@ public sealed class DataEntryService(
         IReadOnlyDictionary<string, string> Fields);
     private sealed record PreviewPayload(DataEntryImportMappingRequest Mapping, Guid PortfolioId, IReadOnlyList<StagedRow> Rows);
     private sealed record RowProfile(IReadOnlyList<string> Phones, IReadOnlyDictionary<string, string> Columns);
+    private sealed record SheetClient(Guid Id, string? FullNameArabic, string? FullNameEnglish, string CustomerCode, string? NationalId, string? PrimaryPhone, string? AlternatePhone, string? AddressArabic, string? AddressEnglish, string? Feedback, string? Notes);
 
     private bool IsAdmin => user.Roles.Contains(SystemRoleNames.Admin, StringComparer.OrdinalIgnoreCase);
     private bool HasStar => user.Permissions.Contains("*", StringComparer.OrdinalIgnoreCase);
@@ -119,7 +120,7 @@ public sealed class DataEntryService(
             .ToArrayAsync(token);
     }
 
-    public async Task<DataEntryClientPageDto> ListClientsAsync(string? search, bool? hasPhone, bool? hasAddress, bool? hasFeedback, bool? hasData, int page, int pageSize, CancellationToken token)
+    public async Task<DataEntryClientPageDto> ListClientsAsync(string? search, string? column, string? value, string? presence, int page, int pageSize, CancellationToken token)
     {
         EnsureAccess();
         (page, pageSize) = NormalizePage(page, pageSize);
@@ -146,22 +147,29 @@ public sealed class DataEntryService(
                 rowMatches.Contains(c.Id));
         }
 
-        if (hasPhone == true)
-            query = query.Where(c => c.PrimaryPhone != null || c.AlternatePhone != null
-                || db.DataEntryRows.Any(r => r.CollectionCustomerId == c.Id && r.FieldsJson != null && r.FieldsJson.Contains("\"phones\":[\"")));
-        if (hasAddress == true)
-            query = query.Where(c => c.AddressArabic != null || c.AddressEnglish != null);
-        if (hasFeedback == true)
-            query = query.Where(c => c.Feedback != null && c.Feedback != "");
-        if (hasData == true)
-            query = query.Where(c => c.Notes != null && c.Notes != "");
-
         var arabic = ApiTextLocalizer.IsArabic;
-        var total = await query.CountAsync(token);
-        var items = await query
-            .OrderByDescending(c => c.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+        var columnFilter = !string.IsNullOrWhiteSpace(column) || !string.IsNullOrWhiteSpace(value) || presence is "filled" or "empty";
+        List<Guid> pageIds;
+        int total;
+        Dictionary<Guid, RowProfile>? preloaded = null;
+        if (columnFilter)
+        {
+            var ordered = await query.OrderByDescending(c => c.CreatedAt)
+                .Select(c => new SheetClient(c.Id, c.FullNameArabic, c.FullNameEnglish, c.CustomerCode, c.NationalId, c.PrimaryPhone, c.AlternatePhone, c.AddressArabic, c.AddressEnglish, c.Feedback, c.Notes))
+                .ToListAsync(token);
+            preloaded = await LoadProfilesAsync(ordered.Select(item => item.Id).ToArray(), token);
+            var matched = ordered.Where(item => ColumnMatches(column, value, presence, item, preloaded.GetValueOrDefault(item.Id))).ToList();
+            total = matched.Count;
+            pageIds = matched.Skip((page - 1) * pageSize).Take(pageSize).Select(item => item.Id).ToList();
+        }
+        else
+        {
+            total = await query.CountAsync(token);
+            pageIds = await query.OrderByDescending(c => c.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).Select(c => c.Id).ToListAsync(token);
+        }
+
+        var items = await db.CollectionCustomers.AsNoTracking()
+            .Where(c => pageIds.Contains(c.Id))
             .Select(c => new DataEntryClientListItemDto(
                 c.Id,
                 c.CustomerCode,
@@ -174,7 +182,8 @@ public sealed class DataEntryService(
                 db.CollectionCases.Where(x => x.CustomerId == c.Id).OrderByDescending(x => x.CreatedAt).Select(x => x.Status).FirstOrDefault(),
                 db.DataEntryRows.Where(r => r.CollectionCustomerId == c.Id).OrderByDescending(r => r.CreatedAt).Select(r => r.Batch.Status).FirstOrDefault()))
             .ToArrayAsync(token);
-        var profiles = await LoadProfilesAsync(items.Select(item => item.Id).ToArray(), token);
+        items = pageIds.Select(id => items.First(item => item.Id == id)).ToArray();
+        var profiles = preloaded ?? await LoadProfilesAsync(items.Select(item => item.Id).ToArray(), token);
         var enriched = items.Select(item =>
         {
             profiles.TryGetValue(item.Id, out var profile);
@@ -253,7 +262,7 @@ public sealed class DataEntryService(
             row?.BatchId,
             row?.Batch.BatchNumber,
             row?.Batch.Status,
-            ReadProfile(row?.FieldsJson)?.Phones,
+            SheetPhones(ReadProfile(row?.FieldsJson), customer.PrimaryPhone),
             ReadProfile(row?.FieldsJson)?.Columns);
     }
 
@@ -357,6 +366,10 @@ public sealed class DataEntryService(
         if (await db.CollectionCases.AnyAsync(x => x.CustomerId == customerId, token))
             throw new HrConflictException("This client cannot be deleted.");
 
+        var documents = await db.DataEntryDocuments.Where(x => x.CustomerId == customerId).ToListAsync(token);
+        var storageKeys = documents.Select(x => x.StorageKey).ToArray();
+        db.DataEntryDocuments.RemoveRange(documents);
+
         var rows = await db.DataEntryRows.Include(x => x.Batch)
             .Where(x => x.CollectionCustomerId == customerId)
             .ToListAsync(token);
@@ -383,6 +396,138 @@ public sealed class DataEntryService(
             new { customer.CustomerCode, customer.FullNameEnglish },
             null,
             $"Deleted unused data-entry client {customer.CustomerCode}."), token);
+        await db.SaveChangesAsync(token);
+        foreach (var storageKey in storageKeys)
+        {
+            try { await storage.DeleteAsync(storageKey, CancellationToken.None); } catch { /* the row removal is authoritative */ }
+        }
+    }
+
+    public async Task<DeleteDataEntryClientsResult> DeleteAllClientsAsync(CancellationToken token)
+    {
+        EnsureManage();
+        var ids = await ScopeClientIds().Distinct().ToListAsync(token);
+        var deleted = 0;
+        var skipped = 0;
+        foreach (var id in ids)
+        {
+            try
+            {
+                await DeleteClientAsync(id, token);
+                deleted++;
+            }
+            catch (HrConflictException) { skipped++; }
+            catch (HrNotFoundException) { skipped++; }
+        }
+        return new DeleteDataEntryClientsResult(deleted, skipped);
+    }
+
+    public async Task<DataEntryClientDetailsDto> UpdateClientAsync(Guid customerId, UpdateDataEntryClientRequest request, CancellationToken token)
+    {
+        EnsureManage();
+        if (string.IsNullOrWhiteSpace(request.CustomerName))
+            throw new HrValidationException("Customer name is required.");
+        if (!await ScopeClientIds().AnyAsync(id => id == customerId, token))
+            throw new HrForbiddenException("You do not have permission to edit this client.");
+
+        var customer = await db.CollectionCustomers.SingleOrDefaultAsync(x => x.Id == customerId, token)
+            ?? throw new HrNotFoundException("Client was not found.");
+        var row = await db.DataEntryRows
+            .Where(x => x.CollectionCustomerId == customerId)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync(token)
+            ?? throw new HrNotFoundException("Client was not found.");
+
+        var columns = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in ReadProfile(row.FieldsJson)?.Columns ?? new Dictionary<string, string>())
+            if (!string.IsNullOrWhiteSpace(pair.Value)) columns[pair.Key] = pair.Value;
+        foreach (var pair in request.Fields ?? new Dictionary<string, string>())
+            columns[pair.Key] = pair.Value ?? "";
+
+        var name = Fit(request.CustomerName, 200)!;
+        var nationalId = Fit(request.NationalId, 32);
+        var phonesRaw = request.Phones?.Trim() ?? "";
+        var phones = SplitPhones(phonesRaw);
+        var address = Fit(request.Address, 600);
+        var feedback = Fit(request.Feedback, 2000);
+        var data = Fit(request.Data, 2000);
+        SetColumn(columns, name, "Name");
+        SetColumn(columns, nationalId, "ID");
+        SetColumn(columns, phonesRaw, "Tell");
+        SetColumn(columns, address, "All Address");
+        SetColumn(columns, feedback, "FEEDBACK");
+        SetColumn(columns, data, "Data");
+
+        customer.ReplaceSheetContact(name, nationalId, Fit(phones.FirstOrDefault(), 32), Fit(phones.ElementAtOrDefault(1), 32), address, feedback, data, ApiTextLocalizer.IsArabic);
+        row.ApplySheetValues(name, nationalId, Fit(phones.FirstOrDefault(), 32), address, feedback, data);
+        row.RememberFields(ProfileJson(phones, columns));
+        await db.SaveChangesAsync(token);
+        return await GetClientAsync(customerId, token);
+    }
+
+    public async Task AddColumnAsync(string name, CancellationToken token)
+    {
+        EnsureManage();
+        var column = name?.Trim() ?? "";
+        if (column.Length is < 1 or > 80)
+            throw new HrValidationException("Column name is required.");
+        foreach (var row in await LatestRowsAsync(token))
+        {
+            var columns = EditableColumns(row);
+            if (columns.Keys.Any(key => key.Equals(column, StringComparison.OrdinalIgnoreCase))) continue;
+            columns[column] = "";
+            var phones = SheetPhones(ReadProfile(row.FieldsJson), row.MobileNumber);
+            row.RememberFields(ProfileJson(phones, columns));
+        }
+        await db.SaveChangesAsync(token);
+    }
+
+    public async Task DeleteColumnAsync(string name, CancellationToken token)
+    {
+        EnsureManage();
+        var column = name?.Trim() ?? "";
+        if (column.Length == 0) throw new HrValidationException("Column name is required.");
+        if (column.Equals("name", StringComparison.OrdinalIgnoreCase))
+            throw new HrValidationException("The name column cannot be removed.");
+        var rows = await LatestRowsAsync(token);
+        var customerIds = rows.Select(row => row.CollectionCustomerId!.Value).ToArray();
+        var customers = await db.CollectionCustomers.Where(customer => customerIds.Contains(customer.Id)).ToDictionaryAsync(customer => customer.Id, token);
+        foreach (var row in rows)
+        {
+            var columns = EditableColumns(row);
+            var aliases = ColumnAliases(column);
+            foreach (var key in columns.Keys.Where(key => aliases.Any(alias => SameColumn(key, alias))).ToArray())
+                columns.Remove(key);
+            var phones = SheetPhones(new RowProfile([], columns), row.MobileNumber);
+            if (SameColumn(column, "Tell") || SameColumn(column, "Tel") || SameColumn(column, "Telephone"))
+                phones = [];
+            row.RememberFields(ProfileJson(phones, columns));
+            if (!customers.TryGetValue(row.CollectionCustomerId!.Value, out var customer)) continue;
+            var clearId = SameColumn(column, "ID") || SameColumn(column, "National ID");
+            var clearPhone = SameColumn(column, "Tell") || SameColumn(column, "Tel") || SameColumn(column, "Telephone");
+            var clearAddress = SameColumn(column, "All Address") || SameColumn(column, "Address");
+            var clearFeedback = SameColumn(column, "FEEDBACK") || SameColumn(column, "Feedback");
+            var clearData = SameColumn(column, "Data") || SameColumn(column, "Notes");
+            if (clearId || clearPhone || clearAddress || clearFeedback || clearData)
+            {
+                customer.ReplaceSheetContact(
+                    customer.FullNameArabic ?? customer.FullNameEnglish ?? customer.CustomerCode,
+                    clearId ? null : customer.NationalId,
+                    clearPhone ? null : customer.PrimaryPhone,
+                    clearPhone ? null : customer.AlternatePhone,
+                    clearAddress ? null : customer.AddressArabic ?? customer.AddressEnglish,
+                    clearFeedback ? null : customer.Feedback,
+                    clearData ? null : customer.Notes,
+                    ApiTextLocalizer.IsArabic);
+                row.ApplySheetValues(
+                    row.CustomerName,
+                    clearId ? null : row.NationalId,
+                    clearPhone ? null : row.MobileNumber,
+                    clearAddress ? null : row.Address,
+                    clearFeedback ? null : row.Feedback,
+                    clearData ? null : row.Notes);
+            }
+        }
         await db.SaveChangesAsync(token);
     }
 
@@ -1249,7 +1394,7 @@ public sealed class DataEntryService(
         {
             if (result.ContainsKey(row.CustomerId)) continue;
             var profile = ReadProfile(row.FieldsJson);
-            var phones = profile?.Phones?.Where(phone => !string.IsNullOrWhiteSpace(phone)).ToArray() ?? SplitPhones(row.MobileNumber);
+            var phones = SheetPhones(profile, row.MobileNumber);
             var columns = new Dictionary<string, string>(profile?.Columns ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
             if (!string.IsNullOrWhiteSpace(row.NationalId) && FirstColumn(columns, "ID", "National ID") is null)
                 columns["ID"] = row.NationalId;
@@ -1297,10 +1442,86 @@ public sealed class DataEntryService(
         var found = new List<string>();
         foreach (var part in raw.Split(['/', '|', '،', ',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
+            if (part.Length == 0 || found.Contains(part)) continue;
             var digits = new string(part.Where(char.IsDigit).ToArray());
-            if (digits.Length >= 8 && !found.Contains(digits)) found.Add(digits);
+            if (digits.Length >= 8 || part.Any(char.IsDigit)) found.Add(part);
         }
-        return found.ToArray();
+        return found.Count > 0 ? found.ToArray() : [raw.Trim()];
+    }
+
+    private static string[] SheetPhones(RowProfile? profile, string? fallbackMobile)
+    {
+        var raw = profile is null ? null : FirstColumn(profile.Columns, "Tell", "Tel", "Telephone", "Mobile", "Phone");
+        if (!string.IsNullOrWhiteSpace(raw)) return SplitPhones(raw);
+        var listed = profile?.Phones?.Where(phone => !string.IsNullOrWhiteSpace(phone)).Select(phone => phone.Trim()).Distinct().ToArray() ?? [];
+        return listed.Length > 0 ? listed : SplitPhones(fallbackMobile);
+    }
+
+    private static bool ColumnMatches(string? column, string? value, string? presence, SheetClient client, RowProfile? profile)
+    {
+        var cell = SheetCell(column, client, profile);
+        var filled = !string.IsNullOrWhiteSpace(cell);
+        if (presence == "filled" && !filled) return false;
+        if (presence == "empty" && filled) return false;
+        if (string.IsNullOrWhiteSpace(value)) return true;
+        return cell?.Contains(value.Trim(), StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string? SheetCell(string? column, SheetClient client, RowProfile? profile)
+    {
+        var columns = profile?.Columns ?? new Dictionary<string, string>();
+        var key = column?.Trim().ToLowerInvariant() ?? "";
+        var name = client.FullNameArabic ?? client.FullNameEnglish ?? client.CustomerCode;
+        return key switch
+        {
+            "" or "all" => string.Join(' ', new[] { name, client.NationalId, client.PrimaryPhone, client.AlternatePhone, client.AddressArabic, client.AddressEnglish, client.Feedback, client.Notes, string.Join(' ', columns.Values) }.Where(part => !string.IsNullOrWhiteSpace(part))),
+            "name" => FirstColumn(columns, "Name") ?? name,
+            "id" or "nationalid" => FirstColumn(columns, "ID", "National ID") ?? client.NationalId,
+            "phone" or "tell" or "tel" or "telephone" => FirstColumn(columns, "Tell", "Tel", "Telephone", "Mobile", "Phone") ?? string.Join(" / ", SheetPhones(profile, client.PrimaryPhone)),
+            "address" => FirstColumn(columns, "All Address", "Address") ?? client.AddressArabic ?? client.AddressEnglish,
+            "feedback" => FirstColumn(columns, "FEEDBACK", "Feedback") ?? client.Feedback,
+            "data" or "notes" => FirstColumn(columns, "Data", "Notes") ?? client.Notes,
+            _ => FirstColumn(columns, column ?? ""),
+        };
+    }
+
+    private async Task<List<DataEntryRow>> LatestRowsAsync(CancellationToken token)
+    {
+        var ids = await ScopeClientIds().Distinct().ToListAsync(token);
+        var rows = await db.DataEntryRows
+            .Where(row => row.CollectionCustomerId != null && ids.Contains(row.CollectionCustomerId.Value))
+            .OrderByDescending(row => row.CreatedAt)
+            .ToListAsync(token);
+        return rows.GroupBy(row => row.CollectionCustomerId).Select(group => group.First()).ToList();
+    }
+
+    private static Dictionary<string, string> EditableColumns(DataEntryRow row)
+    {
+        var columns = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in ReadProfile(row.FieldsJson)?.Columns ?? new Dictionary<string, string>())
+            columns[pair.Key] = pair.Value ?? "";
+        return columns;
+    }
+
+    private static void SetColumn(IDictionary<string, string> columns, string? value, params string[] names)
+    {
+        var key = columns.Keys.FirstOrDefault(existing => names.Any(name => SameColumn(existing, name))) ?? names[0];
+        if (string.IsNullOrWhiteSpace(value)) columns.Remove(key);
+        else columns[key] = value.Trim();
+    }
+
+    private static bool SameColumn(string left, string right) =>
+        NormalizeHeader(left) == NormalizeHeader(right);
+
+    private static string[] ColumnAliases(string column)
+    {
+        var key = column.Trim().ToLowerInvariant();
+        if (key is "id" or "national id" or "nationalid") return ["ID", "National ID"];
+        if (key is "tell" or "tel" or "telephone" or "phone" or "mobile") return ["Tell", "Tel", "Telephone", "Mobile", "Phone"];
+        if (key is "all address" or "address" or "alladdress") return ["All Address", "Address"];
+        if (key is "feedback") return ["FEEDBACK", "Feedback"];
+        if (key is "data" or "notes") return ["Data", "Notes"];
+        return [column];
     }
 
     private static string? Fit(string? value, int max)

@@ -1,4 +1,4 @@
-import { FileUp, Paperclip, Plus, Search, Trash2, UsersRound } from 'lucide-react';
+import { FileUp, Paperclip, Pencil, Plus, Search, Trash2, UsersRound, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -11,6 +11,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { useToast } from '../../components/common/Toast';
 import { TextAreaInput } from '../../components/forms/TextAreaInput';
 import { TextInput } from '../../components/forms/TextInput';
+import { EditClientSheetModal } from '../../features/data-entry/EditClientSheetModal';
 import { useDataEntryText } from '../../features/data-entry/dataEntryUi';
 import { dataEntryService } from '../../features/data-entry/services/dataEntryService';
 import type { DataEntryClientListItem, DataEntryPortfolio } from '../../features/data-entry/types/dataEntry';
@@ -28,22 +29,33 @@ export function DataEntryClientsPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DataEntryClientListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [filters, setFilters] = useState({ phone: false, address: false, feedback: false, data: false });
+  const [column, setColumn] = useState('all');
+  const [presence, setPresence] = useState<'any' | 'filled' | 'empty'>('any');
+  const [columnSearch, setColumnSearch] = useState('');
+  const [columnQuery, setColumnQuery] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [editTarget, setEditTarget] = useState<DataEntryClientListItem | null>(null);
+  const [newColumn, setNewColumn] = useState('');
+  const [columnBusy, setColumnBusy] = useState(false);
+  const [deleteColumn, setDeleteColumn] = useState<string | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setQuery(search.trim()), 300);
+    const timer = setTimeout(() => {
+      setQuery(search.trim());
+      setColumnQuery(columnSearch.trim());
+    }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, columnSearch]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
     dataEntryService.clients(query || undefined, {
-      hasPhone: filters.phone,
-      hasAddress: filters.address,
-      hasFeedback: filters.feedback,
-      hasData: filters.data,
+      column: column === 'all' ? undefined : column,
+      value: columnQuery || undefined,
+      presence: presence === 'any' ? undefined : presence,
     })
       .then((result) => {
         if (cancelled) return;
@@ -52,7 +64,7 @@ export function DataEntryClientsPage() {
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [filters, query]);
+  }, [column, columnQuery, presence, query, reloadKey]);
 
   return (
     <div className="space-y-5">
@@ -70,6 +82,9 @@ export function DataEntryClientsPage() {
             <Button fullWidth={false} leftIcon={<Paperclip className="h-4 w-4" />} size="md" type="button" variant="outline" onClick={() => navigate('/data-entry/files')}>
               {d.text('ملفات العملاء', 'Client files')}
             </Button>
+            <Button className="text-red-700" disabled={!items.length || deleting} fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} size="md" type="button" variant="outline" onClick={() => setDeleteAllOpen(true)}>
+              {d.text('حذف الكل', 'Delete all')}
+            </Button>
           </>
         }
       />
@@ -84,22 +99,38 @@ export function DataEntryClientsPage() {
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {([
-            ['phone', d.text('فيه تليفون', 'Has a phone')],
-            ['address', d.text('فيه عنوان', 'Has an address')],
-            ['feedback', d.text('فيه فيدباك', 'Has feedback')],
-            ['data', d.text('فيه بيانات', 'Has data')],
-          ] as const).map(([key, label]) => (
-            <button
-              className={`rounded-full px-3 py-1 text-xs font-bold ${filters[key] ? 'bg-mis-primary text-white' : 'bg-slate-100 text-slate-600'}`}
-              key={key}
-              type="button"
-              onClick={() => setFilters((current) => ({ ...current, [key]: !current[key] }))}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="grid gap-3 md:grid-cols-[minmax(0,16rem)_minmax(0,12rem)_minmax(0,1fr)_auto]">
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold text-slate-600">{d.text('العمود', 'Column')}</span>
+            <select className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={column} onChange={(event) => setColumn(event.target.value)}>
+              {sheetColumns(items, d.text).map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold text-slate-600">{d.text('القيمة', 'Value')}</span>
+            <select className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={presence} onChange={(event) => setPresence(event.target.value as 'any' | 'filled' | 'empty')}>
+              <option value="any">{d.text('الكل', 'Any')}</option>
+              <option value="filled">{d.text('فيه بيانات', 'Filled')}</option>
+              <option value="empty">{d.text('فاضي', 'Empty')}</option>
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold text-slate-600">{d.text('يحتوي على', 'Contains')}</span>
+            <input className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={columnSearch} onChange={(event) => setColumnSearch(event.target.value)} />
+          </label>
+          <form className="flex items-end gap-2" onSubmit={(event) => {
+            event.preventDefault();
+            const name = newColumn.trim();
+            if (!name || columnBusy) return;
+            setColumnBusy(true);
+            dataEntryService.addColumn(name)
+              .then(() => { setNewColumn(''); setReloadKey((value) => value + 1); toast.success(d.text('تمت إضافة العمود.', 'Column added.')); })
+              .catch((reason) => toast.error(getApiErrorMessage(reason, d.text('تعذر إضافة العمود.', 'Could not add the column.'))))
+              .finally(() => setColumnBusy(false));
+          }}>
+            <TextInput label={d.text('عمود جديد', 'New column')} value={newColumn} onChange={(event) => setNewColumn(event.target.value)} />
+            <Button disabled={columnBusy || !newColumn.trim()} fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} size="md" type="submit">{d.text('إضافة', 'Add')}</Button>
+          </form>
         </div>
       </div>
 
@@ -113,8 +144,17 @@ export function DataEntryClientsPage() {
             <table className="min-w-[72rem] w-full text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
-                  {[d.text('الرقم القومي', 'National ID'), d.text('الاسم', 'Name'), d.text('التليفونات', 'Phones'), d.text('العنوان', 'Address'), d.text('فيدباك', 'Feedback'), d.text('بيانات', 'Data'), ...extraColumns(items)].map((label) => (
-                    <th className="px-4 py-3 text-start" key={label}>{label}</th>
+                  {tableColumns(items, d.text).map((item) => (
+                    <th className="px-4 py-3 text-start" key={item.key}>
+                      <span className="inline-flex items-center gap-1">
+                        {item.label}
+                        {item.key !== 'name' ? (
+                          <button className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-600" type="button" onClick={() => setDeleteColumn(item.deleteKey)}>
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
+                      </span>
+                    </th>
                   ))}
                   <th className="px-4 py-3" />
                 </tr>
@@ -128,11 +168,14 @@ export function DataEntryClientsPage() {
                     <td className="max-w-xs px-4 py-3 text-slate-700">{item.address || fieldValue(item, 'All Address', 'Address') || '—'}</td>
                     <td className="max-w-xs px-4 py-3 text-slate-700">{item.feedback || fieldValue(item, 'FEEDBACK', 'Feedback') || '—'}</td>
                     <td className="max-w-xs px-4 py-3 text-slate-700">{item.data || fieldValue(item, 'Data', 'Notes') || '—'}</td>
-                    {extraColumns(items).map((column) => (
-                      <td className="max-w-xs px-4 py-3 text-slate-700" key={column}>{item.fields?.[column] || '—'}</td>
+                    {extraColumns(items).map((columnName) => (
+                      <td className="max-w-xs px-4 py-3 text-slate-700" key={columnName}>{item.fields?.[columnName] || '—'}</td>
                     ))}
                     <td className="px-4 py-3 text-end">
                       <div className="flex justify-end gap-1">
+                        <Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" />} size="sm" type="button" variant="ghost" onClick={(event) => { event.stopPropagation(); setEditTarget(item); }}>
+                          {d.text('تعديل', 'Edit')}
+                        </Button>
                         <Button fullWidth={false} size="sm" type="button" variant="ghost" onClick={(event) => { event.stopPropagation(); navigate(`/data-entry/clients/${item.id}`); }}>
                           {d.text('فتح', 'Open')}
                         </Button>
@@ -169,6 +212,65 @@ export function DataEntryClientsPage() {
           }}
         />
       ) : null}
+      {editTarget ? (
+        <EditClientSheetModal
+          client={{
+            id: editTarget.id,
+            customerName: editTarget.customerName,
+            nationalId: editTarget.nationalId || fieldValue(editTarget, 'ID'),
+            phones: phoneCell(editTarget),
+            address: editTarget.address || fieldValue(editTarget, 'All Address', 'Address'),
+            feedback: editTarget.feedback || fieldValue(editTarget, 'FEEDBACK', 'Feedback'),
+            data: editTarget.data || fieldValue(editTarget, 'Data', 'Notes'),
+            fields: editTarget.fields,
+          }}
+          onClose={() => setEditTarget(null)}
+          onSaved={() => {
+            setEditTarget(null);
+            setReloadKey((value) => value + 1);
+            toast.success(d.text('تم حفظ التعديل.', 'Changes saved.'));
+          }}
+        />
+      ) : null}
+      <ConfirmDialog
+        confirmLabel={d.text('حذف العمود', 'Delete column')}
+        isConfirming={columnBusy}
+        message={d.text(`حذف عمود ${deleteColumn ?? ''} من كل العملاء؟`, `Remove the ${deleteColumn ?? ''} column from every client?`)}
+        onCancel={() => setDeleteColumn(null)}
+        onConfirm={() => {
+          if (!deleteColumn) return;
+          setColumnBusy(true);
+          dataEntryService.deleteColumn(deleteColumn)
+            .then(() => {
+              toast.success(d.text('تم حذف العمود.', 'Column removed.'));
+              setDeleteColumn(null);
+              setReloadKey((value) => value + 1);
+            })
+            .catch((reason) => toast.error(getApiErrorMessage(reason, d.text('تعذر حذف العمود.', 'Could not remove the column.'))))
+            .finally(() => setColumnBusy(false));
+        }}
+        open={Boolean(deleteColumn)}
+        title={d.text('حذف العمود', 'Delete column')}
+      />
+      <ConfirmDialog
+        confirmLabel={d.text('حذف الكل', 'Delete all')}
+        isConfirming={deleting}
+        message={d.text('حذف كل العملاء من القائمة؟ العملاء المرتبطون بحالة لن يُحذفوا.', 'Delete every client in the list? Clients tied to a case stay.')}
+        onCancel={() => setDeleteAllOpen(false)}
+        onConfirm={() => {
+          setDeleting(true);
+          dataEntryService.deleteAllClients()
+            .then((result) => {
+              toast.success(d.text(`اتحذف ${result.deleted} عميل${result.skipped ? `، وتساب ${result.skipped}` : ''}.`, `Deleted ${result.deleted} client${result.deleted === 1 ? '' : 's'}${result.skipped ? `, left ${result.skipped}` : ''}.`));
+              setDeleteAllOpen(false);
+              setReloadKey((value) => value + 1);
+            })
+            .catch((reason) => toast.error(getApiErrorMessage(reason, d.text('تعذر حذف العملاء.', 'Could not delete the clients.'))))
+            .finally(() => setDeleting(false));
+        }}
+        open={deleteAllOpen}
+        title={d.text('حذف كل العملاء', 'Delete all clients')}
+      />
       <ConfirmDialog
         confirmLabel={d.text('حذف', 'Delete')}
         isConfirming={deleting}
@@ -208,10 +310,40 @@ function fieldValue(item: DataEntryClientListItem, ...names: string[]) {
   return '';
 }
 
+function phoneCell(item: DataEntryClientListItem) {
+  return fieldValue(item, 'Tell', 'Tel', 'Telephone', 'Mobile', 'Phone') || (item.phones ?? []).filter(Boolean).join(' / ') || item.mobileNumber || '';
+}
+
 function clientPhones(item: DataEntryClientListItem) {
-  const listed = (item.phones ?? []).map((phone) => phone.trim()).filter(Boolean);
-  if (listed.length) return listed;
-  return item.mobileNumber ? [item.mobileNumber] : [];
+  const raw = phoneCell(item);
+  if (!raw) return [];
+  const parts = raw.split(/[/|،,;\n\r]+/).map((part) => part.trim()).filter(Boolean);
+  return parts.length ? parts : [raw];
+}
+
+function sheetColumns(items: DataEntryClientListItem[], text: (arabic: string, english: string) => string) {
+  return [
+    { key: 'all', label: text('كل الأعمدة', 'All columns') },
+    { key: 'id', label: text('الرقم القومي', 'National ID') },
+    { key: 'name', label: text('الاسم', 'Name') },
+    { key: 'phone', label: text('التليفون', 'Phone') },
+    { key: 'address', label: text('العنوان', 'Address') },
+    { key: 'feedback', label: text('فيدباك', 'Feedback') },
+    { key: 'data', label: text('بيانات', 'Data') },
+    ...extraColumns(items).map((name) => ({ key: name, label: name })),
+  ];
+}
+
+function tableColumns(items: DataEntryClientListItem[], text: (arabic: string, english: string) => string) {
+  return [
+    { key: 'id', label: text('الرقم القومي', 'National ID'), deleteKey: 'ID' },
+    { key: 'name', label: text('الاسم', 'Name'), deleteKey: 'Name' },
+    { key: 'phone', label: text('التليفونات', 'Phones'), deleteKey: 'Tell' },
+    { key: 'address', label: text('العنوان', 'Address'), deleteKey: 'All Address' },
+    { key: 'feedback', label: text('فيدباك', 'Feedback'), deleteKey: 'FEEDBACK' },
+    { key: 'data', label: text('بيانات', 'Data'), deleteKey: 'Data' },
+    ...extraColumns(items).map((name) => ({ key: name, label: name, deleteKey: name })),
+  ];
 }
 
 function extraColumns(items: DataEntryClientListItem[]) {
@@ -227,9 +359,9 @@ function extraColumns(items: DataEntryClientListItem[]) {
 function PhoneList({ numbers }: { numbers: string[] }) {
   if (!numbers.length) return <span className="text-slate-400">—</span>;
   return (
-    <div className="flex max-w-xs flex-wrap gap-1">
-      {numbers.map((number) => (
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs text-mis-navy" data-bidi="ltr" key={number}>{number}</span>
+    <div className="flex max-w-xs flex-col gap-1">
+      {numbers.map((number, index) => (
+        <span className="font-mono text-xs text-mis-navy" data-bidi="ltr" key={`${number}-${index}`}>{number}</span>
       ))}
     </div>
   );

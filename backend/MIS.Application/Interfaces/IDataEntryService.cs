@@ -9,10 +9,14 @@ public interface IDataEntryService
     Task<IReadOnlyList<DataEntryOrganizationDto>> ListOrganizationsAsync(CancellationToken token);
     Task<IReadOnlyList<DataEntryPortfolioDto>> ListPortfoliosAsync(Guid organizationId, CancellationToken token);
 
-    Task<DataEntryClientPageDto> ListClientsAsync(string? search, bool? hasPhone, bool? hasAddress, bool? hasFeedback, bool? hasData, int page, int pageSize, CancellationToken token);
+    Task<DataEntryClientPageDto> ListClientsAsync(string? search, string? column, string? value, string? presence, int page, int pageSize, CancellationToken token);
     Task<DataEntryClientDetailsDto> GetClientAsync(Guid customerId, CancellationToken token);
     Task<DataEntryClientDetailsDto> CreateManualClientAsync(CreateDataEntryClientRequest request, CancellationToken token);
+    Task<DataEntryClientDetailsDto> UpdateClientAsync(Guid customerId, UpdateDataEntryClientRequest request, CancellationToken token);
+    Task AddColumnAsync(string name, CancellationToken token);
+    Task DeleteColumnAsync(string name, CancellationToken token);
     Task DeleteClientAsync(Guid customerId, CancellationToken token);
+    Task<DeleteDataEntryClientsResult> DeleteAllClientsAsync(CancellationToken token);
 
     Task<DataEntryImportUploadDto> UploadImportAsync(HrUploadFile file, CancellationToken token);
     Task<DataEntrySheetPreviewDto> ReadSheetAsync(Guid uploadId, string? sheetName, CancellationToken token);

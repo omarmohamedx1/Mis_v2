@@ -23,6 +23,18 @@ public sealed record DataEntryClientListItemDto(
     IReadOnlyDictionary<string, string>? Fields = null);
 public sealed record DataEntryClientPageDto(IReadOnlyList<DataEntryClientListItemDto> Items, int Page, int PageSize, int TotalCount);
 
+public sealed record UpdateDataEntryClientRequest(
+    string CustomerName,
+    string? NationalId,
+    string? Phones,
+    string? Address,
+    string? Feedback,
+    string? Data,
+    IReadOnlyDictionary<string, string>? Fields);
+
+public sealed record DataEntryColumnRequest(string Name);
+public sealed record DeleteDataEntryClientsResult(int Deleted, int Skipped);
+
 public sealed record DataEntryClientDetailsDto(
     Guid Id,
     string CustomerNumber,

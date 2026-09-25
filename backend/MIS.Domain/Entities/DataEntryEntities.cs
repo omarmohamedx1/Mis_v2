@@ -203,6 +203,17 @@ public sealed class DataEntryRow
     public CollectionCase? CollectionCase { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
+    public void ApplySheetValues(string customerName, string? nationalId, string? mobile, string? address, string? feedback, string? notes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(customerName);
+        CustomerName = customerName.Trim();
+        NationalId = NullIfEmpty(nationalId);
+        MobileNumber = NullIfEmpty(mobile);
+        Address = NullIfEmpty(address);
+        Feedback = NullIfEmpty(feedback);
+        Notes = NullIfEmpty(notes);
+    }
+
     public void RememberFields(string? fieldsJson)
     {
         FieldsJson = string.IsNullOrWhiteSpace(fieldsJson) ? null : fieldsJson;

@@ -31,8 +31,8 @@ public sealed class DataEntryController(IDataEntryService dataEntry) : Controlle
 
     [HttpGet("clients")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]
-    public Task<DataEntryClientPageDto> Clients([FromQuery] string? search, [FromQuery] bool? hasPhone, [FromQuery] bool? hasAddress, [FromQuery] bool? hasFeedback, [FromQuery] bool? hasData, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken token = default)
-        => dataEntry.ListClientsAsync(search, hasPhone, hasAddress, hasFeedback, hasData, page, pageSize, token);
+    public Task<DataEntryClientPageDto> Clients([FromQuery] string? search, [FromQuery] string? column, [FromQuery] string? value, [FromQuery] string? presence, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken token = default)
+        => dataEntry.ListClientsAsync(search, column, value, presence, page, pageSize, token);
 
     [HttpGet("clients/{customerId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryAccess)]
@@ -44,6 +44,27 @@ public sealed class DataEntryController(IDataEntryService dataEntry) : Controlle
     public Task<DataEntryClientDetailsDto> CreateClient([FromBody] CreateDataEntryClientRequest request, CancellationToken token)
         => dataEntry.CreateManualClientAsync(request, token);
 
+    [HttpPut("clients/{customerId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
+    public Task<DataEntryClientDetailsDto> UpdateClient(Guid customerId, [FromBody] UpdateDataEntryClientRequest request, CancellationToken token)
+        => dataEntry.UpdateClientAsync(customerId, request, token);
+
+    [HttpPost("clients/columns")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
+    public async Task<IActionResult> AddColumn([FromBody] DataEntryColumnRequest request, CancellationToken token)
+    {
+        await dataEntry.AddColumnAsync(request.Name, token);
+        return NoContent();
+    }
+
+    [HttpDelete("clients/columns")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
+    public async Task<IActionResult> DeleteColumn([FromQuery] string name, CancellationToken token)
+    {
+        await dataEntry.DeleteColumnAsync(name, token);
+        return NoContent();
+    }
+
     [HttpDelete("clients/{customerId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
     public async Task<IActionResult> DeleteClient(Guid customerId, CancellationToken token)
@@ -51,6 +72,11 @@ public sealed class DataEntryController(IDataEntryService dataEntry) : Controlle
         await dataEntry.DeleteClientAsync(customerId, token);
         return NoContent();
     }
+
+    [HttpDelete("clients")]
+    [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]
+    public Task<DeleteDataEntryClientsResult> DeleteAll(CancellationToken token)
+        => dataEntry.DeleteAllClientsAsync(token);
 
     [HttpPost("import/upload")]
     [Authorize(Policy = AuthorizationPolicies.DataEntryManage)]

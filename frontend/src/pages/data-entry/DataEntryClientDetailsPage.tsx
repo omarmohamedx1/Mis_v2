@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { useToast } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { DataEntryDocumentsPanel } from '../../features/data-entry/DataEntryDocumentsPanel';
+import { EditClientSheetModal } from '../../features/data-entry/EditClientSheetModal';
 import { useDataEntryText } from '../../features/data-entry/dataEntryUi';
 import { dataEntryService } from '../../features/data-entry/services/dataEntryService';
 import type { DataEntryClientDetails, DataEntryDocument } from '../../features/data-entry/types/dataEntry';
@@ -43,6 +44,7 @@ export function DataEntryClientDetailsPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const canUpload = Boolean(user?.roles.some((role) => ['Admin', 'DataEntry'].includes(role)) || user?.permissions.includes('data_entry.manage') || user?.permissions.includes('data_entry.access'));
 
@@ -66,12 +68,6 @@ export function DataEntryClientDetailsPage() {
     data.customerNameArabic ||
     data.customerNameEnglish ||
     data.customerNumber;
-  const phones = (data.phones ?? []).map((phone) => phone.trim()).filter(Boolean);
-  const shownPhones = phones.length
-    ? phones
-    : [data.mobileNumber, data.alternateMobile].filter((value): value is string => Boolean(value?.trim()));
-  const known = new Set(['id', 'name', 'tell', 'tel', 'telephone', 'all address', 'address', 'feedback', 'data', 'notes']);
-  const extraFields = Object.entries(data.fields ?? {}).filter(([key, value]) => value?.trim() && !known.has(key.trim().toLowerCase()));
   const column = (...names: string[]) => {
     const fields = data.fields ?? {};
     for (const name of names) {
@@ -80,6 +76,13 @@ export function DataEntryClientDetailsPage() {
     }
     return '';
   };
+  const rawPhones = column('Tell', 'Tel', 'Telephone', 'Mobile', 'Phone') || (data.phones ?? []).filter(Boolean).join(' / ');
+  const phones = rawPhones.split(/[/|،,;\n\r]+/).map((phone) => phone.trim()).filter(Boolean);
+  const shownPhones = phones.length
+    ? phones
+    : [data.mobileNumber, data.alternateMobile].filter((value): value is string => Boolean(value?.trim()));
+  const known = new Set(['id', 'name', 'tell', 'tel', 'telephone', 'mobile', 'phone', 'all address', 'address', 'feedback', 'data', 'notes']);
+  const extraFields = Object.entries(data.fields ?? {}).filter(([key, value]) => value?.trim() && !known.has(key.trim().toLowerCase()));
 
   return (
     <div className="space-y-5">
@@ -92,7 +95,10 @@ export function DataEntryClientDetailsPage() {
         title={displayName}
         description={data.nationalId ? <span data-bidi="ltr">{data.nationalId}</span> : d.text('بيانات الحالة كما رُفعت', 'Case data as uploaded')}
         actions={
-          <Button fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} variant="danger" onClick={() => setDeleteOpen(true)}>{d.text('حذف العميل', 'Delete client')}</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" />} variant="outline" onClick={() => setEditing(true)}>{d.text('تعديل', 'Edit')}</Button>
+            <Button fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} variant="danger" onClick={() => setDeleteOpen(true)}>{d.text('حذف العميل', 'Delete client')}</Button>
+          </div>
         }
       />
 
@@ -165,6 +171,26 @@ export function DataEntryClientDetailsPage() {
         open={deleteOpen}
         title={d.text('حذف العميل', 'Delete client')}
       />
+      {editing ? (
+        <EditClientSheetModal
+          client={{
+            id: data.id,
+            customerName: displayName,
+            nationalId: column('ID', 'National ID') || data.nationalId,
+            phones: rawPhones,
+            address: column('All Address', 'Address') || data.address,
+            feedback: column('FEEDBACK', 'Feedback') || data.feedback,
+            data: column('Data', 'Notes') || data.notes,
+            fields: data.fields,
+          }}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            dataEntryService.client(id).then(setData).catch(() => setError(true));
+            toast.success(d.text('تم حفظ التعديل.', 'Changes saved.'));
+          }}
+        />
+      ) : null}
     </div>
   );
 }
