@@ -239,7 +239,7 @@ public sealed class AccountingService(
         if (action is "approve" or "reject" or "pay") EnsureApprove(); else EnsureManage();
         await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingTransportationClaims.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Transportation claim was not found.");
-        if (action == "pay" && row.EmployeeId != null && await db.AccountingEmployeePayrolls.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.Period.Year == row.ClaimDate.Year && x.Period.Month == row.ClaimDate.Month && x.Status == "PAID" && x.Transportation > 0, token)) throw new HrConflictException("This expense component was already paid in the employee payroll for this month.");
+        if (action == "pay" && await db.AccountingEmployeePayrolls.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.Period.Year == row.ClaimDate.Year && x.Period.Month == row.ClaimDate.Month && x.Status == "PAID" && x.Transportation > 0, token)) throw new HrConflictException("This expense component was already paid in the employee payroll for this month.");
         var now = DateTimeOffset.UtcNow;
         try
         {
