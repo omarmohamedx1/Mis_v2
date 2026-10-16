@@ -406,7 +406,7 @@ function AccessReviewModal({
   return (
     <Modal
       bodyClassName="p-0"
-      className="h-[calc(100vh-2rem)]"
+      className="h-[calc(100dvh-2rem)]"
       description={`${t.accessDesc} ${user.loginCode}`}
       footer={(
         <>

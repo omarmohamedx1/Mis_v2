@@ -137,8 +137,8 @@ export function AppRoutes() {
       <Route path="/" element={<DepartmentHome />} />
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/change-password" element={<Suspense fallback={<div className="flex min-h-screen items-center justify-center"><LoadingSpinner /></div>}><ForceChangePasswordPage /></Suspense>} />
-        <Route path="/modules" element={<Suspense fallback={<div className="flex min-h-screen items-center justify-center"><LoadingSpinner /></div>}><ModuleSelectorPage /></Suspense>} />
+        <Route path="/change-password" element={<Suspense fallback={<div className="flex min-h-dvh items-center justify-center"><LoadingSpinner /></div>}><ForceChangePasswordPage /></Suspense>} />
+        <Route path="/modules" element={<Suspense fallback={<div className="flex min-h-dvh items-center justify-center"><LoadingSpinner /></div>}><ModuleSelectorPage /></Suspense>} />
       </Route>
       <Route element={<ProtectedRoute requiredRole="Admin" />}>
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

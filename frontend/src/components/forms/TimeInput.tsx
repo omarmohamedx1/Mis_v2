@@ -1,5 +1,5 @@
 import { forwardRef, useId, type ChangeEvent, type InputHTMLAttributes, type ReactNode } from 'react';
-import { FormField } from './FormField';
+import { FormField, joinDescribedBy } from './FormField';
 import { ProfessionalTimeInput } from './ProfessionalTimeInput';
 
 export interface TimeInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
@@ -26,6 +26,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
   return (
     <FormField className={containerClassName} error={error} errorId={errorId} hint={hint} hintId={hintId} inputId={inputId} label={label} required={required}>
       <ProfessionalTimeInput
+        comfortable ariaInvalid={!!error} ariaDescribedBy={joinDescribedBy(hintId,errorId)}
         className={className}
         defaultValue={typeof defaultValue === 'string' ? defaultValue : undefined}
         disabled={disabled}

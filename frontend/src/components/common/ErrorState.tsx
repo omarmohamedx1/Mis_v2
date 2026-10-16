@@ -19,7 +19,7 @@ export function ErrorState({ className = '', compact = false, description, isRet
   const content = message ?? description;
   return (
     <div className={`flex items-center justify-center rounded-2xl border border-red-200 bg-white p-6 text-center ${compact ? 'min-h-40' : 'min-h-64'} ${className}`} role="alert">
-      <div className="max-w-md">
+      <div className="min-w-0 max-w-md [overflow-wrap:anywhere]">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
           <AlertTriangle className="h-6 w-6" aria-hidden="true" />
         </div>

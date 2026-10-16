@@ -1,3 +1,4 @@
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { FileUp, Paperclip, Pencil, Plus, Search, Trash2, UsersRound } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -99,17 +100,17 @@ export function DataEntryClientsPage() {
         <div className="grid gap-3 md:grid-cols-[minmax(0,16rem)_minmax(0,12rem)_minmax(0,1fr)]">
           <label className="block text-sm">
             <span className="mb-1 block font-semibold text-slate-600">{d.text('العمود', 'Column')}</span>
-            <select className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={column} onChange={(event) => setColumn(event.target.value)}>
+            <ProfessionalSelect className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={column} onChange={(event) => setColumn(event.target.value)}>
               {sheetColumns(items, d.text).map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-            </select>
+            </ProfessionalSelect>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-semibold text-slate-600">{d.text('القيمة', 'Value')}</span>
-            <select className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={presence} onChange={(event) => setPresence(event.target.value as 'any' | 'filled' | 'empty')}>
+            <ProfessionalSelect className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={presence} onChange={(event) => setPresence(event.target.value as 'any' | 'filled' | 'empty')}>
               <option value="any">{d.text('الكل', 'Any')}</option>
               <option value="filled">{d.text('فيه بيانات', 'Filled')}</option>
               <option value="empty">{d.text('فاضي', 'Empty')}</option>
-            </select>
+            </ProfessionalSelect>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-semibold text-slate-600">{d.text('يحتوي على', 'Contains')}</span>

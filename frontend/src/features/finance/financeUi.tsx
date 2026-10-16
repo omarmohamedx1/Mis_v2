@@ -21,5 +21,5 @@ export function FinanceStatus({ value }: { value: string }) {
 
 export function FinanceKpi({ label, value, hint, tone = 'blue' }: { label: string; value: string; hint?: string; tone?: 'blue' | 'green' | 'amber' | 'red' }) {
   const accents = { blue: 'from-mis-primary to-mis-blue', green: 'from-emerald-600 to-emerald-400', amber: 'from-amber-600 to-amber-400', red: 'from-rose-600 to-rose-400' };
-  return <article className="relative overflow-hidden rounded-2xl border border-mis-border bg-white p-5 shadow-sm"><span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accents[tone]}`} /><p className="text-sm font-semibold text-slate-500">{label}</p><p className="mt-3 text-2xl font-bold tracking-tight text-mis-navy" data-bidi="ltr">{value}</p>{hint && <p className="mt-2 text-xs text-slate-400">{hint}</p>}</article>;
+  return <article className="relative overflow-hidden rounded-2xl border border-mis-border bg-white p-5 shadow-sm"><span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accents[tone]}`} /><p className="text-sm font-semibold text-slate-500">{label}</p><p className="ds-metric-value mt-3 text-2xl font-bold tracking-tight text-mis-navy" data-bidi="ltr">{value}</p>{hint && <p className="mt-2 text-xs text-slate-400">{hint}</p>}</article>;
 }

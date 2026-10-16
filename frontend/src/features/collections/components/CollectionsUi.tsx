@@ -24,7 +24,7 @@ export function KpiCard({ label, value, accent = 'blue', hint, icon }: { label: 
         <p className="min-w-0 flex-1 text-sm font-medium leading-6 text-slate-500 [overflow-wrap:anywhere]">{label}</p>
         {icon ? <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl [&_svg]:size-4 ${iconTone[accent]}`}>{icon}</span> : null}
       </div>
-      <p className="mt-2 text-xl font-bold tabular-nums leading-snug text-mis-navy sm:text-2xl" data-bidi="ltr" title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}>{value}</p>
+      <p className="ds-metric-value mt-2 text-xl font-bold tabular-nums leading-snug text-mis-navy sm:text-2xl" data-bidi="ltr" title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}>{value}</p>
       {hint ? <p className="mt-1 text-xs leading-6 text-slate-500 [overflow-wrap:anywhere]">{hint}</p> : null}
     </article>
   );

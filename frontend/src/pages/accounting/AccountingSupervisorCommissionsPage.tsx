@@ -1,3 +1,4 @@
+import { Modal } from '../../components/common/Modal';
 import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Calculator, Percent, Save, UsersRound, X } from 'lucide-react';
@@ -136,8 +137,8 @@ export function AccountingSupervisorCommissionsPage() {
       </div>
 
       {selected ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-slate-900/40 p-4" onClick={() => setSelected(undefined)}>
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <Modal open onClose={() => setSelected(undefined)} title={selected.supervisorName} size="md" hideHeader hideCloseButton bodyClassName="p-0">
+          <div className="min-w-0 p-6" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold text-mis-navy">{selected.supervisorName}</h2>
@@ -167,7 +168,7 @@ export function AccountingSupervisorCommissionsPage() {
             <AccountingDeleteButton kind="SUPERVISOR" id={selected.id} amount={selected.finalCommission} description={`${selected.supervisorName} / ${a.monthLabel(selected.periodYear, selected.periodMonth)}`} onDeleted={async () => { setSelected(undefined); await load(); } } />
             <Button className="mt-4" fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setSelected(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   );

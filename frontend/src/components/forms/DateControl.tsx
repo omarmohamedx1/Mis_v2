@@ -17,5 +17,5 @@ export function DateControl({ className = '', defaultValue, disabled, id, max, m
     const target = { name: name ?? '', value: next } as HTMLInputElement;
     onChange?.({ target, currentTarget: target } as ChangeEvent<HTMLInputElement>);
   };
-  return <ProfessionalDateInput ariaLabel={props['aria-label']} className={layoutClassName} defaultValue={typeof defaultValue === 'string' ? defaultValue : undefined} disabled={disabled} id={id} max={typeof max === 'string' ? max : undefined} min={typeof min === 'string' ? min : undefined} mode={mode} name={name} onChange={notify} required={required} value={typeof value === 'string' ? value : undefined} />;
+  return <ProfessionalDateInput ariaInvalid={props['aria-invalid'] === true || props['aria-invalid'] === 'true'} ariaDescribedBy={props['aria-describedby']} ariaLabel={props['aria-label']} className={layoutClassName} defaultValue={typeof defaultValue === 'string' ? defaultValue : undefined} disabled={disabled} id={id} max={typeof max === 'string' ? max : undefined} min={typeof min === 'string' ? min : undefined} mode={mode} name={name} onChange={notify} required={required} value={typeof value === 'string' ? value : undefined} />;
 }

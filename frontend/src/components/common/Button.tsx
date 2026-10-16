@@ -24,9 +24,9 @@ const variantClasses: Record<ButtonVariant, string> = {
 
 const sizeClasses: Record<ButtonSize, string> = {
   sm: 'min-h-9 rounded-xl px-3.5 py-2 text-sm leading-snug',
-  md: 'min-h-10 rounded-xl px-4 py-2.5 text-sm leading-snug',
+  md: 'min-h-11 rounded-xl px-4 py-2.5 text-sm leading-snug',
   lg: 'min-h-11 rounded-xl px-5 py-2.5 text-sm leading-snug',
-  icon: 'h-10 w-10 rounded-xl p-0 text-sm',
+  icon: 'h-11 w-11 rounded-xl p-0 text-sm',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -44,19 +44,20 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref,
 ) {
-  const widthClass = size !== 'icon' && fullWidth ? 'w-full' : 'w-auto';
+  const widthClass = size === 'icon' ? '' : fullWidth ? 'w-full' : 'w-auto';
 
   return (
     <button
       aria-busy={isLoading || undefined}
-      className={`inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap font-semibold leading-snug transition duration-150 disabled:cursor-not-allowed [&_svg]:size-4 [&_svg]:shrink-0 ${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`}
+      className={`relative inline-flex min-w-0 max-w-full shrink-0 items-center justify-center gap-2 whitespace-normal font-semibold leading-snug transition duration-150 disabled:cursor-not-allowed [&_svg]:size-4 [&_svg]:shrink-0 ${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`}
       disabled={disabled || isLoading}
       ref={ref}
       {...props}
     >
-      {isLoading ? <LoadingSpinner className="h-4 w-4" /> : leftIcon}
-      {children}
-      {!isLoading && rightIcon}
+      {leftIcon ? <span aria-hidden="true" className={`inline-flex shrink-0 ${isLoading ? 'opacity-0' : ''}`}>{leftIcon}</span> : null}
+      <span className={`min-w-0 [overflow-wrap:anywhere] ${isLoading ? 'opacity-0' : ''}`}>{children}</span>
+      {rightIcon ? <span aria-hidden="true" className={`inline-flex shrink-0 ${isLoading ? 'opacity-0' : ''}`}>{rightIcon}</span> : null}
+      {isLoading ? <LoadingSpinner className="absolute start-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2" /> : null}
     </button>
   );
 });

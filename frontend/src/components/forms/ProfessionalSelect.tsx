@@ -17,6 +17,7 @@ import {
   type SelectHTMLAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { OverlayScope, useBodyScrollLock, useOverlayLayer, useOverlayOwners } from '../common/overlay';
 import { useLocalization } from '../../context/LocalizationContext';
 
 interface SelectOption {
@@ -105,6 +106,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
   const { isRtl, language } = useLocalization();
   const generatedId = useId();
   const selectId = id ?? `professional-select-${generatedId.replaceAll(':', '')}`;
+  const owners = useOverlayOwners(selectId);
   const listboxId = `${selectId}-listbox`;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const nativeRef = useRef<HTMLSelectElement>(null);
@@ -147,20 +149,22 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
       const trigger = triggerRef.current;
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
-      const mobile = window.innerWidth < 640;
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+      const mobile = viewportWidth < 640;
       if (mobile) {
-        setLayout({ bottom: 12, left: 12, maxHeight: Math.min(560, window.innerHeight - 24), mobile: true, top: 0, width: window.innerWidth - 24 });
+        setLayout({ bottom: 12, left: 12, maxHeight: Math.min(560, viewportHeight - 24), mobile: true, top: 0, width: viewportWidth - 24 });
         return;
       }
       const width = Math.min(Math.max(rect.width, 260), window.innerWidth - 24);
       const left = Math.min(Math.max(isRtl ? rect.right - width : rect.left, 12), window.innerWidth - width - 12);
-      const below = window.innerHeight - rect.bottom - 12;
+      const below = viewportHeight - rect.bottom - 12;
       const above = rect.top - 12;
       const openAbove = below < 240 && above > below;
       setLayout({
-        bottom: openAbove ? window.innerHeight - rect.top + 6 : undefined,
+        bottom: openAbove ? viewportHeight - rect.top + 6 : undefined,
         left,
-        maxHeight: Math.max(160, Math.min(360, openAbove ? above - 6 : below - 6)),
+        maxHeight: Math.max(40, Math.min(360, viewportHeight - 24, openAbove ? above - 6 : below - 6)),
         mobile: false,
         top: openAbove ? 0 : rect.bottom + 6,
         width,
@@ -168,9 +172,11 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
     };
     updateLayout();
     window.addEventListener('resize', updateLayout);
+    window.visualViewport?.addEventListener('resize', updateLayout);
     window.addEventListener('scroll', updateLayout, true);
     return () => {
       window.removeEventListener('resize', updateLayout);
+      window.visualViewport?.removeEventListener('resize', updateLayout);
       window.removeEventListener('scroll', updateLayout, true);
     };
   }, [isRtl, open]);
@@ -240,18 +246,24 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
     }
   };
 
+  useOverlayLayer(selectId, open, () => close());
+  useBodyScrollLock(open && layout.mobile);
+  const layoutToken = /(?:^|:)(?:w-|min-w-|max-w-|flex(?:-|$)|grow|shrink|basis-|self-|order-|col-|m[xysebt]?[-]|hidden$|block$)/;
+  const layoutClasses = className.split(/\s+/).filter(token => layoutToken.test(token)).join(' ');
+  const controlClasses = className.split(/\s+/).filter(token => !layoutToken.test(token)).join(' ');
   const menu = open && typeof document !== 'undefined' ? createPortal(
     <>
       <button
         aria-label={language === 'ar' ? 'إغلاق قائمة الاختيارات' : 'Close options'}
-        className={`fixed inset-0 z-[100] cursor-default ${layout.mobile ? 'bg-slate-950/45 backdrop-blur-[1px]' : 'bg-transparent'}`}
+        data-overlay-owners={owners.join(' ')} className={`fixed inset-0 z-[var(--z-popover)] cursor-default ${layout.mobile ? 'bg-slate-950/45 backdrop-blur-[1px]' : 'bg-transparent'}`}
         onClick={() => close()}
         tabIndex={-1}
         type="button"
       />
       <section
         aria-label={ariaLabel ?? title ?? (language === 'ar' ? 'الاختيارات المتاحة' : 'Available options')}
-        className={`fixed z-[110] flex overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,.24)] ${layout.mobile ? 'max-h-[calc(100dvh-1.5rem)] flex-col' : 'flex-col'}`}
+        data-overlay-owners={owners.join(' ')} className={`fixed z-[var(--z-select)] flex overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,.24)] ${layout.mobile ? 'max-h-[calc(100dvh-1.5rem)] flex-col' : 'flex-col'}`}
+        onKeyDown={event => { if (event.key === 'Tab') { event.preventDefault(); close(); } }}
         dir={isRtl ? 'rtl' : 'ltr'}
         style={{ bottom: layout.bottom, left: layout.left, maxHeight: layout.maxHeight, top: layout.bottom === undefined ? layout.top : undefined, width: layout.width }}
       >
@@ -280,7 +292,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
               tabIndex={index === activeIndex ? 0 : -1}
               type="button"
             >
-              <span className="min-w-0 flex-1 leading-6">{option.label}</span>
+              <span className="min-w-0 flex-1 leading-6 [overflow-wrap:anywhere]">{option.label}</span>
               {selected ? <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mis-primary text-white"><Check className="h-3.5 w-3.5" /></span> : null}
             </button>;
           }) : <div className="px-4 py-10 text-center text-sm text-slate-500">{emptyMessage ?? (language === 'ar' ? 'لا توجد نتائج مطابقة' : 'No matching options')}</div>}
@@ -291,7 +303,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
   ) : null;
 
   return (
-    <div className="relative min-w-0">
+    <OverlayScope owners={owners}><div className={`relative min-w-0 ${layoutClasses}`}>
       <select
         {...nativeProps}
         aria-hidden="true"
@@ -323,7 +335,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         aria-invalid={ariaInvalid}
         aria-label={ariaLabel}
         autoFocus={autoFocus}
-        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-mis-border bg-white px-4 py-2.5 text-start text-sm text-slate-800 outline-none transition hover:border-slate-300 focus:border-mis-blue focus:ring-4 focus:ring-mis-pale disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${className}`}
+        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-mis-border bg-white px-4 py-2.5 text-start text-sm text-slate-800 outline-none transition hover:border-slate-300 focus:border-mis-blue focus:ring-4 focus:ring-mis-pale disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${controlClasses}`}
         disabled={disabled}
         id={selectId}
         onBlur={(event) => onBlur?.({ target: nativeRef.current, currentTarget: nativeRef.current } as ChangeEvent<HTMLSelectElement> & typeof event)}
@@ -339,6 +351,6 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {menu}
-    </div>
+    </div></OverlayScope>
   );
 });

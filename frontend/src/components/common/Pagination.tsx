@@ -41,7 +41,7 @@ export function Pagination({ ariaLabel, className = '', disabled = false, labels
   return (
     <nav aria-label={ariaLabel ?? t('paginationLabel')} className={`flex flex-col items-center justify-between gap-3 border-t border-mis-border px-5 py-4 text-sm text-slate-500 sm:flex-row ${className}`}>
       {showSummary ? <span>{text.showing(from, to, totalCount)}</span> : <span />}
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-2">
         <button
           aria-label={text.previousPage}
           className="rounded-lg border border-mis-border p-2 text-slate-600 transition hover:border-mis-blue hover:text-mis-primary disabled:cursor-not-allowed disabled:opacity-40"
@@ -51,7 +51,7 @@ export function Pagination({ ariaLabel, className = '', disabled = false, labels
         >
           <ChevronLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
         </button>
-        <span className="px-2 font-semibold text-mis-navy">{text.pageOf(safePage, safeTotalPages)}</span>
+        <span className="min-w-0 px-2 text-center [overflow-wrap:anywhere] font-semibold text-mis-navy">{text.pageOf(safePage, safeTotalPages)}</span>
         <button
           aria-label={text.nextPage}
           className="rounded-lg border border-mis-border p-2 text-slate-600 transition hover:border-mis-blue hover:text-mis-primary disabled:cursor-not-allowed disabled:opacity-40"

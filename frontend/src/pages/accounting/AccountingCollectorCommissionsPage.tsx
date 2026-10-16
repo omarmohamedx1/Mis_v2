@@ -1,3 +1,4 @@
+import { Modal } from '../../components/common/Modal';
 import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Banknote, Calculator, Percent, Save, X } from 'lucide-react';
@@ -146,8 +147,8 @@ export function AccountingCollectorCommissionsPage() {
       </div>
 
       {details ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-slate-900/40 p-4" onClick={() => setDetails(undefined)}>
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <Modal open onClose={() => setDetails(undefined)} title={details.summary.collectorName} size="lg" hideHeader hideCloseButton bodyClassName="p-0">
+          <div className="min-w-0 p-6" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold text-mis-navy">{details.summary.collectorName}</h2>
@@ -194,7 +195,7 @@ export function AccountingCollectorCommissionsPage() {
             <AccountingDeleteButton kind="COLLECTOR" id={details.summary.id} amount={details.summary.finalCommission} description={`${details.summary.collectorName} / ${a.monthLabel(details.summary.periodYear, details.summary.periodMonth)}`} onDeleted={async () => { setDetails(undefined); await load(); } } />
             <Button className="mt-4" fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setDetails(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   );

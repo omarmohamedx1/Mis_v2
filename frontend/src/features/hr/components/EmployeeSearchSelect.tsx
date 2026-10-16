@@ -1,5 +1,7 @@
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { belongsToOverlay, OverlayScope, useFloatingPanel, useOverlayLayer, useOverlayOwners } from '../../../components/common/overlay';
 import { useLocalization } from '../../../context/LocalizationContext';
 import { hrEmployeeService } from '../services/hrEmployeeService';
 import type { EmployeeListItem } from '../types/employee';
@@ -19,8 +21,12 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
   const { language, t } = useLocalization();
   const id = useId();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null); const popupRef = useRef<HTMLDivElement>(null);
+  const owners = useOverlayOwners(id);
   const previousValueRef = useRef(value);
   const [open, setOpen] = useState(false);
+  const position = useFloatingPanel(open, anchorRef, popupRef, anchorRef.current?.getBoundingClientRect().width ?? 360);
+  useOverlayLayer(id, open, () => { setOpen(false); wrapperRef.current?.querySelector('input')?.focus(); });
   const [query, setQuery] = useState(initialSelection ? `${initialSelection.employeeNumber} - ${initialSelection.fullName}` : '');
   const [selectedLabel, setSelectedLabel] = useState(initialSelection ? `${initialSelection.employeeNumber} - ${initialSelection.fullName}` : '');
   const [options, setOptions] = useState<EmployeeListItem[]>([]);
@@ -44,16 +50,11 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
 
   useEffect(() => {
     function close(event: MouseEvent) {
-      if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false);
+      if (!wrapperRef.current?.contains(event.target as Node) && !belongsToOverlay(event.target,id)) setOpen(false);
     }
     document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', close);
-      document.removeEventListener('keydown', onKey);
     };
   }, []);
 
@@ -92,9 +93,9 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
   }
 
   return (
-    <div className="space-y-2" ref={wrapperRef}>
+    <OverlayScope owners={owners}><div className="min-w-0 space-y-2" ref={wrapperRef}>
       <label className="block text-sm font-semibold text-slate-700" htmlFor={id}>{label}{required ? <span className="ms-1 text-red-500" aria-hidden="true">*</span> : null}</label>
-      <div className="relative">
+      <div className="relative" ref={anchorRef}>
         <Search className="pointer-events-none absolute start-4 top-3.5 h-5 w-5 text-slate-400" aria-hidden="true" />
         <input
           aria-autocomplete="list"
@@ -102,7 +103,7 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
           aria-expanded={open}
           aria-invalid={Boolean(error)}
           autoComplete="off"
-          className={`h-12 w-full rounded-form border bg-white pe-20 ps-11 text-sm text-mis-ink outline-none transition focus:border-mis-blue focus:shadow-input ${error ? 'border-red-400' : 'border-mis-border'}`}
+          className={`form-control h-12 w-full rounded-form border bg-white pe-20 ps-11 text-sm text-mis-ink outline-none transition focus:border-mis-blue focus:shadow-input ${error ? 'border-red-400' : 'border-mis-border'}`}
           disabled={disabled}
           id={id}
           onChange={(event) => {
@@ -117,18 +118,18 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
         />
         {value ? <button aria-label={t('clearSelection')} className="absolute end-10 top-2.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" onClick={clear} type="button"><X className="h-4 w-4" /></button> : null}
         <button aria-label={t('openEmployeeList')} className="absolute end-2 top-2.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" disabled={disabled} onClick={() => setOpen((current) => !current)} type="button"><ChevronDown className="h-4 w-4" /></button>
-        {open ? (
-          <div className="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-mis-border bg-white p-1 shadow-panel" id={`${id}-options`} role="listbox">
+        {open ? createPortal(
+          <div ref={popupRef} data-overlay-owners={owners.join(' ')} style={{...position,maxHeight:Math.min(position.maxHeight,256)}} className="fixed z-[var(--z-select)] overflow-y-auto rounded-xl border border-mis-border bg-white p-1 shadow-panel" id={`${id}-options`} role="listbox">
             {loading ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('loading')}</p> : loadError ? <p className="px-3 py-4 text-center text-sm text-red-600" role="alert">{loadError}</p> : options.length === 0 ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('noEmployeesFound')}</p> : options.map((employee) => (
-              <button className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-start text-sm hover:bg-mis-pale" key={employee.id} onClick={() => select(employee)} role="option" type="button">
-                <span className="min-w-0"><span className="block truncate font-semibold text-mis-navy">{employee.fullName}</span><span className="block text-xs text-slate-500">{employee.employeeNumber} - {employee.departmentName}</span></span>
+              <button className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-start text-sm hover:bg-mis-pale" key={employee.id} onClick={() => select(employee)} role="option" aria-selected={employee.id === value} type="button">
+                <span className="min-w-0"><span className="block truncate font-semibold text-mis-navy">{employee.fullName}</span><span className="block text-xs text-slate-500 [overflow-wrap:anywhere]">{employee.employeeNumber} - {employee.departmentName}</span></span>
                 {employee.id === value ? <Check className="h-4 w-4 flex-none text-mis-primary" aria-hidden="true" /> : null}
               </button>
             ))}
-          </div>
+          </div>, document.body
         ) : null}
       </div>
-      {error ? <p className="text-sm text-red-600" role="alert">{error}</p> : null}
-    </div>
+      {error ? <p className="[overflow-wrap:anywhere] text-sm text-red-600" role="alert">{error}</p> : null}
+    </div></OverlayScope>
   );
 }

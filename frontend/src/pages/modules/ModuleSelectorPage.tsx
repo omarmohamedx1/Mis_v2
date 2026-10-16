@@ -98,7 +98,7 @@ export function ModuleSelectorPage() {
   const signOut = () => { logout(); navigate('/login', { replace: true }); };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f4f7fb] text-slate-900">
+    <div className="relative min-h-dvh overflow-hidden bg-[#f4f7fb] text-slate-900">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-gradient-to-br from-[#071d35] via-[#0a4569] to-[#107ca2]" />
       <div className="pointer-events-none absolute -top-28 end-[8%] h-80 w-80 rounded-full bg-cyan-300/15 blur-3xl" />
       <div className="pointer-events-none absolute top-24 start-[3%] h-56 w-56 rounded-full bg-blue-300/10 blur-3xl" />

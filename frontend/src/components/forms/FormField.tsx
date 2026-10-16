@@ -12,7 +12,7 @@ export interface FormFieldProps {
   required?: boolean;
 }
 
-export const formControlClass = 'w-full rounded-form border bg-white text-sm text-mis-ink transition placeholder:text-slate-400 focus:border-mis-blue focus:shadow-input focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500';
+export const formControlClass = 'form-control w-full rounded-form border bg-white text-sm text-mis-ink transition placeholder:text-slate-400 focus:border-mis-blue focus:shadow-input focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500';
 
 export function joinDescribedBy(...values: Array<string | undefined>): string | undefined {
   const ids = values.filter(Boolean);
@@ -21,7 +21,7 @@ export function joinDescribedBy(...values: Array<string | undefined>): string | 
 
 export function FormField({ children, className = '', error, errorId, hint, hintId, inputId, label, required = false }: FormFieldProps) {
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`min-w-0 space-y-2 [overflow-wrap:anywhere] ${className}`}>
       <label className="block text-sm font-semibold text-slate-700" htmlFor={inputId}>
         {label}
         {required ? <span className="ms-1 text-red-600" aria-hidden="true">*</span> : null}

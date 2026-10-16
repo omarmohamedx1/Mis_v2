@@ -49,7 +49,7 @@ export function Tabs({ activationMode = 'automatic', ariaLabel, className = '', 
     <div
       aria-label={ariaLabel}
       aria-orientation={orientation}
-      className={`${orientation === 'horizontal' ? wrap ? 'grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6' : 'flex overflow-x-auto border-b border-mis-border' : 'flex flex-col border-e border-mis-border'} ${className}`}
+      className={`${orientation === 'horizontal' ? wrap ? 'grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6' : 'flex min-w-0 overflow-x-auto p-1 border-b border-mis-border' : 'flex flex-col border-e border-mis-border'} ${className}`}
       role="tablist"
     >
       {items.map((item) => {
@@ -58,7 +58,7 @@ export function Tabs({ activationMode = 'automatic', ariaLabel, className = '', 
           <button
             aria-controls={item.panelId}
             aria-selected={selected}
-            className={`inline-flex min-h-11 flex-none items-center justify-center gap-2 px-4 text-sm font-semibold transition focus-visible:relative disabled:cursor-not-allowed disabled:opacity-40 ${orientation === 'horizontal' ? wrap ? `rounded-xl border ${selected ? 'border-mis-primary bg-mis-primary text-white shadow-sm' : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-mis-sky hover:bg-white hover:text-mis-deep'}` : `border-b-2 border-mis-primary ${selected ? 'border-mis-primary text-mis-deep' : 'border-transparent text-slate-600 hover:border-mis-sky hover:text-mis-primary'}` : `border-e-2 border-mis-primary ${selected ? 'border-mis-primary bg-mis-pale/50 text-mis-deep' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-mis-primary'}`}`}
+            className={`inline-flex min-h-11 min-w-0 max-w-full flex-none items-center justify-center gap-2 px-4 text-sm font-semibold transition focus-visible:relative disabled:cursor-not-allowed disabled:opacity-40 ${orientation === 'horizontal' ? wrap ? `rounded-xl border ${selected ? 'border-mis-primary bg-mis-primary text-white shadow-sm' : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-mis-sky hover:bg-white hover:text-mis-deep'}` : `border-b-2 border-mis-primary ${selected ? 'border-mis-primary text-mis-deep' : 'border-transparent text-slate-600 hover:border-mis-sky hover:text-mis-primary'}` : `border-e-2 border-mis-primary ${selected ? 'border-mis-primary bg-mis-pale/50 text-mis-deep' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-mis-primary'}`}`}
             disabled={item.disabled}
             id={`${generatedId}-${item.id}`}
             key={item.id}
@@ -68,9 +68,9 @@ export function Tabs({ activationMode = 'automatic', ariaLabel, className = '', 
             tabIndex={selected ? 0 : -1}
             type="button"
           >
-            {item.icon}
-            <span>{item.label}</span>
-            {item.badge !== undefined ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{item.badge}</span> : null}
+            {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
+            <span className="min-w-0 [overflow-wrap:anywhere]">{item.label}</span>
+            {item.badge !== undefined ? <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{item.badge}</span> : null}
           </button>
         );
       })}

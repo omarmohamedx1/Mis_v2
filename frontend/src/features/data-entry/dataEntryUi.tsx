@@ -91,7 +91,7 @@ export function DataEntryKpi({ label, value, hint, tone = 'blue' }: { label: str
     <article className="relative overflow-hidden rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
       <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accents[tone]}`} />
       <p className="text-sm font-semibold text-slate-500">{label}</p>
-      <p className="mt-3 text-2xl font-bold tracking-tight text-mis-navy" data-bidi="ltr">
+      <p className="ds-metric-value mt-3 text-2xl font-bold tracking-tight text-mis-navy" data-bidi="ltr">
         {value}
       </p>
       {hint ? <p className="mt-2 text-xs text-slate-400">{hint}</p> : null}

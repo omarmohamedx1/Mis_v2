@@ -9,7 +9,7 @@ export function DashboardPage() {
   const roleLabel = user?.role === 'Admin' ? t('administratorRole') : user?.role === 'User' || !user?.role ? t('userRole') : user.role;
 
   return (
-    <main className="min-h-screen bg-mis-surface">
+    <main className="min-h-dvh bg-mis-surface">
       <header className="border-b border-mis-border bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <div>

@@ -1,3 +1,4 @@
+import { Modal } from '../../components/common/Modal';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Percent, Plus, PowerOff, Scale, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -165,8 +166,8 @@ export function AccountingCommissionRulesPage() {
       </div>
 
       {showCreate ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-slate-900/40 p-4" onClick={() => setShowCreate(false)}>
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <Modal open onClose={() => setShowCreate(false)} title={a.text('قواعد العمولات', 'Commission rules')} size="md" hideHeader hideCloseButton bodyClassName="p-0">
+          <div className="min-w-0 p-6" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Scale className="h-5 w-5" /></span>
               <div>
@@ -198,7 +199,7 @@ export function AccountingCommissionRulesPage() {
               <Button fullWidth={false} onClick={() => setShowCreate(false)} variant="outline">{a.text('إلغاء', 'Cancel')}</Button>
             </div>
           </div>
-        </div>
+        </Modal>
       ) : null}
 
       <ConfirmDialog

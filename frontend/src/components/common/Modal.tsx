@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocalization } from '../../context/LocalizationContext';
+import { belongsToOverlay, isTopOverlay, OverlayScope, useBodyScrollLock, useOverlayLayer, useOverlayOwners } from './overlay';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
@@ -16,6 +17,7 @@ export interface ModalProps {
   dialogRole?: 'dialog' | 'alertdialog';
   footer?: ReactNode;
   hideCloseButton?: boolean;
+  hideHeader?: boolean;
   initialFocusRef?: RefObject<HTMLElement | null>;
   onClose: () => void;
   open: boolean;
@@ -55,6 +57,7 @@ export function Modal({
   dialogRole = 'dialog',
   footer,
   hideCloseButton = false,
+  hideHeader = false,
   initialFocusRef,
   onClose,
   open,
@@ -66,6 +69,9 @@ export function Modal({
   const onCloseRef = useRef(onClose);
   const titleId = useId();
   const descriptionId = useId();
+  const overlayId = useId(); const owners = useOverlayOwners(overlayId);
+  useBodyScrollLock(open);
+  useOverlayLayer(overlayId, open, () => { if (closeOnEscape) onCloseRef.current(); });
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -75,9 +81,7 @@ export function Modal({
     if (!open) return undefined;
 
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
     const dialog = dialogRef.current;
-    document.body.style.overflow = 'hidden';
 
     const frame = window.requestAnimationFrame(() => {
       const target = initialFocusRef?.current ?? (dialog ? getFocusableElements(dialog)[0] : null) ?? dialog;
@@ -85,13 +89,7 @@ export function Modal({
     });
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && closeOnEscape) {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-
-      if (event.key !== 'Tab' || !dialog) return;
+      if (event.key !== 'Tab' || !dialog || !isTopOverlay(overlayId)) return;
       const focusable = getFocusableElements(dialog);
 
       if (focusable.length === 0) {
@@ -107,7 +105,7 @@ export function Modal({
       if (event.shiftKey && (activeElement === first || !dialog.contains(activeElement))) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && activeElement === last) {
+      } else if (!event.shiftKey && (activeElement === last || (!dialog.contains(activeElement) && !belongsToOverlay(activeElement, overlayId)))) {
         event.preventDefault();
         first.focus();
       }
@@ -118,16 +116,15 @@ export function Modal({
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener('keydown', handleKeyDown, true);
-      document.body.style.overflow = previousOverflow;
       if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus();
     };
   }, [closeOnEscape, initialFocusRef, open]);
 
   if (!open) return null;
 
-  return createPortal(
+  return <OverlayScope owners={owners}>{createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-mis-ink/45 p-2 backdrop-blur-[2px] sm:p-4"
+      data-overlay-owners={owners.join(' ')} className="dialog-backdrop fixed inset-0 z-[var(--z-dialog)] flex items-center justify-center overflow-y-auto bg-mis-ink/45 p-2 backdrop-blur-[2px] sm:p-4"
       onMouseDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) onCloseRef.current();
       }}
@@ -141,7 +138,7 @@ export function Modal({
         role={dialogRole}
         tabIndex={-1}
       >
-        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-mis-border px-4 py-4 sm:px-6 sm:py-5">
+        {hideHeader ? <h2 className="sr-only" id={titleId}>{title}</h2> : <header className="flex shrink-0 items-start justify-between gap-4 border-b border-mis-border px-4 py-4 sm:px-6 sm:py-5">
           <div className="min-w-0">
             <h2 className="break-words text-xl font-bold text-mis-navy" id={titleId}>{title}</h2>
             {description ? <div className="mt-1 text-sm leading-5 text-slate-500" id={descriptionId}>{description}</div> : null}
@@ -156,11 +153,11 @@ export function Modal({
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
           ) : null}
-        </header>
-        <div className={`min-h-0 flex-1 overflow-y-auto ${bodyClassName}`}>{children}</div>
+        </header>}
+        <div className={`min-h-0 min-w-0 flex-1 overflow-y-auto [overflow-wrap:anywhere] ${bodyClassName}`}>{children}</div>
         {footer ? <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-mis-border px-4 py-3 [&>*]:w-full sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 sm:px-6 sm:py-4 sm:[&>*]:w-auto">{footer}</footer> : null}
       </div>
     </div>,
     document.body,
-  );
+  )}</OverlayScope>;
 }

@@ -1,6 +1,8 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { belongsToOverlay, OverlayScope, useFloatingPanel, useOverlayLayer, useOverlayOwners } from '../common/overlay';
+import { ProfessionalSelect } from './ProfessionalSelect';
 import { useLocalization } from '../../context/LocalizationContext';
 
 interface ProfessionalDateInputProps {
@@ -16,6 +18,9 @@ interface ProfessionalDateInputProps {
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
+  comfortable?: boolean;
 }
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -68,7 +73,7 @@ function hasTime(value: string) {
 }
 
 export function ProfessionalDateInput({
-  id, name, value, defaultValue, onChange, mode = 'date', required, min, max, disabled, className = '', ariaLabel,
+  id, name, value, defaultValue, onChange, mode = 'date', required, min, max, disabled, className = '', ariaLabel, ariaInvalid, ariaDescribedBy, comfortable = false,
 }: ProfessionalDateInputProps) {
   const { language, isRtl } = useLocalization();
   const root = useRef<HTMLDivElement>(null);
@@ -84,7 +89,9 @@ export function ProfessionalDateInput({
   const [minute, setMinute] = useState(() => pad(selected?.getMinutes() ?? 0));
   const [draft, setDraft] = useState(() => formatTyped(selected, mode));
   const [yearDraft, setYearDraft] = useState(() => String((selected ?? new Date()).getFullYear()));
-  const [position, setPosition] = useState({ left: 8, top: 8, width: 360 });
+  const overlayId = useId(); const owners = useOverlayOwners(overlayId);
+  const position = useFloatingPanel(open, root, popup, 360);
+  useOverlayLayer(overlayId, open, () => { setOpen(false); root.current?.querySelector<HTMLElement>('input:not([tabindex="-1"]),button')?.focus(); });
 
   useEffect(() => {
     const next = parseValue(current);
@@ -100,36 +107,13 @@ export function ProfessionalDateInput({
   useEffect(() => {
     const close = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!root.current?.contains(target) && !popup.current?.contains(target)) setOpen(false);
+      if (!root.current?.contains(target) && !popup.current?.contains(target) && !belongsToOverlay(target, overlayId)) setOpen(false);
     };
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, []);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const place = () => {
-      const anchor = root.current?.getBoundingClientRect();
-      if (!anchor) return;
-      const width = Math.min(360, window.innerWidth - 16);
-      const preferredLeft = isRtl ? anchor.right - width : anchor.left;
-      const left = Math.max(8, Math.min(preferredLeft, window.innerWidth - width - 8));
-      const estimatedHeight = mode === 'datetime' ? 500 : 440;
-      const below = anchor.bottom + 8;
-      const top = below + estimatedHeight <= window.innerHeight ? below : Math.max(8, anchor.top - estimatedHeight - 8);
-      setPosition({ left, top, width });
-    };
-    place();
-    window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
-    document.addEventListener('keydown', escape);
-    return () => {
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [isRtl, mode, open]);
+
 
   useEffect(() => {
     const form = root.current?.closest('form');
@@ -230,17 +214,17 @@ export function ProfessionalDateInput({
   };
 
   const calendar = open ? createPortal(
-    <div ref={popup} className="fixed z-[100] max-h-[calc(100vh-1rem)] overflow-y-auto rounded-2xl border border-mis-border bg-white p-4 shadow-2xl" dir={isRtl ? 'rtl' : 'ltr'} style={{ left: position.left, top: position.top, width: position.width }}>
-      <div className="flex items-center gap-2">
+    <div ref={popup} className="date-panel fixed z-[var(--z-popover)] overflow-y-auto rounded-2xl border border-mis-border bg-white p-4 shadow-2xl" dir={isRtl ? 'rtl' : 'ltr'} role="dialog" aria-label={labels.choose} data-overlay-owners={owners.join(' ')} style={position}>
+      <div className="date-panel-header flex items-center gap-2">
         <button aria-label={labels.previous} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-mis-pale hover:text-mis-primary" onClick={() => shiftMonth(-1)} type="button">
           <ChevronLeft className={`h-5 w-5 ${isRtl ? 'rotate-180' : ''}`} />
         </button>
-        <select aria-label={labels.month} className="h-10 min-w-0 flex-1 rounded-xl border border-mis-border bg-white px-2 text-sm font-semibold text-mis-navy outline-none focus:border-mis-blue" onChange={(event) => setView(new Date(view.getFullYear(), Number(event.target.value), 1))} value={view.getMonth()}>
+        <ProfessionalSelect aria-label={labels.month} className="date-month h-10 min-h-10 py-1 min-w-0 flex-1 rounded-xl border border-mis-border bg-white px-2 text-sm font-semibold text-mis-navy outline-none focus:border-mis-blue" onChange={(event) => setView(new Date(view.getFullYear(), Number(event.target.value), 1))} value={view.getMonth()}>
           {months.map((label, index) => <option key={label} value={index}>{label}</option>)}
-        </select>
+        </ProfessionalSelect>
         <input
           aria-label={labels.year}
-          className="h-10 w-[4.85rem] rounded-xl border border-mis-border bg-white px-2 text-center text-sm font-bold tabular-nums text-mis-navy outline-none focus:border-mis-blue"
+          className="date-year h-10 w-20 rounded-xl border border-mis-border bg-white px-2 text-center text-sm font-bold tabular-nums text-mis-navy outline-none focus:border-mis-blue"
           dir="ltr"
           inputMode="numeric"
           list={yearListId}
@@ -254,7 +238,7 @@ export function ProfessionalDateInput({
           value={yearDraft}
         />
         <datalist id={yearListId}>{years.map((year) => <option key={year} value={year} />)}</datalist>
-        <button aria-label={labels.next} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-mis-pale hover:text-mis-primary" onClick={() => shiftMonth(1)} type="button">
+        <button aria-label={labels.next} className="date-next grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-mis-pale hover:text-mis-primary" onClick={() => shiftMonth(1)} type="button">
           <ChevronRight className={`h-5 w-5 ${isRtl ? 'rotate-180' : ''}`} />
         </button>
       </div>
@@ -267,7 +251,10 @@ export function ProfessionalDateInput({
           const outside = day.getMonth() !== view.getMonth();
           return (
             <button
-              className={`grid h-9 place-items-center rounded-lg text-sm transition disabled:cursor-not-allowed disabled:opacity-25 ${active ? 'bg-mis-primary font-bold text-white shadow-sm' : today ? 'bg-mis-pale font-bold text-mis-primary' : outside ? 'text-slate-300 hover:bg-slate-50' : 'text-slate-700 hover:bg-mis-pale hover:text-mis-primary'}`}
+              className={`grid h-9 place-items-center rounded-lg text-sm transition disabled:cursor-not-allowed disabled:opacity-25 ${active ? 'bg-mis-primary font-bold text-white shadow-sm' : today ? 'bg-mis-pale font-bold text-mis-primary' : outside ? 'text-slate-500 hover:bg-slate-50' : 'text-slate-700 hover:bg-mis-pale hover:text-mis-primary'}`}
+              aria-pressed={Boolean(active)}
+              aria-current={today ? 'date' : undefined}
+              aria-label={new Intl.DateTimeFormat(locale, { dateStyle: 'full' }).format(day)}
               disabled={!inRange(day)}
               key={key}
               onClick={() => choose(day)}
@@ -283,13 +270,13 @@ export function ProfessionalDateInput({
           <Clock3 className="h-5 w-5 text-mis-primary" />
           <span className="text-xs font-bold text-slate-500">{labels.time}</span>
           <div className="ms-auto flex items-center gap-1" dir="ltr">
-            <select aria-label={language === 'ar' ? 'الساعة' : 'Hour'} className="h-9 w-[4.5rem] rounded-lg border border-mis-border bg-white px-2 text-sm outline-none focus:border-mis-blue" onChange={(event) => setHour(event.target.value)} value={hour}>
+            <ProfessionalSelect aria-label={language === 'ar' ? 'الساعة' : 'Hour'} className="h-9 min-h-9 py-1 w-20 rounded-lg border border-mis-border bg-white px-2 text-sm outline-none focus:border-mis-blue" onChange={(event) => setHour(event.target.value)} value={hour}>
               {Array.from({ length: 24 }, (_, index) => pad(index)).map((item) => <option key={item}>{item}</option>)}
-            </select>
+            </ProfessionalSelect>
             <span>:</span>
-            <select aria-label={language === 'ar' ? 'الدقيقة' : 'Minute'} className="h-9 w-[4.5rem] rounded-lg border border-mis-border bg-white px-2 text-sm outline-none focus:border-mis-blue" onChange={(event) => setMinute(event.target.value)} value={minute}>
+            <ProfessionalSelect aria-label={language === 'ar' ? 'الدقيقة' : 'Minute'} className="h-9 min-h-9 py-1 w-20 rounded-lg border border-mis-border bg-white px-2 text-sm outline-none focus:border-mis-blue" onChange={(event) => setMinute(event.target.value)} value={minute}>
               {minutes.map((item) => <option key={item}>{item}</option>)}
-            </select>
+            </ProfessionalSelect>
           </div>
         </div>
       ) : null}
@@ -303,16 +290,18 @@ export function ProfessionalDateInput({
   ) : null;
 
   return (
-    <div className={`relative min-w-0 ${className}`} ref={root}>
+    <OverlayScope owners={owners}><div className={`date-control relative min-w-0 ${className}`} data-mode={mode} ref={root}>
       <input aria-label={ariaLabel ?? labels.choose} className="pointer-events-none absolute h-px w-px opacity-0" name={name} onInvalid={() => setOpen(true)} readOnly required={required} tabIndex={-1} type="text" value={current} />
-      <div className={`field flex min-h-11 items-center gap-1 p-1 ps-2 ${disabled ? 'bg-slate-100 opacity-70' : ''}`}>
+      <div data-invalid={ariaInvalid || undefined} data-comfortable={comfortable || undefined} className={`composite-control field flex items-center gap-1 ${disabled ? 'bg-slate-100 opacity-70' : ''}`}>
         <button aria-expanded={open} aria-label={labels.open} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-mis-primary hover:bg-mis-pale disabled:opacity-50" disabled={disabled} onClick={() => setOpen((currentOpen) => !currentOpen)} type="button">
           <CalendarDays className="h-5 w-5" />
         </button>
         <input
           aria-label={ariaLabel ?? labels.choose}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
           autoComplete="off"
-          className="min-h-9 min-w-0 flex-1 bg-transparent px-1 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+          className="date-value min-h-9 min-w-0 flex-1 bg-transparent px-1 text-sm text-slate-800 outline-none placeholder:text-slate-500"
           dir="ltr"
           disabled={disabled}
           id={id}
@@ -343,12 +332,12 @@ export function ProfessionalDateInput({
           value={draft}
         />
         {selected && !disabled ? (
-          <button aria-label={labels.clear} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-rose-600" onClick={() => emit(null)} type="button">
+          <button aria-label={labels.clear} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600" onClick={() => emit(null)} type="button">
             <X className="h-4 w-4" />
           </button>
         ) : null}
       </div>
       {calendar}
-    </div>
+    </div></OverlayScope>
   );
 }

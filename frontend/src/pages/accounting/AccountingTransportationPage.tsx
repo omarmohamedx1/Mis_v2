@@ -1,3 +1,4 @@
+import { Modal } from '../../components/common/Modal';
 import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, cairoToday, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Car, Download, Pencil, Plus, Upload } from 'lucide-react';
@@ -158,8 +159,8 @@ export function AccountingTransportationPage() {
       </div>
 
       {editing ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-slate-900/40 p-4" onClick={() => setEditing(undefined)}>
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <Modal open onClose={() => setEditing(undefined)} title={a.text('الانتقالات', 'Transportation')} size="md" hideHeader hideCloseButton bodyClassName="p-0">
+          <div className="min-w-0 p-6" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-lg font-bold text-mis-navy">{editing === 'new' ? a.text('مطالبة انتقال', 'Transportation claim') : a.text('تعديل المطالبة', 'Edit claim')}</h2>
             </div>
@@ -178,7 +179,7 @@ export function AccountingTransportationPage() {
               <Button fullWidth={false} onClick={() => setEditing(undefined)} variant="outline">{a.text('إلغاء', 'Cancel')}</Button>
             </div>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   );

@@ -71,8 +71,8 @@ function ToastItem({ dismissLabel, dismissToast, toast }: { dismissLabel: string
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex-none">{style.icon}</div>
         <div className="min-w-0 flex-1">
-          {toast.title ? <p className="font-bold">{toast.title}</p> : null}
-          <div className={`${toast.title ? 'mt-1' : ''} break-words text-sm leading-5`}>{toast.message}</div>
+          {toast.title ? <p className="font-bold [overflow-wrap:anywhere]">{toast.title}</p> : null}
+          <div className={`${toast.title ? 'mt-1' : ''} [overflow-wrap:anywhere] text-sm leading-5`}>{toast.message}</div>
           {toast.action ? (
             <button
               className="mt-2 text-sm font-bold underline underline-offset-2"
@@ -123,7 +123,7 @@ export function ToastProvider({ children, defaultDuration = 5000, dismissLabel, 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div aria-atomic="false" aria-live="polite" className="pointer-events-none fixed inset-x-4 top-4 z-[100] flex flex-col items-end gap-3 sm:start-auto sm:end-4 sm:w-full sm:max-w-sm">
+      <div aria-atomic="false" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-4 z-[var(--z-toast)] max-h-[50dvh] overflow-y-auto p-1 flex flex-col items-end gap-3 sm:start-auto sm:end-4 sm:w-full sm:max-w-sm">
         {toasts.map((toast) => <ToastItem dismissLabel={dismissLabel ?? t('dismissNotification')} dismissToast={dismissToast} key={toast.id} toast={toast} />)}
       </div>
     </ToastContext.Provider>

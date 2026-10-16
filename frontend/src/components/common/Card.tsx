@@ -16,7 +16,7 @@ const paddingClasses: Record<CardPadding, string> = {
 
 export function Card({ children, className = '', padding = 'md', ...props }: CardProps) {
   return (
-    <div className={`rounded-2xl border border-mis-border bg-white shadow-sm ${paddingClasses[padding]} ${className}`} {...props}>
+    <div className={`min-w-0 rounded-2xl border border-mis-border bg-white shadow-sm ${paddingClasses[padding]} ${className}`} {...props}>
       {children}
     </div>
   );
