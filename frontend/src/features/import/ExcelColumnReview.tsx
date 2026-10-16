@@ -55,7 +55,7 @@ export function ExcelColumnReview({
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {mapped.map((field) => (
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm" key={field.key}>
+            <span className="min-w-0 max-w-full rounded-full bg-white px-3 py-1 [overflow-wrap:anywhere] text-xs font-semibold text-emerald-800 shadow-sm" key={field.key}>
               {arabic ? field.ar : field.en}: {mapping[field.key]}
             </span>
           ))}

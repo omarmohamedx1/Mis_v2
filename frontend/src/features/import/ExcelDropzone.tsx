@@ -74,11 +74,11 @@ export function ExcelDropzone({ arabic, busy, disabled, file, hint, label, onFil
         <p className="mt-4 text-lg font-bold text-mis-navy">{dragging ? importCopy.dropActive(arabic) : importCopy.dropTitle(arabic)}</p>
         <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">{importCopy.dropHelp(arabic)}</p>
         <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">{importCopy.formats(arabic)}</p>
-        {hint ? <div className="mt-3 text-sm text-slate-500">{hint}</div> : null}
+        {hint ? <div className="mt-3 min-w-0 max-w-full text-sm text-slate-500 [overflow-wrap:anywhere]">{hint}</div> : null}
       </label>
       {file ? (
         <div className="flex items-center gap-3 rounded-2xl border border-mis-sky/70 bg-white px-4 py-3 shadow-sm">
-          <span className="grid h-12 w-12 place-items-center rounded-xl bg-mis-pale text-mis-primary">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-mis-pale text-mis-primary">
             <FileSpreadsheet className="h-6 w-6" />
           </span>
           <div className="min-w-0 flex-1">

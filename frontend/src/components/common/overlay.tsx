@@ -38,6 +38,25 @@ export function useBodyScrollLock(locked: boolean) {
   }, [locked]);
 }
 
+export function useFocusBoundary(id: string, open: boolean, container: RefObject<HTMLElement | null>, initial?: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusable = () => [...(container.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])') ?? [])]
+      .filter(e => e.tabIndex >= 0 && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && !e.closest('[inert]'));
+    const frame = requestAnimationFrame(() => (initial?.current ?? focusable()[0] ?? container.current)?.focus());
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !isTopOverlay(id)) return;
+      const items = focusable(); const active = document.activeElement;
+      if (!items.length) { event.preventDefault(); container.current?.focus(); return; }
+      if (event.shiftKey && (active === items[0] || (!container.current?.contains(active) && !belongsToOverlay(active, id)))) { event.preventDefault(); items.at(-1)?.focus(); }
+      else if (!event.shiftKey && (active === items.at(-1) || (!container.current?.contains(active) && !belongsToOverlay(active, id)))) { event.preventDefault(); items[0].focus(); }
+    };
+    document.addEventListener('keydown', trap, true);
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', trap, true); if (previous && document.contains(previous)) previous.focus(); };
+  }, [id, open, container, initial]);
+}
+
 export function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
   useEffect(() => { const media = window.matchMedia(query); const update = () => setMatches(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, [query]);

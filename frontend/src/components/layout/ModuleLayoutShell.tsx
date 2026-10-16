@@ -3,7 +3,7 @@ import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 're
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import misLogo from '../../assets/mis-logo.svg';
 import { ModuleSwitcherLink } from '../navigation/ModuleSwitcherLink';
-import { useBodyScrollLock, useMediaQuery, useOverlayLayer } from '../common/overlay';
+import { useBodyScrollLock, useFocusBoundary, useMediaQuery, useOverlayLayer } from '../common/overlay';
 
 export type ModuleTheme = 'admin' | 'collections' | 'finance' | 'hr' | 'legal';
 
@@ -59,8 +59,10 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
   const desktop = useMediaQuery('(min-width: 1024px)');
   const navigationId = useId();
   const menuButton = useRef<HTMLButtonElement>(null);
+  const navigationRef = useRef<HTMLElement>(null);
   useBodyScrollLock(open && !desktop);
   useOverlayLayer(navigationId, open && !desktop, () => { setOpen(false); menuButton.current?.focus(); });
+  useFocusBoundary(navigationId, open && !desktop, navigationRef);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(props.storageKey) === 'collapsed');
   const currentNavigationItem = [...props.navigation]
     .sort((left, right) => right.to.length - left.to.length)
@@ -81,6 +83,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
     <div className="module-shell min-h-dvh bg-mis-surface text-mis-ink" data-sidebar-collapsed={collapsed} data-module-theme={props.theme}>
       {open ? <button aria-label={props.closeNavigationLabel} className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-[1px] lg:hidden" onClick={() => setOpen(false)} type="button" /> : null}
       <aside
+        ref={navigationRef}
         aria-label={props.navigationLabel}
         inert={!desktop && !open}
         style={props.isRtl ? { right: 0, left: 'auto', borderLeftWidth: 1 } : { left: 0, right: 'auto', borderRightWidth: 1 }}

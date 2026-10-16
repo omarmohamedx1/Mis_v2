@@ -1,8 +1,8 @@
 import { X } from 'lucide-react';
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { useId, useRef, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocalization } from '../../context/LocalizationContext';
-import { belongsToOverlay, isTopOverlay, OverlayScope, useBodyScrollLock, useOverlayLayer, useOverlayOwners } from './overlay';
+import { OverlayScope, useBodyScrollLock, useFocusBoundary, useOverlayLayer, useOverlayOwners } from './overlay';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
@@ -32,19 +32,6 @@ const sizeClasses: Record<ModalSize, string> = {
   xl: 'max-w-5xl',
   full: 'max-w-[calc(100vw-2rem)]',
 };
-
-const focusableSelector = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled]):not([type="hidden"])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
-
-function getFocusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(focusableSelector)).filter((element) => element.tabIndex >= 0 && !element.hasAttribute('hidden'));
-}
 
 export function Modal({
   bodyClassName = 'p-4 sm:p-6',
@@ -77,48 +64,7 @@ export function Modal({
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const dialog = dialogRef.current;
-
-    const frame = window.requestAnimationFrame(() => {
-      const target = initialFocusRef?.current ?? (dialog ? getFocusableElements(dialog)[0] : null) ?? dialog;
-      target?.focus();
-    });
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Tab' || !dialog || !isTopOverlay(overlayId)) return;
-      const focusable = getFocusableElements(dialog);
-
-      if (focusable.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const activeElement = document.activeElement;
-
-      if (event.shiftKey && (activeElement === first || !dialog.contains(activeElement))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (activeElement === last || (!dialog.contains(activeElement) && !belongsToOverlay(activeElement, overlayId)))) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown, true);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      document.removeEventListener('keydown', handleKeyDown, true);
-      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus();
-    };
-  }, [closeOnEscape, initialFocusRef, open]);
+  useFocusBoundary(overlayId, open, dialogRef, initialFocusRef);
 
   if (!open) return null;
 
