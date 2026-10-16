@@ -346,6 +346,7 @@ summary:focus-visible,
   padding-right: max(var(--dialog-gutter), var(--safe-right));
 }
 .dialog-backdrop > [role] { max-block-size: calc(100dvh - max(var(--dialog-gutter), var(--safe-top)) - max(var(--dialog-gutter), var(--safe-bottom))); }
+.dialog-backdrop > [data-scroll-whole] { overflow-y: auto; }
 .toast-stack { bottom: max(1rem, var(--safe-bottom)); }
 @media (min-width: 640px) { .dialog-backdrop { --dialog-gutter: 1rem; } }
 .ds-metric-value { min-inline-size: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }

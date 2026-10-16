@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocalization } from '../../context/LocalizationContext';
 import { OverlayScope, useBodyScrollLock, useFocusBoundary, useOverlayLayer, useOverlayOwners } from './overlay';
@@ -53,6 +53,9 @@ export function Modal({
 }: ModalProps) {
   const { t } = useLocalization();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const footerRef = useRef<HTMLElement>(null);
+  const [scrollWholeDialog, setScrollWholeDialog] = useState(false);
   const onCloseRef = useRef(onClose);
   const titleId = useId();
   const descriptionId = useId();
@@ -65,6 +68,21 @@ export function Modal({
   }, [onClose]);
 
   useFocusBoundary(overlayId, open, dialogRef, initialFocusRef);
+
+  useLayoutEffect(() => {
+    if (!open || !dialogRef.current) return;
+    const measure = () => {
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const chromeHeight = (headerRef.current?.scrollHeight ?? 0) + (footerRef.current?.scrollHeight ?? 0);
+      const controlHeight = parseFloat(getComputedStyle(document.documentElement).fontSize) * 2.75;
+      setScrollWholeDialog(chromeHeight + controlHeight > dialog.clientHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const element of [dialogRef.current, headerRef.current, footerRef.current]) if (element) observer.observe(element);
+    return () => observer.disconnect();
+  }, [open, hideHeader]);
 
   if (!open) return null;
 
@@ -79,12 +97,13 @@ export function Modal({
         aria-describedby={description ? descriptionId : undefined}
         aria-labelledby={titleId}
         aria-modal="true"
+        data-scroll-whole={scrollWholeDialog || undefined}
         className={`my-auto flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-2xl border border-mis-border bg-white shadow-panel sm:max-h-[calc(100dvh-2rem)] ${sizeClasses[size]} ${className}`}
         ref={dialogRef}
         role={dialogRole}
         tabIndex={-1}
       >
-        {hideHeader ? <h2 className="sr-only" id={titleId}>{title}</h2> : <header className="flex shrink-0 items-start justify-between gap-4 border-b border-mis-border px-4 py-4 sm:px-6 sm:py-5">
+        {hideHeader ? <h2 className="sr-only" id={titleId}>{title}</h2> : <header ref={headerRef} className="flex shrink-0 items-start justify-between gap-4 border-b border-mis-border px-4 py-4 sm:px-6 sm:py-5">
           <div className="min-w-0">
             <h2 className="break-words text-xl font-bold text-mis-navy" id={titleId}>{title}</h2>
             {description ? <div className="mt-1 text-sm leading-5 text-slate-500" id={descriptionId}>{description}</div> : null}
@@ -100,8 +119,8 @@ export function Modal({
             </button>
           ) : null}
         </header>}
-        <div className={`min-h-0 min-w-0 flex-1 overflow-y-auto [overflow-wrap:anywhere] ${bodyClassName}`}>{children}</div>
-        {footer ? <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-mis-border px-4 py-3 [&>*]:w-full sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 sm:px-6 sm:py-4 sm:[&>*]:w-auto">{footer}</footer> : null}
+        <div className={`min-h-0 min-w-0 ${scrollWholeDialog ? 'flex-none' : 'flex-1 overflow-y-auto'} [overflow-wrap:anywhere] ${bodyClassName}`}>{children}</div>
+        {footer ? <footer ref={footerRef} className="flex shrink-0 flex-col-reverse gap-2 border-t border-mis-border px-4 py-3 [&>*]:w-full sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 sm:px-6 sm:py-4 sm:[&>*]:w-auto">{footer}</footer> : null}
       </div>
     </div>,
     document.body,
