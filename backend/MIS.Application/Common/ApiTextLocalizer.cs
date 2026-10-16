@@ -15,6 +15,7 @@ public static partial class ApiTextLocalizer
     private static readonly IReadOnlyDictionary<string, string> Arabic =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["Provide a reversal reason of at most 1000 characters."] = "أدخل سببًا واضحًا للعكس لا يتجاوز ألف حرف.",
             ["System accounting account codes and classification cannot be changed. Create a new account instead."] = "أكواد وتصنيفات حسابات التشغيل الأساسية مرتبطة بالنظام. أضف حسابًا جديدًا بدل تغييرها.",
             ["Use a valid currency amount with at most two decimal places."] = "أدخل مبلغًا صحيحًا وبحد أقصى منزلتين عشريتين، دون قيم سالبة في بنود الصرف.",
             ["Provide a valid commission rule code and names."] = "أدخل كود قاعدة العمولة والاسم بالعربية والإنجليزية ضمن الأطوال المسموحة.",

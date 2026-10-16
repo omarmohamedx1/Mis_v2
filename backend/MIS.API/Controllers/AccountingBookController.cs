@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using MIS.API.Authorization;
 using MIS.Application.DTOs.Accounting;
@@ -46,4 +47,4 @@ public sealed class AccountingExportsController(IAccountingBookService service) 
     public async Task<IActionResult> Export(string report, [FromQuery] AccountingExportFilter filter, CancellationToken token)
         => File(await service.ExportAsync(report, filter, token), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"MIS-{report}-{DateTime.UtcNow:yyyyMMdd-HHmm}.xlsx");
 }
-public sealed record AccountingBookActionRequest(string? Reason);
+public sealed record AccountingBookActionRequest([MaxLength(1000)] string? Reason);

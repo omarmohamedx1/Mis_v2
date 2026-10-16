@@ -22,7 +22,7 @@ internal static class FinanceSeed
     public static readonly Guid AdvanceAccountId = Guid.Parse("10000000-0000-0000-0001-000000113100");
     public static readonly Guid OpeningAccountId = Guid.Parse("10000000-0000-0000-0003-000000310100");
     public static readonly HashSet<Guid> OperationAccountIds = new(Enumerable.Range(11, 9).Select(x => Guid.Parse($"10000000-0000-0000-0006-{610000 + x * 10:D12}")))
-    { OperatingCashAccountId, OperatingBankAccountId, AdvanceAccountId, OpeningAccountId, RevenueAccountId, ExpenseAccountId };
+    { OperatingCashAccountId, OperatingBankAccountId, AdvanceAccountId, OpeningAccountId, RevenueAccountId, ExpenseAccountId, CashboxAccountId };
 }
 
 public sealed class FinanceLegalEntityConfiguration : IEntityTypeConfiguration<FinanceLegalEntity>

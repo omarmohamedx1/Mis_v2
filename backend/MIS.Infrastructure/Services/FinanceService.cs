@@ -142,7 +142,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
         var original = await LoadJournalAsync(id, token);
         if (original.Status != FinanceValues.JournalStatuses.Posted)
             throw new HrConflictException("Only a posted journal can be reversed.");
-        var reversal = await CreateReversalJournalAsync(original, $"Reversal / عكس القيد: {request.Reason}", CairoToday(), token);
+        var reversal = await CreateReversalJournalAsync(original, request.Reason.Trim(), CairoToday(), token);
         await _db.SaveChangesAsync(token);
         if (tx is not null) await tx.CommitAsync(token);
         return await GetJournalAsync(reversal.Id, token);
@@ -312,13 +312,13 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
         {
             var clearing = await LoadJournalAsync(receipt.ClearingJournalEntryId.Value, token);
             if (clearing.Status == FinanceValues.JournalStatuses.Posted)
-                await CreateReversalJournalAsync(clearing, $"Collection clearing reversal / عكس تسوية التحصيل: {request.Reason}", today, token);
+                await CreateReversalJournalAsync(clearing, request.Reason.Trim(), today, token);
         }
 
         var original = await LoadJournalAsync(receipt.JournalEntryId, token);
         if (original.Status != FinanceValues.JournalStatuses.Posted)
             throw new HrConflictException("The original collection journal is not available for reversal.");
-        var reversal = await CreateReversalJournalAsync(original, $"Collection reversal / عكس التحصيل: {request.Reason}", today, token);
+        var reversal = await CreateReversalJournalAsync(original, request.Reason.Trim(), today, token);
         receipt.MarkReversed(reversal.Id, DateTimeOffset.UtcNow);
         receipt.CollectionPayment.MarkFinanciallyReversed(reversal.Id);
         foreach (var allocation in receipt.Allocations)
@@ -507,6 +507,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
     }
     private async Task<JournalEntry> CreateReversalJournalAsync(JournalEntry original, string description, DateOnly postingDate, CancellationToken token)
     {
+        if (string.IsNullOrWhiteSpace(description) || description.Length > 1000) throw new HrValidationException("Provide a reversal reason of at most 1000 characters.");
         if (original.Status != FinanceValues.JournalStatuses.Posted)
             throw new HrConflictException("Only a posted journal can be reversed.");
         var period = await GetPostingPeriodAsync(original.LegalEntityId, postingDate, false, token);
@@ -522,7 +523,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
         foreach (var line in original.Lines.OrderBy(x => x.LineNumber))
         {
             var reverseLine = reversal.AddLine(line.AccountId, line.Credit, line.Debit, line.BaseCredit, line.BaseDebit,
-                line.ExchangeRate, $"{line.Description} — REVERSAL / عكس", line.ClientId, line.CollectorId, line.BranchId, line.CostCenterId);
+                line.ExchangeRate, line.Description, line.ClientId, line.CollectorId, line.BranchId, line.CostCenterId);
             if (clientEntries.TryGetValue(line.Id, out var clientEntry))
                 _db.ClientLedgerEntries.Add(new ClientLedgerEntry(clientEntry.ClientId, reverseLine.Id, "REVERSAL",
                     clientEntry.Credit, clientEntry.Debit, clientEntry.CurrencyCode, original.Id, postingDate, now));
