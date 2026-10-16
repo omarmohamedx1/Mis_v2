@@ -297,11 +297,13 @@ public sealed class CollectionsService : ICollectionsService
     {
         EnsureOperationalWrite();
         var collectionCase = await AccessibleCases().SingleOrDefaultAsync(x => x.Id == caseId, token) ?? throw new HrNotFoundException("Collection case was not found.");
-        if (string.IsNullOrWhiteSpace(request.ActivityType)) throw new HrValidationException("Activity type is required."); var now = DateTimeOffset.UtcNow;
+        if (string.IsNullOrWhiteSpace(request.ActivityType)) throw new HrValidationException("Activity type is required.");
+        if (!CollectionActivity.IsManualType(request.ActivityType.Trim().ToUpperInvariant())) throw new HrValidationException("Only manually recorded activities can be corrected.");
+        var now = DateTimeOffset.UtcNow;
         var activity = new CollectionActivity(caseId, request.ActivityType, request.Result, request.Notes, request.Channel, _user.UserId, now, request.NextFollowUpAt);
         if (request.ActivityType.Equals(CollectionsValues.ActivityTypes.Call, StringComparison.OrdinalIgnoreCase) || request.ActivityType.Equals(CollectionsValues.ActivityTypes.Email, StringComparison.OrdinalIgnoreCase) || request.ActivityType.Equals(CollectionsValues.ActivityTypes.Sms, StringComparison.OrdinalIgnoreCase)) collectionCase.RecordContact(now, request.NextFollowUpAt);
         _db.CollectionActivities.Add(activity); AddAudit("ActivityCreated", activity, caseId, null, request); await _db.SaveChangesAsync(token);
-        return new CollectionActivityDto(activity.Id, activity.ActivityType, activity.Result, activity.Notes, activity.Channel, _user.Username, activity.CreatedAt, activity.NextFollowUpAt);
+        return new CollectionActivityDto(activity.Id, activity.ActivityType, activity.Result, activity.Notes, activity.Channel, _user.Username, activity.CreatedAt, activity.NextFollowUpAt, activity.CreatedById);
     }
 
     public async Task<PromiseToPayDto> CreatePromiseAsync(Guid caseId, CreatePromiseRequest request, CancellationToken token)
@@ -313,7 +315,7 @@ public sealed class CollectionsService : ICollectionsService
         var policy = await GetPtpPolicyAsync(caseId, token); var evaluation = CollectionRules.EvaluatePromise(promise.PromisedAmount, 0, promise.PromiseDate, CairoToday(), policy.GraceDays, policy.ToleranceAmount); promise.ApplyEvaluation(evaluation.Status, 0, now);
         _db.CollectionPromisesToPay.Add(promise); _db.CollectionActivities.Add(new CollectionActivity(caseId, CollectionsValues.ActivityTypes.PtpCreated, promise.Status, request.Notes, request.Channel, _user.UserId, now, null));
         AddAudit("PromiseCreated", promise, caseId, null, request); await _db.SaveChangesAsync(token);
-        return new PromiseToPayDto(promise.Id, caseId, collectionCase.CaseNumber, await CustomerNameAsync(collectionCase.CustomerId, token), promise.PromisedAmount, promise.PromiseDate, 0, promise.Status, _user.Username, promise.Channel, promise.CreatedAt);
+        return new PromiseToPayDto(promise.Id, caseId, collectionCase.CaseNumber, await CustomerNameAsync(collectionCase.CustomerId, token), promise.PromisedAmount, promise.PromiseDate, 0, promise.Status, _user.Username, promise.Channel, promise.CreatedAt, promise.Notes, promise.CollectorId);
     }
 
     public async Task<CollectionActivityDto> UpdateActivityAsync(Guid caseId, Guid activityId, CreateActivityRequest request, CancellationToken token)
@@ -328,6 +330,7 @@ public sealed class CollectionsService : ICollectionsService
         var ownsFollowUp = item.Case.NextFollowUpAt == item.NextFollowUpAt;
         item.Correct(request.ActivityType, request.Result, request.Notes, request.Channel, request.NextFollowUpAt);
         if (ownsFollowUp) item.Case.ScheduleNextFollowUp(item.NextFollowUpAt, DateTimeOffset.UtcNow);
+        await CorrectContactHistoryAsync(item, false, token);
         AddAudit("ActivityUpdated", item, caseId, before, request);
         await _db.SaveChangesAsync(token);
         return new CollectionActivityDto(item.Id, item.ActivityType, item.Result, item.Notes, item.Channel,
@@ -344,10 +347,11 @@ public sealed class CollectionsService : ICollectionsService
         AddAudit("ActivityDeleted", item, caseId, new { item.ActivityType, item.Result, item.Notes, item.Channel, item.CreatedAt, item.NextFollowUpAt }, null);
         if (item.Case.NextFollowUpAt == item.NextFollowUpAt)
         {
-            var next = await _db.CollectionActivities.Where(x => x.CaseId == caseId && x.Id != activityId)
+            var next = await _db.CollectionActivities.Where(x => x.CaseId == caseId && x.Id != activityId && x.NextFollowUpAt != null)
                 .OrderByDescending(x => x.CreatedAt).Select(x => x.NextFollowUpAt).FirstOrDefaultAsync(token);
             item.Case.ScheduleNextFollowUp(next, DateTimeOffset.UtcNow);
         }
+        await CorrectContactHistoryAsync(item, true, token);
         _db.CollectionActivities.Remove(item);
         await _db.SaveChangesAsync(token);
     }
@@ -363,6 +367,7 @@ public sealed class CollectionsService : ICollectionsService
         var policy = await GetPtpPolicyAsync(item.CaseId, token);
         var evaluation = CollectionRules.EvaluatePromise(item.PromisedAmount, 0, item.PromiseDate, CairoToday(), policy.GraceDays, policy.ToleranceAmount);
         item.ApplyEvaluation(evaluation.Status, 0, DateTimeOffset.UtcNow);
+        _db.CollectionActivities.Add(new CollectionActivity(item.CaseId, "PTP_UPDATED", item.Status, request.Notes, request.Channel, _user.UserId, DateTimeOffset.UtcNow, null));
         AddAudit("PromiseUpdated", item, item.CaseId, before, request);
         await _db.SaveChangesAsync(token);
         var result = await ProjectPromises(_db.CollectionPromisesToPay.AsNoTracking().Where(x => x.Id == promiseId)).SingleAsync(token);
@@ -376,6 +381,7 @@ public sealed class CollectionsService : ICollectionsService
         await using var transaction = _db.Database.CurrentTransaction is null ? await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var item = await CorrectablePromiseAsync(promiseId, token);
         AddAudit("PromiseDeleted", item, item.CaseId, new { item.PromisedAmount, item.PromiseDate, item.Channel, item.Notes, item.Status, item.CreatedAt }, null);
+        _db.CollectionActivities.Add(new CollectionActivity(item.CaseId, "PTP_DELETED", null, item.Notes, item.Channel, _user.UserId, DateTimeOffset.UtcNow, null));
         _db.CollectionPromisesToPay.Remove(item);
         await _db.SaveChangesAsync(token);
         if (transaction is not null) await transaction.CommitAsync(token);
@@ -384,6 +390,18 @@ public sealed class CollectionsService : ICollectionsService
     private void EnsureEntryOwner(Guid creatorId)
     {
         if (creatorId != _user.UserId && !CanAssign()) throw new HrForbiddenException("Only the creator or a Collections manager can correct this record.");
+    }
+
+    private async Task CorrectContactHistoryAsync(CollectionActivity item, bool deleting, CancellationToken token)
+    {
+        var contactTypes = new[] { "CALL", "SMS", "EMAIL" };
+        var isContact = !deleting && contactTypes.Contains(item.ActivityType);
+        if (item.Case.LastContactAt != item.CreatedAt && (!isContact || item.Case.LastContactAt > item.CreatedAt)) return;
+        var previous = await _db.CollectionActivities.Where(x => x.CaseId == item.CaseId && x.Id != item.Id && contactTypes.Contains(x.ActivityType))
+            .OrderByDescending(x => x.CreatedAt).Select(x => (DateTimeOffset?)x.CreatedAt).FirstOrDefaultAsync(token);
+        var latest = isContact && (!previous.HasValue || item.CreatedAt > previous) ? item.CreatedAt : previous;
+        item.Case.CorrectLastContact(latest, DateTimeOffset.UtcNow);
+        if (isContact && latest == item.CreatedAt) item.Case.ScheduleNextFollowUp(item.NextFollowUpAt, DateTimeOffset.UtcNow);
     }
 
     private async Task<PromiseToPay> CorrectablePromiseAsync(Guid promiseId, CancellationToken token)

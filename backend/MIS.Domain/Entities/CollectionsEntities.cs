@@ -299,7 +299,8 @@ public sealed class CollectionCase
     }
     public void Unassign(DateTimeOffset now) { AssignedCollectorId = null; AssignedTeamId = null; UpdatedAt = now; }
     public void SetPriority(int score, string explanation, DateTimeOffset now) { PriorityScore = Math.Clamp(score, 0, 100); Priority = score >= 70 ? "HIGH" : score >= 40 ? "MEDIUM" : "NORMAL"; PriorityExplanation = explanation.Trim(); UpdatedAt = now; }
-    public void RecordContact(DateTimeOffset contactedAt, DateTimeOffset? nextFollowUpAt) { LastContactAt = contactedAt; NextFollowUpAt = nextFollowUpAt; UpdatedAt = contactedAt; }
+    public void RecordContact(DateTimeOffset contactedAt, DateTimeOffset? nextFollowUpAt) { LastContactAt = contactedAt.ToUniversalTime(); NextFollowUpAt = nextFollowUpAt?.ToUniversalTime(); UpdatedAt = contactedAt.ToUniversalTime(); }
+    public void CorrectLastContact(DateTimeOffset? contactedAt, DateTimeOffset now) { LastContactAt = contactedAt?.ToUniversalTime(); UpdatedAt = now; }
     public void ScheduleNextFollowUp(DateTimeOffset? nextFollowUpAt, DateTimeOffset now) { NextFollowUpAt = nextFollowUpAt; UpdatedAt = now; }
     public void RecordApprovedPayment(decimal amount, DateTimeOffset paymentAt, DateTimeOffset now) { if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount)); OutstandingBalance = Math.Max(0, OutstandingBalance - amount); OverdueBalance = Math.Max(0, OverdueBalance - amount); TotalDue = OverdueBalance + Penalties + Fees; LastPaymentAt = paymentAt; UpdatedAt = now; }
     public void RestoreApprovedPayment(decimal outstandingBefore, decimal overdueBefore, DateTimeOffset now) { if (outstandingBefore < 0 || overdueBefore < 0 || outstandingBefore > OriginalAmount || overdueBefore > OriginalAmount) throw new ArgumentOutOfRangeException(nameof(outstandingBefore), "The payment snapshot is outside the case balance limits."); OutstandingBalance = outstandingBefore; OverdueBalance = overdueBefore; TotalDue = OverdueBalance + Penalties + Fees; UpdatedAt = now; }
@@ -379,7 +380,7 @@ public sealed class CollectionActivity
     }
     private CollectionActivity() { }
     public CollectionActivity(Guid caseId, string activityType, string? result, string? notes, string? channel, Guid createdById, DateTimeOffset createdAt, DateTimeOffset? nextFollowUpAt)
-    { Id = Guid.NewGuid(); CaseId = caseId; ActivityType = activityType.Trim().ToUpperInvariant(); Result = Normalize(result); Notes = Normalize(notes); Channel = Normalize(channel); CreatedById = createdById; CreatedAt = createdAt; NextFollowUpAt = nextFollowUpAt; }
+    { Id = Guid.NewGuid(); CaseId = caseId; ActivityType = activityType.Trim().ToUpperInvariant(); Result = Normalize(result); Notes = Normalize(notes); Channel = Normalize(channel); CreatedById = createdById; CreatedAt = createdAt.ToUniversalTime(); NextFollowUpAt = nextFollowUpAt?.ToUniversalTime(); }
     public Guid Id { get; private set; } public Guid CaseId { get; private set; } public CollectionCase Case { get; private set; } = null!; public string ActivityType { get; private set; } = string.Empty;
     public string? Result { get; private set; } public string? Notes { get; private set; } public string? Channel { get; private set; } public Guid CreatedById { get; private set; } public User CreatedBy { get; private set; } = null!;
     public DateTimeOffset CreatedAt { get; private set; } public DateTimeOffset? NextFollowUpAt { get; private set; } private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
