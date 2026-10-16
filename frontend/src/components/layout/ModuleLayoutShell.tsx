@@ -1,8 +1,9 @@
 import { ChevronLeft, ChevronRight, Languages, LogOut, Menu, UserCircle, X, type LucideIcon } from 'lucide-react';
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import misLogo from '../../assets/mis-logo.svg';
 import { ModuleSwitcherLink } from '../navigation/ModuleSwitcherLink';
+import { useBodyScrollLock, useMediaQuery, useOverlayLayer } from '../common/overlay';
 
 export type ModuleTheme = 'admin' | 'collections' | 'finance' | 'hr' | 'legal';
 
@@ -55,6 +56,11 @@ function linkClass(active: boolean) {
 export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const desktop = useMediaQuery('(min-width: 1024px)');
+  const navigationId = useId();
+  const menuButton = useRef<HTMLButtonElement>(null);
+  useBodyScrollLock(open && !desktop);
+  useOverlayLayer(navigationId, open && !desktop, () => { setOpen(false); menuButton.current?.focus(); });
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(props.storageKey) === 'collapsed');
   const currentNavigationItem = [...props.navigation]
     .sort((left, right) => right.to.length - left.to.length)
@@ -64,14 +70,6 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
     : (props.isRtl ? ChevronRight : ChevronLeft);
 
   useEffect(() => setOpen(false), [location.pathname]);
-  useEffect(() => {
-    if (!open) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', closeOnEscape);
-    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', closeOnEscape); };
-  }, [open]);
 
   const toggleCollapsed = () => setCollapsed((current) => {
     const next = !current;
@@ -84,6 +82,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
       {open ? <button aria-label={props.closeNavigationLabel} className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-[1px] lg:hidden" onClick={() => setOpen(false)} type="button" /> : null}
       <aside
         aria-label={props.navigationLabel}
+        inert={!desktop && !open}
         style={props.isRtl ? { right: 0, left: 'auto', borderLeftWidth: 1 } : { left: 0, right: 'auto', borderRightWidth: 1 }}
         className={`module-sidebar fixed inset-y-0 z-40 flex w-[min(18rem,calc(100vw-2.5rem))] flex-col border-mis-border bg-white shadow-panel transition-[width,transform] duration-200 ease-out lg:translate-x-0 lg:shadow-[4px_0_24px_-12px_rgba(15,23,42,.18)] ${open ? 'translate-x-0' : props.isRtl ? 'translate-x-full' : '-translate-x-full'}`}
       >
@@ -167,7 +166,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
 
       <div className="module-content min-w-0">
         <header className="sticky top-0 z-20 flex h-16 min-w-0 items-center border-b border-mis-border bg-white/95 px-4 shadow-[0_1px_0_rgba(15,23,42,.02)] backdrop-blur sm:px-6 xl:px-8">
-          <button aria-label={props.openNavigationLabel} className="me-3 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-mis-border bg-white text-mis-navy shadow-sm hover:bg-slate-50 lg:hidden" onClick={() => setOpen(true)} type="button">
+          <button ref={menuButton} aria-expanded={open} aria-label={props.openNavigationLabel} className="me-3 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-mis-border bg-white text-mis-navy shadow-sm hover:bg-slate-50 lg:hidden" onClick={() => setOpen(true)} type="button">
             <Menu className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">

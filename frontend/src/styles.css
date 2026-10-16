@@ -332,9 +332,12 @@ summary:focus-visible,
   .date-panel-header .date-next { grid-column: 3; grid-row: 1; }
 }
 .dialog-backdrop {
-  padding-block-start: max(0.5rem, env(safe-area-inset-top, 0px));
-  padding-block-end: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  --dialog-gutter: 0.5rem;
+  padding-block-start: max(var(--dialog-gutter), env(safe-area-inset-top, 0px));
+  padding-block-end: max(var(--dialog-gutter), env(safe-area-inset-bottom, 0px));
 }
+.dialog-backdrop > [role] { max-block-size: calc(100dvh - max(var(--dialog-gutter), env(safe-area-inset-top, 0px)) - max(var(--dialog-gutter), env(safe-area-inset-bottom, 0px))); }
+@media (min-width: 640px) { .dialog-backdrop { --dialog-gutter: 1rem; } }
 .ds-metric-value { min-inline-size: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .ds-readable { min-inline-size: 0; overflow-wrap: anywhere; }
 

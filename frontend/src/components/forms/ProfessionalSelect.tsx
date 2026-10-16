@@ -160,6 +160,10 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
       const left = Math.min(Math.max(isRtl ? rect.right - width : rect.left, 12), window.innerWidth - width - 12);
       const below = viewportHeight - rect.bottom - 12;
       const above = rect.top - 12;
+      if (Math.max(below, above) < 180) {
+        setLayout({ bottom: undefined, left, maxHeight: Math.max(40, viewportHeight - 24), mobile: false, top: 12, width });
+        return;
+      }
       const openAbove = below < 240 && above > below;
       setLayout({
         bottom: openAbove ? viewportHeight - rect.top + 6 : undefined,
