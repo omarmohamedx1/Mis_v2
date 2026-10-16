@@ -42,7 +42,7 @@ export function FinanceJournalDetailsPage() {
             <FinanceStatus value={data.status} />
           </div>
           <p className="mt-3 text-slate-600">{data.description}</p>
-          <p className="mt-2 text-xs text-mis-muted">{data.entryType} · {f.date(data.postingDate)} · {data.currencyCode}</p>
+          <p className="mt-2 text-xs text-mis-muted">{f.entryType(data.entryType)} · {f.date(data.postingDate)} · {data.currencyCode}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {data.status === 'DRAFT' && <button disabled={busy} onClick={() => act('submit')} className="inline-flex items-center gap-2 rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white"><Send className="h-4 w-4" />{f.text('إرسال', 'Submit')}</button>}

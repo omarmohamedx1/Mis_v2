@@ -10,7 +10,17 @@ export function useFinanceText() {
   const status = (value: string) => ({ POSTED: text('مُرحّل', 'Posted'), CLEARED: text('تمت التسوية', 'Cleared'), REVERSED: text('معكوس', 'Reversed'), OPEN: text('مفتوحة', 'Open'), SOFT_CLOSED: text('إقفال مبدئي', 'Soft closed'), CLOSED: text('مغلقة', 'Closed'), DRAFT: text('مسودة', 'Draft'), PENDING_APPROVAL: text('بانتظار الاعتماد', 'Pending approval'), APPROVED: text('معتمد', 'Approved') }[value] ?? value.replaceAll('_', ' '));
   const channel = (value: string) => ({ CASH_COLLECTOR: text('نقدي مع المحصل', 'Cash with collector'), CASH_BRANCH: text('نقدي بالفرع', 'Branch cash'), BANK_TRANSFER: text('تحويل بنكي', 'Bank transfer'), CHEQUE: text('شيك', 'Cheque'), GATEWAY: text('بوابة دفع / محفظة', 'Gateway / wallet'), DIRECT_CLIENT: text('سداد مباشر للبنك / الشركة', 'Direct to bank / company') }[value] ?? value.replaceAll('_', ' '));
   const custodyType = (value: string) => ({ COLLECTION: text('تحصيل نقدي', 'Cash collection'), HANDOVER: text('توريد / تسليم', 'Handover'), REVERSAL: text('عكس حركة', 'Reversal'), SHORTAGE: text('عجز', 'Shortage'), OVERAGE: text('زيادة', 'Overage'), ADJUSTMENT: text('تسوية', 'Adjustment') }[value] ?? value.replaceAll('_', ' '));
-  return { ar, text, money, number, date, status, channel, custodyType };
+  const entryType = (value: string) => ({
+    MANUAL: text('قيد يدوي', 'Manual journal'),
+    ACCOUNTING_OPERATION: text('مصاريف ووارد', 'Expense / income'),
+    ACCOUNTING_PAYMENT: text('صرف مصروفات', 'Expense payment'),
+    ACCOUNTING_DELETE: text('تسوية حذف', 'Deletion correction'),
+    REVERSAL: text('قيد عكسي', 'Reversal'),
+    COLLECTION: text('تحصيل', 'Collection'),
+    COLLECTION_CLEARING: text('تسوية تحصيل', 'Collection clearing'),
+    CUSTODY_HANDOVER: text('توريد عهدة', 'Custody handover'),
+  }[value] ?? value.replaceAll('_', ' '));
+  return { ar, text, money, number, date, status, channel, custodyType, entryType };
 }
 
 export function FinanceStatus({ value }: { value: string }) {

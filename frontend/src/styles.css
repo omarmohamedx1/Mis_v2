@@ -350,6 +350,10 @@ summary:focus-visible,
 @media (min-width: 640px) { .dialog-backdrop { --dialog-gutter: 1rem; } }
 .ds-metric-value { min-inline-size: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .ds-readable { min-inline-size: 0; overflow-wrap: anywhere; }
+/* Legacy controls without an explicit density share the compact control token. */
+:where(input:not([type]), input[type='text'], input[type='search'], input[type='number'], input[type='email'], input[type='tel'], input[type='password'], input[type='url']):where(:not([class*='h-']):not([aria-hidden='true']):not(.sr-only)) {
+  min-block-size: var(--control-height);
+}
 
 .auth-brand-grid {
   background-color: #0a1e36;

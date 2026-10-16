@@ -1,3 +1,4 @@
+import { PageActions } from '../../components/common/PageActions';
 import { Modal } from '../../components/common/Modal';
 import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
@@ -120,12 +121,12 @@ ${selected.notes ?? ''}` : '';
           <p className="text-sm text-slate-500">{a.text('مسير شهري من بيانات الموظفين والتعويضات الحالية. خصومات الغياب والتأخير وزيارات الجمعة تُحسب من الموارد البشرية تلقائيًا.', 'Monthly payroll from current employees and compensation. Absence, late, and Friday-visit deductions are calculated automatically from HR.')}</p>
           {canOpenHrPayroll ? <Link className="mt-2 inline-flex text-sm font-semibold text-mis-primary" to="/hr/payroll">{a.text('فتح صافي مرتبات الموارد البشرية', 'Open HR net salaries')}</Link> : null}
         </div>
-        <div className="flex min-w-0 flex-wrap gap-2">
+        <PageActions><div className="flex min-w-0 flex-wrap gap-2">
           <AccountingMonthSelect value={month} onChange={setMonth} />
           <input aria-label={a.text('السنة', 'Year')} className="h-11 w-24 rounded-xl border border-mis-border px-3 text-sm" type="number" value={year} onChange={(event) => setYear(Number(event.target.value))} />
           <Button disabled={busy} fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} onClick={() => void generate()} size="md">{a.text('توليد / تحديث', 'Generate / refresh')}</Button>
         </div>
-      <AccountingExportButton report="salaries" filter={{ year, month, periodId: periodId || undefined, search: search || undefined, status: status || undefined }} disabled={!periodId} /></header>
+      <AccountingExportButton report="salaries" filter={{ year, month, periodId: periodId || undefined, search: search || undefined, status: status || undefined }} disabled={!periodId} /></PageActions></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 

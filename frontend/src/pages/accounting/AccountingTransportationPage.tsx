@@ -1,3 +1,4 @@
+import { PageActions } from '../../components/common/PageActions';
 import { Modal } from '../../components/common/Modal';
 import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, cairoToday, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
@@ -82,8 +83,8 @@ export function AccountingTransportationPage() {
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('الانتقالات', 'Transportation')}</h1>
           <p className="text-sm text-slate-500">{a.text('راجع الموظف والمبلغ والتاريخ ثم أكّد لتسجيل المصروف مباشرة. يمكنك إضافة إيصال أو حذف الحركة بعد التأكيد.', 'Confirm the employee, amount and date to record the expense immediately. Attach a receipt or delete an incorrect entry after confirmation.')}</p>
         </div>
-        <Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>{a.text('مطالبة جديدة', 'New claim')}</Button>
-      <AccountingExportButton report="transportation" filter={{ from: from || '2000-01-01', to: to || '2100-12-31', search: search || undefined, status: status || undefined }} /></header>
+        <PageActions><Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>{a.text('مطالبة جديدة', 'New claim')}</Button>
+      <AccountingExportButton report="transportation" filter={{ from: from || '2000-01-01', to: to || '2100-12-31', search: search || undefined, status: status || undefined }} /></PageActions></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 

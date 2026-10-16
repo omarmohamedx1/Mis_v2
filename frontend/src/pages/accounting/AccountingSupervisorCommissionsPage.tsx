@@ -1,3 +1,4 @@
+import { PageActions } from '../../components/common/PageActions';
 import { Modal } from '../../components/common/Modal';
 import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
@@ -75,13 +76,13 @@ export function AccountingSupervisorCommissionsPage() {
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('عمولات المشرفين', 'Supervisor commissions')}</h1>
           <p className="text-sm text-slate-500">{a.text('حسب فرق التحصيل عبر علاقة المشرف بأعضاء الفريق الحالية، من المدفوعات المعتمدة فقط.', 'Based on current supervisor-to-team relationships, from approved payments only.')}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <PageActions><div className="flex flex-wrap gap-2">
           <AccountingMonthSelect value={month} onChange={setMonth} />
           <input aria-label={a.text('السنة', 'Year')} type="number" className="h-11 w-24 rounded-xl border border-mis-border px-3 text-sm" value={year} onChange={(event) => setYear(Number(event.target.value))} />
           <Button disabled={busy} fullWidth={false} leftIcon={<Calculator className="h-4 w-4" />} onClick={() => void calculate()}>{a.text('احتساب الشهر', 'Calculate month')}</Button>
           <Button fullWidth={false} leftIcon={<Percent className="h-4 w-4" />} onClick={() => navigate('/finance/commission-rules')} variant="outline">{a.text('قواعد العمولة', 'Commission rules')}</Button>
         </div>
-      <AccountingExportButton report="supervisor-commissions" filter={{ year, month, search: search || undefined, status: status || undefined }} /></header>
+      <AccountingExportButton report="supervisor-commissions" filter={{ year, month, search: search || undefined, status: status || undefined }} /></PageActions></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 

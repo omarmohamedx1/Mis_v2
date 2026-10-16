@@ -1,3 +1,4 @@
+import { PageActions } from '../../components/common/PageActions';
 import { Modal } from '../../components/common/Modal';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Percent, Plus, PowerOff, Scale, Trash2 } from 'lucide-react';
@@ -105,8 +106,8 @@ export function AccountingCommissionRulesPage() {
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('قواعد العمولة', 'Commission rules')}</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">{a.text('القواعد النشطة تُستخدم عند احتساب عمولات المحصلين والمشرفين من المدفوعات المعتمدة فقط.', 'Active rules are used when collector and supervisor commissions are calculated from approved payments only.')}</p>
         </div>
-        <Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowCreate(true)}>{a.text('قاعدة جديدة', 'New rule')}</Button>
-      <AccountingExportButton report="commission-rules" filter={{ category: scope || undefined }} /></header>
+        <PageActions><Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowCreate(true)}>{a.text('قاعدة جديدة', 'New rule')}</Button>
+      <AccountingExportButton report="commission-rules" filter={{ category: scope || undefined }} /></PageActions></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
