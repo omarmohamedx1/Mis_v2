@@ -75,10 +75,10 @@ public sealed class AccountingController(IAccountingService accounting) : Contro
     public Task<AccountingTransportationDto> UpdateTransportation(Guid id, [FromBody] UpdateTransportationRequest request, CancellationToken token)
         => accounting.UpdateTransportationAsync(id, request, token);
 
-    [HttpPost("transportation/{id:guid}/{action}")]
+    [HttpPost("transportation/{id:guid}/{operation}")]
     [Authorize(Policy = AuthorizationPolicies.AccountingTransportationManage)]
-    public Task<AccountingTransportationDto> TransitionTransportation(Guid id, string action, CancellationToken token)
-        => accounting.TransitionTransportationAsync(id, action, token);
+    public Task<AccountingTransportationDto> TransitionTransportation(Guid id, [FromRoute] string operation, CancellationToken token)
+        => accounting.TransitionTransportationAsync(id, operation, token);
 
     [HttpPost("transportation/{id:guid}/attachment")]
     [Authorize(Policy = AuthorizationPolicies.AccountingTransportationManage)]
@@ -139,10 +139,10 @@ public sealed class AccountingController(IAccountingService accounting) : Contro
     public Task<AccountingCollectorCommissionDto> AdjustCollector(Guid id, [FromBody] AdjustCommissionRequest request, CancellationToken token)
         => accounting.AdjustCollectorCommissionAsync(id, request, token);
 
-    [HttpPost("collector-commissions/{id:guid}/{action}")]
+    [HttpPost("collector-commissions/{id:guid}/{operation}")]
     [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
-    public Task<AccountingCollectorCommissionDto> TransitionCollector(Guid id, string action, CancellationToken token)
-        => accounting.TransitionCollectorCommissionAsync(id, action, token);
+    public Task<AccountingCollectorCommissionDto> TransitionCollector(Guid id, [FromRoute] string operation, CancellationToken token)
+        => accounting.TransitionCollectorCommissionAsync(id, operation, token);
 
     [HttpPost("supervisor-commissions/calculate")]
     [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
@@ -161,10 +161,10 @@ public sealed class AccountingController(IAccountingService accounting) : Contro
     public Task<AccountingSupervisorCommissionDto> AdjustSupervisor(Guid id, [FromBody] AdjustCommissionRequest request, CancellationToken token)
         => accounting.AdjustSupervisorCommissionAsync(id, request, token);
 
-    [HttpPost("supervisor-commissions/{id:guid}/{action}")]
+    [HttpPost("supervisor-commissions/{id:guid}/{operation}")]
     [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
-    public Task<AccountingSupervisorCommissionDto> TransitionSupervisor(Guid id, string action, CancellationToken token)
-        => accounting.TransitionSupervisorCommissionAsync(id, action, token);
+    public Task<AccountingSupervisorCommissionDto> TransitionSupervisor(Guid id, [FromRoute] string operation, CancellationToken token)
+        => accounting.TransitionSupervisorCommissionAsync(id, operation, token);
 
     [HttpGet("employees")]
     public Task<IReadOnlyList<AccountingLookupEmployeeDto>> Employees([FromQuery] string? search, CancellationToken token)

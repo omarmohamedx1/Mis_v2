@@ -35,9 +35,9 @@ public sealed class FinanceController : ControllerBase
     [Authorize(Policy = AuthorizationPolicies.FinanceConfiguration)]
     public Task<IReadOnlyCollection<AccountingPeriodDto>> InitializeYear(int year, CancellationToken token) => _service.InitializeYearAsync(year, token);
 
-    [HttpPost("periods/{id:guid}/{action}")]
+    [HttpPost("periods/{id:guid}/{operation}")]
     [Authorize(Policy = AuthorizationPolicies.FinancePeriodClose)]
-    public Task<AccountingPeriodDto> ChangePeriod(Guid id, string action, PeriodActionRequest request, CancellationToken token) => _service.ChangePeriodStatusAsync(id, action, request, token);
+    public Task<AccountingPeriodDto> ChangePeriod(Guid id, [FromRoute] string operation, PeriodActionRequest request, CancellationToken token) => _service.ChangePeriodStatusAsync(id, operation, request, token);
 
     [HttpGet("journals")]
     public Task<FinancePagedResultDto<FinanceJournalListItemDto>> Journals([FromQuery] int page = 1, [FromQuery] int pageSize = 30, [FromQuery] string? status = null, [FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null, CancellationToken token = default) => _service.GetJournalsAsync(page, pageSize, status, from, to, token);

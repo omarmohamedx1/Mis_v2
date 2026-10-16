@@ -17,8 +17,8 @@ public sealed class AccountingBookController(IAccountingBookService service) : C
     [HttpPost("entries")]
     [Authorize(Policy = AuthorizationPolicies.FinanceJournalCreate)]
     public Task<AccountingBookEntryDto> Create(CreateAccountingBookEntryRequest request, CancellationToken token) => service.CreateAsync(request, token);
-    [HttpPost("entries/{id:guid}/{action}")]
-    public Task<AccountingBookEntryDto> Transition(Guid id, string action, [FromBody] AccountingBookActionRequest request, CancellationToken token) => service.TransitionAsync(id, action, request.Reason, token);
+    [HttpPost("entries/{id:guid}/{operation}")]
+    public Task<AccountingBookEntryDto> Transition(Guid id, [FromRoute] string operation, [FromBody] AccountingBookActionRequest request, CancellationToken token) => service.TransitionAsync(id, operation, request.Reason, token);
     [HttpGet("summary")]
     public Task<AccountingBookSummaryDto> Summary([FromQuery] DateOnly from, [FromQuery] DateOnly to, CancellationToken token) => service.SummaryAsync(from, to, token);
     [HttpGet("advances")]
