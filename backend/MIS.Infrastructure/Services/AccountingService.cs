@@ -136,6 +136,9 @@ public sealed class AccountingService(
     public async Task<AccountingEmployeePayrollDto> UpdatePayrollAsync(Guid id, UpdateAccountingPayrollRequest request, CancellationToken token)
     {
         EnsureManage();
+        foreach (var value in new[] { request.Transportation, request.Commissions, request.Bonuses, request.Deductions }) ValidateCurrency(value, true);
+        ValidateCurrency(request.OtherAdjustments, true, true);
+
         var row = await db.AccountingEmployeePayrolls.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Payroll row was not found.");
         var before = Snapshot(row);
         try { row.ApplyComponents(request.Transportation, request.Commissions, request.Bonuses, request.Deductions, request.OtherAdjustments, request.Notes, DateTimeOffset.UtcNow); }
@@ -210,6 +213,8 @@ public sealed class AccountingService(
     public async Task<AccountingTransportationDto> CreateTransportationAsync(CreateTransportationRequest request, CancellationToken token)
     {
         EnsureManage();
+        ValidateCurrency(request.Amount);
+
         await EnsureEmployee(request.EmployeeId, token);
         if (request.FieldVisitId.HasValue && !await db.CollectionFieldVisits.AnyAsync(x => x.Id == request.FieldVisitId, token))
             throw new HrValidationException("Linked field visit was not found.");
@@ -225,6 +230,8 @@ public sealed class AccountingService(
     public async Task<AccountingTransportationDto> UpdateTransportationAsync(Guid id, UpdateTransportationRequest request, CancellationToken token)
     {
         EnsureManage();
+        ValidateCurrency(request.Amount);
+
         var row = await db.AccountingTransportationClaims.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Transportation claim was not found.");
         try { row.Update(request.ClaimDate, request.Amount, request.Purpose, request.Notes, request.FieldVisitId, request.CaseId, DateTimeOffset.UtcNow); }
         catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
@@ -307,7 +314,7 @@ public sealed class AccountingService(
     public async Task<AccountingCommissionRuleDto> CreateRuleAsync(CreateCommissionRuleRequest request, CancellationToken token)
     {
         EnsureManage();
-        if (string.IsNullOrWhiteSpace(request.Code) || request.Code.Length > 50 || string.IsNullOrWhiteSpace(request.NameArabic) || string.IsNullOrWhiteSpace(request.NameEnglish) || request.NameArabic.Length > 200 || request.NameEnglish.Length > 200) throw new HrValidationException("Provide a valid commission rule code and names.");
+        if (string.IsNullOrWhiteSpace(request.Code) || request.Code.Length > 40 || string.IsNullOrWhiteSpace(request.NameArabic) || string.IsNullOrWhiteSpace(request.NameEnglish) || request.NameArabic.Length > 200 || request.NameEnglish.Length > 200) throw new HrValidationException("Provide a valid commission rule code and names.");
         if (request.FixedAmount.HasValue && (request.FixedAmount > 9999999999999.99m || decimal.Round(request.FixedAmount.Value, 2) != request.FixedAmount)) throw new HrValidationException("Use a positive amount with at most two decimal places.");
         if (request.EffectiveFrom.Year is < 2000 or > 2100) throw new HrValidationException("Provide a valid accounting date range.");
         if (request.Basis is not ("PERCENT_OF_COLLECTED" or "FIXED_AMOUNT")) throw new HrValidationException("Choose a percentage or fixed-amount commission rule.");
@@ -418,6 +425,8 @@ public sealed class AccountingService(
     public async Task<AccountingCollectorCommissionDto> AdjustCollectorCommissionAsync(Guid id, AdjustCommissionRequest request, CancellationToken token)
     {
         EnsureManage();
+        ValidateCurrency(request.Adjustments, true, true);
+
         var row = await db.AccountingCollectorCommissions.Include(x => x.CollectorUser).ThenInclude(u => u.Employee).Include(x => x.CommissionRule)
             .SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Collector commission was not found.");
         try { row.Adjust(request.Adjustments, request.Notes, DateTimeOffset.UtcNow); }
@@ -527,6 +536,8 @@ public sealed class AccountingService(
     public async Task<AccountingSupervisorCommissionDto> AdjustSupervisorCommissionAsync(Guid id, AdjustCommissionRequest request, CancellationToken token)
     {
         EnsureManage();
+        ValidateCurrency(request.Adjustments, true, true);
+
         var row = await db.AccountingSupervisorCommissions.Include(x => x.SupervisorUser).ThenInclude(u => u.Employee).Include(x => x.CommissionRule)
             .SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Supervisor commission was not found.");
         try { row.Adjust(request.Adjustments, request.Notes, DateTimeOffset.UtcNow); }
@@ -639,6 +650,11 @@ public sealed class AccountingService(
         if (IsAdmin || user.Permissions.Contains("*") || CanApprove || user.Permissions.Contains(SystemPermissionCodes.AccountingAccess) || user.Permissions.Contains("accounting.access"))
             return;
         throw new HrForbiddenException("Accounting approve permission is required.");
+    }
+
+    private static void ValidateCurrency(decimal amount, bool zeroAllowed = false, bool negativeAllowed = false)
+    {
+        if ((!negativeAllowed && amount < 0) || (!zeroAllowed && amount == 0) || (amount < -9999999999999.99m || amount > 9999999999999.99m) || decimal.Round(amount, 2) != amount) throw new HrValidationException("Use a valid currency amount with at most two decimal places.");
     }
 
     private static void EnsureMonth(int year, int month)

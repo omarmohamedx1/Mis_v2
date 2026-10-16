@@ -97,7 +97,7 @@ public sealed partial class AccountingBookService
             var q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.Period.Year * 12 + x.Period.Month >= lowerPeriod && x.Period.Year * 12 + x.Period.Month <= upperPeriod);
             if (filter.PeriodId.HasValue) q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.PeriodId == filter.PeriodId);
             if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
-            if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.EmployeeName.Contains(filter.Search) || x.EmployeeNumber.Contains(filter.Search));
+            if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.EmployeeName.ToLower().Contains(filter.Search.ToLower()) || x.EmployeeNumber.ToLower().Contains(filter.Search.ToLower()));
             var rows = await q.OrderBy(x => x.EmployeeNumber).Select(x => new { x.Period.Year, x.Period.Month, x.EmployeeNumber, x.EmployeeName, x.DepartmentName, x.BasicSalary, x.Allowances, x.Transportation, x.Commissions, x.Bonuses, x.Deductions, x.OtherAdjustments, x.NetSalary, x.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("المرتبات", "Salaries"), [T("السنة", "Year"), T("الشهر", "Month"), T("كود الموظف", "Employee code"), T("الموظف", "Employee"), T("القسم", "Department"), T("الأساسي", "Basic"), T("البدلات", "Allowances"), T("الانتقالات", "Transportation"), T("العمولات", "Commissions"), T("المكافآت", "Bonuses"), T("الخصومات", "Deductions"), T("تسويات", "Adjustments"), T("الصافي", "Net salary"), T("الحالة", "Status")], rows.Select(x => new object?[] { x.Year, x.Month, x.EmployeeNumber, x.EmployeeName, x.DepartmentName, x.BasicSalary, x.Allowances, x.Transportation, x.Commissions, x.Bonuses, x.Deductions, x.OtherAdjustments, x.NetSalary, StatusName(x.Status, ar) }));
         }
@@ -105,7 +105,7 @@ public sealed partial class AccountingBookService
         {
             var q = db.AccountingTransportationClaims.AsNoTracking().Where(x => x.ClaimDate >= from && x.ClaimDate <= to);
             if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
-            if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.Employee.FullName.Contains(filter.Search) || x.Purpose.Contains(filter.Search));
+            if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.Employee.FullName.ToLower().Contains(filter.Search.ToLower()) || x.Employee.EmployeeNumber.ToLower().Contains(filter.Search.ToLower()) || x.Purpose.ToLower().Contains(filter.Search.ToLower()));
             var rows = await q.OrderBy(x => x.ClaimDate).Select(x => new { x.Employee.EmployeeNumber, x.Employee.FullName, x.ClaimDate, x.Amount, x.Purpose, x.Notes, x.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("الانتقالات", "Transportation"), [T("كود الموظف", "Employee code"), T("الموظف", "Employee"), T("التاريخ", "Date"), T("المبلغ", "Amount"), T("الغرض", "Purpose"), T("ملاحظات", "Notes"), T("الحالة", "Status")], rows.Select(x => new object?[] { x.EmployeeNumber, x.FullName, x.ClaimDate, x.Amount, x.Purpose, x.Notes, StatusName(x.Status, ar) }));
         }
@@ -113,7 +113,7 @@ public sealed partial class AccountingBookService
         {
             var q = db.AccountingCollectorCommissions.AsNoTracking().Where(x => x.PeriodYear * 12 + x.PeriodMonth >= lowerPeriod && x.PeriodYear * 12 + x.PeriodMonth <= upperPeriod);
             if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
-            if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.CollectorUser.FullName.Contains(filter.Search));
+            if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.CollectorUser.FullName.ToLower().Contains(filter.Search.ToLower()) || (x.CollectorUser.Employee != null && x.CollectorUser.Employee.EmployeeNumber.ToLower().Contains(filter.Search.ToLower())));
             var rows = await q.OrderBy(x => x.CollectorUser.FullName).Select(x => new { x.PeriodYear, x.PeriodMonth, x.CollectorUser.FullName, x.AssignedCasesCount, x.CollectedAmount, x.EligibleAmount, Rule = x.CommissionRule.Code, x.RateApplied, x.CommissionAmount, x.Adjustments, x.FinalCommission, x.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("عمولات المحصلين", "Collector commissions"), CommissionHeaders(ar), rows.Select(x => new object?[] { x.PeriodYear, x.PeriodMonth, x.FullName, x.AssignedCasesCount, x.CollectedAmount, x.EligibleAmount, x.Rule, x.RateApplied, x.CommissionAmount, x.Adjustments, x.FinalCommission, StatusName(x.Status, ar) }));
         }
@@ -121,7 +121,7 @@ public sealed partial class AccountingBookService
         {
             var q = db.AccountingSupervisorCommissions.AsNoTracking().Where(x => x.PeriodYear * 12 + x.PeriodMonth >= lowerPeriod && x.PeriodYear * 12 + x.PeriodMonth <= upperPeriod);
             if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
-            if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.SupervisorUser.FullName.Contains(filter.Search));
+            if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.SupervisorUser.FullName.ToLower().Contains(filter.Search.ToLower()) || (x.SupervisorUser.Employee != null && x.SupervisorUser.Employee.EmployeeNumber.ToLower().Contains(filter.Search.ToLower())));
             var rows = await q.OrderBy(x => x.SupervisorUser.FullName).Select(x => new { x.PeriodYear, x.PeriodMonth, x.SupervisorUser.FullName, x.CollectorCount, x.TeamCollectedAmount, x.EligibleAmount, Rule = x.CommissionRule.Code, x.RateApplied, x.CommissionAmount, x.Adjustments, x.FinalCommission, x.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("عمولات السوبر فايزر", "Supervisor commissions"), CommissionHeaders(ar, true), rows.Select(x => new object?[] { x.PeriodYear, x.PeriodMonth, x.FullName, x.CollectorCount, x.TeamCollectedAmount, x.EligibleAmount, x.Rule, x.RateApplied, x.CommissionAmount, x.Adjustments, x.FinalCommission, StatusName(x.Status, ar) }));
         }

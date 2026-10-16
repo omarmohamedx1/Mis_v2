@@ -20,4 +20,8 @@
     <ProjectReference Include="..\MIS.Infrastructure\MIS.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="appsettings.Local.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
 </Project>

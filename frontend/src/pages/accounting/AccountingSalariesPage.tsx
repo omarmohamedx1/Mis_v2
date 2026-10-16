@@ -218,7 +218,8 @@ export function AccountingSalariesPage() {
                     className="w-full rounded-xl border border-mis-border px-3 py-2 disabled:bg-slate-50"
                     disabled={readOnly || !editable.includes(selected.status)}
                     value={selected[key]}
-                    onChange={(event) => setSelected({ ...selected, [key]: Number(event.target.value) })}
+                    step="0.01"
+                    onChange={(event) => { const next = { ...selected, [key]: Number(event.target.value) }; next.netSalary = next.basicSalary + next.allowances + next.transportation + next.commissions + next.bonuses + next.otherAdjustments - next.deductions; setSelected(next); }}
                   />
                 </label>
               ))}

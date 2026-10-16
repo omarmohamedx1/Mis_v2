@@ -15,6 +15,9 @@ public static partial class ApiTextLocalizer
     private static readonly IReadOnlyDictionary<string, string> Arabic =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["System accounting account codes and classification cannot be changed. Create a new account instead."] = "أكواد وتصنيفات حسابات التشغيل الأساسية مرتبطة بالنظام. أضف حسابًا جديدًا بدل تغييرها.",
+            ["Use a valid currency amount with at most two decimal places."] = "أدخل مبلغًا صحيحًا وبحد أقصى منزلتين عشريتين، دون قيم سالبة في بنود الصرف.",
+            ["Provide a valid commission rule code and names."] = "أدخل كود قاعدة العمولة والاسم بالعربية والإنجليزية ضمن الأطوال المسموحة.",
             ["Provide a valid accounting date range."] = "اختر فترة محاسبية صحيحة يكون تاريخ نهايتها بعد البداية أو مساويًا لها.",
             ["Choose an accounting date no later than today."] = "اختر تاريخ حركة لا يتجاوز تاريخ اليوم.",
             ["Use a positive amount with at most two decimal places."] = "أدخل مبلغًا أكبر من صفر وبحد أقصى منزلتين عشريتين.",

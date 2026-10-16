@@ -184,7 +184,7 @@ public sealed partial class AccountingBookService : IAccountingBookService
             var key = $"RECURRING:{template.Id}:{request.Year:D4}{request.Month:D2}";
             if (await db.AccountingBookEntries.AnyAsync(x => x.SourceKey == key, token)) { exists++; continue; }
             await ValidateAccounts("FIXED", template.AccountId, template.CashAccountId, token);
-            await CreateDraft(new("FIXED", date.Value, template.Amount, template.AccountId, template.CashAccountId, template.Name, template.Notes), template.Id, key, token); created++;
+            await CreateDraft(new("FIXED", date.Value, template.Amount, template.AccountId, template.CashAccountId, template.Name, $"RECURRING-{request.Year:D4}{request.Month:D2}"), template.Id, key, token); created++;
         }
         if (tx is not null) await tx.CommitAsync(token);
         return new(created, exists, outside);

@@ -36,7 +36,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
     {
         EnsureAccess(); var balances = await _db.JournalEntryLines.AsNoTracking().Where(x => x.JournalEntry.Status == FinanceValues.JournalStatuses.Posted || x.JournalEntry.Status == FinanceValues.JournalStatuses.Reversed).GroupBy(x => x.AccountId).Select(g => new { Id = g.Key, Balance = g.Sum(x => x.BaseDebit - x.BaseCredit) }).ToDictionaryAsync(x => x.Id, x => x.Balance, token);
         var accounts = await _db.FinanceAccounts.AsNoTracking().OrderBy(x => x.Code).ToArrayAsync(token);
-        return accounts.Select(x => new FinanceAccountDto(x.Id, x.Code, x.NameArabic, x.NameEnglish, x.AccountType, x.NormalBalance, x.PostingAllowed, x.ControlAccountType, balances.GetValueOrDefault(x.Id), x.ParentId, x.IsActive, x.IsCashAccount)).ToArray();
+        return accounts.Select(x => new FinanceAccountDto(x.Id, x.Code, x.NameArabic, x.NameEnglish, x.AccountType, x.NormalBalance, x.PostingAllowed, x.ControlAccountType, balances.GetValueOrDefault(x.Id), x.ParentId, x.IsActive, x.IsCashAccount, FinanceSeed.OperationAccountIds.Contains(x.Id))).ToArray();
     }
 
     public async Task<FinanceAccountDto> SaveAccountAsync(Guid? id, SaveFinanceAccountRequest request, CancellationToken token)
@@ -49,6 +49,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
         if (await _db.FinanceAccounts.AnyAsync(x => x.LegalEntityId == entity.Id && x.Code == request.Code.Trim() && x.Id != id, token)) throw new HrConflictException("An account with this code already exists.");
         var item = id.HasValue ? await _db.FinanceAccounts.SingleOrDefaultAsync(x => x.Id == id && x.LegalEntityId == entity.Id, token) ?? throw new HrNotFoundException("Account was not found.")
             : new FinanceAccount(Guid.NewGuid(), entity.Id, request.Code, request.NameArabic, request.NameEnglish, type, normal, request.PostingAllowed);
+        if (FinanceSeed.OperationAccountIds.Contains(item.Id) && (item.Code != request.Code.Trim() || item.AccountType != type || item.NormalBalance != normal || item.IsCashAccount != request.IsCashAccount)) throw new HrConflictException("System accounting account codes and classification cannot be changed. Create a new account instead.");
         if (item.ControlAccountType is not null && (item.Code != request.Code.Trim() || item.AccountType != type || item.NormalBalance != normal || item.PostingAllowed != request.PostingAllowed || !request.IsActive || item.ParentId != request.ParentId || item.IsCashAccount != request.IsCashAccount)) throw new HrConflictException("Control account posting settings cannot be changed.");
         if (id.HasValue && (item.AccountType != type || item.NormalBalance != normal || item.IsCashAccount != request.IsCashAccount) && await _db.JournalEntryLines.AnyAsync(x => x.AccountId == item.Id, token)) throw new HrConflictException("An account with transactions cannot change its type or normal balance.");
         var parentId = request.ParentId; var seen = new HashSet<Guid> { item.Id };

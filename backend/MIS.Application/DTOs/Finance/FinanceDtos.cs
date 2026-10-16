@@ -14,7 +14,7 @@ public sealed record FinanceDashboardDto(
     int OpenPeriods,
     string BaseCurrencyCode);
 
-public sealed record FinanceAccountDto(Guid Id, string Code, string NameArabic, string NameEnglish, string AccountType, string NormalBalance, bool PostingAllowed, string? ControlAccountType, decimal Balance, Guid? ParentId = null, bool IsActive = true, bool IsCashAccount = false);
+public sealed record FinanceAccountDto(Guid Id, string Code, string NameArabic, string NameEnglish, string AccountType, string NormalBalance, bool PostingAllowed, string? ControlAccountType, decimal Balance, Guid? ParentId = null, bool IsActive = true, bool IsCashAccount = false, bool IsSystemAccount = false);
 public sealed record SaveFinanceAccountRequest([Required, MaxLength(12), RegularExpression(@"[A-Za-z0-9.\-]+") ] string Code,
     [Required, MaxLength(200)] string NameArabic, [Required, MaxLength(200)] string NameEnglish,
     [Required] string AccountType, [Required] string NormalBalance, bool PostingAllowed = true, Guid? ParentId = null, bool IsActive = true, bool IsCashAccount = false);
