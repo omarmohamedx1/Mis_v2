@@ -217,7 +217,7 @@ public sealed class CollectionsService : ICollectionsService
             Bucket = isArabic ? x.CurrentBucket.NameArabic : x.CurrentBucket.NameEnglish, x.Status, x.Priority, x.PriorityScore, x.PriorityExplanation, x.AssignedCollectorId, Collector = x.AssignedCollector == null ? null : x.AssignedCollector.FullName,
             x.CreditLimit, x.PurchaseAvailableLimit, x.ActivationDate, x.LastPaymentAmount, x.LastPaymentAt, x.LastTransactionDate, x.LastTransactionAmount
         }).SingleOrDefaultAsync(token) ?? throw new HrNotFoundException("Collection case was not found.");
-        var activities = await _db.CollectionActivities.AsNoTracking().Where(x => x.CaseId == caseId).OrderByDescending(x => x.CreatedAt).Take(100).Select(x => new CollectionActivityDto(x.Id, x.ActivityType, x.Result, x.Notes, x.Channel, x.CreatedBy.FullName, x.CreatedAt, x.NextFollowUpAt)).ToArrayAsync(token);
+        var activities = await _db.CollectionActivities.AsNoTracking().Where(x => x.CaseId == caseId).OrderByDescending(x => x.CreatedAt).Take(100).Select(x => new CollectionActivityDto(x.Id, x.ActivityType, x.Result, x.Notes, x.Channel, x.CreatedBy.FullName, x.CreatedAt, x.NextFollowUpAt, x.CreatedById)).ToArrayAsync(token);
         var promises = await ProjectPromises(_db.CollectionPromisesToPay.AsNoTracking().Where(x => x.CaseId == caseId).OrderByDescending(x => x.CreatedAt)).ToArrayAsync(token);
         var payments = await ProjectPayments(_db.CollectionPayments.AsNoTracking().Where(x => x.CaseId == caseId).OrderByDescending(x => x.SubmittedAt)).ToArrayAsync(token);
         var hasBreachedComplaint = await _db.CollectionComplaints.AsNoTracking().AnyAsync(x => x.CaseId == caseId && x.SlaDueAt < DateTimeOffset.UtcNow && x.Status != CollectionsValues.ComplaintStatuses.Closed && x.Status != CollectionsValues.ComplaintStatuses.Resolved, token);
@@ -314,6 +314,90 @@ public sealed class CollectionsService : ICollectionsService
         _db.CollectionPromisesToPay.Add(promise); _db.CollectionActivities.Add(new CollectionActivity(caseId, CollectionsValues.ActivityTypes.PtpCreated, promise.Status, request.Notes, request.Channel, _user.UserId, now, null));
         AddAudit("PromiseCreated", promise, caseId, null, request); await _db.SaveChangesAsync(token);
         return new PromiseToPayDto(promise.Id, caseId, collectionCase.CaseNumber, await CustomerNameAsync(collectionCase.CustomerId, token), promise.PromisedAmount, promise.PromiseDate, 0, promise.Status, _user.Username, promise.Channel, promise.CreatedAt);
+    }
+
+    public async Task<CollectionActivityDto> UpdateActivityAsync(Guid caseId, Guid activityId, CreateActivityRequest request, CancellationToken token)
+    {
+        EnsureOperationalWrite();
+        var item = await _db.CollectionActivities.Include(x => x.Case).SingleOrDefaultAsync(x => x.Id == activityId && x.CaseId == caseId && AccessibleCases().Any(c => c.Id == x.CaseId), token)
+            ?? throw new HrNotFoundException("Collection activity was not found.");
+        EnsureEntryOwner(item.CreatedById);
+        if (!CollectionActivity.IsManualType(item.ActivityType) || !CollectionActivity.IsManualType(request.ActivityType.Trim().ToUpperInvariant()))
+            throw new HrConflictException("Only manually recorded activities can be corrected.");
+        var before = new { item.ActivityType, item.Result, item.Notes, item.Channel, item.NextFollowUpAt };
+        var ownsFollowUp = item.Case.NextFollowUpAt == item.NextFollowUpAt;
+        item.Correct(request.ActivityType, request.Result, request.Notes, request.Channel, request.NextFollowUpAt);
+        if (ownsFollowUp) item.Case.ScheduleNextFollowUp(item.NextFollowUpAt, DateTimeOffset.UtcNow);
+        AddAudit("ActivityUpdated", item, caseId, before, request);
+        await _db.SaveChangesAsync(token);
+        return new CollectionActivityDto(item.Id, item.ActivityType, item.Result, item.Notes, item.Channel,
+            await _db.Users.Where(x => x.Id == item.CreatedById).Select(x => x.FullName).SingleAsync(token), item.CreatedAt, item.NextFollowUpAt, item.CreatedById);
+    }
+
+    public async Task DeleteActivityAsync(Guid caseId, Guid activityId, CancellationToken token)
+    {
+        EnsureOperationalWrite();
+        var item = await _db.CollectionActivities.Include(x => x.Case).SingleOrDefaultAsync(x => x.Id == activityId && x.CaseId == caseId && AccessibleCases().Any(c => c.Id == x.CaseId), token)
+            ?? throw new HrNotFoundException("Collection activity was not found.");
+        EnsureEntryOwner(item.CreatedById);
+        if (!CollectionActivity.IsManualType(item.ActivityType)) throw new HrConflictException("Only manually recorded activities can be corrected.");
+        AddAudit("ActivityDeleted", item, caseId, new { item.ActivityType, item.Result, item.Notes, item.Channel, item.CreatedAt, item.NextFollowUpAt }, null);
+        if (item.Case.NextFollowUpAt == item.NextFollowUpAt)
+        {
+            var next = await _db.CollectionActivities.Where(x => x.CaseId == caseId && x.Id != activityId)
+                .OrderByDescending(x => x.CreatedAt).Select(x => x.NextFollowUpAt).FirstOrDefaultAsync(token);
+            item.Case.ScheduleNextFollowUp(next, DateTimeOffset.UtcNow);
+        }
+        _db.CollectionActivities.Remove(item);
+        await _db.SaveChangesAsync(token);
+    }
+
+    public async Task<PromiseToPayDto> UpdatePromiseAsync(Guid promiseId, CreatePromiseRequest request, CancellationToken token)
+    {
+        EnsureOperationalWrite();
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        var item = await CorrectablePromiseAsync(promiseId, token);
+        if (request.PromisedAmount <= 0 || request.PromiseDate < CairoToday()) throw new HrValidationException("Promise amount must be positive and promise date cannot be in the past.");
+        var before = new { item.PromisedAmount, item.PromiseDate, item.Channel, item.Notes, item.Status };
+        item.Correct(request.PromisedAmount, request.PromiseDate, request.Channel, request.Notes);
+        var policy = await GetPtpPolicyAsync(item.CaseId, token);
+        var evaluation = CollectionRules.EvaluatePromise(item.PromisedAmount, 0, item.PromiseDate, CairoToday(), policy.GraceDays, policy.ToleranceAmount);
+        item.ApplyEvaluation(evaluation.Status, 0, DateTimeOffset.UtcNow);
+        AddAudit("PromiseUpdated", item, item.CaseId, before, request);
+        await _db.SaveChangesAsync(token);
+        var result = await ProjectPromises(_db.CollectionPromisesToPay.AsNoTracking().Where(x => x.Id == promiseId)).SingleAsync(token);
+        await transaction.CommitAsync(token);
+        return result;
+    }
+
+    public async Task DeletePromiseAsync(Guid promiseId, CancellationToken token)
+    {
+        EnsureOperationalWrite();
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        var item = await CorrectablePromiseAsync(promiseId, token);
+        AddAudit("PromiseDeleted", item, item.CaseId, new { item.PromisedAmount, item.PromiseDate, item.Channel, item.Notes, item.Status, item.CreatedAt }, null);
+        _db.CollectionPromisesToPay.Remove(item);
+        await _db.SaveChangesAsync(token);
+        await transaction.CommitAsync(token);
+    }
+
+    private void EnsureEntryOwner(Guid creatorId)
+    {
+        if (creatorId != _user.UserId && !CanAssign()) throw new HrForbiddenException("Only the creator or a Collections manager can correct this record.");
+    }
+
+    private async Task<PromiseToPay> CorrectablePromiseAsync(Guid promiseId, CancellationToken token)
+    {
+        var item = await _db.CollectionPromisesToPay.SingleOrDefaultAsync(x => x.Id == promiseId && AccessibleCases().Any(c => c.Id == x.CaseId), token)
+            ?? throw new HrNotFoundException("Promise to pay was not found.");
+        EnsureEntryOwner(item.CollectorId);
+        if (await _db.CollectionDcrs.AnyAsync(x => x.LinkedPtpId == promiseId, token)) throw new HrConflictException("Correct this promise through its linked daily collection record.");
+        var policy = await GetPtpPolicyAsync(item.CaseId, token);
+        var start = DateOnly.FromDateTime(item.CreatedAt.UtcDateTime);
+        var end = item.PromiseDate.AddDays(policy.GraceDays);
+        if (item.ActualPaidAmount > 0 || await _db.CollectionPayments.AnyAsync(x => x.CaseId == item.CaseId && x.Status == CollectionsValues.PaymentStatuses.Approved && x.PaymentDate >= start && x.PaymentDate <= end, token))
+            throw new HrConflictException("A promise with recorded payments cannot be corrected.");
+        return item;
     }
 
     public async Task<PagedResultDto<PromiseToPayDto>> GetPromisesAsync(PromiseFilters filters, CancellationToken token)
@@ -877,7 +961,7 @@ public sealed class CollectionsService : ICollectionsService
     {
         var ar = ApiTextLocalizer.IsArabic; var reveal = CanRevealSensitive(); return query.Select(x => new CollectionCaseListItemDto(x.Id, x.CaseNumber, x.Customer.CustomerCode, ar ? x.Customer.FullNameArabic ?? x.Customer.FullNameEnglish! : x.Customer.FullNameEnglish ?? x.Customer.FullNameArabic!, x.AccountReference, ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish, ar ? x.Portfolio.NameArabic : x.Portfolio.NameEnglish, x.OutstandingBalance, x.OverdueBalance, x.DaysPastDue, x.ImportBucketLabel ?? (ar ? x.CurrentBucket.NameArabic : x.CurrentBucket.NameEnglish), x.Status, x.Priority, x.PriorityScore, x.PriorityExplanation, x.AssignedCollectorId, x.AssignedCollector == null ? null : x.AssignedCollector.FullName, x.NextFollowUpAt, reveal ? x.Customer.NationalId : null, reveal ? x.CardNumber : null, x.ImportStatusText, x.ImportBucketLabel, reveal ? x.Customer.PrimaryPhone : null, reveal ? x.Customer.AlternatePhone : null, reveal ? x.Customer.TertiaryPhone : null, x.Customer.Governorate, x.Customer.Area, x.FileCollectorUser == null ? x.FileCollectorName : x.FileCollectorUser.FullName, x.LastPaymentAt, x.LastPaymentAmount, x.Portfolio.Organization.OrganizationType));
     }
-    private IQueryable<PromiseToPayDto> ProjectPromises(IQueryable<PromiseToPay> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new PromiseToPayDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.PromisedAmount, x.PromiseDate, x.ActualPaidAmount, x.Status, x.Collector.FullName, x.Channel, x.CreatedAt)); }
+    private IQueryable<PromiseToPayDto> ProjectPromises(IQueryable<PromiseToPay> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new PromiseToPayDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.PromisedAmount, x.PromiseDate, x.ActualPaidAmount, x.Status, x.Collector.FullName, x.Channel, x.CreatedAt, x.Notes, x.CollectorId)); }
     private IQueryable<CollectionPaymentDto> ProjectPayments(IQueryable<CollectionPayment> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new CollectionPaymentDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.Amount, x.PaymentDate, x.Method, x.ReferenceNumber, x.Status, x.SubmittedBy.FullName, x.SubmittedAt, x.VerifiedBy == null ? null : x.VerifiedBy.FullName, x.VerifiedAt, x.RejectionReason, x.Case.Portfolio.OrganizationId, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Case.Portfolio.Organization.OrganizationType, x.SubmittedById, x.SubmittedBy.FullName, x.CurrencyCode)); }
     private IQueryable<FieldVisitDto> ProjectVisits(IQueryable<FieldVisit> query) { var ar = ApiTextLocalizer.IsArabic; return query.Select(x => new FieldVisitDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, x.Case.Portfolio.OrganizationId, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Case.Portfolio.Organization.OrganizationType, x.CollectorId, x.Collector.FullName, x.ScheduledAt, x.Status, x.Address, x.Governorate, x.Area, x.Result, x.Notes)); }
     private IQueryable<ComplaintDto> ProjectComplaints(IQueryable<CollectionComplaint> query) { var ar = ApiTextLocalizer.IsArabic; var now = DateTimeOffset.UtcNow; return query.Select(x => new ComplaintDto(x.Id, x.CaseId, x.Case.CaseNumber, ar ? x.Case.Customer.FullNameArabic ?? x.Case.Customer.FullNameEnglish! : x.Case.Customer.FullNameEnglish ?? x.Case.Customer.FullNameArabic!, ar ? x.Case.Portfolio.Organization.NameArabic : x.Case.Portfolio.Organization.NameEnglish, x.Reference, x.Source, x.Category, x.Severity, x.Description, x.ReceivedAt, x.SlaDueAt, x.Status == CollectionsValues.ComplaintStatuses.Closed || x.Status == CollectionsValues.ComplaintStatuses.Resolved || x.SlaDueAt == null ? "ON_TIME" : x.SlaDueAt < now ? "BREACHED" : x.SlaDueAt < now.AddHours(24) ? "APPROACHING" : "ON_TIME", x.Status, x.OwnerId, x.Owner == null ? null : x.Owner.FullName, x.Resolution, x.ClosedAt)); }
