@@ -194,7 +194,7 @@ export function AccountingCommissionRulesPage() {
               <DateControl className="w-full" value={form.effectiveFrom} onChange={(event) => setForm({ ...form, effectiveFrom: event.target.value })} />
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button disabled={busy || !form.code || !form.nameArabic || !form.nameEnglish} fullWidth={false} onClick={() => confirmMoney(form.basis === 'FIXED_AMOUNT' ? form.fixedAmount : 0, form.code + ' ? ' + form.nameArabic + '\n' + (form.basis === 'FIXED_AMOUNT' ? a.money(form.fixedAmount) : form.percentage + '%') + '\n' + form.effectiveFrom, create)}>{a.text('حفظ', 'Save')}</Button>
+              <Button disabled={busy || !form.code || !form.nameArabic || !form.nameEnglish} fullWidth={false} onClick={() => confirmMoney(form.basis === 'FIXED_AMOUNT' ? form.fixedAmount : 0, form.code + ' / ' + form.nameArabic + '\n' + (form.basis === 'FIXED_AMOUNT' ? a.money(form.fixedAmount) : form.percentage + '%') + '\n' + form.effectiveFrom, create)}>{a.text('حفظ', 'Save')}</Button>
               <Button fullWidth={false} onClick={() => setShowCreate(false)} variant="outline">{a.text('إلغاء', 'Cancel')}</Button>
             </div>
           </div>

@@ -160,7 +160,7 @@ public sealed partial class AccountingBookService : IAccountingBookService
     }
     public async Task<AccountingRecurringExpenseDto> SaveRecurringAsync(Guid? id, SaveRecurringExpenseRequest request, CancellationToken token)
     {
-        EnsureManage(); await ValidateAccounts("FIXED", request.AccountId, request.CashAccountId, token);
+        EnsureManage(); CheckDates(request.StartsOn, request.EndsOn ?? request.StartsOn); await ValidateAccounts("FIXED", request.AccountId, request.CashAccountId, token);
         AccountingRecurringExpense row;
         try
         {

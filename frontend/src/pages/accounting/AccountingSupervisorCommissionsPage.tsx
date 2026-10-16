@@ -163,7 +163,7 @@ export function AccountingSupervisorCommissionsPage() {
                 <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button>
               </div>
             ) : null}
-            {selected.status === 'APPROVED' ? <Button className="mt-4" disabled={busy} fullWidth={false} onClick={() => confirmMoney(selected.finalCommission, selected.supervisorName + ' ? ' + a.monthLabel(year, month), () => act(selected.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
+            {selected.status === 'APPROVED' ? <Button className="mt-4" disabled={busy} fullWidth={false} onClick={() => confirmMoney(selected.finalCommission, selected.supervisorName + ' / ' + a.monthLabel(year, month), () => act(selected.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
             <Button className="mt-4" fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setSelected(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
           </div>
         </div>

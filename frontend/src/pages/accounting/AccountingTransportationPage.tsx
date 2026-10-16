@@ -139,7 +139,7 @@ export function AccountingTransportationPage() {
                           <Button disabled={busy} fullWidth={false} onClick={() => void act(row.id, 'cancel')} size="sm" variant="ghost">{a.text('إلغاء', 'Cancel')}</Button>
                         </>
                       ) : null}
-                      {row.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(row.amount, row.employeeName + ' ? ' + row.claimDate + '\n' + row.purpose, () => act(row.id, 'pay'))} size="sm" variant="outline">{a.text('صرف', 'Pay')}</Button> : null}
+                      {row.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(row.amount, row.employeeName + ' / ' + row.claimDate + '\n' + row.purpose, () => act(row.id, 'pay'))} size="sm" variant="outline">{a.text('صرف', 'Pay')}</Button> : null}
                     </div>
                   </td>
                 </tr>
@@ -175,7 +175,7 @@ export function AccountingTransportationPage() {
               <textarea className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('ملاحظات', 'Notes')} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
             </div>
             <div className="mt-5 flex gap-2">
-              <Button disabled={busy || !form.employeeId || !form.purpose} fullWidth={false} onClick={() => confirmMoney(form.amount, (employees.find(x => x.id === form.employeeId)?.fullName ?? '') + ' ? ' + form.claimDate + '\n' + form.purpose + '\n' + form.notes, save)}>{a.text('حفظ', 'Save')}</Button>
+              <Button disabled={busy || !form.employeeId || !form.purpose} fullWidth={false} onClick={() => confirmMoney(form.amount, (employees.find(x => x.id === form.employeeId)?.fullName ?? '') + ' / ' + form.claimDate + '\n' + form.purpose + '\n' + form.notes, save)}>{a.text('حفظ', 'Save')}</Button>
               <Button fullWidth={false} onClick={() => setEditing(undefined)} variant="outline">{a.text('إلغاء', 'Cancel')}</Button>
             </div>
           </div>

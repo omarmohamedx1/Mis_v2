@@ -229,10 +229,10 @@ export function AccountingSalariesPage() {
             </label>
             <p className="mt-4 text-lg font-bold text-mis-navy" data-bidi="ltr">{a.text('الصافي', 'Net')}: {a.money(selected.netSalary)}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(selected.netSalary, selected.employeeName + ' ? ' + a.monthLabel(year, month), saveSelected)}>{a.text('حفظ', 'Save')}</Button> : null}
+              {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(selected.netSalary, selected.employeeName + ' / ' + a.monthLabel(year, month), saveSelected)}>{a.text('حفظ', 'Save')}</Button> : null}
               {selected.status === 'DRAFT' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'submit')} variant="outline">{a.text('إرسال للمراجعة', 'Submit')}</Button> : null}
               {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void act(selected.id, 'approve')} variant="outline">{a.text('اعتماد', 'Approve')}</Button> : null}
-              {selected.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(selected.netSalary, selected.employeeName + ' ? ' + a.monthLabel(year, month), () => act(selected.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
+              {selected.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(selected.netSalary, selected.employeeName + ' / ' + a.monthLabel(year, month), () => act(selected.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
               {selected.status !== 'PAID' && selected.status !== 'CANCELLED' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button> : null}
               <Button fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setSelected(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
             </div>

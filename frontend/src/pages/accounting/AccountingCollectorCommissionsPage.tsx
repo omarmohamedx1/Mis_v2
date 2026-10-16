@@ -172,7 +172,7 @@ export function AccountingCollectorCommissionsPage() {
                 <Button disabled={busy} fullWidth={false} onClick={() => void act(details.summary.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button>
               </div>
             ) : null}
-            {details.summary.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(details.summary.finalCommission, details.summary.collectorName + ' ? ' + a.monthLabel(year, month), () => act(details.summary.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
+            {details.summary.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(details.summary.finalCommission, details.summary.collectorName + ' / ' + a.monthLabel(year, month), () => act(details.summary.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
 
             <h3 className="mb-2 mt-6 text-sm font-bold text-mis-navy">{a.text('المعاملات المساهمة', 'Contributing transactions')}</h3>
             <div className="overflow-x-auto rounded-xl border border-mis-border">
