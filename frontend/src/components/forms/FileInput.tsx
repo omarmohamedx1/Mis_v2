@@ -35,7 +35,7 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(function F
 
   return (
     <FormField className={containerClassName} error={error} errorId={errorId} hint={hint} hintId={hintId} inputId={inputId} label={label} required={required}>
-      <div className={`relative flex min-h-12 focus-within:border-mis-blue focus-within:shadow-input items-center gap-3 overflow-hidden px-3 py-2 ${formControlClass} ${error ? 'border-red-400' : 'border-mis-border'} ${disabled ? 'cursor-not-allowed bg-slate-100 text-slate-500' : 'cursor-pointer'} ${className}`}>
+      <div className={`relative flex min-h-12 focus-within:border-mis-blue focus-within:shadow-input items-center gap-3 overflow-hidden px-3 py-1 ${formControlClass} ${error ? 'border-red-400' : 'border-mis-border'} ${disabled ? 'cursor-not-allowed bg-slate-100 text-slate-500' : 'cursor-pointer'} ${className}`}>
         <span className="flex-none rounded-lg bg-mis-pale px-3 py-2 text-sm font-semibold text-mis-deep">{t('chooseFile')}</span>
         <span className="min-w-0 flex-1 truncate text-sm text-slate-500" dir="auto" title={fileName || undefined}>{fileName || t('noFileChosen')}</span>
         <input
