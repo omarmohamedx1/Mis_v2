@@ -18,6 +18,7 @@ public sealed partial class AccountingBookService
         {
             if (rows.Count > ExportLimit) throw new HrValidationException("The export exceeds 100000 rows. Narrow the filters and try again.");
             var sheet = workbook.Worksheets.Add(name.Length > 31 ? name[..31] : name);
+            sheet.Style.Font.FontName = "Arial"; sheet.Style.Font.FontSize = 11;
             sheet.RightToLeft = arabic;
             sheet.Cell(1, 1).Value = name; sheet.Range(1, 1, 1, headers.Length).Merge().Style.Font.SetBold().Font.SetFontSize(18);
             sheet.Cell(2, 1).Value = subtitle; sheet.Range(2, 1, 2, headers.Length).Merge();
@@ -43,7 +44,7 @@ public sealed partial class AccountingBookService
                 }
             sheet.Range(header, 1, header + Math.Max(rows.Count, 1), headers.Length).SetAutoFilter();
             sheet.SheetView.FreezeRows(header); sheet.Columns().Width = 23; sheet.Column(1).Width = 28;
-            sheet.Style.Font.FontName = "Arial"; sheet.Style.Font.FontSize = 11; heading.Style.Font.Bold = true;
+            heading.Style.Font.Bold = true;
             sheet.PageSetup.PageOrientation = XLPageOrientation.Landscape; sheet.PageSetup.FitToPages(1, 0);
         }
         using var output = new MemoryStream(); workbook.SaveAs(output); return output.ToArray();
@@ -53,7 +54,7 @@ public sealed partial class AccountingBookService
     {
         EnsureAccess(); var now = Today(); var year = filter.Year ?? now.Year; var month = filter.Month ?? now.Month;
         if (year is < 2000 or > 2100 || month is < 1 or > 12) throw new HrValidationException("Provide a valid payroll year and month.");
-        var from = filter.From ?? new DateOnly(year, month, 1); var to = filter.To ?? new DateOnly(year, month, DateTime.DaysInMonth(year, month)); CheckDates(from, to);
+        var from = filter.From ?? new DateOnly((filter.To ?? filter.AsOf)?.Year ?? year, (filter.To ?? filter.AsOf)?.Month ?? month, 1); var to = filter.To ?? filter.AsOf ?? new DateOnly(year, month, DateTime.DaysInMonth(year, month)); CheckDates(from, to);
         var ar = ApiTextLocalizer.IsArabic; string T(string a, string e) => ar ? a : e;
         var sheets = new List<(string Name, string[] Headers, List<object?[]> Rows)>();
         var all = report == "all";
@@ -126,19 +127,29 @@ public sealed partial class AccountingBookService
         }
         if (all || report == "commission-rules")
         {
-            var rows = await db.AccountingCommissionRules.AsNoTracking().OrderBy(x => x.Scope).ThenByDescending(x => x.EffectiveFrom).Take(ExportLimit + 1).ToListAsync(token);
+            var query = db.AccountingCommissionRules.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrWhiteSpace(filter.Category)) query = query.Where(x => x.Scope == filter.Category);
+            var rows = await query.OrderBy(x => x.Scope).ThenByDescending(x => x.EffectiveFrom).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("قواعد العمولات", "Commission rules"), [T("الكود", "Code"), T("الاسم", "Name"), T("النطاق", "Scope"), T("الأساس", "Basis"), T("النسبة", "Percent"), T("المبلغ الثابت", "Fixed amount"), T("سارية من", "Effective from"), T("حتى", "To"), T("نشطة", "Active"), T("الإصدار", "Version")], rows.Select(x => new object?[] { x.Code, ar ? x.NameArabic : x.NameEnglish, x.Scope, x.Basis, x.Percentage, x.FixedAmount, x.EffectiveFrom, x.EffectiveTo, x.IsActive, x.Version }));
         }
         if (report == "commission-calculation")
         {
-            var preview = await PreviewCommissionsAsync(year, month, token);
-            Add(T("معاينة حساب العمولات", "Commission preview"), [T("النطاق", "Scope"), T("الاسم", "Name"), T("الحالات", "Cases"), T("التحصيل المعتمد", "Approved collections"), T("العمولة", "Commission"), T("القاعدة", "Rule"), T("الأساس", "Basis"), T("النسبة", "Rate"), T("مقفلة", "Locked")], preview.Rows.Select(x => new object?[] { x.Scope, x.Name, x.CaseCount, x.Collected, x.Commission, x.RuleCode, x.Basis, x.Percentage, x.Locked }));
+            var previews = new List<AccountingCommissionPreviewRowDto>();
+            if (upperPeriod - lowerPeriod > 119) throw new HrValidationException("Limit commission calculation exports to ten years.");
+            for (var cursor = new DateOnly(from.Year, from.Month, 1); cursor <= to; cursor = cursor.AddMonths(1))
+            {
+                var preview = await PreviewCommissionsAsync(cursor.Year, cursor.Month, token);
+                previews.AddRange(preview.Rows.Where(x => string.IsNullOrWhiteSpace(filter.Category) || x.Scope == filter.Category).Select(x => x with { Name = $"{cursor:yyyy-MM} / {x.Name}" }));
+                foreach (var scope in preview.MissingRuleScopes.Where(x => string.IsNullOrWhiteSpace(filter.Category) || x == filter.Category)) previews.Add(new(scope, Guid.Empty, $"{cursor:yyyy-MM} / No effective rule", 0, 0, 0, "MISSING", "", null, null, false));
+            }
+            Add(T("معاينة حساب العمولات", "Commission preview"), [T("النطاق", "Scope"), T("الاسم", "Name"), T("الحالات", "Cases"), T("التحصيل المعتمد", "Approved collections"), T("العمولة", "Commission"), T("القاعدة", "Rule"), T("الأساس", "Basis"), T("النسبة", "Rate"), T("مقفلة", "Locked")], previews.Select(x => new object?[] { x.Scope, x.Name, x.CaseCount, x.Collected, x.Commission, x.RuleCode, x.Basis, x.Percentage, x.Locked }));
         }
         if (all || report == "accounts")
         {
             var rows = await finance.GetAccountsAsync(token);
             if (!string.IsNullOrWhiteSpace(filter.Category)) rows = rows.Where(x => x.AccountType == filter.Category).ToArray();
             if (!string.IsNullOrWhiteSpace(filter.Search)) rows = rows.Where(x => (x.Code + x.NameArabic + x.NameEnglish).Contains(filter.Search, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (filter.Status is "ACTIVE" or "INACTIVE") rows = rows.Where(x => x.IsActive == (filter.Status == "ACTIVE")).ToArray();
             Add(T("دليل الحسابات", "Chart of accounts"), [T("الكود", "Code"), T("اسم الحساب", "Account"), T("النوع", "Type"), T("الطبيعة", "Normal balance"), T("مدين", "Debit balance"), T("دائن", "Credit balance"), T("حساب حركة", "Posting account"), T("نقدية الشركة", "Company cash"), T("نشط", "Active"), T("الحساب الأب", "Parent ID")], rows.Select(x => new object?[] { x.Code, ar ? x.NameArabic : x.NameEnglish, x.AccountType, x.NormalBalance, Math.Max(x.Balance, 0), Math.Max(-x.Balance, 0), x.PostingAllowed, x.IsCashAccount, x.IsActive, x.ParentId?.ToString() }));
         }
         if (all || report == "journals")
