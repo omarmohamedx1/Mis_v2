@@ -307,6 +307,9 @@ public sealed class AccountingService(
     public async Task<AccountingCommissionRuleDto> CreateRuleAsync(CreateCommissionRuleRequest request, CancellationToken token)
     {
         EnsureManage();
+        if (string.IsNullOrWhiteSpace(request.Code) || request.Code.Length > 50 || string.IsNullOrWhiteSpace(request.NameArabic) || string.IsNullOrWhiteSpace(request.NameEnglish) || request.NameArabic.Length > 200 || request.NameEnglish.Length > 200) throw new HrValidationException("Provide a valid commission rule code and names.");
+        if (request.FixedAmount.HasValue && (request.FixedAmount > 9999999999999.99m || decimal.Round(request.FixedAmount.Value, 2) != request.FixedAmount)) throw new HrValidationException("Use a positive amount with at most two decimal places.");
+        if (request.EffectiveFrom.Year is < 2000 or > 2100) throw new HrValidationException("Provide a valid accounting date range.");
         if (request.Basis is not ("PERCENT_OF_COLLECTED" or "FIXED_AMOUNT")) throw new HrValidationException("Choose a percentage or fixed-amount commission rule.");
         if (await db.AccountingCommissionRules.AnyAsync(x => x.Code == request.Code.Trim().ToUpperInvariant() && x.Version == 1, token)) throw new HrConflictException("A commission rule with this code already exists.");
         AccountingCommissionRule rule;
@@ -379,6 +382,7 @@ public sealed class AccountingService(
                 touched++;
             }
         }
+        foreach (var stale in existing.Where(x => AccountingValues.CommissionStatuses.Editable.Contains(x.Status) && !groups.Any(g => g.Key == x.CollectorUserId))) { stale.Cancel(now); touched++; }
         await WriteAudit("AccountingCollectorCommissionsCalculated", "AccountingCollectorCommission", $"{request.Year}-{request.Month:00}", null, null, new { touched, rule.Code }, "Collector commissions calculated from approved payments.", token);
         await db.SaveChangesAsync(token);
         return touched;
@@ -489,6 +493,7 @@ public sealed class AccountingService(
                 touched++;
             }
         }
+        foreach (var stale in existing.Where(x => AccountingValues.CommissionStatuses.Editable.Contains(x.Status) && !supervisors.Any(g => g.Key == x.SupervisorUserId))) { stale.Cancel(now); touched++; }
         await WriteAudit("AccountingSupervisorCommissionsCalculated", "AccountingSupervisorCommission", $"{request.Year}-{request.Month:00}", null, null, new { touched, rule.Code }, "Supervisor commissions calculated from approved team payments.", token);
         await db.SaveChangesAsync(token);
         return touched;

@@ -11,7 +11,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 export function AccountingOverviewPage() {
   const a = useAccountingText(); const [range, setRange] = useState(monthRange); const [data, setData] = useState<BookSummary>(); const [error, setError] = useState('');
   useEffect(() => { let active = true; setData(undefined); setError(''); accountingBookService.summary(range.from, range.to).then(d => { if (active) setData(d); }).catch(e => { if (active) setError(getApiErrorMessage(e, a.text('تعذر تحميل الملخص', 'Could not load summary'))); }); return () => { active = false; }; }, [range]);
-  const costCategories = data?.categories.filter(x => !['INCOME', 'ADVANCE', 'CARRIED_ADVANCE', 'ADVANCE_REPAYMENT'].includes(x.category)).sort((x, y) => y.amount - x.amount) ?? [];
+  const costCategories = data?.categories.filter(x => !['INCOME', 'ADVANCE', 'CARRIED_ADVANCE', 'ADVANCE_REPAYMENT'].includes(x.category) && (x.amount !== 0 || x.count > 0)).sort((x, y) => y.amount - x.amount) ?? [];
   const max = Math.max(1, ...costCategories.map(x => Math.abs(x.amount)));
   return <div className="space-y-6">
     <BookHeader title={a.text('المصروفات والوارد', 'Expenses & income')} description={a.text('رؤية موحدة لحركة الشركة: المصروفات والإيرادات والتدفق النقدي وأرصدة السلف.', 'One view of company expenses, income, cash flow and outstanding employee advances.')}><AccountingExportButton report="summary" filter={range} /><Link to="/finance/exports" className="inline-flex items-center gap-2 rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white"><FileSpreadsheet className="h-4 w-4" />{a.text('مركز السحبات', 'Export center')}</Link></BookHeader>
