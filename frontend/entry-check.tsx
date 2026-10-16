@@ -12,7 +12,12 @@ state.calls = []; state.saved = 0;
 localStorage.setItem('mis.language', 'en');
 sessionStorage.setItem('mis.auth', JSON.stringify({ accessToken: 'local-test', user: { id: 'owner', roles: ['Admin'], permissions: ['*'] } }));
 for (const name of ['createActivity', 'createPromise', 'submitPayment', 'updateActivity', 'updatePromise', 'deleteActivity', 'deletePromise']) {
-  (collectionsService as any)[name] = async (...args: unknown[]) => { state.calls.push({ name, args }); return { id: 'test' }; };
+  (collectionsService as any)[name] = async (...args: unknown[]) => {
+    state.calls.push({ name, args });
+    if (state.delay) await new Promise(resolve => setTimeout(resolve, state.delay));
+    if (state.fail) throw new Error('Simulated server error');
+    return { id: 'test' };
+  };
 }
 const mode = new URLSearchParams(location.search).get('mode') || 'payment';
 function Fixture() {
