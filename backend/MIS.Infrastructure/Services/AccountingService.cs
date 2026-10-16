@@ -15,7 +15,8 @@ public sealed class AccountingService(
     ICurrentUserContext user,
     IHrFileStorage storage,
     IHrAuditService audit,
-    IHrNetSalaryService hrPayroll) : IAccountingService
+    IHrNetSalaryService hrPayroll,
+    IAccountingBookService book) : IAccountingService
 {
     private const long MaxAttachmentBytes = 10 * 1024 * 1024;
     private static readonly HashSet<string> AttachmentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -151,8 +152,16 @@ public sealed class AccountingService(
 
     private async Task<AccountingEmployeePayrollDto> TransitionPayroll(Guid id, string action, CancellationToken token)
     {
+        action = action.Trim().ToLowerInvariant();
         if (action is "approve" or "pay") EnsureApprove(); else EnsureManage();
+        await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingEmployeePayrolls.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Payroll row was not found.");
+        if (action == "pay")
+        {
+            var period = await db.AccountingPayrollPeriods.SingleAsync(x => x.Id == row.PeriodId, token);
+            if (row.Commissions > 0 && (await db.AccountingCollectorCommissions.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.PeriodYear == period.Year && x.PeriodMonth == period.Month && x.Status == "PAID", token) || await db.AccountingSupervisorCommissions.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.PeriodYear == period.Year && x.PeriodMonth == period.Month && x.Status == "PAID", token))) throw new HrConflictException("Commissions for this employee and month were paid separately. Remove the payroll commission component before payment.");
+            if (row.Transportation > 0 && await db.AccountingTransportationClaims.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.ClaimDate.Year == period.Year && x.ClaimDate.Month == period.Month && x.Status == "PAID", token)) throw new HrConflictException("Transportation for this employee and month was paid separately. Remove the payroll transportation component before payment.");
+        }
         var before = row.Status; var now = DateTimeOffset.UtcNow;
         try
         {
@@ -166,8 +175,10 @@ public sealed class AccountingService(
             }
         }
         catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
+        if (action == "pay") await book.RecordPaidSourceAsync(new("PAYROLL", row.Id, "SALARY", row.NetSalary, row.EmployeeId, row.EmployeeName, DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(now, OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime), row.Transportation, row.Commissions, row.Bonuses), token);
         await WriteAudit($"AccountingPayroll{action}", nameof(AccountingEmployeePayroll), row.Id.ToString(), null, new { Status = before }, new { row.Status }, $"Payroll {action}.", token);
         await db.SaveChangesAsync(token);
+        if (paymentTx is not null) await paymentTx.CommitAsync(token);
         return await GetPayrollAsync(id, token);
     }
 
@@ -224,8 +235,11 @@ public sealed class AccountingService(
 
     public async Task<AccountingTransportationDto> TransitionTransportationAsync(Guid id, string action, CancellationToken token)
     {
+        action = action.Trim().ToLowerInvariant();
         if (action is "approve" or "reject" or "pay") EnsureApprove(); else EnsureManage();
+        await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingTransportationClaims.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Transportation claim was not found.");
+        if (action == "pay" && row.EmployeeId != null && await db.AccountingEmployeePayrolls.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.Period.Year == row.ClaimDate.Year && x.Period.Month == row.ClaimDate.Month && x.Status == "PAID" && x.Transportation > 0, token)) throw new HrConflictException("This expense component was already paid in the employee payroll for this month.");
         var now = DateTimeOffset.UtcNow;
         try
         {
@@ -239,8 +253,10 @@ public sealed class AccountingService(
             }
         }
         catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
+        if (action == "pay") await book.RecordPaidSourceAsync(new("TRANSPORT", row.Id, "TRANSPORTATION", row.Amount, row.EmployeeId, row.Purpose, DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(now, OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime)), token);
         await WriteAudit($"AccountingTransportation{action}", nameof(AccountingTransportationClaim), row.Id.ToString(), null, null, new { row.Status }, $"Transportation {action}.", token);
         await db.SaveChangesAsync(token);
+        if (paymentTx is not null) await paymentTx.CommitAsync(token);
         return await GetTransportationAsync(id, token);
     }
 
@@ -291,6 +307,8 @@ public sealed class AccountingService(
     public async Task<AccountingCommissionRuleDto> CreateRuleAsync(CreateCommissionRuleRequest request, CancellationToken token)
     {
         EnsureManage();
+        if (request.Basis is not ("PERCENT_OF_COLLECTED" or "FIXED_AMOUNT")) throw new HrValidationException("Choose a percentage or fixed-amount commission rule.");
+        if (await db.AccountingCommissionRules.AnyAsync(x => x.Code == request.Code.Trim().ToUpperInvariant() && x.Version == 1, token)) throw new HrConflictException("A commission rule with this code already exists.");
         AccountingCommissionRule rule;
         try { rule = new AccountingCommissionRule(request.Code, request.NameArabic, request.NameEnglish, request.Scope, request.Basis, request.Percentage, request.FixedAmount, request.EffectiveFrom, user.UserId, DateTimeOffset.UtcNow); }
         catch (ArgumentException ex) { throw new HrValidationException(ex.Message); }
@@ -335,10 +353,8 @@ public sealed class AccountingService(
         var rule = await ResolveRuleAsync(AccountingValues.CommissionScopes.Collector, request.Year, request.Month, token);
         var start = new DateOnly(request.Year, request.Month, 1);
         var end = start.AddMonths(1).AddDays(-1);
-        var payments = await db.CollectionPayments.AsNoTracking().Include(x => x.Case)
-            .Where(x => x.Status == CollectionsValues.PaymentStatuses.Approved && x.PaymentDate >= start && x.PaymentDate <= end)
-            .ToListAsync(token);
-        var groups = payments.GroupBy(p => p.Case.AssignedCollectorId ?? p.SubmittedById).Where(g => g.Key != Guid.Empty).ToList();
+        var payments = await AccountingCommissionQuery.Payments(db, start, end, token);
+        var groups = payments.GroupBy(p => p.CollectorId).Where(g => g.Key != Guid.Empty).ToList();
         var existing = await db.AccountingCollectorCommissions.Where(x => x.PeriodYear == request.Year && x.PeriodMonth == request.Month && x.Status != AccountingValues.CommissionStatuses.Cancelled).ToListAsync(token);
         var users = await db.Users.AsNoTracking().Where(x => groups.Select(g => g.Key).Contains(x.Id)).ToDictionaryAsync(x => x.Id, token);
         var now = DateTimeOffset.UtcNow; var touched = 0;
@@ -347,7 +363,7 @@ public sealed class AccountingService(
             var collected = group.Sum(x => x.Amount);
             var commission = rule.Calculate(collected);
             var rate = rule.Percentage ?? 0;
-            var snapshot = JsonSerializer.Serialize(group.Select(p => new { PaymentId = p.Id, p.CaseId, CaseNumber = p.Case.CaseNumber, p.PaymentDate, p.Amount, p.ReferenceNumber }));
+            var snapshot = JsonSerializer.Serialize(group.Select(p => new { PaymentId = p.Id, p.CaseId, p.CaseNumber, p.PaymentDate, p.Amount, p.ReferenceNumber }));
             var cases = group.Select(x => x.CaseId).Distinct().Count();
             var row = existing.FirstOrDefault(x => x.CollectorUserId == group.Key);
             users.TryGetValue(group.Key, out var collectorUser);
@@ -409,9 +425,12 @@ public sealed class AccountingService(
 
     public async Task<AccountingCollectorCommissionDto> TransitionCollectorCommissionAsync(Guid id, string action, CancellationToken token)
     {
+        action = action.Trim().ToLowerInvariant();
         if (action is "approve" or "pay") EnsureApprove(); else EnsureManage();
+        await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingCollectorCommissions.Include(x => x.CollectorUser).ThenInclude(u => u.Employee).Include(x => x.CommissionRule)
             .SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Collector commission was not found.");
+        if (action == "pay" && row.EmployeeId != null && await db.AccountingEmployeePayrolls.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.Period.Year == row.PeriodYear && x.Period.Month == row.PeriodMonth && x.Status == "PAID" && x.Commissions > 0, token)) throw new HrConflictException("This expense component was already paid in the employee payroll for this month.");
         var now = DateTimeOffset.UtcNow;
         try
         {
@@ -425,8 +444,10 @@ public sealed class AccountingService(
             }
         }
         catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
+        if (action == "pay") await book.RecordPaidSourceAsync(new("COLLECTOR", row.Id, "COLLECTOR_COMMISSION", row.FinalCommission, row.EmployeeId, row.CollectorUser.FullName, DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(now, OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime)), token);
         await WriteAudit($"AccountingCollectorCommission{action}", nameof(AccountingCollectorCommission), row.Id.ToString(), null, null, new { row.Status }, $"Collector commission {action}.", token);
         await db.SaveChangesAsync(token);
+        if (paymentTx is not null) await paymentTx.CommitAsync(token);
         return MapCollector(row);
     }
 
@@ -439,9 +460,7 @@ public sealed class AccountingService(
         var teams = await db.CollectionTeams.AsNoTracking().Where(x => x.IsActive && x.SupervisorId != null).ToListAsync(token);
         var teamIds = teams.Select(t => t.Id).ToArray();
         var members = await db.CollectionTeamMembers.AsNoTracking().Where(x => teamIds.Contains(x.TeamId) && x.IsActive).ToListAsync(token);
-        var payments = await db.CollectionPayments.AsNoTracking().Include(x => x.Case)
-            .Where(x => x.Status == CollectionsValues.PaymentStatuses.Approved && x.PaymentDate >= start && x.PaymentDate <= end)
-            .ToListAsync(token);
+        var payments = await AccountingCommissionQuery.Payments(db, start, end, token);
         var existing = await db.AccountingSupervisorCommissions.Where(x => x.PeriodYear == request.Year && x.PeriodMonth == request.Month && x.Status != AccountingValues.CommissionStatuses.Cancelled).ToListAsync(token);
         var supervisors = teams.GroupBy(t => t.SupervisorId!.Value);
         var users = await db.Users.AsNoTracking().Where(x => supervisors.Select(g => g.Key).Contains(x.Id)).ToDictionaryAsync(x => x.Id, token);
@@ -450,11 +469,11 @@ public sealed class AccountingService(
         {
             var groupTeamIds = group.Select(t => t.Id).ToHashSet();
             var memberIds = members.Where(m => groupTeamIds.Contains(m.TeamId)).Select(m => m.UserId).Distinct().ToHashSet();
-            var teamPayments = payments.Where(p => memberIds.Contains(p.Case.AssignedCollectorId ?? p.SubmittedById)).ToList();
+            var teamPayments = payments.Where(p => memberIds.Contains(p.CollectorId)).ToList();
             var collected = teamPayments.Sum(x => x.Amount);
             var commission = rule.Calculate(collected);
             var rate = rule.Percentage ?? 0;
-            var snapshot = JsonSerializer.Serialize(teamPayments.Select(p => new { PaymentId = p.Id, p.CaseId, CaseNumber = p.Case.CaseNumber, p.PaymentDate, p.Amount, p.ReferenceNumber }));
+            var snapshot = JsonSerializer.Serialize(teamPayments.Select(p => new { PaymentId = p.Id, p.CaseId, p.CaseNumber, p.PaymentDate, p.Amount, p.ReferenceNumber }));
             var summary = string.Join(", ", group.Select(t => t.Code));
             users.TryGetValue(group.Key, out var supervisorUser);
             var row = existing.FirstOrDefault(x => x.SupervisorUserId == group.Key);
@@ -514,9 +533,12 @@ public sealed class AccountingService(
 
     public async Task<AccountingSupervisorCommissionDto> TransitionSupervisorCommissionAsync(Guid id, string action, CancellationToken token)
     {
+        action = action.Trim().ToLowerInvariant();
         if (action is "approve" or "pay") EnsureApprove(); else EnsureManage();
+        await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingSupervisorCommissions.Include(x => x.SupervisorUser).ThenInclude(u => u.Employee).Include(x => x.CommissionRule)
             .SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Supervisor commission was not found.");
+        if (action == "pay" && row.EmployeeId != null && await db.AccountingEmployeePayrolls.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.Period.Year == row.PeriodYear && x.Period.Month == row.PeriodMonth && x.Status == "PAID" && x.Commissions > 0, token)) throw new HrConflictException("This expense component was already paid in the employee payroll for this month.");
         var now = DateTimeOffset.UtcNow;
         try
         {
@@ -530,8 +552,10 @@ public sealed class AccountingService(
             }
         }
         catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
+        if (action == "pay") await book.RecordPaidSourceAsync(new("SUPERVISOR", row.Id, "SUPERVISOR_COMMISSION", row.FinalCommission, row.EmployeeId, row.SupervisorUser.FullName, DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(now, OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime)), token);
         await WriteAudit($"AccountingSupervisorCommission{action}", nameof(AccountingSupervisorCommission), row.Id.ToString(), null, null, new { row.Status }, $"Supervisor commission {action}.", token);
         await db.SaveChangesAsync(token);
+        if (paymentTx is not null) await paymentTx.CommitAsync(token);
         return MapSupervisor(row);
     }
 
@@ -544,7 +568,7 @@ public sealed class AccountingService(
             var t = search.Trim().ToLower();
             q = q.Where(x => x.EmployeeNumber.ToLower().Contains(t) || x.FullName.ToLower().Contains(t));
         }
-        return await q.OrderBy(x => x.EmployeeNumber).Take(50)
+        return await q.OrderBy(x => x.EmployeeNumber)
             .Select(x => new AccountingLookupEmployeeDto(x.Id, x.EmployeeNumber, x.FullName, x.Department.Name, x.Position != null ? x.Position.NameArabic : null))
             .ToArrayAsync(token);
     }
@@ -553,21 +577,12 @@ public sealed class AccountingService(
     {
         var on = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
         var rule = await db.AccountingCommissionRules
-            .Where(x => x.Scope == scope && x.IsActive && x.EffectiveFrom <= on && (x.EffectiveTo == null || x.EffectiveTo >= on))
+            .Where(x => x.Scope == scope && (x.IsActive || x.EffectiveTo != null) && x.EffectiveFrom <= on && (x.EffectiveTo == null || x.EffectiveTo >= on))
             .OrderByDescending(x => x.EffectiveFrom).ThenByDescending(x => x.Version)
             .FirstOrDefaultAsync(token);
-        if (rule is not null) return rule;
+        if (rule is not null && rule.Basis != "TIERED") return rule;
 
-        // Seed a default configurable rule when none exists (not a hardcoded frontend %).
-        var percentage = scope == AccountingValues.CommissionScopes.Collector ? 5m : 1m;
-        rule = new AccountingCommissionRule(
-            $"{scope}-DEFAULT",
-            scope == AccountingValues.CommissionScopes.Collector ? "عمولة المحصل الافتراضية" : "عمولة المشرف الافتراضية",
-            scope == AccountingValues.CommissionScopes.Collector ? "Default collector commission" : "Default supervisor commission",
-            scope, AccountingValues.CommissionBases.PercentOfCollected, percentage, null, new DateOnly(2000, 1, 1), user.UserId, DateTimeOffset.UtcNow);
-        db.AccountingCommissionRules.Add(rule);
-        await db.SaveChangesAsync(token);
-        return rule;
+        throw new HrConflictException("Configure an active commission rule for the selected period before calculating commissions.");
     }
 
     private async Task<AccountingPayrollPeriodDto> MapPeriod(Guid id, CancellationToken token) =>

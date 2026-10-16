@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
 import { ModuleLayoutShell, type ModuleNavigationItem } from './ModuleLayoutShell';
+import { categories } from '../../features/accounting/bookUi';
 
 export function FinanceLayout() {
   const { language, isRtl, setLanguage } = useLocalization();
@@ -12,6 +13,13 @@ export function FinanceLayout() {
   const finance = ar ? 'المالية' : 'Finance';
   const payroll = ar ? 'المرتبات والعمولات' : 'Payroll & commissions';
   const navigation: ModuleNavigationItem[] = [
+    { to: '/finance/expenses', icon: ReceiptText, label: ar ? 'سجل المصاريف والوارد' : 'Expenses & income register', group: ar ? 'مصروفات الشركة' : 'Company expenses' },
+    ...(['PETTY', 'FIXED', 'BONUS', 'LEGAL', 'INCOME'] as const).map((key) => ({ to: '/finance/' + ({ PETTY: 'petty-expenses', FIXED: 'fixed-expenses', BONUS: 'bonuses', LEGAL: 'judicial-expenses', INCOME: 'income' }[key]), icon: Wallet, label: categories[key][ar ? 0 : 1], group: ar ? 'مصروفات الشركة' : 'Company expenses' })),
+    { to: '/finance/recurring', icon: CalendarRange, label: ar ? 'إعداد المصاريف الثابتة' : 'Recurring expense settings', group: ar ? 'مصروفات الشركة' : 'Company expenses' },
+    { to: '/finance/advances', icon: WalletCards, label: ar ? 'السلف والتسويات' : 'Advances & repayments', group: payroll },
+    { to: '/finance/carried-advances', icon: WalletCards, label: ar ? 'السلف المرحلة' : 'Carried advances', group: payroll },
+    { to: '/finance/commission-calculation', icon: Percent, label: ar ? 'حساب العمولات' : 'Commission calculator', group: payroll },
+    { to: '/finance/exports', icon: BarChart3, label: ar ? 'مركز السحبات Excel' : 'Excel export center', group: finance },
     { to: '/finance/dashboard', icon: LayoutDashboard, label: ar ? 'لوحة المالية' : 'Finance dashboard', group: finance },
     { to: '/finance/collections', icon: ReceiptText, label: ar ? 'التحصيلات المالية' : 'Financial collections', group: finance },
     { to: '/finance/custody', icon: WalletCards, label: ar ? 'عهد المحصلين' : 'Collector custody', group: finance },

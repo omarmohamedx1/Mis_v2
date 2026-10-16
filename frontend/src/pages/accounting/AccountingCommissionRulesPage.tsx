@@ -1,3 +1,4 @@
+import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Percent, Plus, PowerOff, Scale, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../../components/common/Button';
@@ -23,6 +24,7 @@ const emptyForm = {
 
 export function AccountingCommissionRulesPage() {
   const a = useAccountingText();
+  const { confirmMoney, moneyDialog } = useAccountingMoneyConfirm();
   const [scope, setScope] = useState('');
   const [rows, setRows] = useState<AccountingCommissionRule[]>([]);
   const [error, setError] = useState('');
@@ -96,14 +98,14 @@ export function AccountingCommissionRulesPage() {
   const ruleValue = (row: AccountingCommissionRule) => row.basis === 'FIXED_AMOUNT' ? a.money(row.fixedAmount ?? 0) : `${a.number(row.percentage ?? 0)}%`;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5">{moneyDialog}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('قواعد العمولة', 'Commission rules')}</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">{a.text('القواعد النشطة تُستخدم عند احتساب عمولات المحصلين والمشرفين من المدفوعات المعتمدة فقط.', 'Active rules are used when collector and supervisor commissions are calculated from approved payments only.')}</p>
         </div>
         <Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowCreate(true)}>{a.text('قاعدة جديدة', 'New rule')}</Button>
-      </header>
+      <AccountingExportButton report="commission-rules" filter={{ category: scope || undefined }} /></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
@@ -192,7 +194,7 @@ export function AccountingCommissionRulesPage() {
               <DateControl className="w-full" value={form.effectiveFrom} onChange={(event) => setForm({ ...form, effectiveFrom: event.target.value })} />
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button disabled={busy || !form.code || !form.nameArabic || !form.nameEnglish} fullWidth={false} onClick={() => void create()}>{a.text('حفظ', 'Save')}</Button>
+              <Button disabled={busy || !form.code || !form.nameArabic || !form.nameEnglish} fullWidth={false} onClick={() => confirmMoney(form.basis === 'FIXED_AMOUNT' ? form.fixedAmount : 0, form.code + ' ? ' + form.nameArabic + '\n' + (form.basis === 'FIXED_AMOUNT' ? a.money(form.fixedAmount) : form.percentage + '%') + '\n' + form.effectiveFrom, create)}>{a.text('حفظ', 'Save')}</Button>
               <Button fullWidth={false} onClick={() => setShowCreate(false)} variant="outline">{a.text('إلغاء', 'Cancel')}</Button>
             </div>
           </div>

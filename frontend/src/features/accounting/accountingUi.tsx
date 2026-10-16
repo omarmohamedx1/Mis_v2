@@ -13,6 +13,9 @@ export function useAccountingText() {
   const date = (value: string) => new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value.slice(0, 10)}T00:00:00`));
   const status = (value: string) =>
     ({
+      POSTED: text('مرحل', 'Posted'),
+      REVERSED: text('معكوس', 'Reversed'),
+      PENDING_APPROVAL: text('بانتظار الاعتماد', 'Pending approval'),
       DRAFT: text('مسودة', 'Draft'),
       PENDING_REVIEW: text('بانتظار المراجعة', 'Pending review'),
       PENDING: text('قيد الانتظار', 'Pending'),
@@ -38,9 +41,9 @@ export function AccountingMonthSelect({ value, onChange }: { value: number; onCh
 export function AccountingStatus({ value }: { value: string }) {
   const a = useAccountingText();
   const tone: StatusTone =
-    value === 'PAID' || value === 'APPROVED' || value === 'ACTIVE'
+    value === 'POSTED' || value === 'PAID' || value === 'APPROVED' || value === 'ACTIVE'
       ? 'success'
-      : value === 'PENDING_REVIEW' || value === 'PENDING'
+      : value === 'PENDING_APPROVAL' || value === 'PENDING_REVIEW' || value === 'PENDING'
         ? 'warning'
         : value === 'CANCELLED' || value === 'REJECTED' || value === 'INACTIVE'
           ? 'danger'

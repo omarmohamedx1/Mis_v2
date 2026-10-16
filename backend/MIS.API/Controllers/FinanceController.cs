@@ -20,6 +20,14 @@ public sealed class FinanceController : ControllerBase
     [HttpGet("accounts")]
     public Task<IReadOnlyCollection<FinanceAccountDto>> Accounts(CancellationToken token) => _service.GetAccountsAsync(token);
 
+    [HttpPost("accounts")]
+    [Authorize(Policy = AuthorizationPolicies.FinanceConfiguration)]
+    public Task<FinanceAccountDto> CreateAccount(SaveFinanceAccountRequest request, CancellationToken token) => _service.SaveAccountAsync(null, request, token);
+
+    [HttpPut("accounts/{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.FinanceConfiguration)]
+    public Task<FinanceAccountDto> UpdateAccount(Guid id, SaveFinanceAccountRequest request, CancellationToken token) => _service.SaveAccountAsync(id, request, token);
+
     [HttpGet("periods")]
     public Task<IReadOnlyCollection<AccountingPeriodDto>> Periods([FromQuery] int? year, CancellationToken token) => _service.GetPeriodsAsync(year, token);
 

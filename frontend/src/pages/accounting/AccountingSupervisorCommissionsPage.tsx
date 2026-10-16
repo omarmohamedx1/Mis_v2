@@ -1,3 +1,4 @@
+import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Calculator, CheckCircle2, Percent, Save, UsersRound, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +14,7 @@ const editable = ['DRAFT', 'PENDING_REVIEW'];
 
 export function AccountingSupervisorCommissionsPage() {
   const a = useAccountingText();
+  const { confirmMoney, moneyDialog } = useAccountingMoneyConfirm();
   const navigate = useNavigate();
   const now = useMemo(() => new Date(), []);
   const [year, setYear] = useState(now.getFullYear());
@@ -63,7 +65,7 @@ export function AccountingSupervisorCommissionsPage() {
   const totalFinal = rows.reduce((sum, row) => sum + row.finalCommission, 0);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5">{moneyDialog}
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('عمولات المشرفين', 'Supervisor commissions')}</h1>
@@ -75,7 +77,7 @@ export function AccountingSupervisorCommissionsPage() {
           <Button disabled={busy} fullWidth={false} leftIcon={<Calculator className="h-4 w-4" />} onClick={() => void calculate()}>{a.text('احتساب الشهر', 'Calculate month')}</Button>
           <Button fullWidth={false} leftIcon={<Percent className="h-4 w-4" />} onClick={() => navigate('/finance/commission-rules')} variant="outline">{a.text('قواعد العمولة', 'Commission rules')}</Button>
         </div>
-      </header>
+      <AccountingExportButton report="supervisor-commissions" filter={{ year, month, search: search || undefined, status: status || undefined }} /></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
@@ -155,13 +157,13 @@ export function AccountingSupervisorCommissionsPage() {
                 <label className="text-sm"><span className="mb-1 block text-slate-500">{a.text('تسوية', 'Adjustment')}</span>
                   <input type="number" className="rounded-xl border border-mis-border px-3 py-2" value={adjustValue} onChange={(event) => setAdjustValue(Number(event.target.value))} />
                 </label>
-                <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => void adjust()} variant="outline">{a.text('حفظ التسوية', 'Save adjustment')}</Button>
+                <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(selected.commissionAmount + adjustValue, selected.supervisorName + '\n' + a.money(adjustValue), adjust)} variant="outline">{a.text('حفظ التسوية', 'Save adjustment')}</Button>
                 {selected.status === 'DRAFT' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'submit')} variant="outline">{a.text('إرسال', 'Submit')}</Button> : null}
                 <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void act(selected.id, 'approve')}>{a.text('اعتماد', 'Approve')}</Button>
                 <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button>
               </div>
             ) : null}
-            {selected.status === 'APPROVED' ? <Button className="mt-4" disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'pay')} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
+            {selected.status === 'APPROVED' ? <Button className="mt-4" disabled={busy} fullWidth={false} onClick={() => confirmMoney(selected.finalCommission, selected.supervisorName + ' ? ' + a.monthLabel(year, month), () => act(selected.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
             <Button className="mt-4" fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setSelected(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
           </div>
         </div>

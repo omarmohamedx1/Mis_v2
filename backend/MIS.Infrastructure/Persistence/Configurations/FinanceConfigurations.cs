@@ -17,6 +17,10 @@ internal static class FinanceSeed
     public static readonly Guid ClientPayableAccountId = Guid.Parse("10000000-0000-0000-0002-000000210200");
     public static readonly Guid RevenueAccountId = Guid.Parse("10000000-0000-0000-0004-000000410100");
     public static readonly Guid ExpenseAccountId = Guid.Parse("10000000-0000-0000-0006-000000610100");
+    public static readonly Guid OperatingCashAccountId = Guid.Parse("10000000-0000-0000-0001-000000110300");
+    public static readonly Guid OperatingBankAccountId = Guid.Parse("10000000-0000-0000-0001-000000110400");
+    public static readonly Guid AdvanceAccountId = Guid.Parse("10000000-0000-0000-0001-000000113100");
+    public static readonly Guid OpeningAccountId = Guid.Parse("10000000-0000-0000-0003-000000310100");
 }
 
 public sealed class FinanceLegalEntityConfiguration : IEntityTypeConfiguration<FinanceLegalEntity>
@@ -55,6 +59,19 @@ public sealed class FinanceAccountConfiguration : IEntityTypeConfiguration<Finan
         b.HasIndex(x => new { x.LegalEntityId, x.Code }).IsUnique(); b.HasOne(x => x.LegalEntity).WithMany().HasForeignKey(x => x.LegalEntityId).OnDelete(DeleteBehavior.Restrict); b.HasOne(x => x.Parent).WithMany().HasForeignKey(x => x.ParentId).OnDelete(DeleteBehavior.Restrict);
         var accounts = new[]
         {
+            Account(FinanceSeed.OperatingCashAccountId,"110300","خزينة الشركة التشغيلية","Company operating cash","ASSET","DEBIT"),
+            Account(FinanceSeed.OperatingBankAccountId,"110400","بنك الشركة التشغيلي","Company operating bank","ASSET","DEBIT"),
+            Account(FinanceSeed.AdvanceAccountId,"113100","سلف الموظفين","Employee advances","ASSET","DEBIT"),
+            Account(FinanceSeed.OpeningAccountId,"310100","أرصدة افتتاحية","Opening balances","EQUITY","CREDIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610110"),"610110","مصاريف نثرية","Petty expenses","EXPENSE","DEBIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610120"),"610120","مصاريف شهرية ثابتة","Fixed monthly expenses","EXPENSE","DEBIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610130"),"610130","انتقالات","Transportation expenses","EXPENSE","DEBIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610140"),"610140","مرتبات وأجور","Salaries and wages","EXPENSE","DEBIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610150"),"610150","مكافآت","Bonuses and rewards","EXPENSE","DEBIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610160"),"610160","مصاريف قضائية","Judicial expenses","EXPENSE","DEBIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610170"),"610170","عمولات المحصلين","Collector commissions","EXPENSE","DEBIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610180"),"610180","عمولات السوبر فايزر","Supervisor commissions","EXPENSE","DEBIT"),
+            Account(Guid.Parse("10000000-0000-0000-0006-000000610190"),"610190","عمولات ضمن المرتبات","Commissions included in payroll","EXPENSE","DEBIT"),
             Account(FinanceSeed.CashboxAccountId,"110100","النقدية والخزائن","Cashboxes","ASSET","DEBIT"),
             Account(FinanceSeed.BankAccountId,"110200","الحسابات البنكية","Bank Accounts","ASSET","DEBIT","TREASURY", client: true),
             Account(FinanceSeed.CustodyAccountId,"111100","عهدة نقدية لدى المحصلين","Collector Cash Custody","ASSET","DEBIT","COLLECTOR_CUSTODY", client: true, collector: true),
@@ -69,7 +86,7 @@ public sealed class FinanceAccountConfiguration : IEntityTypeConfiguration<Finan
         b.HasData(accounts);
     }
     private static FinanceAccount Account(Guid id, string code, string ar, string en, string type, string normal, string? control = null, bool client = false, bool collector = false)
-    { var value = new FinanceAccount(id, FinanceSeed.LegalEntityId, code, ar, en, type, normal, true, control); value.SetDimensionRules(client, collector, false); return value; }
+    { var value = new FinanceAccount(id, FinanceSeed.LegalEntityId, code, ar, en, type, normal, true, control); value.SetDimensionRules(client, collector, false); if (id == FinanceSeed.OperatingCashAccountId || id == FinanceSeed.OperatingBankAccountId) value.SetCashAccount(); return value; }
 }
 
 public sealed class AccountingEventConfiguration : IEntityTypeConfiguration<AccountingEvent>

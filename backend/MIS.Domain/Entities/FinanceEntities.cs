@@ -65,6 +65,16 @@ public sealed class AccountingPeriod
 
 public sealed class FinanceAccount
 {
+    public void Update(string code, string nameArabic, string nameEnglish, string type, string normalBalance, bool postingAllowed, bool active, Guid? parentId, bool isCashAccount = false)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code); ArgumentException.ThrowIfNullOrWhiteSpace(nameArabic); ArgumentException.ThrowIfNullOrWhiteSpace(nameEnglish);
+        if (type is not ("ASSET" or "LIABILITY" or "EQUITY" or "REVENUE" or "EXPENSE")) throw new ArgumentException("Invalid account type.");
+        if (normalBalance is not ("DEBIT" or "CREDIT")) throw new ArgumentException("Invalid normal balance.");
+        if (parentId == Id) throw new ArgumentException("An account cannot be its own parent.");
+        if (isCashAccount && type != "ASSET") throw new ArgumentException("Only an asset account can be a company cash account.");
+        Code = code.Trim(); NameArabic = nameArabic.Trim(); NameEnglish = nameEnglish.Trim(); AccountType = type; NormalBalance = normalBalance;
+        PostingAllowed = postingAllowed; IsActive = active; ParentId = parentId; IsCashAccount = isCashAccount;
+    }
     private FinanceAccount() { }
     public FinanceAccount(Guid id, Guid legalEntityId, string code, string nameArabic, string nameEnglish, string accountType, string normalBalance, bool postingAllowed, string? controlAccountType = null)
     {
@@ -87,6 +97,8 @@ public sealed class FinanceAccount
     public bool RequiresClient { get; private set; }
     public bool RequiresCollector { get; private set; }
     public bool RequiresBranch { get; private set; }
+    public bool IsCashAccount { get; private set; }
+    public void SetCashAccount() { if (AccountType != "ASSET") throw new InvalidOperationException("Cash accounts must be assets."); IsCashAccount = true; }
     public bool IsActive { get; private set; }
     public void SetDimensionRules(bool requiresClient, bool requiresCollector, bool requiresBranch) { RequiresClient = requiresClient; RequiresCollector = requiresCollector; RequiresBranch = requiresBranch; }
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
@@ -157,6 +169,7 @@ public sealed class JournalEntry
         var line = new JournalEntryLine(Id, _lines.Count + 1, accountId, debit, credit, baseDebit, baseCredit, exchangeRate, description, clientId, collectorId, branchId, costCenterId); _lines.Add(line); Recalculate(); return line;
     }
     public void Submit() { EnsureDraftAndBalanced(); Status = FinanceValues.JournalStatuses.PendingApproval; }
+    public void Cancel() { if (Status is not (FinanceValues.JournalStatuses.Draft or FinanceValues.JournalStatuses.PendingApproval)) throw new InvalidOperationException("Only draft or pending journals can be cancelled."); Status = FinanceValues.JournalStatuses.Cancelled; }
     public void Approve(Guid approverId, DateTimeOffset now) { if (Status != FinanceValues.JournalStatuses.PendingApproval) throw new InvalidOperationException("Only a pending journal can be approved."); if (approverId == CreatedById) throw new InvalidOperationException("The maker cannot approve their own journal."); Status = FinanceValues.JournalStatuses.Approved; ApprovedById = approverId; ApprovedAt = now; }
     public void Post(string journalNumber, Guid posterId, DateTimeOffset now, bool allowDraftSystemPosting = false)
     {

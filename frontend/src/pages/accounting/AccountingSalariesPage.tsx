@@ -1,3 +1,4 @@
+import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { CheckCircle2, RefreshCw, Save, Wallet, WalletCards, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -15,6 +16,7 @@ const editable = ['DRAFT', 'PENDING_REVIEW'];
 
 export function AccountingSalariesPage() {
   const a = useAccountingText();
+  const { confirmMoney, moneyDialog } = useAccountingMoneyConfirm();
   const { user } = useAuth();
   const canOpenHrPayroll = user ? canAccessModule(user, 'hr') : false;
   const now = useMemo(() => new Date(), []);
@@ -33,7 +35,7 @@ export function AccountingSalariesPage() {
     const list = await accountingService.periods();
     setPeriods(list);
     const match = list.find((period) => period.year === year && period.month === month);
-    if (match) setPeriodId(match.id);
+    setPeriodId(match?.id ?? '');
   }, [year, month]);
 
   const loadRows = useCallback(async (id: string) => {
@@ -43,7 +45,7 @@ export function AccountingSalariesPage() {
   }, [search, status]);
 
   useEffect(() => { refreshPeriods().catch((reason) => setError(getApiErrorMessage(reason, a.text('تعذر تحميل الفترات', 'Failed to load periods')))); }, [refreshPeriods]);
-  useEffect(() => { if (periodId) loadRows(periodId).catch((reason) => setError(getApiErrorMessage(reason, a.text('تعذر تحميل المرتبات', 'Failed to load salaries')))); }, [periodId, loadRows]);
+  useEffect(() => { loadRows(periodId).catch((reason) => setError(getApiErrorMessage(reason, a.text('تعذر تحميل المرتبات', 'Failed to load salaries')))); }, [periodId, loadRows]);
 
   const generate = async () => {
     setBusy(true); setError('');
@@ -106,7 +108,7 @@ export function AccountingSalariesPage() {
   const drafts = rows.filter((row) => row.status === 'DRAFT').length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5">{moneyDialog}
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('المرتبات', 'Salaries')}</h1>
@@ -118,7 +120,7 @@ export function AccountingSalariesPage() {
           <input aria-label={a.text('السنة', 'Year')} className="h-11 w-24 rounded-xl border border-mis-border px-3 text-sm" type="number" value={year} onChange={(event) => setYear(Number(event.target.value))} />
           <Button disabled={busy} fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} onClick={() => void generate()} size="md">{a.text('توليد / تحديث', 'Generate / refresh')}</Button>
         </div>
-      </header>
+      <AccountingExportButton report="salaries" filter={{ year, month, periodId: periodId || undefined, search: search || undefined, status: status || undefined }} disabled={!periodId} /></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
@@ -143,7 +145,7 @@ export function AccountingSalariesPage() {
         </ProfessionalSelect>
         {drafts ? <Button disabled={busy} fullWidth={false} onClick={() => void bulk('submit')} size="sm" variant="outline">{a.text('إرسال المسودات', 'Submit drafts')}</Button> : null}
         {pending ? <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void bulk('approve')} size="sm" variant="outline">{a.text('اعتماد المعروض', 'Approve listed')}</Button> : null}
-        {approved ? <Button disabled={busy} fullWidth={false} onClick={() => void bulk('pay')} size="sm" variant="outline">{a.text('صرف المعتمد', 'Pay approved')}</Button> : null}
+        {approved ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(rows.filter(x => x.status === 'APPROVED').reduce((n, x) => n + x.netSalary, 0), rows.filter(x => x.status === 'APPROVED').map(x => x.employeeName + ': ' + a.money(x.netSalary)).join('\n'), () => bulk('pay'))} size="sm" variant="outline">{a.text('صرف المعتمد', 'Pay approved')}</Button> : null}
       </div>
 
       {!periodId ? (
@@ -227,10 +229,10 @@ export function AccountingSalariesPage() {
             </label>
             <p className="mt-4 text-lg font-bold text-mis-navy" data-bidi="ltr">{a.text('الصافي', 'Net')}: {a.money(selected.netSalary)}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => void saveSelected()}>{a.text('حفظ', 'Save')}</Button> : null}
+              {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(selected.netSalary, selected.employeeName + ' ? ' + a.monthLabel(year, month), saveSelected)}>{a.text('حفظ', 'Save')}</Button> : null}
               {selected.status === 'DRAFT' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'submit')} variant="outline">{a.text('إرسال للمراجعة', 'Submit')}</Button> : null}
               {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void act(selected.id, 'approve')} variant="outline">{a.text('اعتماد', 'Approve')}</Button> : null}
-              {selected.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'pay')} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
+              {selected.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(selected.netSalary, selected.employeeName + ' ? ' + a.monthLabel(year, month), () => act(selected.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
               {selected.status !== 'PAID' && selected.status !== 'CANCELLED' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button> : null}
               <Button fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setSelected(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
             </div>

@@ -82,6 +82,9 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<CollectorCustodyAccount> CollectorCustodyAccounts => Set<CollectorCustodyAccount>();
     public DbSet<CollectorCustodyTransaction> CollectorCustodyTransactions => Set<CollectorCustodyTransaction>();
     public DbSet<CollectionClearingEvent> CollectionClearingEvents => Set<CollectionClearingEvent>();
+    public DbSet<AccountingBookEntry> AccountingBookEntries => Set<AccountingBookEntry>();
+    public DbSet<AccountingRecurringExpense> AccountingRecurringExpenses => Set<AccountingRecurringExpense>();
+
     public DbSet<AccountingPayrollPeriod> AccountingPayrollPeriods => Set<AccountingPayrollPeriod>();
     public DbSet<AccountingEmployeePayroll> AccountingEmployeePayrolls => Set<AccountingEmployeePayroll>();
     public DbSet<AccountingTransportationClaim> AccountingTransportationClaims => Set<AccountingTransportationClaim>();

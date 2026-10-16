@@ -16,6 +16,7 @@ public static class FinanceValues
         public const string Approved = "APPROVED";
         public const string Posted = "POSTED";
         public const string Reversed = "REVERSED";
+        public const string Cancelled = "CANCELLED";
     }
 
     public static class EventStatuses

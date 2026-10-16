@@ -54,6 +54,7 @@ public static class DependencyInjection
         services.AddScoped<FinanceService>();
         services.AddScoped<IFinanceService>(serviceProvider => serviceProvider.GetRequiredService<FinanceService>());
         services.AddScoped<IAccountingService, AccountingService>();
+        services.AddScoped<IAccountingBookService, AccountingBookService>();
         services.AddScoped<IFinancePostingService>(serviceProvider => serviceProvider.GetRequiredService<FinanceService>());
         services.AddScoped<ICollectionsClassificationContext, CollectionsClassificationContext>();
         services.AddScoped<ICollectionsService, CollectionsService>();

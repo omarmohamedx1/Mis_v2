@@ -71,6 +71,12 @@ const ForceChangePasswordPage = lazy(() => import('../pages/auth/ForceChangePass
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })));
 const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
 const AdminAuditPage = lazy(() => import('../pages/admin/AdminAuditPage').then((module) => ({ default: module.AdminAuditPage })));
+const AccountingOverviewPage = lazy(() => import('../pages/accounting/AccountingOverviewPage').then(m => ({ default: m.AccountingOverviewPage })));
+const AccountingBookPage = lazy(() => import('../pages/accounting/AccountingBookPage').then(m => ({ default: m.AccountingBookPage })));
+const AccountingAdvancesPage = lazy(() => import('../pages/accounting/AccountingAdvancesPage').then(m => ({ default: m.AccountingAdvancesPage })));
+const AccountingRecurringPage = lazy(() => import('../pages/accounting/AccountingRecurringPage').then(m => ({ default: m.AccountingRecurringPage })));
+const AccountingCommissionCalculationPage = lazy(() => import('../pages/accounting/AccountingCommissionCalculationPage').then(m => ({ default: m.AccountingCommissionCalculationPage })));
+const AccountingExportsPage = lazy(() => import('../pages/accounting/AccountingExportsPage').then(m => ({ default: m.AccountingExportsPage })));
 const FinanceDashboardPage = lazy(() => import('../pages/finance/FinanceDashboardPage').then((module) => ({ default: module.FinanceDashboardPage })));
 const FinanceJournalsPage = lazy(() => import('../pages/finance/FinanceJournalsPage').then((module) => ({ default: module.FinanceJournalsPage })));
 const FinanceJournalDetailsPage = lazy(() => import('../pages/finance/FinanceJournalDetailsPage').then((module) => ({ default: module.FinanceJournalDetailsPage })));
@@ -174,7 +180,20 @@ export function AppRoutes() {
         <Route path="/accounting/*" element={<LegacyAccountingRedirect />} />
         <Route path="/finance" element={<Navigate to="/finance/dashboard" replace />} />
         <Route path="/finance" element={<FinanceRouteBoundary />}>
-          <Route path="dashboard" element={<FinanceDashboardPage />} />
+          <Route path="dashboard" element={<AccountingOverviewPage />} />
+          <Route path="ledger-dashboard" element={<FinanceDashboardPage />} />
+          <Route path="expenses" element={<AccountingBookPage />} />
+          <Route path="petty-expenses" element={<AccountingBookPage />} />
+          <Route path="fixed-expenses" element={<AccountingBookPage />} />
+          <Route path="bonuses" element={<AccountingBookPage />} />
+          <Route path="judicial-expenses" element={<AccountingBookPage />} />
+          <Route path="income" element={<AccountingBookPage />} />
+          <Route path="advances" element={<AccountingAdvancesPage />} />
+          <Route path="carried-advances" element={<AccountingAdvancesPage />} />
+          <Route path="recurring" element={<AccountingRecurringPage />} />
+          <Route path="commission-calculation" element={<AccountingCommissionCalculationPage />} />
+          <Route path="exports" element={<AccountingExportsPage />} />
+
           <Route path="journals" element={<FinanceJournalsPage />} />
           <Route path="journals/:id" element={<FinanceJournalDetailsPage />} />
           <Route path="collections" element={<FinanceCollectionsPage />} />

@@ -1,10 +1,11 @@
 import { apiClient } from '../../../services/apiClient';
 import { loadAllPages } from '../../../utils/loadAllPages';
-import type { AccountingPeriod, CollectionFinance, CollectionFinanceListItem, CreateManualJournalInput, CustodyDetails, CustodySummary, FinanceAccount, FinanceDashboard, FinancePagedResult, Journal, JournalListItem, TrialBalance } from '../types/finance';
+import type { AccountingPeriod, CollectionFinance, CollectionFinanceListItem, CreateManualJournalInput, CustodyDetails, CustodySummary, FinanceAccount, SaveFinanceAccount, FinanceDashboard, FinancePagedResult, Journal, JournalListItem, TrialBalance } from '../types/finance';
 
 export const financeService = {
   async dashboard() { return (await apiClient.get<FinanceDashboard>('/finance/dashboard')).data; },
   async accounts() { return (await apiClient.get<FinanceAccount[]>('/finance/accounts')).data; },
+  async saveAccount(id: string | undefined, input: SaveFinanceAccount) { return (await (id ? apiClient.put<FinanceAccount>(`/finance/accounts/${id}`, input) : apiClient.post<FinanceAccount>('/finance/accounts', input))).data; },
   async periods(year?: number) { return (await apiClient.get<AccountingPeriod[]>('/finance/periods', { params: { year } })).data; },
   async initializeYear(year: number) { return (await apiClient.post<AccountingPeriod[]>(`/finance/periods/initialize/${year}`)).data; },
   async periodAction(id: string, action: 'soft-close' | 'close' | 'reopen', reason: string) { return (await apiClient.post<AccountingPeriod>(`/finance/periods/${id}/${action}`, { reason })).data; },

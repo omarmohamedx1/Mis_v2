@@ -36,7 +36,35 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
     {
         EnsureAccess(); var balances = await _db.JournalEntryLines.AsNoTracking().Where(x => x.JournalEntry.Status == FinanceValues.JournalStatuses.Posted || x.JournalEntry.Status == FinanceValues.JournalStatuses.Reversed).GroupBy(x => x.AccountId).Select(g => new { Id = g.Key, Balance = g.Sum(x => x.BaseDebit - x.BaseCredit) }).ToDictionaryAsync(x => x.Id, x => x.Balance, token);
         var accounts = await _db.FinanceAccounts.AsNoTracking().OrderBy(x => x.Code).ToArrayAsync(token);
-        return accounts.Select(x => new FinanceAccountDto(x.Id, x.Code, x.NameArabic, x.NameEnglish, x.AccountType, x.NormalBalance, x.PostingAllowed, x.ControlAccountType, balances.GetValueOrDefault(x.Id))).ToArray();
+        return accounts.Select(x => new FinanceAccountDto(x.Id, x.Code, x.NameArabic, x.NameEnglish, x.AccountType, x.NormalBalance, x.PostingAllowed, x.ControlAccountType, balances.GetValueOrDefault(x.Id), x.ParentId, x.IsActive, x.IsCashAccount)).ToArray();
+    }
+
+    public async Task<FinanceAccountDto> SaveAccountAsync(Guid? id, SaveFinanceAccountRequest request, CancellationToken token)
+    {
+        EnsurePermission(SystemPermissionCodes.FinanceConfigurationManage);
+        var entity = await DefaultLegalEntityAsync(token);
+        var type = request.AccountType.Trim().ToUpperInvariant(); var normal = request.NormalBalance.Trim().ToUpperInvariant();
+        if (request.IsCashAccount && type != "ASSET") throw new HrValidationException("Only an asset account can be a company cash account.");
+        if (type is not ("ASSET" or "LIABILITY" or "EQUITY" or "REVENUE" or "EXPENSE") || normal is not ("DEBIT" or "CREDIT")) throw new HrValidationException("Invalid account type or normal balance.");
+        if (await _db.FinanceAccounts.AnyAsync(x => x.LegalEntityId == entity.Id && x.Code == request.Code.Trim() && x.Id != id, token)) throw new HrConflictException("An account with this code already exists.");
+        var item = id.HasValue ? await _db.FinanceAccounts.SingleOrDefaultAsync(x => x.Id == id && x.LegalEntityId == entity.Id, token) ?? throw new HrNotFoundException("Account was not found.")
+            : new FinanceAccount(Guid.NewGuid(), entity.Id, request.Code, request.NameArabic, request.NameEnglish, type, normal, request.PostingAllowed);
+        if (item.ControlAccountType is not null && (item.Code != request.Code.Trim() || item.AccountType != type || item.NormalBalance != normal || item.PostingAllowed != request.PostingAllowed || !request.IsActive || item.ParentId != request.ParentId || item.IsCashAccount != request.IsCashAccount)) throw new HrConflictException("Control account posting settings cannot be changed.");
+        if (id.HasValue && (item.AccountType != type || item.NormalBalance != normal || item.IsCashAccount != request.IsCashAccount) && await _db.JournalEntryLines.AnyAsync(x => x.AccountId == item.Id, token)) throw new HrConflictException("An account with transactions cannot change its type or normal balance.");
+        var parentId = request.ParentId; var seen = new HashSet<Guid> { item.Id };
+        while (parentId.HasValue)
+        {
+            if (!seen.Add(parentId.Value)) throw new HrValidationException("Account hierarchy cannot contain a cycle.");
+            var parent = await _db.FinanceAccounts.AsNoTracking().SingleOrDefaultAsync(x => x.Id == parentId && x.LegalEntityId == entity.Id && x.IsActive, token) ?? throw new HrValidationException("Parent account was not found.");
+            if (parent.AccountType != type) throw new HrValidationException("Parent and child accounts must have the same type.");
+            parentId = parent.ParentId;
+        }
+        var before = id.HasValue ? new { item.Code, item.NameArabic, item.NameEnglish, item.AccountType, item.NormalBalance, item.PostingAllowed, item.IsActive, item.ParentId } : null;
+        item.Update(request.Code, request.NameArabic, request.NameEnglish, type, normal, request.PostingAllowed, request.IsActive, request.ParentId, request.IsCashAccount);
+        if (!id.HasValue) _db.FinanceAccounts.Add(item);
+        AddAudit(id.HasValue ? "AccountUpdated" : "AccountCreated", nameof(FinanceAccount), item.Id, before, request, null);
+        await _db.SaveChangesAsync(token);
+        return (await GetAccountsAsync(token)).Single(x => x.Id == item.Id);
     }
 
     public async Task<IReadOnlyCollection<AccountingPeriodDto>> GetPeriodsAsync(int? year, CancellationToken token)
@@ -53,7 +81,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
     public async Task<AccountingPeriodDto> ChangePeriodStatusAsync(Guid id, string action, PeriodActionRequest request, CancellationToken token)
     {
         EnsurePermission(SystemPermissionCodes.FinancePeriodClose); var period = await _db.AccountingPeriods.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Accounting period was not found."); var before = period.Status; var normalized = action.Trim().ToLowerInvariant();
-        if (normalized == "soft-close") period.SoftClose(_user.UserId, DateTimeOffset.UtcNow); else if (normalized == "close") { if (await _db.JournalEntries.AnyAsync(x => x.PeriodId == id && x.Status != FinanceValues.JournalStatuses.Posted && x.Status != FinanceValues.JournalStatuses.Reversed, token)) throw new HrConflictException("The period has unposted journals."); period.Close(_user.UserId, request.Reason, DateTimeOffset.UtcNow); } else if (normalized == "reopen") period.Reopen(request.Reason); else throw new HrValidationException("Period action is invalid.");
+        if (normalized == "soft-close") period.SoftClose(_user.UserId, DateTimeOffset.UtcNow); else if (normalized == "close") { if (await _db.JournalEntries.AnyAsync(x => x.PeriodId == id && x.Status != FinanceValues.JournalStatuses.Posted && x.Status != FinanceValues.JournalStatuses.Reversed && x.Status != FinanceValues.JournalStatuses.Cancelled, token)) throw new HrConflictException("The period has unposted journals."); period.Close(_user.UserId, request.Reason, DateTimeOffset.UtcNow); } else if (normalized == "reopen") period.Reopen(request.Reason); else throw new HrValidationException("Period action is invalid.");
         AddAudit($"Period{normalized}", nameof(AccountingPeriod), period.Id, new { Status = before }, new { period.Status }, request.Reason); await _db.SaveChangesAsync(token); return PeriodDto(period);
     }
 
@@ -79,13 +107,35 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
 
     public async Task<JournalDto> PostJournalAsync(Guid id, CancellationToken token)
     {
-        EnsurePermission(SystemPermissionCodes.FinanceJournalPost); await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token); var journal = await LoadJournalAsync(id, token); await EnsurePeriodAllowsPostingAsync(journal.PeriodId, false, token); journal.Post(NewJournalNumber(journal.PostingDate, journal.Id), _user.UserId, DateTimeOffset.UtcNow); AddAudit("JournalPosted", nameof(JournalEntry), id, new { Status = FinanceValues.JournalStatuses.Approved }, new { journal.Status, journal.JournalNumber }, null); await _db.SaveChangesAsync(token); await tx.CommitAsync(token); return await GetJournalAsync(id, token);
+        EnsurePermission(SystemPermissionCodes.FinanceJournalPost);
+        await using var tx = _db.Database.CurrentTransaction is null ? await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
+        var journal = await LoadJournalAsync(id, token);
+        var operation = await _db.AccountingBookEntries.AsNoTracking().SingleOrDefaultAsync(x => x.JournalEntryId == id, token);
+        if (operation is not null)
+        {
+            if (operation.TransactionDate > CairoToday()) throw new HrConflictException("Future accounting entries cannot be posted before their date.");
+            if (operation.Category == "ADVANCE_REPAYMENT")
+            {
+                var advance = await _db.AccountingBookEntries.AsNoTracking().Include(x => x.JournalEntry).SingleOrDefaultAsync(x => x.Id == operation.RelatedAdvanceId, token);
+                if (advance is null || advance.JournalEntry.Status != "POSTED" || advance.EmployeeId != operation.EmployeeId || advance.AccountId != operation.AccountId || advance.TransactionDate > operation.TransactionDate) throw new HrConflictException("The original advance is no longer eligible for this repayment.");
+                var repaid = await _db.AccountingBookEntries.Where(x => x.RelatedAdvanceId == advance.Id && x.Id != operation.Id && x.JournalEntry.Status == "POSTED").SumAsync(x => (decimal?)x.Amount, token) ?? 0;
+                if (operation.Amount > advance.Amount - repaid) throw new HrConflictException("Repayment exceeds the outstanding advance balance.");
+            }
+        }
+        if (await _db.FinanceAccounts.AnyAsync(x => journal.Lines.Select(l => l.AccountId).Contains(x.Id) && (!x.IsActive || !x.PostingAllowed), token)) throw new HrConflictException("One or more posting accounts are inactive.");
+        await EnsurePeriodAllowsPostingAsync(journal.PeriodId, false, token); journal.Post(NewJournalNumber(journal.PostingDate, journal.Id), _user.UserId, DateTimeOffset.UtcNow);
+        AddAudit("JournalPosted", nameof(JournalEntry), id, new { Status = FinanceValues.JournalStatuses.Approved }, new { journal.Status, journal.JournalNumber }, null);
+        await _db.SaveChangesAsync(token); if (tx is not null) await tx.CommitAsync(token); return await GetJournalAsync(id, token);
     }
 
     public async Task<JournalDto> ReverseJournalAsync(Guid id, PeriodActionRequest request, CancellationToken token)
     {
         EnsurePermission(SystemPermissionCodes.FinanceTransactionReverse);
-        await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        await using var tx = _db.Database.CurrentTransaction is null ? await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
+        if (await _db.AccountingBookEntries.AnyAsync(a => a.JournalEntryId == id && (a.Category == "ADVANCE" || a.Category == "CARRIED_ADVANCE") && _db.AccountingBookEntries.Any(r => r.RelatedAdvanceId == a.Id && r.JournalEntry.Status == "POSTED"), token))
+            throw new HrConflictException("Reverse the advance repayments before reversing the original advance.");
+        if (await _db.AccountingBookEntries.AnyAsync(a => a.JournalEntryId == id && a.SourceKey != null && !a.SourceKey.StartsWith("MANUAL:") && !a.SourceKey.StartsWith("RECURRING:"), token))
+            throw new HrConflictException("Paid payroll and commission journals must be corrected through an approved adjustment rather than reversing the linked payment alone.");
         if (await _db.CollectionFinancialReceipts.AnyAsync(x => x.JournalEntryId == id || x.ClearingJournalEntryId == id, token))
             throw new HrConflictException("Collection journals must be reversed from the financial collection screen to keep the receipt, case balance, client ledger, and custody synchronized.");
         var original = await LoadJournalAsync(id, token);
@@ -93,7 +143,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
             throw new HrConflictException("Only a posted journal can be reversed.");
         var reversal = await CreateReversalJournalAsync(original, $"Reversal / عكس القيد: {request.Reason}", CairoToday(), token);
         await _db.SaveChangesAsync(token);
-        await tx.CommitAsync(token);
+        if (tx is not null) await tx.CommitAsync(token);
         return await GetJournalAsync(reversal.Id, token);
     }
 

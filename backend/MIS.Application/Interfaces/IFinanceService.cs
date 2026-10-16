@@ -7,6 +7,7 @@ public interface IFinanceService
 {
     Task<FinanceDashboardDto> GetDashboardAsync(CancellationToken token);
     Task<IReadOnlyCollection<FinanceAccountDto>> GetAccountsAsync(CancellationToken token);
+    Task<FinanceAccountDto> SaveAccountAsync(Guid? id, SaveFinanceAccountRequest request, CancellationToken token);
     Task<IReadOnlyCollection<AccountingPeriodDto>> GetPeriodsAsync(int? year, CancellationToken token);
     Task<IReadOnlyCollection<AccountingPeriodDto>> InitializeYearAsync(int year, CancellationToken token);
     Task<AccountingPeriodDto> ChangePeriodStatusAsync(Guid id, string action, PeriodActionRequest request, CancellationToken token);

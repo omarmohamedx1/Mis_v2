@@ -14,7 +14,10 @@ public sealed record FinanceDashboardDto(
     int OpenPeriods,
     string BaseCurrencyCode);
 
-public sealed record FinanceAccountDto(Guid Id, string Code, string NameArabic, string NameEnglish, string AccountType, string NormalBalance, bool PostingAllowed, string? ControlAccountType, decimal Balance);
+public sealed record FinanceAccountDto(Guid Id, string Code, string NameArabic, string NameEnglish, string AccountType, string NormalBalance, bool PostingAllowed, string? ControlAccountType, decimal Balance, Guid? ParentId = null, bool IsActive = true, bool IsCashAccount = false);
+public sealed record SaveFinanceAccountRequest([Required, MaxLength(12), RegularExpression(@"[A-Za-z0-9.\-]+") ] string Code,
+    [Required, MaxLength(200)] string NameArabic, [Required, MaxLength(200)] string NameEnglish,
+    [Required] string AccountType, [Required] string NormalBalance, bool PostingAllowed = true, Guid? ParentId = null, bool IsActive = true, bool IsCashAccount = false);
 public sealed record AccountingPeriodDto(Guid Id, int Year, int PeriodNumber, string Name, DateOnly StartDate, DateOnly EndDate, string Status, DateTimeOffset? ClosedAt, string? CloseReason);
 public sealed record JournalLineDto(Guid Id, int LineNumber, Guid AccountId, string AccountCode, string AccountNameArabic, string AccountNameEnglish, decimal Debit, decimal Credit, decimal BaseDebit, decimal BaseCredit, decimal ExchangeRate, string Description, Guid? ClientId, Guid? CollectorId, Guid? BranchId);
 public sealed record JournalDto(Guid Id, string? JournalNumber, string EntryType, DateOnly TransactionDate, DateOnly PostingDate, string CurrencyCode, string Description, decimal TotalDebit, decimal TotalCredit, string Status, string CreatedBy, DateTimeOffset CreatedAt, string? ApprovedBy, DateTimeOffset? ApprovedAt, string? PostedBy, DateTimeOffset? PostedAt, Guid? ReversalOfJournalId, IReadOnlyCollection<JournalLineDto> Lines);
@@ -23,8 +26,8 @@ public sealed record FinancePagedResultDto<T>(IReadOnlyCollection<T> Items, int 
 
 public sealed record CreateManualJournalLineRequest(
     Guid AccountId,
-    [Range(typeof(decimal), "0", "999999999999999999")] decimal Debit,
-    [Range(typeof(decimal), "0", "999999999999999999")] decimal Credit,
+    [Range(typeof(decimal), "0", "999999999999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal Debit,
+    [Range(typeof(decimal), "0", "999999999999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal Credit,
     [Required, MaxLength(1000)] string Description,
     Guid? ClientId,
     Guid? CollectorId,
@@ -134,6 +137,6 @@ public sealed record CustodyDetailsDto(
     IReadOnlyCollection<CustodyTransactionDto> Transactions);
 
 public sealed record UpdateCustodyLimitsRequest(
-    [Range(typeof(decimal), "0", "999999999999999999")] decimal SoftLimit,
-    [Range(typeof(decimal), "0.01", "999999999999999999")] decimal HardLimit,
+    [Range(typeof(decimal), "0", "999999999999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal SoftLimit,
+    [Range(typeof(decimal), "0.01", "999999999999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal HardLimit,
     [Required, MaxLength(1000)] string Reason);

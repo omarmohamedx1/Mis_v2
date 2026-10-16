@@ -1,3 +1,4 @@
+import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Banknote, Calculator, CheckCircle2, Percent, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +14,7 @@ const editable = ['DRAFT', 'PENDING_REVIEW'];
 
 export function AccountingCollectorCommissionsPage() {
   const a = useAccountingText();
+  const { confirmMoney, moneyDialog } = useAccountingMoneyConfirm();
   const navigate = useNavigate();
   const now = useMemo(() => new Date(), []);
   const [year, setYear] = useState(now.getFullYear());
@@ -73,7 +75,7 @@ export function AccountingCollectorCommissionsPage() {
   const totalFinal = rows.reduce((sum, row) => sum + row.finalCommission, 0);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5">{moneyDialog}
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('عمولات المحصلين', 'Collector commissions')}</h1>
@@ -85,7 +87,7 @@ export function AccountingCollectorCommissionsPage() {
           <Button disabled={busy} fullWidth={false} leftIcon={<Calculator className="h-4 w-4" />} onClick={() => void calculate()}>{a.text('احتساب الشهر', 'Calculate month')}</Button>
           <Button fullWidth={false} leftIcon={<Percent className="h-4 w-4" />} onClick={() => navigate('/finance/commission-rules')} variant="outline">{a.text('قواعد العمولة', 'Commission rules')}</Button>
         </div>
-      </header>
+      <AccountingExportButton report="collector-commissions" filter={{ year, month, search: search || undefined, status: status || undefined }} /></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
@@ -164,13 +166,13 @@ export function AccountingCollectorCommissionsPage() {
                 <label className="text-sm"><span className="mb-1 block text-slate-500">{a.text('تسوية', 'Adjustment')}</span>
                   <input type="number" className="rounded-xl border border-mis-border px-3 py-2" value={adjustValue} onChange={(event) => setAdjustValue(Number(event.target.value))} />
                 </label>
-                <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => void adjust()} variant="outline">{a.text('حفظ التسوية', 'Save adjustment')}</Button>
+                <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(details.summary.commissionAmount + adjustValue, details.summary.collectorName + '\n' + a.money(adjustValue), adjust)} variant="outline">{a.text('حفظ التسوية', 'Save adjustment')}</Button>
                 {details.summary.status === 'DRAFT' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(details.summary.id, 'submit')} variant="outline">{a.text('إرسال', 'Submit')}</Button> : null}
                 <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void act(details.summary.id, 'approve')}>{a.text('اعتماد', 'Approve')}</Button>
                 <Button disabled={busy} fullWidth={false} onClick={() => void act(details.summary.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button>
               </div>
             ) : null}
-            {details.summary.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(details.summary.id, 'pay')} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
+            {details.summary.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(details.summary.finalCommission, details.summary.collectorName + ' ? ' + a.monthLabel(year, month), () => act(details.summary.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
 
             <h3 className="mb-2 mt-6 text-sm font-bold text-mis-navy">{a.text('المعاملات المساهمة', 'Contributing transactions')}</h3>
             <div className="overflow-x-auto rounded-xl border border-mis-border">

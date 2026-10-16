@@ -22,6 +22,97 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingBookEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("CounterAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("DocumentNumber")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RecurringExpenseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid?>("RelatedAdvanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateOnly>("TransactionDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CounterAccountId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("DocumentNumber")
+                        .IsUnique();
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("JournalEntryId")
+                        .IsUnique();
+
+                    b.HasIndex("RecurringExpenseId");
+
+                    b.HasIndex("RelatedAdvanceId");
+
+                    b.HasIndex("SourceKey")
+                        .IsUnique();
+
+                    b.HasIndex("Category", "TransactionDate");
+
+                    b.ToTable("AccountingBookEntries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AccountingBookEntries_Amount", "\"Amount\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.AccountingCollectorCommission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -422,6 +513,60 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("accounting_periods", "finance");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingRecurringExpense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("CashAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DueDay")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("EndsOn")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateOnly>("StartsOn")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CashAccountId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.ToTable("AccountingRecurringExpenses", (string)null);
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.AccountingSupervisorCommission", b =>
@@ -4374,6 +4519,9 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsCashAccount")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("LegalEntityId")
                         .HasColumnType("uuid");
 
@@ -4419,10 +4567,219 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.HasData(
                         new
                         {
+                            Id = new Guid("10000000-0000-0000-0001-000000110300"),
+                            AccountType = "ASSET",
+                            Code = "110300",
+                            IsActive = true,
+                            IsCashAccount = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "خزينة الشركة التشغيلية",
+                            NameEnglish = "Company operating cash",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0001-000000110400"),
+                            AccountType = "ASSET",
+                            Code = "110400",
+                            IsActive = true,
+                            IsCashAccount = true,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "بنك الشركة التشغيلي",
+                            NameEnglish = "Company operating bank",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0001-000000113100"),
+                            AccountType = "ASSET",
+                            Code = "113100",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "سلف الموظفين",
+                            NameEnglish = "Employee advances",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0003-000000310100"),
+                            AccountType = "EQUITY",
+                            Code = "310100",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "أرصدة افتتاحية",
+                            NameEnglish = "Opening balances",
+                            NormalBalance = "CREDIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610110"),
+                            AccountType = "EXPENSE",
+                            Code = "610110",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "مصاريف نثرية",
+                            NameEnglish = "Petty expenses",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610120"),
+                            AccountType = "EXPENSE",
+                            Code = "610120",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "مصاريف شهرية ثابتة",
+                            NameEnglish = "Fixed monthly expenses",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610130"),
+                            AccountType = "EXPENSE",
+                            Code = "610130",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "انتقالات",
+                            NameEnglish = "Transportation expenses",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610140"),
+                            AccountType = "EXPENSE",
+                            Code = "610140",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "مرتبات وأجور",
+                            NameEnglish = "Salaries and wages",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610150"),
+                            AccountType = "EXPENSE",
+                            Code = "610150",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "مكافآت",
+                            NameEnglish = "Bonuses and rewards",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610160"),
+                            AccountType = "EXPENSE",
+                            Code = "610160",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "مصاريف قضائية",
+                            NameEnglish = "Judicial expenses",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610170"),
+                            AccountType = "EXPENSE",
+                            Code = "610170",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "عمولات المحصلين",
+                            NameEnglish = "Collector commissions",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610180"),
+                            AccountType = "EXPENSE",
+                            Code = "610180",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "عمولات السوبر فايزر",
+                            NameEnglish = "Supervisor commissions",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0006-000000610190"),
+                            AccountType = "EXPENSE",
+                            Code = "610190",
+                            IsActive = true,
+                            IsCashAccount = false,
+                            LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            NameArabic = "عمولات ضمن المرتبات",
+                            NameEnglish = "Commissions included in payroll",
+                            NormalBalance = "DEBIT",
+                            PostingAllowed = true,
+                            RequiresBranch = false,
+                            RequiresClient = false,
+                            RequiresCollector = false
+                        },
+                        new
+                        {
                             Id = new Guid("10000000-0000-0000-0001-000000110100"),
                             AccountType = "ASSET",
                             Code = "110100",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "النقدية والخزائن",
                             NameEnglish = "Cashboxes",
@@ -4439,6 +4796,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             Code = "110200",
                             ControlAccountType = "TREASURY",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "الحسابات البنكية",
                             NameEnglish = "Bank Accounts",
@@ -4455,6 +4813,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             Code = "111100",
                             ControlAccountType = "COLLECTOR_CUSTODY",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "عهدة نقدية لدى المحصلين",
                             NameEnglish = "Collector Cash Custody",
@@ -4471,6 +4830,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             Code = "112100",
                             ControlAccountType = "TREASURY",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "تحويلات بنكية تحت التسوية",
                             NameEnglish = "Bank Clearing",
@@ -4487,6 +4847,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             Code = "112200",
                             ControlAccountType = "CHEQUES",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "شيكات تحت التحصيل",
                             NameEnglish = "Cheques Under Collection",
@@ -4503,6 +4864,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             Code = "112300",
                             ControlAccountType = "GATEWAY",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "مستحقات بوابات الدفع",
                             NameEnglish = "Gateway Receivable",
@@ -4519,6 +4881,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             Code = "210100",
                             ControlAccountType = "CLIENT_FUNDS",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "أموال عملاء تحت التسوية",
                             NameEnglish = "Client Funds Clearing",
@@ -4535,6 +4898,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             Code = "210200",
                             ControlAccountType = "CLIENT_FUNDS",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "أموال عملاء مستحقة",
                             NameEnglish = "Client Funds Payable",
@@ -4550,6 +4914,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             AccountType = "REVENUE",
                             Code = "410100",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "إيراد عمولات التحصيل",
                             NameEnglish = "Collection Commission Revenue",
@@ -4565,6 +4930,7 @@ namespace MIS.Infrastructure.Persistence.Migrations
                             AccountType = "EXPENSE",
                             Code = "610100",
                             IsActive = true,
+                            IsCashAccount = false,
                             LegalEntityId = new Guid("10000000-0000-0000-0000-000000000001"),
                             NameArabic = "مصروفات تشغيلية عامة",
                             NameEnglish = "General Operating Expenses",
@@ -5856,6 +6222,62 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingBookEntry", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.FinanceAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.FinanceAccount", "CounterAccount")
+                        .WithMany()
+                        .HasForeignKey("CounterAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.AccountingRecurringExpense", "RecurringExpense")
+                        .WithMany()
+                        .HasForeignKey("RecurringExpenseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.AccountingBookEntry", "RelatedAdvance")
+                        .WithMany()
+                        .HasForeignKey("RelatedAdvanceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Account");
+
+                    b.Navigation("CounterAccount");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("JournalEntry");
+
+                    b.Navigation("RecurringExpense");
+
+                    b.Navigation("RelatedAdvance");
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.AccountingCollectorCommission", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.User", "CollectorUser")
@@ -5935,6 +6357,33 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("LegalEntity");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.AccountingRecurringExpense", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.FinanceAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.FinanceAccount", "CashAccount")
+                        .WithMany()
+                        .HasForeignKey("CashAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("CashAccount");
+
+                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.AccountingSupervisorCommission", b =>

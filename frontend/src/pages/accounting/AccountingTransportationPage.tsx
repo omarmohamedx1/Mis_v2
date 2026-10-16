@@ -1,3 +1,4 @@
+import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Car, Download, Pencil, Plus, Upload } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../../components/common/Button';
@@ -13,6 +14,7 @@ const blankForm = { employeeId: '', claimDate: new Date().toISOString().slice(0,
 
 export function AccountingTransportationPage() {
   const a = useAccountingText();
+  const { confirmMoney, moneyDialog } = useAccountingMoneyConfirm();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [from, setFrom] = useState('');
@@ -72,14 +74,14 @@ export function AccountingTransportationPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5">{moneyDialog}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('الانتقالات', 'Transportation')}</h1>
           <p className="text-sm text-slate-500">{a.text('مطالبات انتقال مرتبطة بالموظفين، مع اعتماد وصرف ومرفق اختياري.', 'Employee transportation claims with approval, payment, and an optional attachment.')}</p>
         </div>
         <Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>{a.text('مطالبة جديدة', 'New claim')}</Button>
-      </header>
+      <AccountingExportButton report="transportation" filter={{ from: from || '2000-01-01', to: to || '2100-12-31', search: search || undefined, status: status || undefined }} /></header>
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
@@ -137,7 +139,7 @@ export function AccountingTransportationPage() {
                           <Button disabled={busy} fullWidth={false} onClick={() => void act(row.id, 'cancel')} size="sm" variant="ghost">{a.text('إلغاء', 'Cancel')}</Button>
                         </>
                       ) : null}
-                      {row.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(row.id, 'pay')} size="sm" variant="outline">{a.text('صرف', 'Pay')}</Button> : null}
+                      {row.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(row.amount, row.employeeName + ' ? ' + row.claimDate + '\n' + row.purpose, () => act(row.id, 'pay'))} size="sm" variant="outline">{a.text('صرف', 'Pay')}</Button> : null}
                     </div>
                   </td>
                 </tr>
@@ -173,7 +175,7 @@ export function AccountingTransportationPage() {
               <textarea className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('ملاحظات', 'Notes')} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
             </div>
             <div className="mt-5 flex gap-2">
-              <Button disabled={busy || !form.employeeId || !form.purpose} fullWidth={false} onClick={() => void save()}>{a.text('حفظ', 'Save')}</Button>
+              <Button disabled={busy || !form.employeeId || !form.purpose} fullWidth={false} onClick={() => confirmMoney(form.amount, (employees.find(x => x.id === form.employeeId)?.fullName ?? '') + ' ? ' + form.claimDate + '\n' + form.purpose + '\n' + form.notes, save)}>{a.text('حفظ', 'Save')}</Button>
               <Button fullWidth={false} onClick={() => setEditing(undefined)} variant="outline">{a.text('إلغاء', 'Cancel')}</Button>
             </div>
           </div>
