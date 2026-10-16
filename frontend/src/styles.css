@@ -4,7 +4,7 @@
 
 @layer components {
   .field {
-    @apply min-h-11 w-full rounded-xl border border-mis-border bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-mis-blue focus:ring-4 focus:ring-mis-pale disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
+    @apply min-h-11 w-full rounded-xl border border-mis-control bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-mis-blue focus:ring-4 focus:ring-mis-pale disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
   }
 }
 
