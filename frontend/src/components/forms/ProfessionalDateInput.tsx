@@ -322,9 +322,10 @@ export function ProfessionalDateInput({
           }}
           onChange={(event) => {
             typing.current = true;
-            const next = event.target.value;
-            setDraft(next);
-            applyTyped(next);
+            // Commit on blur or Enter. Parsing every keystroke treats the first
+            // two digits of a four-digit year as a complete year (20 -> 2020)
+            // and rewrites the text before the user can finish typing 2026.
+            setDraft(event.target.value);
           }}
           onFocus={() => { typing.current = true; }}
           onKeyDown={(event) => {
