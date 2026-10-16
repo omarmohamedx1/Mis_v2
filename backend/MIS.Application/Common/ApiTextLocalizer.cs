@@ -15,6 +15,11 @@ public static partial class ApiTextLocalizer
     private static readonly IReadOnlyDictionary<string, string> Arabic =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["Collection activity was not found."] = "لم يتم العثور على النشاط.",
+            ["Only manually recorded activities can be corrected."] = "يمكن تعديل أو حذف الأنشطة المسجلة يدويًا فقط. الأنشطة الناتجة تلقائيًا عن المعاملات محفوظة للتدقيق.",
+            ["Only the creator or a Collections manager can correct this record."] = "يمكن لصاحب السجل أو مدير التحصيل فقط تعديله أو حذفه.",
+            ["Correct this promise through its linked daily collection record."] = "هذا الوعد مرتبط بسجل تحصيل يومي؛ عدّله من السجل المرتبط للحفاظ على تطابق البيانات.",
+            ["A promise with recorded payments cannot be corrected."] = "لا يمكن تعديل أو حذف وعد سداد مرتبط بمبالغ محصلة ومعتمدة.",
             ["HrExcuseMission"] = "الأعذار والمأموريات",
             ["ExcuseRequestCreated"] = "إنشاء طلب عذر",
             ["VisitRequestSubmitted"] = "إرسال طلب اعتماد زيارة",

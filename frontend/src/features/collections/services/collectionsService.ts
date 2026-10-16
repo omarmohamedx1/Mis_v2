@@ -143,7 +143,7 @@ export const collectionsService = {
   async deleteActivity(caseId: string, activityId: string) { await apiClient.delete(`/collections/cases/${caseId}/activities/${activityId}`); },
   async updatePromise(id: string, value: { promisedAmount: number; promiseDate: string; channel: string; notes?: string }) { return (await apiClient.put<PromiseItem>(`/collections/promises/${id}`, value)).data; },
   async deletePromise(id: string) { await apiClient.delete(`/collections/promises/${id}`); },
-  async submitPayment(id: string, value: { amount: number; paymentDate: string; method: string; referenceNumber: string }) { return (await apiClient.post<PaymentItem>(`/collections/cases/${id}/payments`, value)).data; },
+  async submitPayment(id: string, value: { amount: number; paymentDate: string; method: string; referenceNumber: string; currencyCode?: string }) { return (await apiClient.post<PaymentItem>(`/collections/cases/${id}/payments`, value)).data; },
   async promises(values: Record<string, unknown> = {}) { return allPages((page, pageSize) => apiClient.get<PagedResult<PromiseItem>>(`/collections/promises?${params({ ...withoutPaging(values), page, pageSize })}`).then(r => r.data)); },
   async changePromiseStatus(id: string, status: string) { return (await apiClient.patch<PromiseItem>(`/collections/promises/${id}/status`, { status })).data; },
   async payments(values: Record<string, unknown> = {}) { return allPages((page, pageSize) => apiClient.get<PagedResult<PaymentItem>>(`/collections/payments?${params({ ...withoutPaging(values), page, pageSize })}`).then(r => r.data)); },
