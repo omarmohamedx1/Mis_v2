@@ -73,10 +73,20 @@ public sealed class ExceptionHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unhandled API exception.");
+            var traceId = context.TraceIdentifier;
+            _logger.LogError(exception,
+                "Unhandled API exception. TraceId: {TraceId}; Request: {Method} {Path}",
+                traceId, context.Request.Method, context.Request.Path);
 
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            await context.Response.WriteAsJsonAsync(ApiErrorResponse.Failure("An unexpected error occurred."));
+            var error = ApiErrorResponse.Failure("An unexpected error occurred.");
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error.Success,
+                error.Message,
+                error.Errors,
+                traceId
+            });
         }
     }
 }
