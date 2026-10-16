@@ -126,12 +126,12 @@ export function CollectionEntryForm({ type, caseId, context, activity, promise, 
     {pending && review && <ConfirmDialog open title={ct('confirmEntry')} description={context} message={<>
       <p className="mb-4 font-semibold">{ct('confirmEntryHelp')}</p>
       <dl className="space-y-3 rounded-xl border border-mis-border bg-slate-50 p-4">
-        <ReviewRow label={ct('operation')} value={ct(type === 'promise' ? 'addPromise' : 'submitCollection')} />
+        <ReviewRow label={ct('entryOperation')} value={ct(type === 'promise' ? 'addPromise' : 'submitCollection')} />
         <ReviewRow label={ct('amount')} value={<strong className="text-xl text-mis-primary" data-bidi="ltr">{format.money(Number(review.get('amount')))}</strong>} />
         <ReviewRow label={ct(type === 'promise' ? 'promiseDate' : 'paymentDate')} value={format.date(String(review.get('date')))} />
         <ReviewRow label={ct(type === 'promise' ? 'channel' : 'method')} value={ct(String(review.get(type === 'promise' ? 'channel' : 'method')))} />
         {type === 'payment' && <ReviewRow label={ct('reference')} value={String(review.get('reference')).trim()} />}
-        {type === 'promise' && review.get('notes') && <ReviewRow label={ct('notes')} value={String(review.get('notes'))} />}
+        {type === 'promise' && Boolean(review.get('notes')) && <ReviewRow label={ct('notes')} value={String(review.get('notes'))} />}
       </dl>
     </>} confirmVariant="primary" confirmLabel={ct('confirmAndSave')} cancelLabel={ct('backToEdit')} isConfirming={saving} onCancel={() => { if (!submitting.current) setPending(undefined); }} onConfirm={() => void save(pending.values, pending.element)} />}
   </>;
