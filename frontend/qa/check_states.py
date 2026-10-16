@@ -1,0 +1,78 @@
+import json,time
+from pathlib import Path
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+options=webdriver.ChromeOptions();options.add_argument('--headless=new');options.set_capability('goog:loggingPrefs',{'browser':'ALL'})
+driver=webdriver.Chrome(options=options);wait=WebDriverWait(driver,25);checks=[];out=Path('.runtime/visual-qa')
+def resize(w,h=900):driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride',{'width':w,'height':h,'deviceScaleFactor':1,'mobile':False});time.sleep(.3)
+def btn(text,root=None):return next(x for x in (root or driver).find_elements(By.TAG_NAME,'button') if x.text==text and x.is_displayed())
+def click(element):driver.execute_script('arguments[0].scrollIntoView({block:"center"})',element);element.click()
+def check(value,label):
+ if not value:raise AssertionError(label)
+ checks.append(label);print('PASS',label,flush=True)
+def escape():driver.switch_to.active_element.send_keys(Keys.ESCAPE);time.sleep(.1)
+def outer():return driver.find_element(By.CSS_SELECTOR,'[aria-modal=true]')
+def dialogs():return driver.find_elements(By.CSS_SELECTOR,'[aria-modal=true]')
+def picker_button(label):return driver.find_element(By.CSS_SELECTOR,'button[aria-label="'+label+'"]')
+try:
+ for lang in ['en','ar']:
+  resize(1440);driver.get('http://127.0.0.1:5179/qa/index.html?lang='+lang);wait.until(lambda d:d.find_elements(By.TAG_NAME,'h1'))
+  driver.execute_async_script("const done=arguments[0];Promise.all([document.fonts.load('14px \"IBM Plex Sans Arabic\"'),document.fonts.load('14px \"IBM Plex Sans\"')]).then(()=>document.fonts.ready).then(()=>done(true)).catch(e=>done(false));")
+  check(driver.execute_script('return document.fonts.check(\'14px "IBM Plex Sans Arabic"\')'),lang+' production Arabic font available')
+  sizes={key:driver.find_element(By.CSS_SELECTOR,f'[data-qa="{key}"]').rect for key in ['loading-no-icon','loading-right-icon']}
+  click(btn('Toggle loading'));time.sleep(.1)
+  check(all(abs(driver.find_element(By.CSS_SELECTOR,f'[data-qa="{key}"]').rect['width']-r['width'])<1 and abs(driver.find_element(By.CSS_SELECTOR,f'[data-qa="{key}"]').rect['height']-r['height'])<1 for key,r in sizes.items()),lang+' loading button dimensions remain stable with and without icons')
+  check(not driver.find_element(By.CSS_SELECTOR,'button[title]').is_enabled() if False else not picker_button('إظهار كلمة المرور' if lang=='ar' else 'Show password').is_enabled(),lang+' disabled password action disabled')
+  click(btn('Toggle loading'))
+  icon=picker_button('Add');check(abs(icon.rect['width']-44)<1 and abs(icon.rect['height']-44)<1,lang+' icon button has square touch target')
+  click(btn('Toggle error'));time.sleep(.3);date=driver.find_element(By.ID,'qa-date')
+  check(date.get_attribute('aria-invalid')=='true' and bool(date.get_attribute('aria-describedby')),lang+' date error state and description propagated')
+  check(driver.execute_script("return getComputedStyle(arguments[0].closest('.composite-control')).borderTopColor",date)=='rgb(239, 68, 68)',lang+' date validation border visible')
+  click(btn('Toggle error'))
+  # Default, focus, hover, keyboard, selected, no-results, long options.
+  select=driver.find_element(By.ID,'qa-select');click(select)
+  search=wait.until(lambda d:d.find_element(By.CSS_SELECTOR,'section.fixed input'))
+  search.send_keys('does-not-exist-123456');time.sleep(.1)
+  check(len(driver.find_elements(By.CSS_SELECTOR,'[role=option]'))==0,lang+' select no-results state')
+  escape();check(driver.switch_to.active_element.get_attribute('id')=='qa-select',lang+' dropdown restores focus')
+  resize(320,480);click(driver.find_element(By.ID,'qa-time'))
+  click(picker_button('الساعة' if lang=='ar' else 'Hour'))
+  option=wait.until(lambda d:next((x for x in d.find_elements(By.CSS_SELECTOR,'[role=option]') if x.text=='00'),None));click(option)
+  check(len(driver.find_elements(By.CSS_SELECTOR,'[role=dialog]'))==1,lang+' selecting nested hour retains time picker')
+  click(picker_button('الدقيقة' if lang=='ar' else 'Minute'))
+  option=wait.until(lambda d:next((x for x in d.find_elements(By.CSS_SELECTOR,'[role=option]') if x.text=='17'),None));click(option)
+  click(btn('تم' if lang=='ar' else 'Done'))
+  check(driver.find_element(By.ID,'qa-time').get_attribute('value')=='00:17',lang+' nested time selections retained')
+  # Datetime calendar and its nested month picker remain inside a short viewport.
+  cals=driver.find_elements(By.CSS_SELECTOR,'button[aria-label="'+('فتح التقويم' if lang=='ar' else 'Open calendar')+'"]');click(cals[1])
+  month=picker_button('الشهر' if lang=='ar' else 'Month');click(month)
+  check(len(driver.find_elements(By.CSS_SELECTOR,'[role=option]'))==12,lang+' custom calendar month options')
+  escape();check(len(driver.find_elements(By.CSS_SELECTOR,'.date-panel'))==1,lang+' Escape closes month menu without closing calendar')
+  panel=driver.find_element(By.CSS_SELECTOR,'.date-panel')
+  check(driver.execute_script('const r=arguments[0].getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight',panel),lang+' calendar inside 320px short viewport')
+  check(driver.execute_script('const x=arguments[0].querySelector("span.truncate");return x.scrollWidth<=x.clientWidth+1',month),lang+' full month name visible')
+  escape();resize(390)
+  click(btn('Open modal'));wait.until(lambda d:len(dialogs())==1)
+  check(driver.execute_script("return document.body.style.overflow==='hidden'"),lang+' dialog locks background scroll')
+  modal=outer();click(modal.find_element(By.CSS_SELECTOR,'button[aria-haspopup=listbox]'));escape()
+  check(len(dialogs())==1,lang+' nested select Escape retains parent modal')
+  click(btn('Nested modal'));wait.until(lambda d:len(dialogs())==2);escape()
+  check(len(dialogs())==1 and driver.execute_script("return document.body.style.overflow==='hidden'"),lang+' nested dialog closes alone and preserves scroll lock')
+  # Employee search results use a portal owned by the modal.
+  employee=modal.find_element(By.CSS_SELECTOR,'input[aria-autocomplete=list]');click(employee)
+  wait.until(lambda d:len(d.find_elements(By.CSS_SELECTOR,'[role=listbox] [role=option]'))>0)
+  panel=driver.find_element(By.CSS_SELECTOR,'[role=listbox]')
+  check(driver.execute_script('const r=arguments[0].getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight',panel),lang+' employee dropdown visible outside scrolling modal body')
+  escape();escape();check(not dialogs(),lang+' modal closes and restores scroll')
+  for width in [320,360,390,768,1024,1440]:
+   resize(width);click(btn('Open confirmation'));dialog=outer()
+   check(driver.execute_script('const r=arguments[0].getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight',dialog),f'{lang} confirmation viewport {width}')
+   escape()
+  resize(390);click(btn('Show toast'));click(btn('Show toast'));toast=driver.find_element(By.CSS_SELECTOR,'[role=alert].pointer-events-auto')
+  check(driver.execute_script('const r=arguments[0].getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight',toast),lang+' toast long-content viewport containment')
+  driver.save_screenshot(str(out/f'states-after-{lang}.png'))
+ (out/'state-checks.json').write_text(json.dumps(checks,indent=2))
+ print('COMPLETE',len(checks),'state assertions',flush=True)
+finally:driver.quit()

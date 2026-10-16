@@ -109,8 +109,9 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
           aria-controls={open ? `${id}-options` : undefined}
           aria-expanded={open}
           aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
           autoComplete="off"
-          className={`form-control h-12 w-full rounded-form border bg-white pe-20 ps-11 text-sm text-mis-ink outline-none transition focus:border-mis-blue focus:shadow-input ${error ? 'border-red-500' : 'border-mis-control'}`}
+          className={`form-control h-12 w-full rounded-form border bg-white pe-20 ps-11 text-sm text-mis-ink outline-none transition focus:border-mis-blue focus:shadow-input disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${error ? 'border-red-500' : 'border-mis-control'}`}
           disabled={disabled}
           id={id}
           onChange={(event) => {
@@ -119,13 +120,14 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
             setOpen(true);
           }}
           onFocus={() => { if (!suppressOpenOnFocus.current) setOpen(true); }}
+          onClick={() => setOpen(true)}
           onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setTimeout(() => popupRef.current?.querySelector<HTMLElement>('[role=option]')?.focus(), 0); } }}
           placeholder={t('searchEmployee')}
           role="combobox"
           value={query}
         />
         {value ? <button disabled={disabled} aria-label={t('clearSelection')} className="absolute end-10 top-2.5 rounded-lg p-1.5 text-mis-muted hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={clear} type="button"><X className="h-4 w-4" /></button> : null}
-        <button aria-label={t('openEmployeeList')} className="absolute end-2 top-2.5 rounded-lg p-1.5 text-mis-muted hover:bg-slate-100" disabled={disabled} onClick={() => setOpen((current) => !current)} type="button"><ChevronDown className="h-4 w-4" /></button>
+        <button aria-label={t('openEmployeeList')} className="absolute end-2 top-2.5 rounded-lg p-1.5 text-mis-muted hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={disabled} onClick={() => setOpen((current) => !current)} type="button"><ChevronDown className="h-4 w-4" /></button>
         {open ? createPortal(
           <div ref={popupRef} data-overlay-owners={owners.join(' ')} style={{...position,maxHeight:Math.min(position.maxHeight,256)}} className="fixed z-[var(--z-select)] overflow-y-auto rounded-xl border border-mis-border bg-white p-1 shadow-panel" id={`${id}-options`} role="listbox" onKeyDown={event => {
             const items=[...popupRef.current!.querySelectorAll<HTMLButtonElement>('[role=option]')]; const index=items.indexOf(document.activeElement as HTMLButtonElement);
@@ -141,7 +143,7 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
           </div>, document.body
         ) : null}
       </div>
-      {error ? <p className="[overflow-wrap:anywhere] text-sm text-red-600" role="alert">{error}</p> : null}
+      {error ? <p id={`${id}-error`} className="[overflow-wrap:anywhere] text-sm text-red-600" role="alert">{error}</p> : null}
     </div></OverlayScope>
   );
 }
