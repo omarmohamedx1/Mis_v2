@@ -355,7 +355,7 @@ public sealed class CollectionsService : ICollectionsService
     public async Task<PromiseToPayDto> UpdatePromiseAsync(Guid promiseId, CreatePromiseRequest request, CancellationToken token)
     {
         EnsureOperationalWrite();
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        await using var transaction = _db.Database.CurrentTransaction is null ? await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var item = await CorrectablePromiseAsync(promiseId, token);
         if (request.PromisedAmount <= 0 || request.PromiseDate < CairoToday()) throw new HrValidationException("Promise amount must be positive and promise date cannot be in the past.");
         var before = new { item.PromisedAmount, item.PromiseDate, item.Channel, item.Notes, item.Status };
@@ -366,19 +366,19 @@ public sealed class CollectionsService : ICollectionsService
         AddAudit("PromiseUpdated", item, item.CaseId, before, request);
         await _db.SaveChangesAsync(token);
         var result = await ProjectPromises(_db.CollectionPromisesToPay.AsNoTracking().Where(x => x.Id == promiseId)).SingleAsync(token);
-        await transaction.CommitAsync(token);
+        if (transaction is not null) await transaction.CommitAsync(token);
         return result;
     }
 
     public async Task DeletePromiseAsync(Guid promiseId, CancellationToken token)
     {
         EnsureOperationalWrite();
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
+        await using var transaction = _db.Database.CurrentTransaction is null ? await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var item = await CorrectablePromiseAsync(promiseId, token);
         AddAudit("PromiseDeleted", item, item.CaseId, new { item.PromisedAmount, item.PromiseDate, item.Channel, item.Notes, item.Status, item.CreatedAt }, null);
         _db.CollectionPromisesToPay.Remove(item);
         await _db.SaveChangesAsync(token);
-        await transaction.CommitAsync(token);
+        if (transaction is not null) await transaction.CommitAsync(token);
     }
 
     private void EnsureEntryOwner(Guid creatorId)
