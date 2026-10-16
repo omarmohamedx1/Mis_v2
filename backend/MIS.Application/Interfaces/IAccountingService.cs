@@ -15,6 +15,7 @@ public interface IAccountingService
     Task<AccountingEmployeePayrollDto> SubmitPayrollAsync(Guid id, CancellationToken token);
     Task<AccountingEmployeePayrollDto> ApprovePayrollAsync(Guid id, CancellationToken token);
     Task<AccountingEmployeePayrollDto> PayPayrollAsync(Guid id, CancellationToken token);
+    Task<AccountingEmployeePayrollDto> RecordPayrollAsync(Guid id, UpdateAccountingPayrollRequest request, CancellationToken token);
     Task<AccountingEmployeePayrollDto> CancelPayrollAsync(Guid id, CancellationToken token);
 
     Task<AccountingTransportationPageDto> ListTransportationAsync(string? search, string? status, DateOnly? from, DateOnly? to, int page, int pageSize, CancellationToken token);
@@ -36,12 +37,14 @@ public interface IAccountingService
     Task<AccountingCollectorCommissionDetailsDto> GetCollectorCommissionAsync(Guid id, CancellationToken token);
     Task<AccountingCollectorCommissionDto> AdjustCollectorCommissionAsync(Guid id, AdjustCommissionRequest request, CancellationToken token);
     Task<AccountingCollectorCommissionDto> TransitionCollectorCommissionAsync(Guid id, string action, CancellationToken token);
+    Task<AccountingCollectorCommissionDto> RecordCollectorCommissionAsync(Guid id, AdjustCommissionRequest request, CancellationToken token);
 
     Task<int> CalculateSupervisorCommissionsAsync(CalculateCommissionsRequest request, CancellationToken token);
     Task<AccountingCommissionPageDto<AccountingSupervisorCommissionDto>> ListSupervisorCommissionsAsync(int? year, int? month, string? search, string? status, int page, int pageSize, CancellationToken token);
     Task<AccountingSupervisorCommissionDto> GetSupervisorCommissionAsync(Guid id, CancellationToken token);
     Task<AccountingSupervisorCommissionDto> AdjustSupervisorCommissionAsync(Guid id, AdjustCommissionRequest request, CancellationToken token);
     Task<AccountingSupervisorCommissionDto> TransitionSupervisorCommissionAsync(Guid id, string action, CancellationToken token);
+    Task<AccountingSupervisorCommissionDto> RecordSupervisorCommissionAsync(Guid id, AdjustCommissionRequest request, CancellationToken token);
 
     Task<IReadOnlyList<AccountingLookupEmployeeDto>> LookupEmployeesAsync(string? search, CancellationToken token);
 }

@@ -1,5 +1,6 @@
+import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
-import { Calculator, CheckCircle2, Percent, Save, UsersRound, X } from 'lucide-react';
+import { Calculator, Percent, Save, UsersRound, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -55,7 +56,9 @@ export function AccountingSupervisorCommissionsPage() {
   const act = async (id: string, action: string) => {
     setBusy(true); setError('');
     try {
-      const updated = await accountingService.supervisorCommissionAction(id, action);
+      const updated = action === 'pay' && selected?.id === id && editable.includes(selected.status)
+        ? await accountingService.recordSupervisorCommission(id, adjustValue, selected.notes ?? undefined)
+        : await accountingService.supervisorCommissionAction(id, action);
       if (selected?.id === id) setSelected(updated);
       await load();
     } catch (reason) { setError(getApiErrorMessage(reason, a.text('تعذر تنفيذ الإجراء', 'Action failed'))); }
@@ -85,7 +88,7 @@ export function AccountingSupervisorCommissionsPage() {
         <input className="min-w-[200px] flex-1 rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('المشرف', 'Supervisor')} value={search} onChange={(event) => setSearch(event.target.value)} />
         <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">{a.text('كل الحالات', 'All statuses')}</option>
-          {['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
+          {['READY', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
         </ProfessionalSelect>
         {rows.length ? <p className="ms-auto text-sm font-bold text-mis-navy" data-bidi="ltr">{a.text('إجمالي النهائي', 'Total final')}: {a.money(totalFinal)}</p> : null}
       </div>
@@ -148,22 +151,20 @@ export function AccountingSupervisorCommissionsPage() {
               <div><dt className="text-slate-500">{a.text('المبلغ المؤهل', 'Eligible')}</dt><dd className="font-bold" data-bidi="ltr">{a.money(selected.eligibleAmount)}</dd></div>
               <div><dt className="text-slate-500">{a.text('القاعدة / النسبة', 'Rule / rate')}</dt><dd className="font-bold">{selected.ruleCode} · {a.number(selected.rateApplied)}%</dd></div>
               <div><dt className="text-slate-500">{a.text('العمولة', 'Commission')}</dt><dd className="font-bold" data-bidi="ltr">{a.money(selected.commissionAmount)}</dd></div>
-              <div><dt className="text-slate-500">{a.text('النهائي', 'Final')}</dt><dd className="font-bold" data-bidi="ltr">{a.money(selected.finalCommission)}</dd></div>
+              <div><dt className="text-slate-500">{a.text('النهائي', 'Final')}</dt><dd className="font-bold" data-bidi="ltr">{a.money(editable.includes(selected.status) ? selected.commissionAmount + adjustValue : selected.finalCommission)}</dd></div>
             </dl>
             {selected.teamSummary ? <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">{selected.teamSummary}</p> : null}
             {selected.notes ? <p className="mt-2 text-sm text-slate-500">{selected.notes}</p> : null}
             {editable.includes(selected.status) ? (
               <div className="mt-4 flex flex-wrap items-end gap-2">
                 <label className="text-sm"><span className="mb-1 block text-slate-500">{a.text('تسوية', 'Adjustment')}</span>
-                  <input type="number" className="rounded-xl border border-mis-border px-3 py-2" value={adjustValue} onChange={(event) => setAdjustValue(Number(event.target.value))} />
+                  <input type="number" step="0.01" className="rounded-xl border border-mis-border px-3 py-2" value={adjustValue} onChange={(event) => setAdjustValue(Number(event.target.value))} />
                 </label>
                 <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(selected.commissionAmount + adjustValue, selected.supervisorName + '\n' + a.money(adjustValue), adjust)} variant="outline">{a.text('حفظ التسوية', 'Save adjustment')}</Button>
-                {selected.status === 'DRAFT' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'submit')} variant="outline">{a.text('إرسال', 'Submit')}</Button> : null}
-                <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void act(selected.id, 'approve')}>{a.text('اعتماد', 'Approve')}</Button>
-                <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button>
               </div>
             ) : null}
-            {selected.status === 'APPROVED' ? <Button className="mt-4" disabled={busy} fullWidth={false} onClick={() => confirmMoney(selected.finalCommission, selected.supervisorName + ' / ' + a.monthLabel(year, month), () => act(selected.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
+            {[...editable, 'APPROVED'].includes(selected.status) ? <Button className="mt-4" disabled={busy} fullWidth={false} onClick={() => confirmMoney(editable.includes(selected.status) ? selected.commissionAmount + adjustValue : selected.finalCommission, selected.supervisorName + ' / ' + a.monthLabel(year, month) + '\n' + selected.ruleCode + '\n' + a.text('التسوية: ', 'Adjustment: ') + a.money(editable.includes(selected.status) ? adjustValue : selected.adjustments), () => act(selected.id, 'pay'))} variant="outline">{a.text('تأكيد وصرف العمولة', 'Confirm and pay commission')}</Button> : null}
+            <AccountingDeleteButton kind="SUPERVISOR" id={selected.id} amount={selected.finalCommission} description={`${selected.supervisorName} / ${a.monthLabel(selected.periodYear, selected.periodMonth)}`} onDeleted={async () => { setSelected(undefined); await load(); } } />
             <Button className="mt-4" fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setSelected(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
           </div>
         </div>

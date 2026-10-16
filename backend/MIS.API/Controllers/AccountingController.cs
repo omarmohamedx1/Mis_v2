@@ -53,6 +53,9 @@ public sealed class AccountingController(IAccountingService accounting) : Contro
     [HttpPost("salaries/{id:guid}/pay")]
     [Authorize(Policy = AuthorizationPolicies.AccountingPayrollManage)]
     public Task<AccountingEmployeePayrollDto> PaySalary(Guid id, CancellationToken token) => accounting.PayPayrollAsync(id, token);
+    [HttpPost("salaries/{id:guid}/record")]
+    [Authorize(Policy = AuthorizationPolicies.AccountingPayrollManage)]
+    public Task<AccountingEmployeePayrollDto> RecordSalary(Guid id, UpdateAccountingPayrollRequest request, CancellationToken token) => accounting.RecordPayrollAsync(id, request, token);
 
     [HttpPost("salaries/{id:guid}/cancel")]
     [Authorize(Policy = AuthorizationPolicies.AccountingPayrollManage)]
@@ -143,6 +146,9 @@ public sealed class AccountingController(IAccountingService accounting) : Contro
     [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
     public Task<AccountingCollectorCommissionDto> TransitionCollector(Guid id, [FromRoute] string operation, CancellationToken token)
         => accounting.TransitionCollectorCommissionAsync(id, operation, token);
+    [HttpPost("collector-commissions/{id:guid}/record")]
+    [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
+    public Task<AccountingCollectorCommissionDto> RecordCollector(Guid id, AdjustCommissionRequest request, CancellationToken token) => accounting.RecordCollectorCommissionAsync(id, request, token);
 
     [HttpPost("supervisor-commissions/calculate")]
     [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
@@ -165,6 +171,9 @@ public sealed class AccountingController(IAccountingService accounting) : Contro
     [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
     public Task<AccountingSupervisorCommissionDto> TransitionSupervisor(Guid id, [FromRoute] string operation, CancellationToken token)
         => accounting.TransitionSupervisorCommissionAsync(id, operation, token);
+    [HttpPost("supervisor-commissions/{id:guid}/record")]
+    [Authorize(Policy = AuthorizationPolicies.AccountingCommissionManage)]
+    public Task<AccountingSupervisorCommissionDto> RecordSupervisor(Guid id, AdjustCommissionRequest request, CancellationToken token) => accounting.RecordSupervisorCommissionAsync(id, request, token);
 
     [HttpGet("employees")]
     public Task<IReadOnlyList<AccountingLookupEmployeeDto>> Employees([FromQuery] string? search, CancellationToken token)

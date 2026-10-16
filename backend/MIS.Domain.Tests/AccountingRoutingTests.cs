@@ -20,6 +20,12 @@ public sealed class AccountingRoutingTests
     [InlineData("accounting/book/entries", "post", "AccountingBook", "Transition")]
     [InlineData("accounting/book/entries", "cancel", "AccountingBook", "Transition")]
     [InlineData("accounting/book/entries", "reverse", "AccountingBook", "Transition")]
+    [InlineData("accounting/book/entries", "record", "AccountingBook", "Transition")]
+    [InlineData("accounting/book/entries", "delete", "AccountingBook", "Delete")]
+    [InlineData("accounting/book/records/PAYROLL", "delete", "AccountingBook", "DeleteSource")]
+    [InlineData("accounting/salaries", "record", "Accounting", "RecordSalary")]
+    [InlineData("accounting/collector-commissions", "record", "Accounting", "RecordCollector")]
+    [InlineData("accounting/supervisor-commissions", "record", "Accounting", "RecordSupervisor")]
     [InlineData("accounting/transportation", "approve", "Accounting", "TransitionTransportation")]
     [InlineData("accounting/transportation", "pay", "Accounting", "TransitionTransportation")]
     [InlineData("accounting/collector-commissions", "submit", "Accounting", "TransitionCollector")]
@@ -62,7 +68,8 @@ public sealed class AccountingRoutingTests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal(controller, Assert.Single(response.Headers.GetValues("X-Test-Controller")));
             Assert.Equal(action, Assert.Single(response.Headers.GetValues("X-Test-Action")));
-            Assert.Equal(operation, Assert.Single(response.Headers.GetValues("X-Test-Operation")));
+            if (action is not ("Delete" or "DeleteSource" or "RecordSalary" or "RecordCollector" or "RecordSupervisor"))
+                Assert.Equal(operation, Assert.Single(response.Headers.GetValues("X-Test-Operation")));
         }
         finally { await app.StopAsync(); }
     }

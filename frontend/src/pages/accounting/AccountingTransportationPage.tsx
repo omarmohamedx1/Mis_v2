@@ -1,4 +1,5 @@
-import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
+import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
+import { AccountingExportButton, cairoToday, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
 import { Car, Download, Pencil, Plus, Upload } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../../components/common/Button';
@@ -10,7 +11,7 @@ import { accountingService } from '../../features/accounting/services/accounting
 import type { AccountingLookupEmployee, AccountingTransportation } from '../../features/accounting/types/accounting';
 import { getApiErrorMessage } from '../../services/apiClient';
 
-const blankForm = { employeeId: '', claimDate: new Date().toISOString().slice(0, 10), amount: 0, purpose: '', notes: '' };
+const blankForm = { employeeId: '', claimDate: cairoToday(), amount: 0, purpose: '', notes: '' };
 
 export function AccountingTransportationPage() {
   const a = useAccountingText();
@@ -78,7 +79,7 @@ export function AccountingTransportationPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-mis-navy">{a.text('الانتقالات', 'Transportation')}</h1>
-          <p className="text-sm text-slate-500">{a.text('مطالبات انتقال مرتبطة بالموظفين، مع اعتماد وصرف ومرفق اختياري.', 'Employee transportation claims with approval, payment, and an optional attachment.')}</p>
+          <p className="text-sm text-slate-500">{a.text('راجع الموظف والمبلغ والتاريخ ثم أكّد لتسجيل المصروف مباشرة. يمكنك إضافة إيصال أو حذف الحركة بعد التأكيد.', 'Confirm the employee, amount and date to record the expense immediately. Attach a receipt or delete an incorrect entry after confirmation.')}</p>
         </div>
         <Button fullWidth={false} leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>{a.text('مطالبة جديدة', 'New claim')}</Button>
       <AccountingExportButton report="transportation" filter={{ from: from || '2000-01-01', to: to || '2100-12-31', search: search || undefined, status: status || undefined }} /></header>
@@ -91,7 +92,7 @@ export function AccountingTransportationPage() {
         <DateControl aria-label={a.text('إلى تاريخ', 'To date')} className="min-w-[10rem]" value={to} onChange={(event) => setTo(event.target.value)} />
         <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">{a.text('كل الحالات', 'All statuses')}</option>
-          {['PENDING', 'APPROVED', 'REJECTED', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
+          {['READY', 'PAID', 'REJECTED', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
         </ProfessionalSelect>
       </div>
 
@@ -121,7 +122,7 @@ export function AccountingTransportationPage() {
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="text-slate-600">{row.attachmentFileName ?? '—'}</span>
                       {row.attachmentFileName ? <Button disabled={busy} fullWidth={false} leftIcon={<Download className="h-3.5 w-3.5" />} onClick={() => void download(row)} size="sm" variant="ghost">{a.text('تنزيل', 'Download')}</Button> : null}
-                      {row.status === 'PENDING' ? (
+                      {['PENDING', 'APPROVED', 'PAID'].includes(row.status) ? (
                         <label className="inline-flex cursor-pointer items-center gap-1 font-bold text-mis-primary">
                           <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => upload(row.id, event.target.files?.[0])} />
                           <Upload className="h-3.5 w-3.5" />{a.text('رفع', 'Upload')}
@@ -134,12 +135,10 @@ export function AccountingTransportationPage() {
                       {row.status === 'PENDING' ? (
                         <>
                           <Button disabled={busy} fullWidth={false} leftIcon={<Pencil className="h-3.5 w-3.5" />} onClick={() => openEdit(row)} size="sm" variant="ghost">{a.text('تعديل', 'Edit')}</Button>
-                          <Button disabled={busy} fullWidth={false} onClick={() => void act(row.id, 'approve')} size="sm" variant="outline">{a.text('اعتماد', 'Approve')}</Button>
-                          <Button disabled={busy} fullWidth={false} onClick={() => void act(row.id, 'reject')} size="sm" variant="danger">{a.text('رفض', 'Reject')}</Button>
-                          <Button disabled={busy} fullWidth={false} onClick={() => void act(row.id, 'cancel')} size="sm" variant="ghost">{a.text('إلغاء', 'Cancel')}</Button>
                         </>
                       ) : null}
-                      {row.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(row.amount, row.employeeName + ' / ' + row.claimDate + '\n' + row.purpose, () => act(row.id, 'pay'))} size="sm" variant="outline">{a.text('صرف', 'Pay')}</Button> : null}
+                      {['PENDING', 'APPROVED'].includes(row.status) ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(row.amount, row.employeeName + ' / ' + row.claimDate + '\n' + row.purpose, () => act(row.id, 'pay'))} size="sm" variant="outline">{a.text('صرف', 'Pay')}</Button> : null}
+                      <AccountingDeleteButton kind="TRANSPORT" id={row.id} amount={row.amount} description={`${row.employeeName} / ${row.claimDate}\n${row.purpose}`} onDeleted={load} />
                     </div>
                   </td>
                 </tr>
@@ -170,12 +169,12 @@ export function AccountingTransportationPage() {
                 {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNumber} — {employee.fullName}</option>)}
               </ProfessionalSelect>
               <DateControl className="w-full" value={form.claimDate} onChange={(event) => setForm({ ...form, claimDate: event.target.value })} />
-              <input type="number" className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('المبلغ', 'Amount')} value={form.amount} onChange={(event) => setForm({ ...form, amount: Number(event.target.value) })} />
+              <input type="number" min="0.01" step="0.01" className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('المبلغ', 'Amount')} value={form.amount} onChange={(event) => setForm({ ...form, amount: Number(event.target.value) })} />
               <input className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('الغرض', 'Purpose')} value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value })} />
               <textarea className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('ملاحظات', 'Notes')} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
             </div>
             <div className="mt-5 flex gap-2">
-              <Button disabled={busy || !form.employeeId || !form.purpose} fullWidth={false} onClick={() => confirmMoney(form.amount, (employees.find(x => x.id === form.employeeId)?.fullName ?? '') + ' / ' + form.claimDate + '\n' + form.purpose + '\n' + form.notes, save)}>{a.text('حفظ', 'Save')}</Button>
+              <Button disabled={busy || !form.employeeId || !form.purpose.trim() || !form.claimDate || form.claimDate > cairoToday() || !Number.isFinite(form.amount) || form.amount <= 0 || Math.abs(form.amount * 100 - Math.round(form.amount * 100)) > 0.0001} fullWidth={false} onClick={() => confirmMoney(form.amount, (employees.find(x => x.id === form.employeeId)?.fullName ?? '') + ' / ' + form.claimDate + '\n' + form.purpose + '\n' + form.notes, save)}>{a.text('تأكيد التسجيل', 'Confirm recording')}</Button>
               <Button fullWidth={false} onClick={() => setEditing(undefined)} variant="outline">{a.text('إلغاء', 'Cancel')}</Button>
             </div>
           </div>

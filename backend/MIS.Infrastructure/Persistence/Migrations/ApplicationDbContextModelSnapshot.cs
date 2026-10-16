@@ -49,6 +49,12 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CreatedById")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedById")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -89,6 +95,8 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.HasIndex("CounterAccountId");
 
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("DeletedById");
 
                     b.HasIndex("DocumentNumber")
                         .IsUnique();
@@ -6241,6 +6249,11 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("DeletedById")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MIS.Domain.Entities.Employee", "Employee")
                         .WithMany()

@@ -12,6 +12,49 @@ namespace MIS.Domain.Tests;
 
 public sealed class AccountingBookTests
 {
+    [Fact]
+    public void ConfirmedAccountingRecordsByMakerWhileAdvancedManualReviewRemainsProtected()
+    {
+        var maker = Guid.NewGuid(); var now = DateTimeOffset.UtcNow;
+        JournalEntry Journal(string type)
+        {
+            var journal = new JournalEntry(Guid.NewGuid(), Guid.NewGuid(), null, type, new(2026, 10, 16), new(2026, 10, 16), "EGP", "Expense", maker, now);
+            journal.AddLine(Guid.NewGuid(), 400, 0, 400, 0, 1, "Expense");
+            journal.AddLine(Guid.NewGuid(), 0, 400, 0, 400, 1, "Cash");
+            return journal;
+        }
+        var entry = Journal("ACCOUNTING_OPERATION");
+        entry.RecordConfirmedAccounting("ACC-TEST", maker, now);
+        Assert.Equal("POSTED", entry.Status); Assert.Equal(maker, entry.PostedById);
+        Assert.Throws<InvalidOperationException>(() => entry.RecordConfirmedAccounting("DUPLICATE", maker, now));
+        var manual = Journal("MANUAL"); manual.Submit();
+        Assert.Throws<InvalidOperationException>(() => manual.Approve(maker, now));
+        Assert.Throws<InvalidOperationException>(() => Journal("COLLECTION").RecordConfirmedAccounting("ACC-TEST", maker, now));
+    }
+
+    [Fact]
+    public void RecurringDeletionRetiresGenerationKeyAndPreservesOriginalFinancialValues()
+    {
+        var id = Guid.NewGuid(); var maker = Guid.NewGuid(); var now = DateTimeOffset.UtcNow;
+        var key = $"RECURRING:{Guid.NewGuid()}:202610";
+        var entry = new AccountingBookEntry(id, "FIXED", new(2026, 10, 16), 400, Guid.NewGuid(), Guid.NewGuid(), "Rent", null, Guid.NewGuid(), maker, now, sourceKey: key);
+        entry.Delete(maker, now); entry.Delete(Guid.NewGuid(), now.AddDays(1));
+        Assert.Equal(now, entry.DeletedAt); Assert.Equal(maker, entry.DeletedById);
+        Assert.Equal($"DELETED:{id}:{key}", entry.SourceKey);
+        Assert.Equal(400, entry.Amount); Assert.Equal("Rent", entry.Description);
+    }
+
+    [Fact]
+    public void DeletedSalaryCannotBeSilentlyEditedOrPaidAgain()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var salary = new AccountingEmployeePayroll(Guid.NewGuid(), Guid.NewGuid(), "EMP-1", "Employee", null, null, 500, 0, null, now);
+        salary.DeleteAfterConfirmation(now);
+        Assert.Throws<InvalidOperationException>(() => salary.ApplyComponents(0, 0, 0, 0, 0, null, now));
+        Assert.Throws<InvalidOperationException>(() => salary.MarkPaid(now));
+        Assert.Throws<InvalidOperationException>(() => salary.Approve(now));
+    }
+
     private static AccountingRecurringExpense Template(int day = 31, DateOnly? end = null) => new("Rent", 400m, day, Guid.NewGuid(), Guid.NewGuid(), new(2024, 1, 1), end, null, Guid.NewGuid(), DateTimeOffset.UtcNow);
     [Theory]
     [InlineData(2024, 2, 29)]

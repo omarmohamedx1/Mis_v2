@@ -21,6 +21,7 @@ public sealed class AccountingBookEntryConfiguration : IEntityTypeConfiguration<
         b.HasOne(x => x.RelatedAdvance).WithMany().HasForeignKey(x => x.RelatedAdvanceId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.RecurringExpense).WithMany().HasForeignKey(x => x.RecurringExpenseId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.DeletedById).OnDelete(DeleteBehavior.Restrict);
     }
 }
 public sealed class AccountingRecurringExpenseConfiguration : IEntityTypeConfiguration<AccountingRecurringExpense>

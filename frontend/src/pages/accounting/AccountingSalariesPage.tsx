@@ -1,5 +1,6 @@
+import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
-import { CheckCircle2, RefreshCw, Save, Wallet, WalletCards, X } from 'lucide-react';
+import { RefreshCw, Save, Wallet, WalletCards, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -79,33 +80,36 @@ export function AccountingSalariesPage() {
   const act = async (id: string, action: 'submit' | 'approve' | 'pay' | 'cancel') => {
     setBusy(true); setError('');
     try {
-      const updated = await accountingService.salaryAction(id, action);
+      const updated = action === 'pay' && selected?.id === id && editable.includes(selected.status)
+        ? await accountingService.recordSalary(id, { transportation: selected.transportation, commissions: selected.commissions, bonuses: selected.bonuses, deductions: selected.deductions, otherAdjustments: selected.otherAdjustments, notes: selected.notes ?? undefined })
+        : await accountingService.salaryAction(id, action);
       if (selected?.id === id) setSelected(updated);
       await loadRows(periodId);
     } catch (reason) { setError(getApiErrorMessage(reason, a.text('تعذر تنفيذ الإجراء', 'Action failed'))); }
     finally { setBusy(false); }
   };
 
-  const bulk = async (action: 'submit' | 'approve' | 'pay') => {
-    const targets = rows.filter((row) => (
-      action === 'submit' ? row.status === 'DRAFT'
-        : action === 'approve' ? editable.includes(row.status)
-          : row.status === 'APPROVED'
-    ));
-    if (!targets.length) return;
+  const bulkPay = async () => {
+    const targets = rows.filter(row => [...editable, 'APPROVED'].includes(row.status));
     setBusy(true); setError('');
     try {
-      for (const row of targets) await accountingService.salaryAction(row.id, action);
-      await loadRows(periodId);
-    } catch (reason) { setError(getApiErrorMessage(reason, a.text('تعذر تنفيذ الإجراء الجماعي', 'Bulk action failed'))); }
-    finally { setBusy(false); }
+      for (const row of targets) await accountingService.salaryAction(row.id, 'pay');
+    } catch (reason) { setError(getApiErrorMessage(reason, a.text('تعذر صرف بعض المرتبات؛ راجع الحالات قبل إعادة المحاولة', 'Some salaries could not be paid. Review their statuses before retrying.'))); }
+    finally { await loadRows(periodId).catch(() => undefined); setBusy(false); }
   };
 
+  const salaryDetails = selected ? `${selected.employeeName} / ${a.monthLabel(year, month)}
+${a.text('الأساسي والبدلات', 'Basic and allowances')}: ${a.money(selected.basicSalary + selected.allowances)}
+${a.text('الانتقالات', 'Transportation')}: ${a.money(selected.transportation)}
+${a.text('العمولات', 'Commissions')}: ${a.money(selected.commissions)}
+${a.text('المكافآت', 'Bonuses')}: ${a.money(selected.bonuses)}
+${a.text('الخصومات', 'Deductions')}: ${a.money(selected.deductions)}
+${a.text('تسويات أخرى', 'Other adjustments')}: ${a.money(selected.otherAdjustments)}
+${selected.notes ?? ''}` : '';
   const currentPeriod = periods.find((period) => period.id === periodId);
   const totalNet = rows.reduce((sum, row) => sum + row.netSalary, 0);
-  const pending = rows.filter((row) => editable.includes(row.status)).length;
-  const approved = rows.filter((row) => row.status === 'APPROVED').length;
-  const drafts = rows.filter((row) => row.status === 'DRAFT').length;
+  const readyRows = rows.filter(row => [...editable, 'APPROVED'].includes(row.status));
+  const paidRows = rows.filter(row => row.status === 'PAID');
 
   return (
     <div className="space-y-5">{moneyDialog}
@@ -128,8 +132,8 @@ export function AccountingSalariesPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <AccountingKpi label={a.text('عدد الموظفين', 'Employees')} value={a.number(currentPeriod?.employeeCount ?? rows.length)} />
           <AccountingKpi label={a.text('صافي المسير', 'Net payroll')} value={a.money(currentPeriod?.totalNet ?? totalNet)} />
-          <AccountingKpi label={a.text('بانتظار الاعتماد', 'Awaiting approval')} value={a.number(pending)} />
-          <AccountingKpi label={a.text('جاهز للصرف', 'Ready to pay')} value={a.number(approved)} />
+          <AccountingKpi label={a.text('تم صرفه', 'Paid')} value={a.number(paidRows.length)} />
+          <AccountingKpi label={a.text('جاهز للصرف', 'Ready to pay')} value={a.number(readyRows.length)} />
         </div>
       ) : null}
 
@@ -137,15 +141,13 @@ export function AccountingSalariesPage() {
         <input className="min-w-[220px] flex-1 rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('بحث بالموظف', 'Search employee')} value={search} onChange={(event) => setSearch(event.target.value)} />
         <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">{a.text('كل الحالات', 'All statuses')}</option>
-          {['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
+          {['READY', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
         </ProfessionalSelect>
         <ProfessionalSelect className="min-h-11 min-w-[14rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={periodId} onChange={(event) => setPeriodId(event.target.value)}>
           <option value="">{a.text('اختر الفترة', 'Select period')}</option>
           {periods.map((period) => <option key={period.id} value={period.id}>{a.monthLabel(period.year, period.month)} · {a.number(period.employeeCount)}</option>)}
         </ProfessionalSelect>
-        {drafts ? <Button disabled={busy} fullWidth={false} onClick={() => void bulk('submit')} size="sm" variant="outline">{a.text('إرسال المسودات', 'Submit drafts')}</Button> : null}
-        {pending ? <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void bulk('approve')} size="sm" variant="outline">{a.text('اعتماد المعروض', 'Approve listed')}</Button> : null}
-        {approved ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(rows.filter(x => x.status === 'APPROVED').reduce((n, x) => n + x.netSalary, 0), rows.filter(x => x.status === 'APPROVED').map(x => x.employeeName + ': ' + a.money(x.netSalary)).join('\n'), () => bulk('pay'))} size="sm" variant="outline">{a.text('صرف المعتمد', 'Pay approved')}</Button> : null}
+        {readyRows.length ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(readyRows.reduce((n, x) => n + x.netSalary, 0), readyRows.map(x => x.employeeName + ': ' + a.money(x.netSalary)).join('\n'), bulkPay)} size="sm" variant="outline">{a.text('صرف المرتبات المعروضة', 'Pay listed salaries')}</Button> : null}
       </div>
 
       {!periodId ? (
@@ -230,11 +232,9 @@ export function AccountingSalariesPage() {
             </label>
             <p className="mt-4 text-lg font-bold text-mis-navy" data-bidi="ltr">{a.text('الصافي', 'Net')}: {a.money(selected.netSalary)}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(selected.netSalary, selected.employeeName + ' / ' + a.monthLabel(year, month), saveSelected)}>{a.text('حفظ', 'Save')}</Button> : null}
-              {selected.status === 'DRAFT' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'submit')} variant="outline">{a.text('إرسال للمراجعة', 'Submit')}</Button> : null}
-              {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void act(selected.id, 'approve')} variant="outline">{a.text('اعتماد', 'Approve')}</Button> : null}
-              {selected.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(selected.netSalary, selected.employeeName + ' / ' + a.monthLabel(year, month), () => act(selected.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
-              {selected.status !== 'PAID' && selected.status !== 'CANCELLED' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(selected.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button> : null}
+              {editable.includes(selected.status) ? <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(selected.netSalary, salaryDetails, saveSelected)}>{a.text('حفظ', 'Save')}</Button> : null}
+              {[...editable, 'APPROVED'].includes(selected.status) ? <Button disabled={busy || !Number.isFinite(selected.netSalary) || selected.netSalary < 0} fullWidth={false} onClick={() => confirmMoney(selected.netSalary, salaryDetails, () => act(selected.id, 'pay'))} variant="outline">{a.text('تأكيد وصرف المرتب', 'Confirm and pay salary')}</Button> : null}
+              <AccountingDeleteButton kind="PAYROLL" id={selected.id} amount={selected.netSalary} description={`${selected.employeeName} / ${a.monthLabel(year, month)}`} onDeleted={async () => { setSelected(undefined); await loadRows(periodId); await refreshPeriods(); }} />
               <Button fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setSelected(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
             </div>
           </div>

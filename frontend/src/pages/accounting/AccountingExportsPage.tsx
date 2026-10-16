@@ -11,7 +11,7 @@ const reports = [
   ['salaries', 'المرتبات', 'Salaries', 'الأساسي والبدلات والعمولات والمكافآت والخصومات والصافي', 'Basic salary, allowances, commissions, bonuses, deductions and net pay'],
   ['transportation', 'الانتقالات', 'Transportation', 'الموظف والمطالبة والمبلغ وحالة الصرف', 'Employee claims, amounts and payment status'],
   ['collector-commissions', 'عمولات المحصلين', 'Collector commissions', 'التحصيل والقاعدة والتعديلات والعمولة النهائية', 'Collections, rules, adjustments and final commissions'],
-  ['supervisor-commissions', 'عمولات السوبر فايزر', 'Supervisor commissions', 'تفصيل عمولات المشرفين وحالة الاعتماد والصرف', 'Supervisor commissions, approval and payment statuses'],
+  ['supervisor-commissions', 'عمولات السوبر فايزر', 'Supervisor commissions', 'تفصيل عمولات المشرفين وحالة الصرف', 'Supervisor commissions, payment statuses'],
   ['commission-calculation', 'معاينة حساب العمولات', 'Commission calculation preview', 'معاينة المحصلين والسوبر فايزر للشهور المختارة', 'Collector and supervisor preview for selected months'],
   ['commission-rules', 'قواعد العمولات', 'Commission rules', 'النسب والمبالغ الثابتة وسريان القواعد', 'Percentages, fixed amounts and effective rules'],
   ['accounts', 'دليل الحسابات', 'Chart of accounts', 'الأكواد والتصنيف والحساب الأب والأرصدة الحالية', 'Codes, types, parent accounts and current balances'],

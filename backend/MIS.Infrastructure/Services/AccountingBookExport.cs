@@ -96,7 +96,7 @@ public sealed partial class AccountingBookService
         {
             var q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.Status != "DELETED" && x.Period.Year * 12 + x.Period.Month >= lowerPeriod && x.Period.Year * 12 + x.Period.Month <= upperPeriod);
             if (filter.PeriodId.HasValue) q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.Status != "DELETED" && x.PeriodId == filter.PeriodId);
-            if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
+            if (!string.IsNullOrWhiteSpace(filter.Status)) q = filter.Status == "READY" ? q.Where(x => x.Status == "DRAFT" || x.Status == "PENDING_REVIEW" || x.Status == "PENDING" || x.Status == "APPROVED") : q.Where(x => x.Status == filter.Status);
             if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.EmployeeName.ToLower().Contains(filter.Search.ToLower()) || x.EmployeeNumber.ToLower().Contains(filter.Search.ToLower()));
             var rows = await q.OrderBy(x => x.EmployeeNumber).Select(x => new { x.Period.Year, x.Period.Month, x.EmployeeNumber, x.EmployeeName, x.DepartmentName, x.BasicSalary, x.Allowances, x.Transportation, x.Commissions, x.Bonuses, x.Deductions, x.OtherAdjustments, x.NetSalary, x.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("المرتبات", "Salaries"), [T("السنة", "Year"), T("الشهر", "Month"), T("كود الموظف", "Employee code"), T("الموظف", "Employee"), T("القسم", "Department"), T("الأساسي", "Basic"), T("البدلات", "Allowances"), T("الانتقالات", "Transportation"), T("العمولات", "Commissions"), T("المكافآت", "Bonuses"), T("الخصومات", "Deductions"), T("تسويات", "Adjustments"), T("الصافي", "Net salary"), T("الحالة", "Status")], rows.Select(x => new object?[] { x.Year, x.Month, x.EmployeeNumber, x.EmployeeName, x.DepartmentName, x.BasicSalary, x.Allowances, x.Transportation, x.Commissions, x.Bonuses, x.Deductions, x.OtherAdjustments, x.NetSalary, StatusName(x.Status, ar) }));
@@ -104,7 +104,7 @@ public sealed partial class AccountingBookService
         if (all || report == "transportation")
         {
             var q = db.AccountingTransportationClaims.AsNoTracking().Where(x => x.ClaimDate >= from && x.ClaimDate <= to);
-            if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
+            if (!string.IsNullOrWhiteSpace(filter.Status)) q = filter.Status == "READY" ? q.Where(x => x.Status == "DRAFT" || x.Status == "PENDING_REVIEW" || x.Status == "PENDING" || x.Status == "APPROVED") : q.Where(x => x.Status == filter.Status);
             if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.Employee.FullName.ToLower().Contains(filter.Search.ToLower()) || x.Employee.EmployeeNumber.ToLower().Contains(filter.Search.ToLower()) || x.Purpose.ToLower().Contains(filter.Search.ToLower()));
             var rows = await q.OrderBy(x => x.ClaimDate).Select(x => new { x.Employee.EmployeeNumber, x.Employee.FullName, x.ClaimDate, x.Amount, x.Purpose, x.Notes, x.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("الانتقالات", "Transportation"), [T("كود الموظف", "Employee code"), T("الموظف", "Employee"), T("التاريخ", "Date"), T("المبلغ", "Amount"), T("الغرض", "Purpose"), T("ملاحظات", "Notes"), T("الحالة", "Status")], rows.Select(x => new object?[] { x.EmployeeNumber, x.FullName, x.ClaimDate, x.Amount, x.Purpose, x.Notes, StatusName(x.Status, ar) }));
@@ -112,7 +112,7 @@ public sealed partial class AccountingBookService
         if (all || report == "collector-commissions")
         {
             var q = db.AccountingCollectorCommissions.AsNoTracking().Where(x => x.PeriodYear * 12 + x.PeriodMonth >= lowerPeriod && x.PeriodYear * 12 + x.PeriodMonth <= upperPeriod);
-            if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
+            if (!string.IsNullOrWhiteSpace(filter.Status)) q = filter.Status == "READY" ? q.Where(x => x.Status == "DRAFT" || x.Status == "PENDING_REVIEW" || x.Status == "PENDING" || x.Status == "APPROVED") : q.Where(x => x.Status == filter.Status);
             if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.CollectorUser.FullName.ToLower().Contains(filter.Search.ToLower()) || (x.CollectorUser.Employee != null && x.CollectorUser.Employee.EmployeeNumber.ToLower().Contains(filter.Search.ToLower())));
             var rows = await q.OrderBy(x => x.CollectorUser.FullName).Select(x => new { x.PeriodYear, x.PeriodMonth, x.CollectorUser.FullName, x.AssignedCasesCount, x.CollectedAmount, x.EligibleAmount, Rule = x.CommissionRule.Code, x.RateApplied, x.CommissionAmount, x.Adjustments, x.FinalCommission, x.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("عمولات المحصلين", "Collector commissions"), CommissionHeaders(ar), rows.Select(x => new object?[] { x.PeriodYear, x.PeriodMonth, x.FullName, x.AssignedCasesCount, x.CollectedAmount, x.EligibleAmount, x.Rule, x.RateApplied, x.CommissionAmount, x.Adjustments, x.FinalCommission, StatusName(x.Status, ar) }));
@@ -120,7 +120,7 @@ public sealed partial class AccountingBookService
         if (all || report == "supervisor-commissions")
         {
             var q = db.AccountingSupervisorCommissions.AsNoTracking().Where(x => x.PeriodYear * 12 + x.PeriodMonth >= lowerPeriod && x.PeriodYear * 12 + x.PeriodMonth <= upperPeriod);
-            if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
+            if (!string.IsNullOrWhiteSpace(filter.Status)) q = filter.Status == "READY" ? q.Where(x => x.Status == "DRAFT" || x.Status == "PENDING_REVIEW" || x.Status == "PENDING" || x.Status == "APPROVED") : q.Where(x => x.Status == filter.Status);
             if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.SupervisorUser.FullName.ToLower().Contains(filter.Search.ToLower()) || (x.SupervisorUser.Employee != null && x.SupervisorUser.Employee.EmployeeNumber.ToLower().Contains(filter.Search.ToLower())));
             var rows = await q.OrderBy(x => x.SupervisorUser.FullName).Select(x => new { x.PeriodYear, x.PeriodMonth, x.SupervisorUser.FullName, x.CollectorCount, x.TeamCollectedAmount, x.EligibleAmount, Rule = x.CommissionRule.Code, x.RateApplied, x.CommissionAmount, x.Adjustments, x.FinalCommission, x.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("عمولات السوبر فايزر", "Supervisor commissions"), CommissionHeaders(ar, true), rows.Select(x => new object?[] { x.PeriodYear, x.PeriodMonth, x.FullName, x.CollectorCount, x.TeamCollectedAmount, x.EligibleAmount, x.Rule, x.RateApplied, x.CommissionAmount, x.Adjustments, x.FinalCommission, StatusName(x.Status, ar) }));
@@ -174,5 +174,12 @@ public sealed partial class AccountingBookService
     {
         ("PETTY", true) => "مصاريف نثرية", ("FIXED", true) => "مصاريف شهرية ثابتة", ("TRANSPORTATION", true) => "انتقالات", ("ADVANCE", true) => "سلف", ("CARRIED_ADVANCE", true) => "سلف مرحلة", ("ADVANCE_REPAYMENT", true) => "سداد السلف", ("SALARY", true) => "المرتبات", ("BONUS", true) => "مكافآت", ("LEGAL", true) => "مصاريف قضائية", ("COLLECTOR_COMMISSION", true) => "عمولات المحصلين", ("SUPERVISOR_COMMISSION", true) => "عمولات السوبر فايزر", ("PAYROLL_COMMISSION", true) => "عمولات ضمن المرتبات", ("INCOME", true) => "الوارد والإيرادات", ("OTHER", true) => "مصاريف أخرى", _ => category.Replace('_', ' ')
     };
-    private static string StatusName(string status, bool ar) => !ar ? status : status switch { "DRAFT" => "مسودة", "PENDING_APPROVAL" or "PENDING_REVIEW" => "بانتظار الاعتماد", "APPROVED" => "معتمد", "POSTED" => "مرحل", "REVERSED" => "معكوس", "PAID" => "مصروف", "CANCELLED" => "ملغي", "PENDING" => "قيد المراجعة", "REJECTED" => "مرفوض", _ => status };
+    private static string StatusName(string status, bool ar) => status switch
+    {
+        "DRAFT" or "PENDING_REVIEW" or "PENDING" or "APPROVED" => ar ? "جاهز للصرف" : "Ready to pay",
+        "PENDING_APPROVAL" => ar ? "غير مسجل" : "Not recorded",
+        "POSTED" => ar ? "مسجل" : "Recorded", "REVERSED" => ar ? "معكوس" : "Reversed",
+        "PAID" => ar ? "تم الصرف" : "Paid", "CANCELLED" => ar ? "ملغي" : "Cancelled",
+        "REJECTED" => ar ? "مرفوض" : "Rejected", _ => status
+    };
 }

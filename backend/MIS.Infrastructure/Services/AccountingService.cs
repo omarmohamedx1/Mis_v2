@@ -10,7 +10,7 @@ using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
 
-public sealed class AccountingService(
+public sealed partial class AccountingService(
     ApplicationDbContext db,
     ICurrentUserContext user,
     IHrFileStorage storage,
@@ -74,6 +74,7 @@ public sealed class AccountingService(
     public async Task<AccountingPayrollPeriodDto> GeneratePayrollAsync(GeneratePayrollRequest request, CancellationToken token)
     {
         EnsureManage();
+        await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var periodDto = await EnsurePeriodAsync(request, token);
         var period = await db.AccountingPayrollPeriods.SingleAsync(x => x.Id == periodDto.Id, token);
         if (period.Status is AccountingValues.PayrollStatuses.Approved or AccountingValues.PayrollStatuses.Paid)
@@ -107,7 +108,9 @@ public sealed class AccountingService(
         await WriteAudit("AccountingPayrollGenerated", nameof(AccountingPayrollPeriod), period.Id.ToString(), null, null, new { added }, $"Generated {added} salary rows.", token);
         await db.SaveChangesAsync(token);
         await hrPayroll.GetSheetAsync(request.Year, request.Month, token);
-        return await MapPeriod(period.Id, token);
+        var result = await MapPeriod(period.Id, token);
+        if (tx is not null) await tx.CommitAsync(token);
+        return result;
     }
 
     public async Task<AccountingPayrollPageDto> ListPayrollsAsync(Guid periodId, string? search, string? status, int page, int pageSize, CancellationToken token)
@@ -117,7 +120,7 @@ public sealed class AccountingService(
             ?? throw new HrNotFoundException("Payroll period was not found.");
         await hrPayroll.GetSheetAsync(period.Year, period.Month, token);
         var q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.PeriodId == periodId && x.Status != "DELETED");
-        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(x => x.Status == status.Trim().ToUpperInvariant());
+        if (!string.IsNullOrWhiteSpace(status)) q = status.Trim().ToUpperInvariant() == "READY" ? q.Where(x => x.Status == "DRAFT" || x.Status == "PENDING_REVIEW" || x.Status == "PENDING" || x.Status == "APPROVED") : q.Where(x => x.Status == status.Trim().ToUpperInvariant());
         if (!string.IsNullOrWhiteSpace(search))
         {
             var t = search.Trim().ToLower();
@@ -191,7 +194,7 @@ public sealed class AccountingService(
     {
         EnsureAccess(); ValidatePage(page, pageSize);
         var q = db.AccountingTransportationClaims.AsNoTracking().Include(x => x.Employee).ThenInclude(e => e.Department).Include(x => x.Employee).ThenInclude(e => e.Position).AsQueryable();
-        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(x => x.Status == status.Trim().ToUpperInvariant());
+        if (!string.IsNullOrWhiteSpace(status)) q = status.Trim().ToUpperInvariant() == "READY" ? q.Where(x => x.Status == "DRAFT" || x.Status == "PENDING_REVIEW" || x.Status == "PENDING" || x.Status == "APPROVED") : q.Where(x => x.Status == status.Trim().ToUpperInvariant());
         if (from.HasValue) q = q.Where(x => x.ClaimDate >= from);
         if (to.HasValue) q = q.Where(x => x.ClaimDate <= to);
         if (!string.IsNullOrWhiteSpace(search))
@@ -409,7 +412,7 @@ public sealed class AccountingService(
         var q = db.AccountingCollectorCommissions.AsNoTracking().Include(x => x.CollectorUser).ThenInclude(u => u.Employee).Include(x => x.CommissionRule).AsQueryable();
         if (year.HasValue) q = q.Where(x => x.PeriodYear == year);
         if (month.HasValue) q = q.Where(x => x.PeriodMonth == month);
-        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(x => x.Status == status.Trim().ToUpperInvariant());
+        if (!string.IsNullOrWhiteSpace(status)) q = status.Trim().ToUpperInvariant() == "READY" ? q.Where(x => x.Status == "DRAFT" || x.Status == "PENDING_REVIEW" || x.Status == "PENDING" || x.Status == "APPROVED") : q.Where(x => x.Status == status.Trim().ToUpperInvariant());
         if (!string.IsNullOrWhiteSpace(search))
         {
             var t = search.Trim().ToLower();
@@ -522,7 +525,7 @@ public sealed class AccountingService(
         var q = db.AccountingSupervisorCommissions.AsNoTracking().Include(x => x.SupervisorUser).ThenInclude(u => u.Employee).Include(x => x.CommissionRule).AsQueryable();
         if (year.HasValue) q = q.Where(x => x.PeriodYear == year);
         if (month.HasValue) q = q.Where(x => x.PeriodMonth == month);
-        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(x => x.Status == status.Trim().ToUpperInvariant());
+        if (!string.IsNullOrWhiteSpace(status)) q = status.Trim().ToUpperInvariant() == "READY" ? q.Where(x => x.Status == "DRAFT" || x.Status == "PENDING_REVIEW" || x.Status == "PENDING" || x.Status == "APPROVED") : q.Where(x => x.Status == status.Trim().ToUpperInvariant());
         if (!string.IsNullOrWhiteSpace(search))
         {
             var t = search.Trim().ToLower();

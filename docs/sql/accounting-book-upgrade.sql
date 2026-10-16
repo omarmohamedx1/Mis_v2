@@ -1,4 +1,4 @@
-START TRANSACTION;
+﻿START TRANSACTION;
 
 DO $EF$
 BEGIN
@@ -272,6 +272,45 @@ BEGIN
     IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261016150900_AddAccountingBookAndRecurring') THEN
     INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
     VALUES ('20261016150900_AddAccountingBookAndRecurring', '10.0.4');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261016180139_SimplifyAccountingRecordingAndDeletion') THEN
+    ALTER TABLE "AccountingBookEntries" ADD "DeletedAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261016180139_SimplifyAccountingRecordingAndDeletion') THEN
+    ALTER TABLE "AccountingBookEntries" ADD "DeletedById" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261016180139_SimplifyAccountingRecordingAndDeletion') THEN
+    CREATE INDEX "IX_AccountingBookEntries_DeletedById" ON "AccountingBookEntries" ("DeletedById");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261016180139_SimplifyAccountingRecordingAndDeletion') THEN
+    ALTER TABLE "AccountingBookEntries" ADD CONSTRAINT "FK_AccountingBookEntries_Users_DeletedById" FOREIGN KEY ("DeletedById") REFERENCES "Users" ("Id") ON DELETE RESTRICT;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261016180139_SimplifyAccountingRecordingAndDeletion') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261016180139_SimplifyAccountingRecordingAndDeletion', '10.0.4');
     END IF;
 END $EF$;
 COMMIT;

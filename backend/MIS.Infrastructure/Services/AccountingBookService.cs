@@ -48,7 +48,7 @@ public sealed partial class AccountingBookService : IAccountingBookService
         if (f.From.HasValue) q = q.Where(x => x.TransactionDate >= f.From);
         if (f.To.HasValue) q = q.Where(x => x.TransactionDate <= f.To);
         if (!string.IsNullOrWhiteSpace(f.Category)) q = q.Where(x => x.Category == f.Category);
-        if (!string.IsNullOrWhiteSpace(f.Status)) q = q.Where(x => x.JournalEntry.Status == f.Status);
+        if (!string.IsNullOrWhiteSpace(f.Status)) q = f.Status == "UNRECORDED" ? q.Where(x => x.JournalEntry.Status == "DRAFT" || x.JournalEntry.Status == "PENDING_APPROVAL" || x.JournalEntry.Status == "APPROVED") : q.Where(x => x.JournalEntry.Status == f.Status);
         if (f.EmployeeId.HasValue) q = q.Where(x => x.EmployeeId == f.EmployeeId);
         if (!string.IsNullOrWhiteSpace(f.Search)) { var s = f.Search.Trim().ToLower(); q = q.Where(x => x.DocumentNumber.ToLower().Contains(s) || x.Description.ToLower().Contains(s) || (x.Reference != null && x.Reference.ToLower().Contains(s)) || (x.Employee != null && x.Employee.FullName.ToLower().Contains(s))); }
         return q;

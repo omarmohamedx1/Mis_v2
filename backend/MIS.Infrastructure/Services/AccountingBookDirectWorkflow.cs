@@ -65,10 +65,10 @@ public sealed partial class AccountingBookService
         var key = $"{kind}:{id}";
         var entry = await db.AccountingBookEntries.Include(x => x.JournalEntry).ThenInclude(x => x.Lines).SingleOrDefaultAsync(x => x.SourceKey == key, token);
         if (entry is not null && !entry.DeletedAt.HasValue) await DeleteEntry(entry, request.Reason, token);
-        else { await RemoveSource(key, token); await db.SaveChangesAsync(token); }
+        else { await RemoveSource(key, token, protectLegacyPeriod: entry is null); await db.SaveChangesAsync(token); }
         if (tx is not null) await tx.CommitAsync(token);
     }
-    private async Task RemoveSource(string? key, CancellationToken token)
+    private async Task RemoveSource(string? key, CancellationToken token, bool protectLegacyPeriod = false)
     {
         if (key is null) return;
         var parts = key.Split(':'); if (parts.Length != 2 || !Guid.TryParse(parts[1], out var id)) return;
@@ -76,7 +76,9 @@ public sealed partial class AccountingBookService
         switch (parts[0])
         {
             case "PAYROLL":
-                var salary = await db.AccountingEmployeePayrolls.SingleOrDefaultAsync(x => x.Id == id, token); row = salary;
+                var salary = await db.AccountingEmployeePayrolls.SingleOrDefaultAsync(x => x.Id == id, token);
+                if (salary?.Status == "DELETED") return;
+                row = salary;
                 snapshot = salary is null ? null : new { salary.EmployeeId, salary.EmployeeName, salary.PeriodId, salary.BasicSalary, salary.Allowances, salary.Transportation, salary.Commissions, salary.Bonuses, salary.Deductions, salary.OtherAdjustments, salary.NetSalary, salary.Status, salary.Notes }; break;
             case "TRANSPORT":
                 var claim = await db.AccountingTransportationClaims.SingleOrDefaultAsync(x => x.Id == id, token); row = claim;
@@ -90,6 +92,16 @@ public sealed partial class AccountingBookService
             default: return;
         }
         if (row is null) return;
+        var paidAt = row switch
+        {
+            AccountingEmployeePayroll { Status: "PAID" } p => p.UpdatedAt ?? p.CreatedAt,
+            AccountingTransportationClaim { Status: "PAID" } p => p.UpdatedAt ?? p.CreatedAt,
+            AccountingCollectorCommission { Status: "PAID" } p => p.UpdatedAt ?? p.CreatedAt,
+            AccountingSupervisorCommission { Status: "PAID" } p => p.UpdatedAt ?? p.CreatedAt,
+            _ => (DateTimeOffset?)null
+        };
+        if (protectLegacyPeriod && paidAt.HasValue)
+            await OpenPeriod(DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(paidAt.Value, OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime), token);
         Audit("AccountingSourceDeleted", id, new { Kind = parts[0], Record = snapshot }, null);
         if (row is AccountingEmployeePayroll payroll) payroll.DeleteAfterConfirmation(DateTimeOffset.UtcNow);
         else db.Remove(row);

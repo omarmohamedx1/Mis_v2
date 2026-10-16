@@ -1,5 +1,6 @@
+import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
-import { Banknote, Calculator, CheckCircle2, Percent, Save, X } from 'lucide-react';
+import { Banknote, Calculator, Percent, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
@@ -65,7 +66,9 @@ export function AccountingCollectorCommissionsPage() {
   const act = async (id: string, action: string) => {
     setBusy(true); setError('');
     try {
-      const updated = await accountingService.collectorCommissionAction(id, action);
+      const updated = action === 'pay' && details?.summary.id === id && editable.includes(details.summary.status)
+        ? await accountingService.recordCollectorCommission(id, adjustValue, details.summary.notes ?? undefined)
+        : await accountingService.collectorCommissionAction(id, action);
       if (details?.summary.id === id) setDetails({ ...details, summary: updated });
       await load();
     } catch (reason) { setError(getApiErrorMessage(reason, a.text('تعذر تنفيذ الإجراء', 'Action failed'))); }
@@ -95,7 +98,7 @@ export function AccountingCollectorCommissionsPage() {
         <input className="min-w-[200px] flex-1 rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('المحصل', 'Collector')} value={search} onChange={(event) => setSearch(event.target.value)} />
         <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">{a.text('كل الحالات', 'All statuses')}</option>
-          {['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
+          {['READY', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
         </ProfessionalSelect>
         {rows.length ? <p className="ms-auto text-sm font-bold text-mis-navy" data-bidi="ltr">{a.text('إجمالي النهائي', 'Total final')}: {a.money(totalFinal)}</p> : null}
       </div>
@@ -158,21 +161,18 @@ export function AccountingCollectorCommissionsPage() {
               <div><dt className="text-slate-500">{a.text('قاعدة العمولة', 'Commission rule')}</dt><dd className="font-bold">{details.summary.ruleCode} · {a.number(details.summary.rateApplied)}%</dd></div>
               <div><dt className="text-slate-500">{a.text('العمولة المحسوبة', 'Calculated commission')}</dt><dd className="font-bold" data-bidi="ltr">{a.money(details.summary.commissionAmount)}</dd></div>
               <div><dt className="text-slate-500">{a.text('تسويات يدوية', 'Manual adjustments')}</dt><dd className="font-bold" data-bidi="ltr">{a.money(details.summary.adjustments)}</dd></div>
-              <div><dt className="text-slate-500">{a.text('العمولة النهائية', 'Final commission')}</dt><dd className="font-bold" data-bidi="ltr">{a.money(details.summary.finalCommission)}</dd></div>
+              <div><dt className="text-slate-500">{a.text('العمولة النهائية', 'Final commission')}</dt><dd className="font-bold" data-bidi="ltr">{a.money(editable.includes(details.summary.status) ? details.summary.commissionAmount + adjustValue : details.summary.finalCommission)}</dd></div>
             </dl>
 
             {editable.includes(details.summary.status) ? (
               <div className="mt-4 flex flex-wrap items-end gap-2">
                 <label className="text-sm"><span className="mb-1 block text-slate-500">{a.text('تسوية', 'Adjustment')}</span>
-                  <input type="number" className="rounded-xl border border-mis-border px-3 py-2" value={adjustValue} onChange={(event) => setAdjustValue(Number(event.target.value))} />
+                  <input type="number" step="0.01" className="rounded-xl border border-mis-border px-3 py-2" value={adjustValue} onChange={(event) => setAdjustValue(Number(event.target.value))} />
                 </label>
                 <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(details.summary.commissionAmount + adjustValue, details.summary.collectorName + '\n' + a.money(adjustValue), adjust)} variant="outline">{a.text('حفظ التسوية', 'Save adjustment')}</Button>
-                {details.summary.status === 'DRAFT' ? <Button disabled={busy} fullWidth={false} onClick={() => void act(details.summary.id, 'submit')} variant="outline">{a.text('إرسال', 'Submit')}</Button> : null}
-                <Button disabled={busy} fullWidth={false} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={() => void act(details.summary.id, 'approve')}>{a.text('اعتماد', 'Approve')}</Button>
-                <Button disabled={busy} fullWidth={false} onClick={() => void act(details.summary.id, 'cancel')} variant="danger">{a.text('إلغاء', 'Cancel')}</Button>
               </div>
             ) : null}
-            {details.summary.status === 'APPROVED' ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(details.summary.finalCommission, details.summary.collectorName + ' / ' + a.monthLabel(year, month), () => act(details.summary.id, 'pay'))} variant="outline">{a.text('تم الصرف', 'Mark paid')}</Button> : null}
+            {[...editable, 'APPROVED'].includes(details.summary.status) ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(editable.includes(details.summary.status) ? details.summary.commissionAmount + adjustValue : details.summary.finalCommission, details.summary.collectorName + ' / ' + a.monthLabel(year, month) + '\n' + details.summary.ruleCode + '\n' + a.text('التسوية: ', 'Adjustment: ') + a.money(editable.includes(details.summary.status) ? adjustValue : details.summary.adjustments), () => act(details.summary.id, 'pay'))} variant="outline">{a.text('تأكيد وصرف العمولة', 'Confirm and pay commission')}</Button> : null}
 
             <h3 className="mb-2 mt-6 text-sm font-bold text-mis-navy">{a.text('المعاملات المساهمة', 'Contributing transactions')}</h3>
             <div className="overflow-x-auto rounded-xl border border-mis-border">
@@ -191,6 +191,7 @@ export function AccountingCollectorCommissionsPage() {
               </table>
             </div>
             {!details.contributions.length ? <p className="mt-3 text-sm text-slate-500">{a.text('لا توجد معاملات مساهمة مسجّلة.', 'No contributing transactions were recorded.')}</p> : null}
+            <AccountingDeleteButton kind="COLLECTOR" id={details.summary.id} amount={details.summary.finalCommission} description={`${details.summary.collectorName} / ${a.monthLabel(details.summary.periodYear, details.summary.periodMonth)}`} onDeleted={async () => { setDetails(undefined); await load(); } } />
             <Button className="mt-4" fullWidth={false} leftIcon={<X className="h-4 w-4" />} onClick={() => setDetails(undefined)} variant="ghost">{a.text('إغلاق', 'Close')}</Button>
           </div>
         </div>

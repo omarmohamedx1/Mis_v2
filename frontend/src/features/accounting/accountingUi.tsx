@@ -13,13 +13,15 @@ export function useAccountingText() {
   const date = (value: string) => new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value.slice(0, 10)}T00:00:00`));
   const status = (value: string) =>
     ({
-      POSTED: text('مرحل', 'Posted'),
+      POSTED: text('مسجل', 'Recorded'),
       REVERSED: text('معكوس', 'Reversed'),
-      PENDING_APPROVAL: text('بانتظار الاعتماد', 'Pending approval'),
-      DRAFT: text('مسودة', 'Draft'),
-      PENDING_REVIEW: text('بانتظار المراجعة', 'Pending review'),
-      PENDING: text('قيد الانتظار', 'Pending'),
-      APPROVED: text('معتمد', 'Approved'),
+      UNRECORDED: text('غير مسجل', 'Not recorded'),
+      READY: text('جاهز للصرف', 'Ready to pay'),
+      PENDING_APPROVAL: text('غير مسجل', 'Not recorded'),
+      DRAFT: text('جاهز للصرف', 'Ready to pay'),
+      PENDING_REVIEW: text('جاهز للصرف', 'Ready to pay'),
+      PENDING: text('جاهز للصرف', 'Ready to pay'),
+      APPROVED: text('جاهز للصرف', 'Ready to pay'),
       PAID: text('تم الصرف', 'Paid'),
       REJECTED: text('مرفوض', 'Rejected'),
       CANCELLED: text('ملغي', 'Cancelled'),

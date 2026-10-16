@@ -38,6 +38,15 @@ export const accountingService = {
   salaryAction(id: string, action: 'submit' | 'approve' | 'pay' | 'cancel') {
     return apiClient.post<AccountingEmployeePayroll>(`/accounting/salaries/${id}/${action}`).then((r) => r.data);
   },
+  recordSalary(id: string, body: { transportation: number; commissions: number; bonuses: number; deductions: number; otherAdjustments: number; notes?: string }) {
+    return apiClient.post<AccountingEmployeePayroll>(`/accounting/salaries/${id}/record`, body).then(r => r.data);
+  },
+  recordCollectorCommission(id: string, adjustments: number, notes?: string) {
+    return apiClient.post<AccountingCollectorCommission>(`/accounting/collector-commissions/${id}/record`, { adjustments, notes }).then(r => r.data);
+  },
+  recordSupervisorCommission(id: string, adjustments: number, notes?: string) {
+    return apiClient.post<AccountingSupervisorCommission>(`/accounting/supervisor-commissions/${id}/record`, { adjustments, notes }).then(r => r.data);
+  },
   transportation(params: { search?: string; status?: string; from?: string; to?: string; page?: number }) {
     return loadAllPages((page, pageSize) => apiClient.get<AccountingPaged<AccountingTransportation>>('/accounting/transportation', { params: { ...withoutPaging(params), page, pageSize } }).then((r) => r.data), 200);
   },
