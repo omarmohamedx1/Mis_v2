@@ -30,7 +30,7 @@ function localDateTime(value?: string) {
 }
 
 export function CollectionEntryForm({ type, caseId, context, activity, promise, saving, setSaving, onSaved }: Props) {
-  const { ct } = useCollectionsLocalization();
+  const { ct, language } = useCollectionsLocalization();
   const format = useCollectionFormat();
   const toast = useToast();
   const [error, setError] = useState('');
@@ -118,7 +118,7 @@ export function CollectionEntryForm({ type, caseId, context, activity, promise, 
               <EntryField label={ct('reference')}><input name="reference" required maxLength={160} className="field" /></EntryField>
             </>}
         </>}
-        {type !== 'payment' && <EntryField label={ct('notes')}><textarea name="notes" rows={3} maxLength={2000} defaultValue={activity?.notes ?? promise?.notes ?? ''} className="field" /></EntryField>}
+        {type !== 'payment' && <EntryField label={ct('notes')}><textarea name="notes" rows={3} maxLength={type === 'activity' ? 4000 : 2000} defaultValue={activity?.notes ?? promise?.notes ?? ''} className="field" /></EntryField>}
         {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
         <Button type="submit" isLoading={saving}>{editing ? ct('saveChanges') : ct(type === 'activity' ? 'saveActivity' : 'reviewBeforeSave')}</Button>
       </fieldset>
@@ -127,7 +127,7 @@ export function CollectionEntryForm({ type, caseId, context, activity, promise, 
       <p className="mb-4 font-semibold">{ct('confirmEntryHelp')}</p>
       <dl className="space-y-3 rounded-xl border border-mis-border bg-slate-50 p-4">
         <ReviewRow label={ct('entryOperation')} value={ct(type === 'promise' ? 'addPromise' : 'submitCollection')} />
-        <ReviewRow label={ct('amount')} value={<strong className="text-xl text-mis-primary" data-bidi="ltr">{format.money(Number(review.get('amount')))}</strong>} />
+        <ReviewRow label={ct('amount')} value={<strong className="text-xl text-mis-primary" data-bidi="ltr">{new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(review.get('amount')))}</strong>} />
         <ReviewRow label={ct(type === 'promise' ? 'promiseDate' : 'paymentDate')} value={format.date(String(review.get('date')))} />
         <ReviewRow label={ct(type === 'promise' ? 'channel' : 'method')} value={ct(String(review.get(type === 'promise' ? 'channel' : 'method')))} />
         {type === 'payment' && <ReviewRow label={ct('reference')} value={String(review.get('reference')).trim()} />}
