@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { belongsToOverlay, OverlayScope, useFloatingPanel, useOverlayLayer, useOverlayOwners } from '../common/overlay';
 import { ProfessionalSelect } from './ProfessionalSelect';
@@ -21,6 +21,7 @@ interface ProfessionalDateInputProps {
   ariaInvalid?: boolean;
   ariaDescribedBy?: string;
   comfortable?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
 }
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -73,7 +74,7 @@ function hasTime(value: string) {
 }
 
 export function ProfessionalDateInput({
-  id, name, value, defaultValue, onChange, mode = 'date', required, min, max, disabled, className = '', ariaLabel, ariaInvalid, ariaDescribedBy, comfortable = false,
+  id, name, value, defaultValue, onChange, mode = 'date', required, min, max, disabled, className = '', ariaLabel, ariaInvalid, ariaDescribedBy, comfortable = false, inputRef,
 }: ProfessionalDateInputProps) {
   const { language, isRtl } = useLocalization();
   const root = useRef<HTMLDivElement>(null);
@@ -295,7 +296,7 @@ export function ProfessionalDateInput({
 
   return (
     <OverlayScope owners={owners}><div className={`date-control relative min-w-0 ${className}`} data-mode={mode} ref={root}>
-      <input aria-label={ariaLabel ?? labels.choose} className="pointer-events-none absolute h-px w-px opacity-0" name={name} onInvalid={() => setOpen(true)} readOnly required={required} tabIndex={-1} type="text" value={current} />
+      <input aria-hidden="true" className="pointer-events-none absolute h-px w-px opacity-0" name={name} onInvalid={() => setOpen(true)} readOnly required={required} tabIndex={-1} type="text" value={current} />
       <div data-invalid={ariaInvalid || undefined} data-comfortable={comfortable || undefined} className={`composite-control field flex items-center gap-1 ${disabled ? 'bg-slate-100 opacity-70' : ''}`}>
         <button aria-expanded={open} aria-label={labels.open} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-mis-primary hover:bg-mis-pale disabled:opacity-50" disabled={disabled} onClick={() => setOpen((currentOpen) => !currentOpen)} type="button">
           <CalendarDays className="h-5 w-5" />
@@ -309,6 +310,7 @@ export function ProfessionalDateInput({
           dir="ltr"
           disabled={disabled}
           id={id}
+          ref={inputRef}
           onBlur={() => {
             typing.current = false;
             if (!applyTyped(draft, true)) setDraft(formatTyped(parseValue(current), mode));

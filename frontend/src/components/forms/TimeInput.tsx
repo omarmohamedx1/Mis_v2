@@ -13,7 +13,6 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
   { className = '', containerClassName = '', defaultValue, disabled, error, hint, id, label, name, onChange, required, value },
   ref,
 ) {
-  void ref;
   const generatedId = useId();
   const inputId = id ?? name ?? generatedId;
   const errorId = error ? `${inputId}-error` : undefined;
@@ -26,6 +25,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
   return (
     <FormField className={containerClassName} error={error} errorId={errorId} hint={hint} hintId={hintId} inputId={inputId} label={label} required={required}>
       <ProfessionalTimeInput
+        inputRef={ref} ariaLabel={typeof label === 'string' ? label : undefined}
         comfortable ariaInvalid={!!error} ariaDescribedBy={joinDescribedBy(hintId,errorId)}
         className={className}
         defaultValue={typeof defaultValue === 'string' ? defaultValue : undefined}

@@ -13,10 +13,9 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(function D
   { className = '', containerClassName = '', defaultValue, disabled, error, hint, id, label, max, min, name, onChange, required, value },
   ref,
 ) {
-  void ref;
   const generatedId = useId(); const inputId = id ?? name ?? generatedId; const errorId = error ? `${inputId}-error` : undefined; const hintId = hint ? `${inputId}-hint` : undefined;
   const notify = (next: string) => { const target = { name: name ?? '', value: next } as HTMLInputElement; onChange?.({ target, currentTarget: target } as ChangeEvent<HTMLInputElement>); };
   return <FormField className={containerClassName} error={error} errorId={errorId} hint={hint} hintId={hintId} inputId={inputId} label={label} required={required}>
-    <ProfessionalDateInput comfortable ariaInvalid={!!error} ariaDescribedBy={joinDescribedBy(hintId,errorId)} id={inputId} name={name} className={className} defaultValue={typeof defaultValue === 'string' ? defaultValue : undefined} disabled={disabled} max={typeof max === 'string' ? max : undefined} min={typeof min === 'string' ? min : undefined} onChange={notify} required={required} value={typeof value === 'string' ? value : undefined} />
+    <ProfessionalDateInput inputRef={ref} ariaLabel={typeof label === 'string' ? label : undefined} comfortable ariaInvalid={!!error} ariaDescribedBy={joinDescribedBy(hintId,errorId)} id={inputId} name={name} className={className} defaultValue={typeof defaultValue === 'string' ? defaultValue : undefined} disabled={disabled} max={typeof max === 'string' ? max : undefined} min={typeof min === 'string' ? min : undefined} onChange={notify} required={required} value={typeof value === 'string' ? value : undefined} />
   </FormField>;
 });

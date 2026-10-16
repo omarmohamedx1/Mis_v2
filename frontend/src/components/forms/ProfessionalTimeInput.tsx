@@ -1,5 +1,5 @@
 import { Clock3, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { belongsToOverlay, OverlayScope, useFloatingPanel, useOverlayLayer, useOverlayOwners } from '../common/overlay';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -10,6 +10,7 @@ interface ProfessionalTimeInputProps {
   ariaInvalid?: boolean;
   ariaDescribedBy?: string;
   comfortable?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
   className?: string;
   defaultValue?: string;
   disabled?: boolean;
@@ -34,7 +35,7 @@ function parseTime(value?: string): { hour: string; minute: string } | null {
 }
 
 export function ProfessionalTimeInput({
-  ariaLabel, ariaInvalid, ariaDescribedBy, comfortable = false,
+  ariaLabel, ariaInvalid, ariaDescribedBy, comfortable = false, inputRef,
   className = '',
   defaultValue,
   disabled = false,
@@ -141,23 +142,28 @@ export function ProfessionalTimeInput({
 
   return (
     <OverlayScope owners={owners}><div className={`relative min-w-0 ${className}`} ref={root}>
-      <input aria-label={ariaLabel ?? labels.choose} className="pointer-events-none absolute h-px w-px opacity-0" name={name} onInvalid={() => setOpen(true)} readOnly required={required} tabIndex={-1} type="text" value={current} />
+      <input aria-hidden="true" className="pointer-events-none absolute h-px w-px opacity-0" name={name} onInvalid={() => setOpen(true)} readOnly required={required} tabIndex={-1} type="text" value={current} />
       <div data-invalid={ariaInvalid || undefined} data-comfortable={comfortable || undefined} className={`composite-control field flex items-center gap-2 ${disabled ? 'bg-slate-100 opacity-70' : ''}`}>
         <Clock3 className="h-5 w-5 shrink-0 text-mis-primary" />
-        <button
+        <input
           aria-expanded={open}
           aria-invalid={ariaInvalid}
           aria-describedby={ariaDescribedBy}
           aria-label={ariaLabel ?? labels.choose}
-          className={`min-h-9 min-w-0 flex-1 truncate text-start text-sm outline-none ${selected ? 'text-slate-800' : 'text-slate-500'}`}
+          className={`min-h-9 min-w-0 flex-1 truncate bg-transparent text-start text-sm outline-none ${selected ? 'text-slate-800' : 'text-slate-500'}`}
           disabled={disabled}
           dir="ltr"
           id={id}
           onClick={() => setOpen((currentOpen) => !currentOpen)}
-          type="button"
-        >
-          {selected ? `${selected.hour}:${selected.minute}` : labels.choose}
-        </button>
+          onKeyDown={event => { if (['Enter', ' ', 'ArrowDown'].includes(event.key)) { event.preventDefault(); setOpen(true); } }}
+          role="combobox"
+          aria-haspopup="dialog"
+          ref={inputRef}
+          readOnly
+          placeholder={labels.choose}
+          type="text"
+          value={selected ? `${selected.hour}:${selected.minute}` : ''}
+        />
         {selected && !disabled ? (
           <button aria-label={labels.clear} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600" onClick={() => emit('')} type="button">
             <X className="h-4 w-4" />
