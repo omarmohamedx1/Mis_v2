@@ -312,6 +312,7 @@ summary:focus-visible,
   min-inline-size: 0;
 }
 .form-control { min-inline-size: 0; max-inline-size: 100%; border-radius: var(--radius-form); }
+[dir='rtl'] .select-value { padding-block: 0; }
 .composite-control {
   min-block-size: var(--control-height);
   padding: 3px;

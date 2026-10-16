@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useId, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocalization } from '../../context/LocalizationContext';
 import { OverlayScope, useBodyScrollLock, useFocusBoundary, useOverlayLayer, useOverlayOwners } from './overlay';

@@ -351,7 +351,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         title={title ?? nodeText(selectedOption?.label)}
         type="button"
       >
-        <span className={`min-w-0 flex-1 truncate ${selectedValue === '' ? 'text-slate-500' : ''}`}>{selectedOption?.label ?? '—'}</span>
+        <span className={`select-value min-w-0 flex-1 truncate ${selectedValue === '' ? 'text-slate-500' : ''}`}>{selectedOption?.label ?? '—'}</span>
         <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {menu}
