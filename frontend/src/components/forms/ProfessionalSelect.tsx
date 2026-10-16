@@ -1,3 +1,5 @@
+import { westernDigits } from './normalizeDigits';
+import { twMerge } from 'tailwind-merge';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 import {
   Children,
@@ -59,7 +61,7 @@ function readOptions(children: ReactNode): SelectOption[] {
           disabled: Boolean(option.props.disabled),
           key: value,
           label,
-          searchText: text.toLocaleLowerCase(),
+          searchText: westernDigits(text).toLocaleLowerCase(),
           text,
           value,
         });
@@ -122,7 +124,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
   const [layout, setLayout] = useState({ bottom: undefined as number | undefined, left: 12, maxHeight: 320, mobile: false, top: 0, width: 288 });
   const selectedValue = controlledValue ?? internalValue;
   const selectedOption = options.find((option) => option.value === selectedValue) ?? options.find((option) => option.value === '') ?? undefined;
-  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const normalizedQuery = westernDigits(query).trim().toLocaleLowerCase();
   const visibleOptions = normalizedQuery ? options.filter((option) => option.searchText.includes(normalizedQuery)) : options;
   const showSearch = options.length >= 7;
 
@@ -309,7 +311,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
   ) : null;
 
   return (
-    <OverlayScope owners={owners}><div className={`relative min-w-0 ${layoutClasses}`}>
+    <OverlayScope owners={owners}><div className={twMerge(`relative min-w-0 ${layoutClasses}`)}>
       <select
         {...nativeProps}
         aria-hidden="true"
@@ -341,7 +343,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         aria-invalid={ariaInvalid}
         aria-label={ariaLabel}
         autoFocus={autoFocus}
-        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-mis-border bg-white px-4 py-2.5 text-start text-sm text-slate-800 outline-none transition hover:border-slate-300 focus:border-mis-blue focus:ring-4 focus:ring-mis-pale disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${controlClasses}`}
+        className={twMerge(`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-mis-border bg-white px-4 py-2.5 text-start text-sm text-slate-800 outline-none transition hover:border-slate-300 focus:border-mis-blue focus:ring-4 focus:ring-mis-pale disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${controlClasses}`)}
         disabled={disabled}
         id={selectId}
         onBlur={(event) => onBlur?.({ target: nativeRef.current, currentTarget: nativeRef.current } as ChangeEvent<HTMLSelectElement> & typeof event)}

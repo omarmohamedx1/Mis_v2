@@ -1,3 +1,4 @@
+import { westernDigits } from './normalizeDigits';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react';
 import { createPortal } from 'react-dom';
@@ -27,11 +28,6 @@ interface ProfessionalDateInputProps {
 const pad = (value: number) => String(value).padStart(2, '0');
 const isoDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-function westernDigits(value: string) {
-  return value
-    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 1632))
-    .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 1776));
-}
 
 function buildDate(year: number, month: number, day: number, hour = 0, minute = 0) {
   const fullYear = year < 100 ? (year >= 50 ? 1900 + year : 2000 + year) : year;
@@ -89,7 +85,6 @@ export function ProfessionalDateInput({
   const [hour, setHour] = useState(() => pad(selected?.getHours() ?? 9));
   const [minute, setMinute] = useState(() => pad(selected?.getMinutes() ?? 0));
   const [draft, setDraft] = useState(() => formatTyped(selected, mode));
-  const [yearDraft, setYearDraft] = useState(() => String((selected ?? new Date()).getFullYear()));
   const overlayId = useId(); const owners = useOverlayOwners(overlayId);
   const position = useFloatingPanel(open, root, popup, 360);
   useOverlayLayer(overlayId, open, () => { setOpen(false); root.current?.querySelector<HTMLElement>('input:not([tabindex="-1"]),button')?.focus(); });
@@ -103,7 +98,7 @@ export function ProfessionalDateInput({
       setView(next);
       setHour(pad(next.getHours()));
       setMinute(pad(next.getMinutes()));
-      setYearDraft(String(next.getFullYear()));
+
     }
   }, [current, mode]);
 
@@ -141,7 +136,6 @@ export function ProfessionalDateInput({
   const maxYear = maximum ? Number(maximum.slice(0, 4)) : new Date().getFullYear() + 20;
   const months = useMemo(() => Array.from({ length: 12 }, (_, index) => new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2024, index, 1))), [locale]);
   const years = useMemo(() => Array.from({ length: maxYear - minYear + 1 }, (_, index) => minYear + index), [maxYear, minYear]);
-  const yearListId = useId();
   const minutes = useMemo(() => {
     const options = Array.from({ length: 12 }, (_, index) => pad(index * 5));
     return options.includes(minute) ? options : [...options, minute].sort();
@@ -180,7 +174,7 @@ export function ProfessionalDateInput({
       setMinute(pad(parsed.getMinutes()));
     }
     setView(parsed);
-    setYearDraft(String(parsed.getFullYear()));
+
     emit(parsed, false);
     return true;
   };
@@ -200,7 +194,7 @@ export function ProfessionalDateInput({
     if (!inRange(date)) return;
     const next = new Date(date.getFullYear(), date.getMonth(), date.getDate(), Number(hour), Number(minute));
     setView(next);
-    setYearDraft(String(next.getFullYear()));
+
     emit(next, mode === 'date');
   };
   const applyTime = () => {
@@ -210,12 +204,12 @@ export function ProfessionalDateInput({
   const shiftMonth = (offset: number) => {
     const next = new Date(view.getFullYear(), view.getMonth() + offset, 1);
     setView(next);
-    setYearDraft(String(next.getFullYear()));
+
   };
   const jumpYear = (year: number) => {
     if (year < minYear || year > maxYear) return;
     setView(new Date(year, view.getMonth(), 1));
-    setYearDraft(String(year));
+
   };
 
   const calendar = open ? createPortal(
@@ -227,22 +221,11 @@ export function ProfessionalDateInput({
         <ProfessionalSelect aria-label={labels.month} className="date-month h-10 min-h-10 py-1 min-w-0 flex-1 rounded-xl border border-mis-border bg-white px-2 text-sm font-semibold text-mis-navy outline-none focus:border-mis-blue" onChange={(event) => setView(new Date(view.getFullYear(), Number(event.target.value), 1))} value={view.getMonth()}>
           {months.map((label, index) => <option key={label} value={index}>{label}</option>)}
         </ProfessionalSelect>
-        <input
-          aria-label={labels.year}
-          className="date-year h-10 w-20 rounded-xl border border-mis-border bg-white px-2 text-center text-sm font-bold tabular-nums text-mis-navy outline-none focus:border-mis-blue"
-          dir="ltr"
-          inputMode="numeric"
-          list={yearListId}
-          maxLength={4}
-          onBlur={() => setYearDraft(String(view.getFullYear()))}
-          onChange={(event) => {
-            const next = westernDigits(event.target.value).replace(/\D/g, '').slice(0, 4);
-            setYearDraft(next);
-            if (next.length === 4) jumpYear(Number(next));
-          }}
-          value={yearDraft}
-        />
-        <datalist id={yearListId}>{years.map((year) => <option key={year} value={year} />)}</datalist>
+        <div className="date-year w-20 shrink-0">
+          <ProfessionalSelect aria-label={labels.year} className="h-10 min-h-10 w-full rounded-xl px-2 py-1 text-sm font-bold tabular-nums" value={view.getFullYear()} onChange={(event) => jumpYear(Number(event.target.value))}>
+            {[...new Set([...years, view.getFullYear()])].sort((a, b) => a - b).map(year => <option key={year} value={year}>{year}</option>)}
+          </ProfessionalSelect>
+        </div>
         <button aria-label={labels.next} className="date-next grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-mis-pale hover:text-mis-primary" onClick={() => shiftMonth(1)} type="button">
           <ChevronRight className={`h-5 w-5 ${isRtl ? 'rotate-180' : ''}`} />
         </button>
@@ -286,7 +269,7 @@ export function ProfessionalDateInput({
         </div>
       ) : null}
       <div className="mt-4 flex items-center gap-2 border-t border-mis-border pt-3">
-        <button disabled={!inRange(new Date())} className="min-h-9 rounded-lg px-3 py-2 text-xs font-bold text-mis-primary hover:bg-mis-pale disabled:cursor-not-allowed disabled:opacity-40" onClick={() => { const now = new Date(); setView(now); setYearDraft(String(now.getFullYear())); setHour(pad(now.getHours())); setMinute(pad(Math.floor(now.getMinutes() / 5) * 5)); emit(now, mode === 'date'); }} type="button">{labels.today}</button>
+        <button disabled={!inRange(new Date())} className="min-h-9 rounded-lg px-3 py-2 text-xs font-bold text-mis-primary hover:bg-mis-pale disabled:cursor-not-allowed disabled:opacity-40" onClick={() => { const now = new Date(); setView(now); setHour(pad(now.getHours())); setMinute(pad(Math.floor(now.getMinutes() / 5) * 5)); emit(now, mode === 'date'); }} type="button">{labels.today}</button>
         <button className="min-h-9 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100" onClick={() => emit(null)} type="button">{labels.clear}</button>
         {mode === 'datetime' ? <button className="ms-auto min-h-9 rounded-lg bg-mis-primary px-4 py-2 text-xs font-bold text-white" onClick={applyTime} type="button">{labels.done}</button> : null}
       </div>

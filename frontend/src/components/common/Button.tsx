@@ -1,3 +1,4 @@
+import { twMerge } from 'tailwind-merge';
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
 
@@ -49,7 +50,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <button
       aria-busy={isLoading || undefined}
-      className={`relative inline-flex min-w-0 max-w-full shrink-0 items-center justify-center gap-2 whitespace-normal font-semibold leading-snug transition duration-150 disabled:cursor-not-allowed [&_svg]:size-4 [&_svg]:shrink-0 ${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`}
+      className={twMerge(`relative inline-flex min-w-0 max-w-full shrink-0 items-center justify-center gap-2 whitespace-normal font-semibold leading-snug transition duration-150 disabled:cursor-not-allowed [&_svg]:size-4 [&_svg]:shrink-0 ${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`)}
       disabled={disabled || isLoading}
       ref={ref}
       {...props}
