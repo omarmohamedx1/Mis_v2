@@ -82,7 +82,7 @@ export function CollectionsCollectorsDashboardPage() {
       </section>
 
       <label className="relative mt-8 block">
-        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mis-muted" />
         <input className="h-12 w-full rounded-2xl border border-mis-border bg-white pe-4 ps-10 text-sm shadow-sm outline-none focus:border-mis-primary" onChange={event => setSearch(event.target.value)} placeholder={ct('searchCollectors')} value={search} />
       </label>
 
@@ -110,7 +110,7 @@ export function CollectionsCollectorsDashboardPage() {
                   </dl>
                 </div>
                 <div className="border-t border-mis-border bg-slate-50/70 px-5 py-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{ct('responsibleFor')}</p>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-mis-muted">{ct('responsibleFor')}</p>
                   {collector.organizations.length
                     ? <OrgRows collectorId={collector.id} kindLabel={ct} labels={orgLabels} money={f.money} number={f.number} rows={collector.organizations} />
                     : <p className="text-sm text-slate-500">{ct('noOrgCoverage')}</p>}
@@ -147,7 +147,7 @@ function OrgRows({ collectorId, kindLabel, labels, money, number, rows, unassign
               <BankLogo className="h-12 w-12 rounded-xl" code={row.code ?? ''} logoUrl={row.logoUrl} name={row.name} />
               <div className="min-w-0">
                 <Link className="block truncate font-bold text-mis-navy hover:text-mis-primary" to={organizationPath(kind, row.organizationId)}>{row.name}</Link>
-                <p className="mt-0.5 text-xs text-slate-400">{kindLabel(typeKey)}{row.code ? <span data-bidi="ltr"> · {row.code}</span> : null}</p>
+                <p className="mt-0.5 text-xs text-mis-muted">{kindLabel(typeKey)}{row.code ? <span data-bidi="ltr"> · {row.code}</span> : null}</p>
                 <Link className="mt-1 inline-block text-xs font-semibold text-mis-primary" to={casesHref}>{kindLabel('viewCreditorCases')}</Link>
               </div>
             </div>
@@ -172,7 +172,7 @@ function initials(name: string) {
 function Metric({ label, money, value }: { label: string; money?: boolean; value: string }) {
   return (
     <div className="min-w-[7rem] rounded-xl bg-slate-50 px-3 py-2 text-end">
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-mis-muted">{label}</dt>
       <dd className="mt-1 text-sm font-bold tabular-nums text-mis-navy" data-bidi={money ? 'ltr' : undefined}>{value}</dd>
     </div>
   );

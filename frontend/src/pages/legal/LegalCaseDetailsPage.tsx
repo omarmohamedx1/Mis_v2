@@ -202,7 +202,7 @@ export function LegalCaseDetailsPage() {
                   {item.result ? <p className="mt-1 text-sm font-semibold text-amber-800">{item.result}</p> : null}
                   {item.happenedOn ? <p className="mt-1 text-xs text-slate-500">{l.text('تاريخ الواقعة', 'Event date')}: {l.date(item.happenedOn)}</p> : null}
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{item.notes}</p>
-                  <p className="mt-2 text-xs text-slate-400">{item.createdByName}</p>
+                  <p className="mt-2 text-xs text-mis-muted">{item.createdByName}</p>
                 </li>
               ))}
             </ol>

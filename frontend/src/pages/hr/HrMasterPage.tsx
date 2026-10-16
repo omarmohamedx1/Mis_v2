@@ -294,7 +294,7 @@ export function HrMasterPage() {
         <div className="module-filter-grid border-b border-mis-border p-4">
           <label className="relative">
             <span className="sr-only">{t('searchMasterData')}</span>
-            <Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" aria-hidden="true" />
+            <Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" aria-hidden="true" />
             <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchMasterData')} value={searchInput} />
           </label>
           <ProfessionalSelect aria-label={t('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm text-slate-700 outline-none focus:border-mis-blue" onChange={(event) => { setActiveFilter(event.target.value as typeof activeFilter); setPage(1); }} value={activeFilter}>

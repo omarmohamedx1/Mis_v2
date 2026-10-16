@@ -93,7 +93,7 @@ export function FinanceCollectionsPage() {
           <tbody className="divide-y divide-mis-border">{data.items.map((row) => <tr key={row.receiptId} className="hover:bg-slate-50">
             <td className="px-5 py-4 font-mono text-xs font-bold text-mis-primary">{row.referenceNumber}</td>
             <td className="px-5 py-4 text-slate-600">{f.date(row.paymentDate)}</td>
-            <td className="px-5 py-4"><p className="font-semibold text-mis-navy">{f.ar ? row.clientNameArabic : row.clientNameEnglish}</p><p className="mt-1 text-xs text-slate-400">{row.clientCode}</p></td>
+            <td className="px-5 py-4"><p className="font-semibold text-mis-navy">{f.ar ? row.clientNameArabic : row.clientNameEnglish}</p><p className="mt-1 text-xs text-mis-muted">{row.clientCode}</p></td>
             <td className="px-5 py-4 text-slate-600">{f.channel(row.channel)}</td>
             <td className="px-5 py-4 text-slate-600">{row.collectorName}</td>
             <td className="px-5 py-4 text-end font-bold text-mis-navy" data-bidi="ltr">{f.money(row.grossAmount, row.currencyCode)}</td>
@@ -161,4 +161,4 @@ function CollectionDetailsDialog({ value, close, changed }: { value: CollectionF
 }
 
 function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-bold text-slate-500">{label}</p><p className="mt-2 font-semibold text-mis-navy">{value}</p></div>; }
-function JournalLink({ label, id, number }: { label: string; id?: string; number?: string }) { return <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-bold text-slate-500">{label}</p>{id && number ? <Link className="mt-2 block font-mono text-xs font-bold text-mis-primary hover:underline" to={`/finance/journals/${id}`}>{number}</Link> : <p className="mt-2 text-sm text-slate-400">—</p>}</div>; }
+function JournalLink({ label, id, number }: { label: string; id?: string; number?: string }) { return <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-bold text-slate-500">{label}</p>{id && number ? <Link className="mt-2 block font-mono text-xs font-bold text-mis-primary hover:underline" to={`/finance/journals/${id}`}>{number}</Link> : <p className="mt-2 text-sm text-mis-muted">—</p>}</div>; }

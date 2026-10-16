@@ -15,6 +15,7 @@ export default {
           pale: '#E7F3FA',
           surface: '#F7F9FC',
           border: '#D8E3EC',
+          muted: 'var(--color-muted)',
         },
       },
       borderRadius: {

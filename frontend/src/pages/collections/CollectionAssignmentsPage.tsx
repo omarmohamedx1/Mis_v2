@@ -281,7 +281,7 @@ export function CollectionAssignmentsPage() {
 
       <section className="module-filter-grid mb-4 rounded-2xl border border-mis-border bg-white p-4">
         <label className="relative">
-          <Search className="absolute top-3.5 h-4 w-4 text-slate-400" style={{ insetInlineStart: '.85rem' }} />
+          <Search className="absolute top-3.5 h-4 w-4 text-mis-muted" style={{ insetInlineStart: '.85rem' }} />
           <input className="field h-11 py-2 ps-10 leading-normal" onChange={(event) => setSearchInput(event.target.value)} placeholder={ct('searchCases')} value={searchInput} />
         </label>
         <ProfessionalSelect className="field h-11 py-2 leading-normal" onChange={(event) => { setOrganizationId(event.target.value); setPage(1); }} value={organizationId}>

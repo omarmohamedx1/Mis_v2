@@ -110,7 +110,7 @@ export function DataEntryClientDetailsPage() {
             {shownPhones.map((number) => (
               <span className="rounded-full bg-slate-100 px-3 py-1 font-mono text-sm text-mis-navy" data-bidi="ltr" key={number}>{number}</span>
             ))}
-            {!shownPhones.length ? <span className="text-sm text-slate-400">—</span> : null}
+            {!shownPhones.length ? <span className="text-sm text-mis-muted">—</span> : null}
           </div>
         </section>
         <DetailSection

@@ -163,7 +163,7 @@ export function AdminUsersPage() {
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row">
           <label className="relative flex-1">
-            <Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" />
+            <Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" />
             <input className="field !py-2.5 ps-10" onChange={(event) => setSearch(event.target.value)} placeholder={t.search} value={search} />
           </label>
           <ProfessionalSelect className="field !w-auto !py-2.5" onChange={(event) => setDepartment(event.target.value)} value={department}>
@@ -210,7 +210,7 @@ export function AdminUsersPage() {
                       <div className="flex flex-wrap gap-1.5">
                         {user.roles.slice(0, 2).map((role) => <span className="rounded-full bg-cyan-50 px-2 py-1 text-xs font-bold text-cyan-800" key={role.id}>{roleLabel(role.name, language)}</span>)}
                         {user.accessGrants.length > 0 && <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700">{user.accessGrants.length} {t.permissions}</span>}
-                        {!user.roles.length && !user.accessGrants.length && <span className="text-xs text-slate-400">{t.noAccess}</span>}
+                        {!user.roles.length && !user.accessGrants.length && <span className="text-xs text-mis-muted">{t.noAccess}</span>}
                         {user.accessGrants.some((grant) => grant.status === 'PENDING') && <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700">{t.pending}</span>}
                       </div>
                     </td>
@@ -421,7 +421,7 @@ function AccessReviewModal({
     >
       <div className="grid h-full min-h-0 overflow-y-auto xl:grid-cols-[320px_1fr_320px] xl:overflow-hidden">
         <aside className="border-e border-slate-200 bg-slate-50 p-5 xl:min-h-0 xl:overflow-y-auto">
-          <p className="text-xs font-black uppercase tracking-wider text-slate-400">{t.employee}</p>
+          <p className="text-xs font-black uppercase tracking-wider text-mis-muted">{t.employee}</p>
           <p className="mt-2 text-xs leading-5 text-slate-500">{t.employeeHelp}</p>
           <label className="mt-3 block text-xs font-bold text-slate-700">
             <ProfessionalSelect className="field mt-1 !py-2 text-xs" onChange={(event) => setEmployeeId(event.target.value)} value={employeeId}>
@@ -429,7 +429,7 @@ function AccessReviewModal({
               {employees.map((item) => <option key={item.id} value={item.id}>{item.employeeNumber} · {item.fullName}</option>)}
             </ProfessionalSelect>
           </label>
-          <p className="text-xs font-black uppercase tracking-wider text-slate-400 mt-6">{t.roleStep}</p>
+          <p className="text-xs font-black uppercase tracking-wider text-mis-muted mt-6">{t.roleStep}</p>
           <p className="mt-2 text-xs leading-5 text-slate-500">{t.roleHint}</p>
           <div className="mt-4 space-y-2">
             {refs.roles.map((role) => {
@@ -454,14 +454,14 @@ function AccessReviewModal({
           </div>
         </aside>
         <main className="p-5 sm:p-6 xl:min-h-0 xl:overflow-y-auto">
-          <p className="text-xs font-black uppercase tracking-wider text-slate-400">{t.extraStep}</p>
+          <p className="text-xs font-black uppercase tracking-wider text-mis-muted">{t.extraStep}</p>
           <p className="mt-2 text-sm leading-6 text-slate-500">{t.extraHint}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Chip active={module === 'ALL'} label={t.allModules} onClick={() => setModule('ALL')} />
             {GROUP_ORDER.map((group) => <Chip active={module === group} key={group} label={PERMISSION_GROUPS[group][language]} onClick={() => setModule(group)} />)}
           </div>
           <label className="relative mt-4 block">
-            <Search className="absolute start-3 top-3 h-4 w-4 text-slate-400" />
+            <Search className="absolute start-3 top-3 h-4 w-4 text-mis-muted" />
             <input className="field !py-2.5 ps-10" onChange={(event) => setQuery(event.target.value)} placeholder={t.searchPermissions} value={query} />
           </label>
           <div className="mt-5 space-y-7">

@@ -307,7 +307,7 @@ export function HrAbsencesPage({ embedded = false }: { embedded?: boolean }) {
       <section className="overflow-hidden rounded-2xl border border-mis-border bg-white shadow-sm">
         <div className="module-filter-grid border-b border-mis-border p-4">
           <label className="relative">
-            <Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" aria-hidden="true" />
+            <Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" aria-hidden="true" />
             <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchEmployee')} value={searchInput} />
           </label>
           <ProfessionalSelect aria-label={t('department')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setDepartmentId(event.target.value); setPage(1); }} value={departmentId}>

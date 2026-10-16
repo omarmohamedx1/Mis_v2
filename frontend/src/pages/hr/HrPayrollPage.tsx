@@ -124,7 +124,7 @@ export function HrPayrollPage() {
                   <tbody>
                     {rows.map((item) => (
                       <tr className="cursor-pointer border-t border-mis-border hover:bg-mis-pale/40" key={item.employeeId} onClick={() => setSelected(item)}>
-                        <td className="px-4 py-3"><p className="font-semibold text-mis-navy">{item.employeeName}</p><p className="text-xs text-slate-400">{item.employeeNumber}</p></td>
+                        <td className="px-4 py-3"><p className="font-semibold text-mis-navy">{item.employeeName}</p><p className="text-xs text-mis-muted">{item.employeeNumber}</p></td>
                         <td className="px-4 py-3">{item.departmentName || '—'}</td>
                         <td className="px-4 py-3" data-bidi="ltr">{money(item.basicSalary, language)}</td>
                         <td className="px-4 py-3" data-bidi="ltr">{money(item.allowances, language)}</td>
@@ -164,10 +164,10 @@ export function HrPayrollPage() {
               {selected.accountingStatus ? <AccountingStatus value={selected.accountingStatus} /> : null}
             </div>
             <dl className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-mis-border px-4 py-3"><dt className="text-xs font-semibold text-slate-400">{ar ? 'أجر اليوم' : 'Daily rate'}</dt><dd className="mt-1 font-semibold" data-bidi="ltr">{money(selected.dailyRate, language)}</dd></div>
-              <div className="rounded-xl border border-mis-border px-4 py-3"><dt className="text-xs font-semibold text-slate-400">{ar ? 'أيام الغياب' : 'Absence days'}</dt><dd className="mt-1 font-semibold">{selected.absenceDays}</dd></div>
-              <div className="rounded-xl border border-mis-border px-4 py-3"><dt className="text-xs font-semibold text-slate-400">{ar ? 'زيارات الجمعة المسقطة' : 'Friday visits waived'}</dt><dd className="mt-1 font-semibold">{selected.offsetAbsenceDays}</dd></div>
-              <div className="rounded-xl border border-mis-border px-4 py-3"><dt className="text-xs font-semibold text-slate-400">{ar ? 'دقائق التأخير المتبقية' : 'Late remainder'}</dt><dd className="mt-1 font-semibold">{selected.lateRemainderMinutes}</dd></div>
+              <div className="rounded-xl border border-mis-border px-4 py-3"><dt className="text-xs font-semibold text-mis-muted">{ar ? 'أجر اليوم' : 'Daily rate'}</dt><dd className="mt-1 font-semibold" data-bidi="ltr">{money(selected.dailyRate, language)}</dd></div>
+              <div className="rounded-xl border border-mis-border px-4 py-3"><dt className="text-xs font-semibold text-mis-muted">{ar ? 'أيام الغياب' : 'Absence days'}</dt><dd className="mt-1 font-semibold">{selected.absenceDays}</dd></div>
+              <div className="rounded-xl border border-mis-border px-4 py-3"><dt className="text-xs font-semibold text-mis-muted">{ar ? 'زيارات الجمعة المسقطة' : 'Friday visits waived'}</dt><dd className="mt-1 font-semibold">{selected.offsetAbsenceDays}</dd></div>
+              <div className="rounded-xl border border-mis-border px-4 py-3"><dt className="text-xs font-semibold text-mis-muted">{ar ? 'دقائق التأخير المتبقية' : 'Late remainder'}</dt><dd className="mt-1 font-semibold">{selected.lateRemainderMinutes}</dd></div>
             </dl>
             <div className="space-y-2">
               <h3 className="text-sm font-bold text-mis-navy">{ar ? 'الخصومات' : 'Deductions'}</h3>

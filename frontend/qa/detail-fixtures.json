@@ -1,0 +1,12 @@
+{
+  "id": "00000000-0000-4000-8000-000000000099",
+  "longArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+  "longEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+  "unbroken": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+  "journal": {
+    "id": "00000000-0000-4000-8000-000000000099", "journalNumber": "QA-2026-VERY-LONG-JOURNAL-REFERENCE-12345678901234567890", "status": "POSTED", "entryType": "MANUAL", "currencyCode": "EGP", "postingDate": "2026-10-16", "transactionDate": "2026-10-16", "totalDebit": 9999999999999.99, "totalCredit": 9999999999999.99, "createdAt": "2026-10-16T09:00:00Z", "approvedAt": null, "postedAt": "2026-10-16T09:00:00Z", "lines": []
+  },
+  "client": {"id":"00000000-0000-4000-8000-000000000099","customerNumber":"QA-REFERENCE-1234567890","organizationId":"00000000-0000-4000-8000-000000000099","organizationType":"BANK","source":"MANUAL","createdAt":"2026-10-16T09:00:00Z","phones":[],"fields":{}},
+  "legal": {"collectionCaseId":"00000000-0000-4000-8000-000000000099","fileId":"00000000-0000-4000-8000-000000000099","caseNumber":"QA-CASE-1234567890123456789","accountReference":"QA-ACCOUNT-123456789012345678901234567890","originalAmount":9999999999999.99,"outstandingBalance":-9999999999999.99,"daysPastDue":999999,"collectionStatus":"LEGAL","legalStage":"INTAKE","receivedAt":"2026-10-16T09:00:00Z","updatedAt":"2026-10-16T09:00:00Z","canManage":true,"actions":[]},
+  "visit": {"id":"00000000-0000-4000-8000-000000000099","employeeId":"00000000-0000-4000-8000-000000000099","employeeNumber":"QA-EMP-1234567890","type":"FieldVisitMission","date":"2026-10-16","fromTime":"23:59","status":"Approved","visitStatus":"COMPLETED","visitResult":"CONNECTED","attachments":[]}
+}

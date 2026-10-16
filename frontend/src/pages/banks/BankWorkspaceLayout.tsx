@@ -126,13 +126,13 @@ export function BankWorkspaceLayout() {
               {ct(deskLabelKey(classification.secondary))}
             </p>
             <p className="mt-2 text-sm text-slate-500">{ct('workspaceDeskSubtitle')}</p>
-            <p className="mt-1 text-sm font-semibold text-slate-400" data-bidi="ltr">{bank.code}</p>
+            <p className="mt-1 text-sm font-semibold text-mis-muted" data-bidi="ltr">{bank.code}</p>
           </div>
         </div>
         <nav className="workspace-nav-stages border-t border-mis-border bg-slate-50/80 px-3 py-4 sm:px-5" aria-label={installment ? ct('installmentCompanyWorkspace') : ct('bankWorkspace')}>
           {stages.map((stage) => (
             <section className="workspace-nav-stage min-w-0" key={stage.label}>
-              <p className="px-1 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{ct(stage.label)}</p>
+              <p className="px-1 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-mis-muted">{ct(stage.label)}</p>
               <div className="workspace-nav-stage-links">
                 {stage.items.map(([path, label, Icon]) => (
                   <NavLink

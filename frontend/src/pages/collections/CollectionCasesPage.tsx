@@ -143,7 +143,7 @@ export function CollectionCasesPage() {
               {SEARCH_FIELDS.map((item) => <option key={item} value={item}>{ct(SEARCH_LABELS[item])}</option>)}
             </ProfessionalSelect>
             <label className="relative min-w-0">
-              <Search aria-hidden="true" className="pointer-events-none absolute start-3 top-3 h-5 w-5 text-slate-400" />
+              <Search aria-hidden="true" className="pointer-events-none absolute start-3 top-3 h-5 w-5 text-mis-muted" />
               <input
                 autoComplete="off"
                 className="h-11 w-full rounded-xl border border-mis-border bg-white pe-10 ps-10 text-sm outline-none transition focus:border-mis-blue focus:shadow-input"
@@ -154,7 +154,7 @@ export function CollectionCasesPage() {
                 type="search"
                 value={searchInput}
               />
-              {searchInput ? <button aria-label={ct('clearFilters')} className="absolute end-2 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={() => setSearchInput('')} type="button"><X className="h-4 w-4" /></button> : null}
+              {searchInput ? <button aria-label={ct('clearFilters')} className="absolute end-2 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg text-mis-muted hover:bg-slate-100 hover:text-slate-700" onClick={() => setSearchInput('')} type="button"><X className="h-4 w-4" /></button> : null}
             </label>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -224,13 +224,13 @@ export function CollectionCasesPage() {
                       >
                         <Td>
                           <p className="font-semibold text-mis-navy">{row.customerName}</p>
-                          <p className="mt-0.5 text-xs text-slate-400" data-bidi="ltr">{row.caseNumber}</p>
+                          <p className="mt-0.5 text-xs text-mis-muted" data-bidi="ltr">{row.caseNumber}</p>
                         </Td>
                         <Td><span className="whitespace-nowrap tabular-nums" data-bidi="ltr">{row.primaryPhone || '—'}</span></Td>
                         <Td><span className="whitespace-nowrap tabular-nums" data-bidi="ltr">{row.alternatePhone || row.tertiaryPhone || '—'}</span></Td>
                         <Td>
                           <p className="text-slate-700">{row.clientName}</p>
-                          {others.length > 0 ? <p className="mt-0.5 text-xs text-slate-400">{ct('otherCreditors')}: {others.join(' · ')}</p> : null}
+                          {others.length > 0 ? <p className="mt-0.5 text-xs text-mis-muted">{ct('otherCreditors')}: {others.join(' · ')}</p> : null}
                         </Td>
                         <Td><span className="font-semibold tabular-nums" data-bidi="ltr">{format.money(row.outstandingBalance)}</span></Td>
                         <Td><CollectorAssignmentLabel assignedId={row.assignedCollectorId} assignedName={row.assignedCollectorName} fileName={row.fileCollectorName} /></Td>

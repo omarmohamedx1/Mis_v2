@@ -148,7 +148,7 @@ function formatMoney(value: number | null | undefined, language: 'ar' | 'en'): s
 }
 
 function InfoItem({ label, value }: { label: ReactNode; value: ReactNode }) {
-  return <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</dt><dd className="mt-1.5 break-words text-sm font-semibold text-mis-navy" dir="auto">{value || '—'}</dd></div>;
+  return <div><dt className="text-xs font-semibold uppercase tracking-wide text-mis-muted">{label}</dt><dd className="mt-1.5 break-words text-sm font-semibold text-mis-navy" dir="auto">{value || '—'}</dd></div>;
 }
 
 function FormError({ message }: { message: string }) {
@@ -206,7 +206,7 @@ function OverviewTab({ onOpenTab, profile, reportingLine }: { onOpenTab: (tab: P
         </Section>
         <Section title={t('reportingLine')}>
           <div className="rounded-xl bg-mis-surface p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('directManager')}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-mis-muted">{t('directManager')}</p>
             {reportingLine.directManagerId ? <Link className="mt-2 inline-flex font-semibold text-mis-primary hover:text-mis-deep" to={`/hr/employees/${reportingLine.directManagerId}`}>{reportingLine.directManagerName}</Link> : <p className="mt-2 text-sm text-slate-500">{t('notAssigned')}</p>}
           </div>
           <div className="mt-5">
@@ -461,7 +461,7 @@ function EmploymentTab({ lookups, onUpdated, profile }: { lookups: ProfileLookup
                 <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${checked ? 'border-mis-sky bg-white text-mis-primary shadow-sm' : 'border-transparent bg-white/60 text-slate-700 hover:border-slate-200'}`} key={item.id}>
                   <input checked={checked} className="h-4 w-4 shrink-0 accent-mis-primary" onChange={() => setForm((current) => ({ ...current, organizationIds: checked ? (current.organizationIds ?? []).filter((id) => id !== item.id) : [...(current.organizationIds ?? []), item.id] }))} type="checkbox" />
                   <span className="min-w-0 break-words font-semibold">{organizationLabel(item, language)}</span>
-                  <bdi className="ms-auto shrink-0 text-[11px] text-slate-400">{item.code}</bdi>
+                  <bdi className="ms-auto shrink-0 text-[11px] text-mis-muted">{item.code}</bdi>
                 </label>
               );
             })}
@@ -558,7 +558,7 @@ function CompensationTab({ onUpdated, profile }: { onUpdated: (profile: Employee
           <TextInput label={t('basicSalary')} min={0} name="basicSalary" onChange={(event) => setForm((current) => ({ ...current, basicSalary: Number(event.target.value) || 0 }))} step="0.01" type="number" value={form.basicSalary} />
           <TextInput label={t('allowances')} min={0} name="allowances" onChange={(event) => setForm((current) => ({ ...current, allowances: Number(event.target.value) || 0 }))} step="0.01" type="number" value={form.allowances} />
           <DateInput label={t('effectiveFrom')} max={today} min={profile.employment.hireDate ?? undefined} name="effectiveFrom" onChange={(event) => setForm((current) => ({ ...current, effectiveFrom: event.target.value }))} required value={form.effectiveFrom} />
-          <div className="rounded-xl bg-mis-surface p-4 sm:col-span-2"><p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('totalSalary')}</p><p className="mt-2 text-2xl font-bold text-mis-navy">{formattedTotal}</p></div>
+          <div className="rounded-xl bg-mis-surface p-4 sm:col-span-2"><p className="text-xs font-semibold uppercase tracking-wide text-mis-muted">{t('totalSalary')}</p><p className="mt-2 text-2xl font-bold text-mis-navy">{formattedTotal}</p></div>
           <TextInput label={t('bankName')} maxLength={160} name="bankName" onChange={(event) => setForm((current) => ({ ...current, bankName: event.target.value }))} value={form.bankName ?? ''} />
           <TextInput label={t('bankAccount')} maxLength={100} name="bankAccount" onChange={(event) => setForm((current) => ({ ...current, bankAccount: event.target.value }))} value={form.bankAccount ?? ''} />
           <TextInput label={t('iban')} maxLength={64} name="iban" onChange={(event) => setForm((current) => ({ ...current, iban: event.target.value }))} value={form.iban ?? ''} />
@@ -619,7 +619,7 @@ const arabicAuditValues: Record<string, string> = {
 
 function AuditValue({ value }: { value: string | null }) {
   const { language, t } = useLocalization();
-  if (value === null || value === '') return <span className="text-slate-400">—</span>;
+  if (value === null || value === '') return <span className="text-mis-muted">—</span>;
   if (value === 'Yes' || value === 'true') return <>{t('yes')}</>;
   if (value === 'No' || value === 'false') return <>{t('no')}</>;
   if (language === 'ar' && arabicAuditValues[value]) return <>{arabicAuditValues[value]}</>;
@@ -641,7 +641,7 @@ function AuditFieldName({ field }: { field: string }) {
 
 function StructuredAuditValue({ value }: { value: unknown }): ReactNode {
   const { language, t } = useLocalization();
-  if (value === null || value === undefined || value === '') return <span className="text-slate-400">—</span>;
+  if (value === null || value === undefined || value === '') return <span className="text-mis-muted">—</span>;
   if (typeof value === 'boolean') return value ? t('yes') : t('no');
   if (typeof value === 'string') return language === 'ar' && arabicAuditValues[value] ? arabicAuditValues[value] : value;
   if (typeof value === 'number') return String(value);
@@ -679,14 +679,14 @@ function AuditTab({ employeeId }: { employeeId: string }) {
   return (
     <Section bodyClassName="p-0" description={t('auditHistoryHelp')} title={t('auditHistory')}>
       <div className="border-b border-mis-border p-4">
-        <label className="relative block"><span className="sr-only">{t('searchAudit')}</span><Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" aria-hidden="true" /><input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchAudit')} value={searchInput} /></label>
+        <label className="relative block"><span className="sr-only">{t('searchAudit')}</span><Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" aria-hidden="true" /><input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchAudit')} value={searchInput} /></label>
       </div>
       {loading ? <div className="flex min-h-64 items-center justify-center"><LoadingSpinner /></div> : error ? <ErrorState compact message={error} onRetry={() => void load()} title={t('auditUnavailable')} /> : data.items.length === 0 ? <EmptyState compact description={t('noAuditHelp')} icon={<History className="h-6 w-6" aria-hidden="true" />} title={t('noAuditRecords')} /> : (
         <>
           <div className="divide-y divide-mis-border">
             {data.items.map((item: AuditLogItem) => (
               <article className="p-5 sm:p-6" key={item.id}>
-                <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start"><div><h3 className="font-bold text-mis-navy">{auditActionLabels[item.action] ? t(auditActionLabels[item.action]) : language === 'ar' ? t('auditEmployeeUpdated') : item.action.replace(/([a-z0-9])([A-Z])/g, '$1 $2')}</h3>{item.description && (language === 'en' || /[\u0600-\u06ff]/.test(item.description)) ? <p className="mt-1 text-sm text-slate-500">{item.description}</p> : null}</div><time className="text-xs font-semibold text-slate-400" dateTime={item.timestamp}>{formatDateTime(item.timestamp, language)}</time></div>
+                <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start"><div><h3 className="font-bold text-mis-navy">{auditActionLabels[item.action] ? t(auditActionLabels[item.action]) : language === 'ar' ? t('auditEmployeeUpdated') : item.action.replace(/([a-z0-9])([A-Z])/g, '$1 $2')}</h3>{item.description && (language === 'en' || /[\u0600-\u06ff]/.test(item.description)) ? <p className="mt-1 text-sm text-slate-500">{item.description}</p> : null}</div><time className="text-xs font-semibold text-mis-muted" dateTime={item.timestamp}>{formatDateTime(item.timestamp, language)}</time></div>
                 <p className="mt-3 text-xs text-slate-500">{t('changedBy', { user: item.username })}</p>
                 {item.changes.length ? <div className="mt-4 overflow-x-auto rounded-xl border border-mis-border"><div className="grid min-w-[620px] grid-cols-[minmax(110px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)] bg-mis-surface px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-500"><span>{t('field')}</span><span>{t('from')}</span><span>{t('to')}</span></div>{item.changes.map((change) => <div className="grid min-w-[620px] grid-cols-[minmax(110px,0.8fr)_minmax(120px,1fr)_minmax(120px,1fr)] gap-3 border-t border-mis-border px-4 py-3 text-sm" key={change.field}><span className="font-semibold text-mis-navy"><AuditFieldName field={change.field} /></span><span className="break-words text-slate-500"><AuditValue value={change.oldValue} /></span><span className="break-words text-slate-700"><AuditValue value={change.newValue} /></span></div>)}</div> : null}
               </article>
@@ -859,7 +859,7 @@ export function HrEmployeeProfilePage() {
         <div className="flex h-16 w-16 flex-none items-center justify-center rounded-2xl bg-mis-pale text-2xl font-bold text-mis-primary">{profile.displayName.trim().charAt(0).toUpperCase() || <UserRound />}</div>
         <div className="min-w-0">
           <p className="truncate text-lg font-bold text-mis-navy" dir="auto">{profile.displayName}</p>
-          {secondaryEmployeeName({ fullName: profile.displayName, fullNameArabic: profile.personal.fullNameArabic, fullNameEnglish: profile.personal.fullNameEnglish }, language) ? <p className="mt-0.5 truncate text-sm text-slate-400" dir="auto">{secondaryEmployeeName({ fullName: profile.displayName, fullNameArabic: profile.personal.fullNameArabic, fullNameEnglish: profile.personal.fullNameEnglish }, language)}</p> : null}
+          {secondaryEmployeeName({ fullName: profile.displayName, fullNameArabic: profile.personal.fullNameArabic, fullNameEnglish: profile.personal.fullNameEnglish }, language) ? <p className="mt-0.5 truncate text-sm text-mis-muted" dir="auto">{secondaryEmployeeName({ fullName: profile.displayName, fullNameArabic: profile.personal.fullNameArabic, fullNameEnglish: profile.personal.fullNameEnglish }, language)}</p> : null}
           <p className="mt-1 truncate text-sm text-slate-500">{profile.employment.positionName || t('notAssigned')} · {profile.employment.departmentName}{(profile.employment.organizations ?? []).length ? ` · ${(profile.employment.organizations ?? []).map((org) => organizationLabel(org, language)).join(' · ')}` : ''}{profile.canManageCompensation ? ` · ${t('basicSalary')} ${formatMoney(profile.compensation?.basicSalary, language)}` : ''}</p>
         </div>
       </div>

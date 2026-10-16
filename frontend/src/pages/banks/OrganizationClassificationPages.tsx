@@ -190,7 +190,7 @@ export function OrganizationClassificationBreadcrumb({
   parts.push(`${displayPrimary(primary)} · ${ct(deskLabelKey(primary))}`);
   parts.push(`${displayPrimary(secondary)} · ${ct(deskLabelKey(secondary))}`);
   return (
-    <span className="text-xs font-semibold text-slate-400 [overflow-wrap:anywhere]">
+    <span className="text-xs font-semibold text-mis-muted [overflow-wrap:anywhere]">
       {parts.join(' / ')}
     </span>
   );

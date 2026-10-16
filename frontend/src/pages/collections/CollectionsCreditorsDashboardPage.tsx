@@ -77,7 +77,7 @@ export function CollectionsCreditorsDashboardPage() {
       </section>
 
       <label className="relative mt-6 block">
-        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mis-muted" />
         <input className="h-12 w-full rounded-2xl border border-mis-border bg-white pe-4 ps-10 text-sm shadow-sm outline-none focus:border-mis-primary" onChange={event => setSearch(event.target.value)} placeholder={ct('searchCreditors')} value={search} />
       </label>
 
@@ -149,7 +149,7 @@ function CreditorGroup({ books, deskLabel, empty, icon, kind, labels, money, num
                   <BankLogo className="h-16 w-16 rounded-2xl" code={book.code} logoUrl={book.logoUrl} name={book.name} />
                   <div className="min-w-0">
                     <Link className="block truncate text-lg font-bold text-mis-navy hover:text-mis-primary" to={organizationPath(kind, book.id)}>{book.name}</Link>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400" data-bidi="ltr">{book.code}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-mis-muted" data-bidi="ltr">{book.code}</p>
                     <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold">
                       <Link className="text-mis-primary" to={`/collections/cases?organizationId=${book.id}`}>{labels.viewCases}</Link>
                       <Link className="text-slate-500 hover:text-mis-primary" to={organizationPath(kind, book.id)}>{labels.open}</Link>
@@ -164,12 +164,12 @@ function CreditorGroup({ books, deskLabel, empty, icon, kind, labels, money, num
                 </dl>
               </div>
               <div className="border-t border-mis-border bg-slate-50/70 px-5 py-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{labels.desks}</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-mis-muted">{labels.desks}</p>
                 {book.desks.length ? (
                   <div className="overflow-x-auto rounded-xl border border-mis-border bg-white">
                     <table className="min-w-full text-sm">
                       <thead>
-                        <tr className="border-b border-slate-100 text-start text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        <tr className="border-b border-slate-100 text-start text-xs font-semibold uppercase tracking-wide text-mis-muted">
                           <th className="px-4 py-2.5 font-semibold">{labels.desks}</th>
                           <th className="px-4 py-2.5 text-end font-semibold">{labels.cases}</th>
                           <th className="px-4 py-2.5 text-end font-semibold">{labels.assigned}</th>
@@ -186,7 +186,7 @@ function CreditorGroup({ books, deskLabel, empty, icon, kind, labels, money, num
                             <tr className="border-t border-slate-50" key={desk.portfolioId}>
                               <td className="px-4 py-2.5">
                                 <Link className="font-semibold text-mis-navy hover:text-mis-primary" to={href}>{deskLabel(desk)}</Link>
-                                {desk.name && parsed ? <p className="mt-0.5 text-xs text-slate-400">{desk.name}</p> : null}
+                                {desk.name && parsed ? <p className="mt-0.5 text-xs text-mis-muted">{desk.name}</p> : null}
                               </td>
                               <td className="px-4 py-2.5 text-end tabular-nums">{number(desk.cases)}</td>
                               <td className="px-4 py-2.5 text-end tabular-nums">{number(desk.assigned)}</td>
@@ -212,7 +212,7 @@ function CreditorGroup({ books, deskLabel, empty, icon, kind, labels, money, num
 function Metric({ label, money, value }: { label: string; money?: boolean; value: string }) {
   return (
     <div className="min-w-[7.5rem] rounded-xl bg-slate-50 px-3 py-2 text-end">
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-mis-muted">{label}</dt>
       <dd className="mt-1 text-sm font-bold tabular-nums text-mis-navy" data-bidi={money ? 'ltr' : undefined}>{value}</dd>
     </div>
   );

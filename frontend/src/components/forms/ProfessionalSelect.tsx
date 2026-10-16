@@ -269,7 +269,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         data-overlay-owners={owners.join(' ')} className={`fixed z-[var(--z-select)] flex overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,.24)] ${layout.mobile ? 'max-h-[calc(100dvh-1.5rem)] flex-col' : 'flex-col'}`}
         onKeyDown={event => { if (event.key === 'Tab') { event.preventDefault(); close(); } }}
         dir={isRtl ? 'rtl' : 'ltr'}
-        style={{ bottom: layout.bottom, left: layout.left, maxHeight: layout.maxHeight, top: layout.bottom === undefined ? layout.top : undefined, width: layout.width }}
+        style={{ bottom: layout.bottom === undefined ? undefined : `max(${layout.bottom}px, var(--safe-bottom))`, left: layout.left, maxHeight: layout.mobile ? `min(${layout.maxHeight}px, calc(100dvh - max(12px, var(--safe-bottom)) - 12px))` : layout.maxHeight, top: layout.bottom === undefined ? layout.top : undefined, width: layout.width }}
       >
         <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -278,7 +278,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
           </div>
           <button aria-label={language === 'ar' ? 'إغلاق' : 'Close'} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-white hover:text-mis-navy" onClick={() => close()} type="button"><X className="h-4 w-4" /></button>
         </div>
-        {showSearch ? <label className="relative m-3 mb-1 shrink-0"><Search aria-hidden="true" className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><span className="sr-only">{searchPlaceholder ?? (language === 'ar' ? 'البحث في الاختيارات' : 'Search options')}</span><input ref={searchRef} className="h-11 w-full rounded-xl border border-slate-200 bg-white ps-10 pe-3 text-sm text-slate-800 outline-none focus:border-mis-blue focus:ring-4 focus:ring-mis-pale" onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }} onKeyDown={(event) => { if (event.key === 'Escape') close(); else if (event.key === 'ArrowDown') { event.preventDefault(); optionRefs.current[0]?.focus(); } }} placeholder={searchPlaceholder ?? (language === 'ar' ? 'ابحث...' : 'Search...')} value={query} /></label> : null}
+        {showSearch ? <label className="relative m-3 mb-1 shrink-0"><Search aria-hidden="true" className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mis-muted" /><span className="sr-only">{searchPlaceholder ?? (language === 'ar' ? 'البحث في الاختيارات' : 'Search options')}</span><input ref={searchRef} className="h-11 w-full rounded-xl border border-slate-200 bg-white ps-10 pe-3 text-sm text-slate-800 outline-none focus:border-mis-blue focus:ring-4 focus:ring-mis-pale" onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }} onKeyDown={(event) => { if (event.key === 'Escape') close(); else if (event.key === 'ArrowDown') { event.preventDefault(); optionRefs.current[0]?.focus(); } }} placeholder={searchPlaceholder ?? (language === 'ar' ? 'ابحث...' : 'Search...')} value={query} /></label> : null}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2" id={listboxId} role="listbox">
           {visibleOptions.length ? visibleOptions.map((option, index) => {
             const selected = option.value === selectedValue;

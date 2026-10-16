@@ -183,14 +183,16 @@ export function ProfessionalDateInput({
   };
 
   const monthStart = new Date(view.getFullYear(), view.getMonth(), 1);
+  const localeInfo = new Intl.Locale(locale) as Intl.Locale & { getWeekInfo?: () => { firstDay: number }; weekInfo?: { firstDay: number } };
+  const firstDay = (localeInfo.getWeekInfo?.().firstDay ?? localeInfo.weekInfo?.firstDay ?? (language === 'ar' ? 6 : 1)) % 7;
   const gridStart = new Date(monthStart);
-  gridStart.setDate(1 - ((monthStart.getDay() + 6) % 7));
+  gridStart.setDate(1 - ((monthStart.getDay() - firstDay + 7) % 7));
   const days = useMemo(() => Array.from({ length: 42 }, (_, index) => {
     const date = new Date(gridStart);
     date.setDate(gridStart.getDate() + index);
     return date;
   }), [gridStart.getTime()]);
-  const weekdays = useMemo(() => Array.from({ length: 7 }, (_, index) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(2024, 0, index + 1))), [locale]);
+  const weekdays = useMemo(() => Array.from({ length: 7 }, (_, index) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(2024, 0, 7 + firstDay + index))), [locale, firstDay]);
   const choose = (date: Date) => {
     if (!inRange(date)) return;
     const next = new Date(date.getFullYear(), date.getMonth(), date.getDate(), Number(hour), Number(minute));
@@ -231,7 +233,7 @@ export function ProfessionalDateInput({
           maxLength={4}
           onBlur={() => setYearDraft(String(view.getFullYear()))}
           onChange={(event) => {
-            const next = event.target.value.replace(/\D/g, '').slice(0, 4);
+            const next = westernDigits(event.target.value).replace(/\D/g, '').slice(0, 4);
             setYearDraft(next);
             if (next.length === 4) jumpYear(Number(next));
           }}
@@ -242,7 +244,7 @@ export function ProfessionalDateInput({
           <ChevronRight className={`h-5 w-5 ${isRtl ? 'rotate-180' : ''}`} />
         </button>
       </div>
-      <div className="mt-3 grid grid-cols-7 text-center text-xs font-bold text-slate-400">{weekdays.map((day, index) => <span className="py-2" key={`${day}-${index}`}>{day}</span>)}</div>
+      <div className="mt-3 grid grid-cols-7 text-center text-xs font-bold text-mis-muted">{weekdays.map((day, index) => <span className="py-2" key={`${day}-${index}`}>{day}</span>)}</div>
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const key = isoDate(day);
@@ -281,7 +283,7 @@ export function ProfessionalDateInput({
         </div>
       ) : null}
       <div className="mt-4 flex items-center gap-2 border-t border-mis-border pt-3">
-        <button className="min-h-9 rounded-lg px-3 py-2 text-xs font-bold text-mis-primary hover:bg-mis-pale" onClick={() => { const now = new Date(); setView(now); setYearDraft(String(now.getFullYear())); setHour(pad(now.getHours())); setMinute(pad(Math.floor(now.getMinutes() / 5) * 5)); emit(now, mode === 'date'); }} type="button">{labels.today}</button>
+        <button disabled={!inRange(new Date())} className="min-h-9 rounded-lg px-3 py-2 text-xs font-bold text-mis-primary hover:bg-mis-pale disabled:cursor-not-allowed disabled:opacity-40" onClick={() => { const now = new Date(); setView(now); setYearDraft(String(now.getFullYear())); setHour(pad(now.getHours())); setMinute(pad(Math.floor(now.getMinutes() / 5) * 5)); emit(now, mode === 'date'); }} type="button">{labels.today}</button>
         <button className="min-h-9 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100" onClick={() => emit(null)} type="button">{labels.clear}</button>
         {mode === 'datetime' ? <button className="ms-auto min-h-9 rounded-lg bg-mis-primary px-4 py-2 text-xs font-bold text-white" onClick={applyTime} type="button">{labels.done}</button> : null}
       </div>
@@ -301,7 +303,7 @@ export function ProfessionalDateInput({
           aria-invalid={ariaInvalid}
           aria-describedby={ariaDescribedBy}
           autoComplete="off"
-          className="date-value min-h-9 min-w-0 flex-1 bg-transparent px-1 text-sm text-slate-800 outline-none placeholder:text-slate-500"
+          className="date-value min-h-9 min-w-0 flex-1 bg-transparent px-1 text-sm text-slate-800 outline-none placeholder:text-mis-muted"
           dir="ltr"
           disabled={disabled}
           id={id}

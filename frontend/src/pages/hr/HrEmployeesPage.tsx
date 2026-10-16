@@ -72,7 +72,7 @@ function FilterField({ label, children }: { label: string; children: ReactNode }
 
 function OrganizationCell({ employee, language, notAssigned }: { employee: EmployeeListItem; language: 'ar' | 'en'; notAssigned: string }) {
   const orgs = employee.organizations ?? [];
-  if (!orgs.length) return <span className="text-slate-400">{notAssigned}</span>;
+  if (!orgs.length) return <span className="text-mis-muted">{notAssigned}</span>;
   const names = orgs.map((org) => organizationLabel(org, language)).join(' · ');
   return <div className="flex flex-wrap gap-1.5" title={names}>{orgs.map((org) => <span className="inline-flex max-w-full rounded-lg bg-mis-pale px-2 py-1 text-xs font-bold leading-5 text-mis-primary" key={org.id}>{organizationLabel(org, language)}</span>)}</div>;
 }
@@ -315,7 +315,7 @@ function EmployeeForm({ departments, organizations, positions, employee, onClose
                 <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${checked ? 'border-mis-sky bg-white text-mis-primary shadow-sm' : 'border-transparent bg-white/60 text-slate-700 hover:border-slate-200'}`} key={item.id}>
                   <input checked={checked} className="h-4 w-4 shrink-0 accent-mis-primary" onChange={() => toggleOrganization(item.id)} type="checkbox" />
                   <span className="min-w-0 break-words font-semibold">{organizationLabel(item, language)}</span>
-                  <bdi className="ms-auto shrink-0 text-[11px] text-slate-400">{item.code}</bdi>
+                  <bdi className="ms-auto shrink-0 text-[11px] text-mis-muted">{item.code}</bdi>
                 </label>
               );
             })}
@@ -516,9 +516,9 @@ export function HrEmployeesPage() {
               <ProfessionalSelect aria-label={t('searchIn')} className="h-11" onChange={(event) => setSearchField(event.target.value as EmployeeSearchField)} value={searchField}>{searchFields.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</ProfessionalSelect>
               <label className="relative min-w-0">
                 <span className="sr-only">{t('searchValuePlaceholder')}</span>
-                <Search aria-hidden="true" className="pointer-events-none absolute start-3 top-3 h-5 w-5 text-slate-400" />
+                <Search aria-hidden="true" className="pointer-events-none absolute start-3 top-3 h-5 w-5 text-mis-muted" />
                 <input autoComplete="off" className="h-11 w-full rounded-xl border border-mis-border bg-white pe-10 ps-10 text-sm outline-none transition focus:border-mis-blue focus:shadow-input" maxLength={160} onChange={(event) => setSearchInput(event.target.value)} placeholder={`${selectedSearchField}: ${t('searchValuePlaceholder')}`} type="search" value={searchInput} />
-                {searchInput ? <button aria-label={t('clearSearch')} className="absolute end-2 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={() => setSearchInput('')} type="button"><X className="h-4 w-4" /></button> : null}
+                {searchInput ? <button aria-label={t('clearSearch')} className="absolute end-2 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg text-mis-muted hover:bg-slate-100 hover:text-slate-700" onClick={() => setSearchInput('')} type="button"><X className="h-4 w-4" /></button> : null}
               </label>
             </div>
             <div className="module-filter-grid">
@@ -599,7 +599,7 @@ export function HrEmployeesPage() {
                       <td className="px-5 py-4 font-semibold text-slate-600"><bdi>{employee.employeeNumber}</bdi></td>
                       <td className="px-5 py-4">
                         <Link className="break-words font-semibold text-mis-navy hover:text-mis-primary" to={`/hr/employees/${employee.id}`}>{employeeNameForLanguage(employee, language)}</Link>
-                        {otherName ? <p className="mt-0.5 text-xs text-slate-400" dir="auto">{otherName}</p> : null}
+                        {otherName ? <p className="mt-0.5 text-xs text-mis-muted" dir="auto">{otherName}</p> : null}
                       </td>
                       <td className="px-5 py-4 text-slate-700">{employee.departmentName}</td>
                       <td className="px-5 py-4"><OrganizationCell employee={employee} language={language} notAssigned={t('noBankCompanyAssigned')} /></td>

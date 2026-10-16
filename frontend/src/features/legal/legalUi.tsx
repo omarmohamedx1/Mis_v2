@@ -77,7 +77,7 @@ export function LegalKpi({ label, value, hint, tone = 'amber' }: { label: string
       <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accents[tone]}`} />
       <p className="text-sm font-semibold text-slate-500">{label}</p>
       <p className="mt-3 text-2xl font-bold tracking-tight text-mis-navy" data-bidi="ltr">{value}</p>
-      {hint ? <p className="mt-2 text-xs text-slate-400">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-xs text-mis-muted">{hint}</p> : null}
     </article>
   );
 }
@@ -102,7 +102,7 @@ export function LegalPipeline({ current }: { current?: string | null }) {
       {steps.map((step, index) => {
         const active = order >= index;
         return (
-          <li key={step.key} className={`rounded-2xl border px-3 py-3 text-sm font-bold ${active ? 'border-amber-700 bg-amber-50 text-amber-950' : 'border-mis-border bg-white text-slate-400'}`}>
+          <li key={step.key} className={`rounded-2xl border px-3 py-3 text-sm font-bold ${active ? 'border-amber-700 bg-amber-50 text-amber-950' : 'border-mis-border bg-white text-mis-muted'}`}>
             <span className="me-2 text-xs" data-bidi="ltr">{index + 1}</span>
             {step.label}
           </li>

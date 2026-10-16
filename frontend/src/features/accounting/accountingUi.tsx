@@ -58,7 +58,7 @@ export function AccountingKpi({ label, value, hint }: { label: string; value: st
     <article className="rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
       <p className="text-sm font-semibold text-slate-500">{label}</p>
       <p className="ds-metric-value mt-3 text-2xl font-bold tracking-tight text-mis-navy" data-bidi="ltr">{value}</p>
-      {hint ? <p className="mt-2 text-xs text-slate-400">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-xs text-mis-muted">{hint}</p> : null}
     </article>
   );
 }

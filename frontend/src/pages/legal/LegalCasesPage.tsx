@@ -63,9 +63,9 @@ export function LegalCasesPage() {
 
       <div className="grid gap-3 rounded-2xl border border-mis-border bg-white p-4 shadow-sm lg:grid-cols-[minmax(0,1.4fr)_minmax(0,12rem)_minmax(0,12rem)_auto]">
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" style={{ insetInlineStart: '1rem' }} />
+          <Search className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-mis-muted" style={{ insetInlineStart: '1rem' }} />
           <input
-            className="h-12 w-full rounded-form border border-mis-border bg-white pe-4 ps-11 text-sm text-mis-ink placeholder:text-slate-400 focus:border-mis-blue focus:outline-none"
+            className="h-12 w-full rounded-form border border-mis-border bg-white pe-4 ps-11 text-sm text-mis-ink placeholder:text-mis-muted focus:border-mis-blue focus:outline-none"
             placeholder={l.text('ابحث برقم الحالة أو اسم العميل', 'Search by case number or customer name')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}

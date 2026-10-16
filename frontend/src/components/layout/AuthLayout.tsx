@@ -37,7 +37,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
               </li>
             </ul>
           </div>
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} {t('collectionFirm')}</p>
+          <p className="text-xs text-mis-muted">© {new Date().getFullYear()} {t('collectionFirm')}</p>
         </div>
       </section>
 

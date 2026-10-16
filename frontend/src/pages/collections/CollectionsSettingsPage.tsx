@@ -221,7 +221,7 @@ export function CollectionsSettingsPage() {
         <div className="module-filter-grid border-b border-mis-border p-4">
           <label className="relative">
             <span className="sr-only">{ct('searchSettings')}</span>
-            <Search className="absolute start-3 top-3 h-5 w-5 text-slate-400" aria-hidden="true" />
+            <Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" aria-hidden="true" />
             <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={ct('searchSettings')} value={searchInput} />
           </label>
           <ProfessionalSelect aria-label={ct('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm text-slate-700 outline-none focus:border-mis-blue" onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} value={statusFilter}>
@@ -252,7 +252,7 @@ export function CollectionsSettingsPage() {
                         </div>
                         <p className="mt-0.5 truncate text-sm text-slate-500">{secondary}</p>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <p className="text-xs font-semibold text-slate-400" data-bidi="ltr">{client.code}</p>
+                          <p className="text-xs font-semibold text-mis-muted" data-bidi="ltr">{client.code}</p>
                           <OrgTypeBadge type={client.organizationType} />
                         </div>
                       </div>
@@ -261,7 +261,7 @@ export function CollectionsSettingsPage() {
                       <div className="flex justify-between gap-3"><dt>{ct('identityContact')}</dt><dd className="truncate text-end">{client.contactPhone || client.contactEmail || '—'}</dd></div>
                       <div className="flex justify-between gap-3"><dt>{ct('ptpPolicy')}</dt><dd className="truncate text-end">{ptpLabel(client.ptpGraceDays, client.ptpToleranceAmount)}</dd></div>
                     </dl>
-                    {client.logoUrl ? <p className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-700"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />{ct('officialLogoUploaded')}</p> : <p className="mt-3 text-xs text-slate-400">{ct('identityLogoHint')}</p>}
+                    {client.logoUrl ? <p className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-700"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />{ct('officialLogoUploaded')}</p> : <p className="mt-3 text-xs text-mis-muted">{ct('identityLogoHint')}</p>}
                     <div className="mt-4 flex flex-wrap gap-2">
                       <label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-mis-sky bg-mis-pale/40 px-3 py-2 text-sm font-semibold text-mis-primary ${logoBusy === client.id ? 'pointer-events-none opacity-50' : ''}`}>
                         <ImageUp className="h-4 w-4" aria-hidden="true" />
@@ -290,7 +290,7 @@ export function CollectionsSettingsPage() {
                       <BankLogo className="h-12 w-12" code={client.code} logoUrl={withLogoRevision(client.logoUrl, logoRevision)} name={name} />
                       <div className="min-w-0 flex-1">
                         <h2 className="truncate font-bold text-mis-navy">{name}</h2>
-                        <p className="text-xs font-semibold text-slate-400" data-bidi="ltr">{client.code}</p>
+                        <p className="text-xs font-semibold text-mis-muted" data-bidi="ltr">{client.code}</p>
                       </div>
                       <OrgTypeBadge type={client.organizationType} />
                     </header>
@@ -339,7 +339,7 @@ export function CollectionsSettingsPage() {
                         <ul className="mt-3 space-y-2">
                           {legacyPortfolios.filter((item) => item.organizationId === client.id).map((item) => (
                             <li className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm" key={item.id}>
-                              <span className="font-semibold text-mis-navy">{language === 'ar' ? item.nameArabic : item.nameEnglish} <span className="text-xs text-slate-400" data-bidi="ltr">{item.code}</span></span>
+                              <span className="font-semibold text-mis-navy">{language === 'ar' ? item.nameArabic : item.nameEnglish} <span className="text-xs text-mis-muted" data-bidi="ltr">{item.code}</span></span>
                               <div className="flex gap-1">
                                 <Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" aria-hidden="true" />} onClick={() => setEditor({ type: 'portfolio', item })} size="sm" variant="ghost">{ct('edit')}</Button>
                                 <Button className="text-red-600 hover:bg-red-50 hover:text-red-700" fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />} onClick={() => setRemoval({ type: 'portfolio', id: item.id, name: language === 'ar' ? item.nameArabic : item.nameEnglish })} size="sm" variant="ghost">{ct('delete')}</Button>

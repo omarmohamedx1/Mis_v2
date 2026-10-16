@@ -42,7 +42,7 @@ export function FinanceJournalDetailsPage() {
             <FinanceStatus value={data.status} />
           </div>
           <p className="mt-3 text-slate-600">{data.description}</p>
-          <p className="mt-2 text-xs text-slate-400">{data.entryType} · {f.date(data.postingDate)} · {data.currencyCode}</p>
+          <p className="mt-2 text-xs text-mis-muted">{data.entryType} · {f.date(data.postingDate)} · {data.currencyCode}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {data.status === 'DRAFT' && <button disabled={busy} onClick={() => act('submit')} className="inline-flex items-center gap-2 rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white"><Send className="h-4 w-4" />{f.text('إرسال', 'Submit')}</button>}
@@ -67,7 +67,7 @@ export function FinanceJournalDetailsPage() {
             <tbody className="divide-y divide-mis-border">
               {data.lines.map(line => (
                 <tr key={line.id}>
-                  <td className="px-5 py-4 text-slate-400">{line.lineNumber}</td>
+                  <td className="px-5 py-4 text-mis-muted">{line.lineNumber}</td>
                   <td className="px-5 py-4"><p className="font-mono font-bold text-mis-primary">{line.accountCode}</p><p className="mt-1 text-xs text-slate-500">{f.ar ? line.accountNameArabic : line.accountNameEnglish}</p></td>
                   <td className="px-5 py-4 text-slate-600">{line.description}</td>
                   <td className="px-5 py-4 text-end font-semibold" data-bidi="ltr">{line.debit ? f.money(line.debit) : '—'}</td>
@@ -88,9 +88,9 @@ export function FinanceJournalDetailsPage() {
       <section className="mt-6 grid gap-4 md:grid-cols-3">
         {[[f.text('أنشئ بواسطة', 'Created by'), data.createdBy, data.createdAt], [f.text('اعتمد بواسطة', 'Approved by'), data.approvedBy ?? '—', data.approvedAt], [f.text('رُحّل بواسطة', 'Posted by'), data.postedBy ?? '—', data.postedAt]].map(([label, user, at]) => (
           <div key={label} className="rounded-2xl border border-mis-border bg-white p-5">
-            <p className="text-xs font-bold text-slate-400">{label}</p>
+            <p className="text-xs font-bold text-mis-muted">{label}</p>
             <p className="mt-2 font-semibold text-mis-navy">{user}</p>
-            <p className="mt-1 text-xs text-slate-400">{at ? new Date(at).toLocaleString(f.ar ? 'ar-EG' : 'en-GB') : '—'}</p>
+            <p className="mt-1 text-xs text-mis-muted">{at ? new Date(at).toLocaleString(f.ar ? 'ar-EG' : 'en-GB') : '—'}</p>
           </div>
         ))}
       </section>

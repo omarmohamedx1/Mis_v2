@@ -46,12 +46,13 @@ const params = new URLSearchParams(location.search);
 const lab = params.get('mode') !== 'app';
 if (!lab) history.replaceState(null, '', params.get('route') ?? '/modules');
 localStorage.setItem('mis.language', params.get('lang') ?? 'en');
-const qa: any = (window as any).__qa = { pending: 0, requests: [], blocked: [], errors: [] };
+const qa: any = (window as any).__qa = { pending: 0, requests: [], blocked: [], errors: [], fixtures: {} };
 if ((window as any).__qaApiOverride) apiClient.defaults.baseURL = (window as any).__qaApiOverride;
 apiClient.interceptors.request.use(config => {
   if (!['get', 'head', 'options'].includes(config.method?.toLowerCase() ?? 'get') && !config.url?.includes('/auth/login')) {
     qa.blocked.push(config.url); return Promise.reject(new Error('Visual audit blocks data mutations'));
   }
+  if (config.url && Object.hasOwn(qa.fixtures, config.url)) config.adapter = async cfg => ({data:qa.fixtures[config.url!], status:200, statusText:'OK', headers:{}, config:cfg});
   qa.pending++; return config;
 });
 apiClient.interceptors.response.use(r => {

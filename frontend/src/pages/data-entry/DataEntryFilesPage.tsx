@@ -78,7 +78,7 @@ export function DataEntryFilesPage() {
           <section className="rounded-2xl border border-mis-border bg-white shadow-sm">
             <div className="border-b border-mis-border p-4">
               <div className="relative">
-                <Search className="pointer-events-none absolute top-3.5 h-4 w-4 text-slate-400" style={{ insetInlineStart: '0.85rem' }} />
+                <Search className="pointer-events-none absolute top-3.5 h-4 w-4 text-mis-muted" style={{ insetInlineStart: '0.85rem' }} />
                 <input
                   className="h-11 w-full rounded-xl border border-mis-border bg-white pe-3 ps-10 text-sm"
                   placeholder={d.text('ابحث عن عميل', 'Search for a client')}

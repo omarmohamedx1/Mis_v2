@@ -123,7 +123,7 @@ function AuditRecord({ item, language, locale }: { item: AuditLogItem; language:
       </div>
       {item.changes.length ? (
         <details className="group mt-4 rounded-xl border border-mis-border">
-          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-mis-navy"><span>{text.changes.replace('{count}', String(item.changes.length))}</span><ChevronRight className="h-4 w-4 transition group-open:rotate-90 rtl:group-open:-rotate-90" /></summary>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-mis-navy"><span>{text.changes.replace('{count}', String(item.changes.length))}</span><ChevronRight className="h-4 w-4 transition rtl:rotate-180 group-open:rotate-90 rtl:group-open:rotate-90" /></summary>
           <div className="overflow-x-auto border-t border-mis-border">
             <table className="w-full min-w-[620px]">
               <thead className="bg-mis-surface text-xs uppercase text-slate-500"><tr><th className="px-4 py-2 text-start">{text.field}</th><th className="px-4 py-2 text-start">{text.old}</th><th className="px-4 py-2 text-start">{text.next}</th></tr></thead>
@@ -131,7 +131,7 @@ function AuditRecord({ item, language, locale }: { item: AuditLogItem; language:
             </table>
           </div>
         </details>
-      ) : <p className="mt-3 text-xs text-slate-400">{text.noChanges}</p>}
+      ) : <p className="mt-3 text-xs text-mis-muted">{text.noChanges}</p>}
     </article>
   );
 }

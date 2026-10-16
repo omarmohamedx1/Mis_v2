@@ -39,7 +39,7 @@ export function BankCustomerDetailsPage() {
     <section className="rounded-2xl border border-mis-border bg-white p-5 shadow-sm"><h3 className="mb-4 text-lg font-bold text-mis-navy">{title}</h3>{children}</section>
   );
   const Field = ({ label, value, wide = false }: { label: string; value?: string | number | null; wide?: boolean }) => (
-    <div className={wide ? 'sm:col-span-2 xl:col-span-3' : ''}><p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p><p className="mt-1 font-semibold text-mis-navy" dir="auto">{value == null || value === '' ? '—' : value}</p></div>
+    <div className={wide ? 'sm:col-span-2 xl:col-span-3' : ''}><p className="text-xs font-semibold uppercase tracking-wide text-mis-muted">{label}</p><p className="mt-1 font-semibold text-mis-navy" dir="auto">{value == null || value === '' ? '—' : value}</p></div>
   );
 
   return (

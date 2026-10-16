@@ -352,7 +352,7 @@ export function HrEmployeeDocumentBulkUploadModal({ onClose, onCompleted }: { on
                           <option value="Replace">{text.replace}</option>
                         </SelectInput>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-mis-muted">—</span>
                       )}
                     </td>
                   </tr>

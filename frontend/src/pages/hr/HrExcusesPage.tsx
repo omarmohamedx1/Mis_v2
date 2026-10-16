@@ -491,14 +491,14 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
 
       <div className="module-filter-grid rounded-2xl border border-mis-border bg-white p-4">
         <div className="relative">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-5 w-5 -translate-y-1/2 text-mis-muted" aria-hidden />
           <input
             name="excuse-search"
             type="search"
             value={search}
             placeholder={w.searchPlaceholder}
             aria-label={w.searchPlaceholder}
-            className="h-11 w-full rounded-xl border border-mis-border bg-white pe-4 ps-11 text-sm text-mis-navy shadow-sm outline-none ring-mis-primary/30 placeholder:text-slate-400 focus:border-mis-primary focus:ring-2"
+            className="h-11 w-full rounded-xl border border-mis-border bg-white pe-4 ps-11 text-sm text-mis-navy shadow-sm outline-none ring-mis-primary/30 placeholder:text-mis-muted focus:border-mis-primary focus:ring-2"
             onChange={(e) => {
               setSearch(e.target.value);
               setPendingOnly(false);

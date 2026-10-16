@@ -103,7 +103,7 @@ export function FinanceDashboardPage() {
             <Link key={to} to={to} className="group flex items-center gap-3 rounded-2xl border border-mis-border bg-white px-4 py-3 text-sm font-bold text-mis-navy shadow-sm transition hover:-translate-y-0.5 hover:border-mis-blue">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Icon className="h-5 w-5" /></span>
               {f.text(ar, en)}
-              <ArrowUpRight className="ms-auto h-4 w-4 text-slate-400 transition group-hover:text-mis-primary" />
+              <ArrowUpRight className="ms-auto h-4 w-4 text-mis-muted transition group-hover:text-mis-primary" />
             </Link>
           ))}
         </div>
@@ -122,7 +122,7 @@ export function FinanceDashboardPage() {
                 <p className="text-2xl font-bold text-mis-navy">{f.number(value)}</p>
                 <p className="text-sm text-slate-500">{f.text(ar, en)}</p>
               </div>
-              <ArrowUpRight className="ms-auto h-4 w-4 text-slate-400 transition group-hover:text-mis-primary" />
+              <ArrowUpRight className="ms-auto h-4 w-4 text-mis-muted transition group-hover:text-mis-primary" />
             </Link>
           ))}
         </div>

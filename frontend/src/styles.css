@@ -13,11 +13,16 @@
   --form-control-height: 3rem;
   --radius-control: 0.75rem;
   --radius-form: 0.875rem;
-  --color-placeholder: #64748b;
+  --color-muted: #596b82;
+  --color-placeholder: var(--color-muted);
   --z-dialog: 50;
   --z-popover: 100;
   --z-select: 110;
   --z-toast: 120;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
   color: #0a1f33;
   background: #f4f6f9;
   font-synthesis: none;
@@ -83,8 +88,9 @@ img, svg { max-width: 100%; }
 .module-sidebar { transition-property: transform; }
 .module-sidebar { max-width: calc(100vw - 2.5rem); overflow: visible; }
 .module-sidebar-header {
-  padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
+  padding-top: max(1.25rem, var(--safe-top));
 }
+.module-sidebar-footer { padding-block-end: max(0.75rem, var(--safe-bottom)); }
 .module-sidebar-collapse {
   display: none;
   position: absolute;
@@ -106,7 +112,7 @@ img, svg { max-width: 100%; }
   color: #0f4c81;
 }
 @media (min-width: 1024px) {
-  .module-sidebar { width: 18rem; max-width: none; transform: translateX(0) !important; }
+  .module-shell .module-sidebar { width: 18rem; max-width: none; transform: translateX(0); }
   .module-sidebar-collapse { display: inline-flex; }
   .module-shell[data-sidebar-collapsed='true'] .module-sidebar { width: 5rem; }
   .module-shell[data-sidebar-collapsed='false'] .module-content { padding-inline-start: 18rem; }
@@ -292,7 +298,7 @@ select {
 
 input::placeholder,
 textarea::placeholder {
-  color: #64748b;
+  color: var(--color-placeholder);
   opacity: 1;
 }
 
@@ -334,10 +340,13 @@ summary:focus-visible,
 }
 .dialog-backdrop {
   --dialog-gutter: 0.5rem;
-  padding-block-start: max(var(--dialog-gutter), env(safe-area-inset-top, 0px));
-  padding-block-end: max(var(--dialog-gutter), env(safe-area-inset-bottom, 0px));
+  padding-top: max(var(--dialog-gutter), var(--safe-top));
+  padding-bottom: max(var(--dialog-gutter), var(--safe-bottom));
+  padding-left: max(var(--dialog-gutter), var(--safe-left));
+  padding-right: max(var(--dialog-gutter), var(--safe-right));
 }
-.dialog-backdrop > [role] { max-block-size: calc(100dvh - max(var(--dialog-gutter), env(safe-area-inset-top, 0px)) - max(var(--dialog-gutter), env(safe-area-inset-bottom, 0px))); }
+.dialog-backdrop > [role] { max-block-size: calc(100dvh - max(var(--dialog-gutter), var(--safe-top)) - max(var(--dialog-gutter), var(--safe-bottom))); }
+.toast-stack { bottom: max(1rem, var(--safe-bottom)); }
 @media (min-width: 640px) { .dialog-backdrop { --dialog-gutter: 1rem; } }
 .ds-metric-value { min-inline-size: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .ds-readable { min-inline-size: 0; overflow-wrap: anywhere; }

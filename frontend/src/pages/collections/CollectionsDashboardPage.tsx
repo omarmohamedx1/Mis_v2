@@ -215,7 +215,7 @@ function CreditorBook({ empty, href, icon, items, kind, labels, money, number, s
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-start text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <tr className="border-b border-slate-200 text-start text-xs font-semibold uppercase tracking-wide text-mis-muted">
                 <th className="pb-2 pe-3 font-semibold">{title}</th>
                 <th className="pb-2 pe-3 text-end font-semibold">{labels.cases}</th>
                 <th className="pb-2 pe-3 text-end font-semibold">{labels.debt}</th>
@@ -232,10 +232,10 @@ function CreditorBook({ empty, href, icon, items, kind, labels, money, number, s
                       <BankLogo className="h-11 w-11 rounded-xl" code={item.code ?? ''} logoUrl={item.logoUrl} name={item.name} />
                       <div className="min-w-0">
                         <Link className="font-semibold text-mis-navy hover:text-mis-primary" to={organizationPath(kind, item.id)}>{item.name}</Link>
-                        {item.code ? <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400" data-bidi="ltr">{item.code}</p> : null}
+                        {item.code ? <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-mis-muted" data-bidi="ltr">{item.code}</p> : null}
                         <div className="mt-1 flex gap-3 text-xs">
                           <Link className="text-mis-primary" to={`/collections/cases?organizationId=${item.id}`}>{labels.viewCases}</Link>
-                          <Link className="text-slate-400 hover:text-mis-primary" to={organizationPath(kind, item.id)}>{labels.desk}</Link>
+                          <Link className="text-mis-muted hover:text-mis-primary" to={organizationPath(kind, item.id)}>{labels.desk}</Link>
                         </div>
                       </div>
                     </div>
@@ -306,7 +306,7 @@ function MoneyBars({ casesLabel, emptyText, hrefFor, items, money }: { casesLabe
             <span className="shrink-0 font-bold tabular-nums text-mis-navy" data-bidi="ltr">{money(item.amount)}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-mis-pale"><div className="h-full rounded-full bg-mis-primary" style={{ width: `${Math.max((item.amount / maximum) * 100, item.amount ? 4 : 0)}%` }} /></div>
-          <p className="mt-1 text-xs text-slate-400">{casesLabel(item.cases)}</p>
+          <p className="mt-1 text-xs text-mis-muted">{casesLabel(item.cases)}</p>
         </Link>
       ))}
     </div>
@@ -325,7 +325,7 @@ function CollectionTrend({ emptyText, locale, money, points }: { emptyText: stri
           </div>
         ))}
       </div>
-      <div className="mt-2 flex justify-between text-[11px] text-slate-400">
+      <div className="mt-2 flex justify-between text-[11px] text-mis-muted">
         <span>{formatDay(points[0]?.date, locale)}</span>
         <span>{formatDay(points.at(-1)?.date, locale)}</span>
       </div>
@@ -338,7 +338,7 @@ function SnapshotRow({ hint, href, label, value }: { hint?: string; href?: strin
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <dt className="font-semibold text-slate-500">{label}</dt>
-        {hint ? <p className="mt-1 text-xs text-slate-400">{hint}</p> : null}
+        {hint ? <p className="mt-1 text-xs text-mis-muted">{hint}</p> : null}
       </div>
       <dd className="text-lg font-bold tabular-nums text-mis-navy">{value}</dd>
     </div>

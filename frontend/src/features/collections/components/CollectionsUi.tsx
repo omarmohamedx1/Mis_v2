@@ -55,7 +55,7 @@ export function CollectorAssignmentLabel({ assignedId, assignedName, fileName }:
       </span>
     );
   }
-  return <span className="text-slate-400">—</span>;
+  return <span className="text-mis-muted">—</span>;
 }
 
 export function FileCollectorLinkBanner({ organizationId, refreshKey, onApplied }: { organizationId?: string; refreshKey?: number; onApplied?: () => void }) {

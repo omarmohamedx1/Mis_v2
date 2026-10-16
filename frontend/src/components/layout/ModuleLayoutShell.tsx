@@ -116,13 +116,13 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
           {props.navigation.map(({ to, label, group, icon: Icon }, index) => (
             <Fragment key={to}>
               {group && group !== props.navigation[index - 1]?.group ? (
-                <p className="module-sidebar-label px-3 pb-1 pt-3 text-xs font-bold leading-5 text-slate-400 first:pt-0">{group}</p>
+                <p className="module-sidebar-label px-3 pb-1 pt-3 text-xs font-bold leading-5 text-mis-muted first:pt-0">{group}</p>
               ) : null}
               <NavLink to={to} title={label} className={({ isActive }) => linkClass(isActive)}>
                 {({ isActive }) => (
                   <>
                     {isActive ? <span aria-hidden="true" className={`absolute inset-y-2 start-0 w-[3px] rounded-full ${chrome.accent}`} /> : null}
-                    <Icon aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? chrome.icon : 'text-slate-400 group-hover:text-slate-600'}`} />
+                    <Icon aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? chrome.icon : 'text-mis-muted group-hover:text-slate-600'}`} />
                     <span className="module-sidebar-label min-w-0 truncate leading-5">{label}</span>
                   </>
                 )}
@@ -137,7 +137,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
             title={props.profileLabel}
             className={({ isActive }) => `module-sidebar-link mb-1 flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 ${isActive ? chrome.active : 'text-slate-600 hover:bg-white'}`}
           >
-            <UserCircle className="h-8 w-8 shrink-0 text-slate-400" />
+            <UserCircle className="h-8 w-8 shrink-0 text-mis-muted" />
             <div className="module-sidebar-label min-w-0">
               <p className="truncate text-sm font-semibold leading-5 text-mis-navy">{props.userName || '—'}</p>
               <p className="truncate text-xs leading-5 text-slate-500">{props.profileLabel}</p>
@@ -178,7 +178,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
           </div>
           {props.headerAside ? <div className="ms-auto flex min-w-0 items-center gap-2">{props.headerAside}</div> : null}
         </header>
-        <main className="min-w-0 overflow-x-hidden p-4 sm:p-6 xl:p-8">
+        <main className="ds-readable min-w-0 overflow-x-hidden p-4 sm:p-6 xl:p-8">
           <div className="mx-auto min-w-0 w-full max-w-[1680px]"><Outlet /></div>
         </main>
       </div>

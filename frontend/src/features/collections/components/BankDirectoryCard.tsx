@@ -17,13 +17,13 @@ export function BankDirectoryCard({ bank, basePath = '/banks', openLabel }: { ba
       <span className="absolute inset-x-0 top-0 h-1 bg-mis-primary opacity-0 transition-opacity group-hover:opacity-100" />
       <div className="flex items-start justify-between gap-5">
         <BankLogo className="h-20 w-20 rounded-3xl" code={bank.code} logoUrl={bank.logoUrl} name={name} />
-        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-mis-border text-slate-400 transition group-hover:border-mis-sky group-hover:bg-mis-pale group-hover:text-mis-primary">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-mis-border text-mis-muted transition group-hover:border-mis-sky group-hover:bg-mis-pale group-hover:text-mis-primary">
           <ArrowUpRight className="h-5 w-5 rtl:-rotate-90" aria-hidden="true" />
         </span>
       </div>
       <div className="mt-auto pt-7">
         <h2 className="text-lg font-bold text-mis-navy">{name}</h2>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400" data-bidi="ltr">{bank.code}</p>
+        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-mis-muted" data-bidi="ltr">{bank.code}</p>
       </div>
     </Link>
   );

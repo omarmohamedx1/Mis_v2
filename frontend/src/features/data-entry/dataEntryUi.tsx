@@ -94,7 +94,7 @@ export function DataEntryKpi({ label, value, hint, tone = 'blue' }: { label: str
       <p className="ds-metric-value mt-3 text-2xl font-bold tracking-tight text-mis-navy" data-bidi="ltr">
         {value}
       </p>
-      {hint ? <p className="mt-2 text-xs text-slate-400">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-xs text-mis-muted">{hint}</p> : null}
     </article>
   );
 }
@@ -113,7 +113,7 @@ export function DataEntryPipeline({ current }: { current?: string | null }) {
       {steps.map((step, index) => {
         const active = order >= index;
         return (
-          <li key={step.key} className={`rounded-2xl border px-3 py-3 text-sm font-bold ${active ? 'border-mis-blue bg-mis-pale text-mis-navy' : 'border-mis-border bg-white text-slate-400'}`}>
+          <li key={step.key} className={`rounded-2xl border px-3 py-3 text-sm font-bold ${active ? 'border-mis-blue bg-mis-pale text-mis-navy' : 'border-mis-border bg-white text-mis-muted'}`}>
             <span className="me-2 text-xs" data-bidi="ltr">{index + 1}</span>
             {step.label}
           </li>

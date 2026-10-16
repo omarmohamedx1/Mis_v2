@@ -96,7 +96,7 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
     <OverlayScope owners={owners}><div className="min-w-0 space-y-2" ref={wrapperRef}>
       <label className="block text-sm font-semibold text-slate-700" htmlFor={id}>{label}{required ? <span className="ms-1 text-red-500" aria-hidden="true">*</span> : null}</label>
       <div className="relative" ref={anchorRef}>
-        <Search className="pointer-events-none absolute start-4 top-3.5 h-5 w-5 text-slate-400" aria-hidden="true" />
+        <Search className="pointer-events-none absolute start-4 top-3.5 h-5 w-5 text-mis-muted" aria-hidden="true" />
         <input
           aria-autocomplete="list"
           aria-controls={`${id}-options`}
@@ -116,8 +116,8 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
           role="combobox"
           value={query}
         />
-        {value ? <button aria-label={t('clearSelection')} className="absolute end-10 top-2.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" onClick={clear} type="button"><X className="h-4 w-4" /></button> : null}
-        <button aria-label={t('openEmployeeList')} className="absolute end-2 top-2.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" disabled={disabled} onClick={() => setOpen((current) => !current)} type="button"><ChevronDown className="h-4 w-4" /></button>
+        {value ? <button aria-label={t('clearSelection')} className="absolute end-10 top-2.5 rounded-lg p-1.5 text-mis-muted hover:bg-slate-100" onClick={clear} type="button"><X className="h-4 w-4" /></button> : null}
+        <button aria-label={t('openEmployeeList')} className="absolute end-2 top-2.5 rounded-lg p-1.5 text-mis-muted hover:bg-slate-100" disabled={disabled} onClick={() => setOpen((current) => !current)} type="button"><ChevronDown className="h-4 w-4" /></button>
         {open ? createPortal(
           <div ref={popupRef} data-overlay-owners={owners.join(' ')} style={{...position,maxHeight:Math.min(position.maxHeight,256)}} className="fixed z-[var(--z-select)] overflow-y-auto rounded-xl border border-mis-border bg-white p-1 shadow-panel" id={`${id}-options`} role="listbox">
             {loading ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('loading')}</p> : loadError ? <p className="px-3 py-4 text-center text-sm text-red-600" role="alert">{loadError}</p> : options.length === 0 ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('noEmployeesFound')}</p> : options.map((employee) => (

@@ -162,7 +162,7 @@ export function CollectionImportsPage() {
                   {preview.rows.items.map((x) => (
                     <tr className={excludedRows.includes(x.rowNumber) ? 'bg-slate-100 opacity-60' : undefined} key={x.id}>
                       <td className="px-4 py-3"><input checked={selectedRows.includes(x.rowNumber)} onChange={() => setSelectedRows((current) => current.includes(x.rowNumber) ? current.filter((item) => item !== x.rowNumber) : [...current, x.rowNumber])} type="checkbox" /></td>
-                      <td className="px-4 py-3" data-bidi="ltr">{x.rowNumber}{x.sheetName ? <p className="text-xs text-slate-400">{x.sheetName}</p> : null}</td>
+                      <td className="px-4 py-3" data-bidi="ltr">{x.rowNumber}{x.sheetName ? <p className="text-xs text-mis-muted">{x.sheetName}</p> : null}</td>
                       <td className="px-4 py-3" data-bidi="ltr">{x.accountReference}</td>
                       <td className="px-4 py-3"><p>{x.customerName}</p><p className="text-xs text-slate-500">{x.customerCode}</p></td>
                       <td className="px-4 py-3" data-bidi="ltr">{x.outstandingBalance == null ? '—' : f.money(x.outstandingBalance)}</td>

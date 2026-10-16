@@ -45,7 +45,7 @@ export function OrganizationDirectoryPage({ kind }: { kind: OrganizationKind }) 
       <div className="mb-7 max-w-2xl">
         <label className="relative block">
           <span className="sr-only">{searchLabel}</span>
-          <Search className="absolute top-3.5 h-5 w-5 text-slate-400" style={{ insetInlineStart: '0.9rem' }} aria-hidden="true" />
+          <Search className="absolute top-3.5 h-5 w-5 text-mis-muted" style={{ insetInlineStart: '0.9rem' }} aria-hidden="true" />
           <input className="field py-3 pe-4 ps-12 shadow-sm" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchLabel} type="search" />
         </label>
       </div>

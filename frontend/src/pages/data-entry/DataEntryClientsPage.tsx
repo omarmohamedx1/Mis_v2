@@ -89,9 +89,9 @@ export function DataEntryClientsPage() {
 
       <div className="space-y-3 rounded-2xl border border-mis-border bg-white p-4 shadow-sm">
         <div className="relative">
-          <Search className="pointer-events-none absolute top-3.5 h-4 w-4 text-slate-400" style={{ insetInlineStart: '0.9rem' }} />
+          <Search className="pointer-events-none absolute top-3.5 h-4 w-4 text-mis-muted" style={{ insetInlineStart: '0.9rem' }} />
           <input
-            className="h-11 w-full rounded-xl border border-mis-border bg-white pe-4 ps-10 text-sm text-mis-ink placeholder:text-slate-400 focus:border-mis-blue focus:outline-none"
+            className="h-11 w-full rounded-xl border border-mis-border bg-white pe-4 ps-10 text-sm text-mis-ink placeholder:text-mis-muted focus:border-mis-blue focus:outline-none"
             placeholder={d.text('ابحث بالاسم أو الرقم القومي أو أي تليفون أو العنوان', 'Search by name, national ID, any phone, or address')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -311,7 +311,7 @@ function extraColumns(items: DataEntryClientListItem[]) {
 }
 
 function PhoneList({ numbers }: { numbers: string[] }) {
-  if (!numbers.length) return <span className="text-slate-400">—</span>;
+  if (!numbers.length) return <span className="text-mis-muted">—</span>;
   return (
     <div className="flex max-w-xs flex-col gap-1">
       {numbers.map((number, index) => (

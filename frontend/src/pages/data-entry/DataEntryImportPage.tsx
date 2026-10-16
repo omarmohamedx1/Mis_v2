@@ -257,7 +257,7 @@ function SheetGrid({ sheet, rowsLabel, count, hidden, nameColumn, onHide }: { sh
                   <span className="inline-flex items-center gap-1">
                     {item.column || '—'}
                     {item.column && item.column !== nameColumn ? (
-                      <button className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-600" type="button" onClick={() => onHide(item.column)}>
+                      <button className="rounded p-0.5 text-mis-muted hover:bg-red-50 hover:text-red-600" type="button" onClick={() => onHide(item.column)}>
                         <X className="h-3.5 w-3.5" />
                       </button>
                     ) : null}
@@ -269,7 +269,7 @@ function SheetGrid({ sheet, rowsLabel, count, hidden, nameColumn, onHide }: { sh
           <tbody className="divide-y divide-mis-border bg-white">
             {sheet.rows.map((row, rowIndex) => (
               <tr key={rowIndex}>
-                <td className="px-3 py-2 text-slate-400">{rowIndex + 1}</td>
+                <td className="px-3 py-2 text-mis-muted">{rowIndex + 1}</td>
                 {visible.map((item) => (
                   <td className="whitespace-nowrap px-3 py-2 text-mis-navy" key={item.index}>{row[item.index] || '—'}</td>
                 ))}

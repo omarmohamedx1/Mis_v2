@@ -123,7 +123,7 @@ export function ToastProvider({ children, defaultDuration = 5000, dismissLabel, 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div aria-atomic="false" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-4 z-[var(--z-toast)] max-h-[50dvh] overflow-y-auto p-1 flex flex-col items-end gap-3 sm:start-auto sm:end-4 sm:w-full sm:max-w-sm">
+      <div aria-atomic="false" aria-live="polite" className="toast-stack pointer-events-none fixed inset-x-4 bottom-4 z-[var(--z-toast)] max-h-[50dvh] overflow-y-auto p-1 flex flex-col items-end gap-3 sm:start-auto sm:end-4 sm:w-full sm:max-w-sm">
         {toasts.map((toast) => <ToastItem dismissLabel={dismissLabel ?? t('dismissNotification')} dismissToast={dismissToast} key={toast.id} toast={toast} />)}
       </div>
     </ToastContext.Provider>
