@@ -13,7 +13,11 @@ public interface ICollectionsService
     Task<NationalIdLookupDto> LookupByNationalIdAsync(string nationalId, CancellationToken cancellationToken);
     Task<WorkQueueDto> GetMyWorkAsync(CancellationToken cancellationToken);
     Task<CollectionActivityDto> CreateActivityAsync(Guid caseId, CreateActivityRequest request, CancellationToken cancellationToken);
+    Task<CollectionActivityDto> UpdateActivityAsync(Guid caseId, Guid activityId, CreateActivityRequest request, CancellationToken cancellationToken);
+    Task DeleteActivityAsync(Guid caseId, Guid activityId, CancellationToken cancellationToken);
     Task<PromiseToPayDto> CreatePromiseAsync(Guid caseId, CreatePromiseRequest request, CancellationToken cancellationToken);
+    Task<PromiseToPayDto> UpdatePromiseAsync(Guid promiseId, CreatePromiseRequest request, CancellationToken cancellationToken);
+    Task DeletePromiseAsync(Guid promiseId, CancellationToken cancellationToken);
     Task<PagedResultDto<PromiseToPayDto>> GetPromisesAsync(PromiseFilters filters, CancellationToken cancellationToken);
     Task<CollectionPaymentDto> SubmitPaymentAsync(Guid caseId, SubmitPaymentRequest request, CancellationToken cancellationToken);
     Task<CollectionPaymentDto> ReviewPaymentAsync(Guid paymentId, ReviewPaymentRequest request, CancellationToken cancellationToken);

@@ -56,8 +56,8 @@ public sealed record NationalIdLookupDto(
     string NationalId, int OrganizationCount, int CaseCount, decimal TotalOutstanding,
     IReadOnlyCollection<RelatedCreditorCaseDto> Cases);
 
-public sealed record CollectionActivityDto(Guid Id, string Type, string? Result, string? Notes, string? Channel, string CreatedBy, DateTimeOffset CreatedAt, DateTimeOffset? NextFollowUpAt);
-public sealed record PromiseToPayDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, decimal PromisedAmount, DateOnly PromiseDate, decimal ActualPaidAmount, string Status, string CollectorName, string Channel, DateTimeOffset CreatedAt);
+public sealed record CollectionActivityDto(Guid Id, string Type, string? Result, string? Notes, string? Channel, string CreatedBy, DateTimeOffset CreatedAt, DateTimeOffset? NextFollowUpAt, Guid CreatedById = default);
+public sealed record PromiseToPayDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, decimal PromisedAmount, DateOnly PromiseDate, decimal ActualPaidAmount, string Status, string CollectorName, string Channel, DateTimeOffset CreatedAt, string? Notes = null, Guid CollectorId = default);
 public sealed record CollectionPaymentDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, decimal Amount, DateOnly PaymentDate, string Method, string ReferenceNumber, string Status, string SubmittedBy, DateTimeOffset SubmittedAt, string? VerifiedBy, DateTimeOffset? VerifiedAt, string? RejectionReason, Guid OrganizationId, string OrganizationName, string OrganizationType, Guid CollectorId, string CollectorName, string CurrencyCode);
 public sealed record CollectionPaymentSummaryDto(decimal TodayCollectedAmount, int TodayTransactionCount, int PendingReview);
 public sealed record CollectionPaymentFilterOptionDto(Guid Id, string Name);

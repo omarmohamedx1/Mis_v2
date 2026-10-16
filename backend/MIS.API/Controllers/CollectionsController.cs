@@ -72,6 +72,17 @@ public sealed class CollectionCasesController : ControllerBase
         var result = await _service.CreatePromiseAsync(id, request, token); return Created($"/api/collections/promises/{result.Id}", result);
     }
 
+    [HttpPut("{id:guid}/activities/{activityId:guid}")]
+    public Task<CollectionActivityDto> UpdateActivity(Guid id, Guid activityId, CreateActivityRequest request, CancellationToken token)
+        => _service.UpdateActivityAsync(id, activityId, request, token);
+
+    [HttpDelete("{id:guid}/activities/{activityId:guid}")]
+    public async Task<IActionResult> DeleteActivity(Guid id, Guid activityId, CancellationToken token)
+    {
+        await _service.DeleteActivityAsync(id, activityId, token);
+        return NoContent();
+    }
+
     [HttpPost("{id:guid}/payments")]
     public async Task<ActionResult<CollectionPaymentDto>> Payment(Guid id, SubmitPaymentRequest request, CancellationToken token)
     {
@@ -98,6 +109,16 @@ public sealed class CollectionPromisesController : ControllerBase
 {
     private readonly ICollectionsService _service;
     public CollectionPromisesController(ICollectionsService service) => _service = service;
+    [HttpPut("{id:guid}")]
+    public Task<PromiseToPayDto> Update(Guid id, CreatePromiseRequest request, CancellationToken token)
+        => _service.UpdatePromiseAsync(id, request, token);
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken token)
+    {
+        await _service.DeletePromiseAsync(id, token);
+        return NoContent();
+    }
     [HttpGet]
     public Task<PagedResultDto<PromiseToPayDto>> Promises([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] Guid? organizationId = null, [FromQuery] Guid? collectorId = null, [FromQuery] string? status = null, [FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null, CancellationToken token = default)
         => _service.GetPromisesAsync(new PromiseFilters(page, pageSize, search, organizationId, collectorId, status, from, to), token);

@@ -369,6 +369,14 @@ public sealed class CollectionAssignmentHistory
 
 public sealed class CollectionActivity
 {
+    public static bool IsManualType(string type) => type is "CALL" or "SMS" or "EMAIL" or "NOTE" or "FOLLOW_UP";
+    public void Correct(string activityType, string? result, string? notes, string? channel, DateTimeOffset? nextFollowUpAt)
+    {
+        if (!IsManualType(ActivityType) || !IsManualType(activityType.Trim().ToUpperInvariant()))
+            throw new InvalidOperationException("Only manually recorded activities can be corrected.");
+        ActivityType = activityType.Trim().ToUpperInvariant(); Result = Normalize(result);
+        Notes = Normalize(notes); Channel = Normalize(channel); NextFollowUpAt = nextFollowUpAt?.ToUniversalTime();
+    }
     private CollectionActivity() { }
     public CollectionActivity(Guid caseId, string activityType, string? result, string? notes, string? channel, Guid createdById, DateTimeOffset createdAt, DateTimeOffset? nextFollowUpAt)
     { Id = Guid.NewGuid(); CaseId = caseId; ActivityType = activityType.Trim().ToUpperInvariant(); Result = Normalize(result); Notes = Normalize(notes); Channel = Normalize(channel); CreatedById = createdById; CreatedAt = createdAt; NextFollowUpAt = nextFollowUpAt; }
@@ -379,6 +387,14 @@ public sealed class CollectionActivity
 
 public sealed class PromiseToPay
 {
+    public void Correct(decimal amount, DateOnly date, string channel, string? notes)
+    {
+        if (ActualPaidAmount > 0) throw new InvalidOperationException("A promise with recorded payments cannot be corrected.");
+        if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
+        ArgumentException.ThrowIfNullOrWhiteSpace(channel);
+        PromisedAmount = amount; PromiseDate = date; Channel = channel.Trim(); Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        Status = CollectionsValues.PromiseStatuses.Active; FulfilledAt = null; EvaluatedAt = null;
+    }
     private PromiseToPay() { }
     public PromiseToPay(Guid caseId, decimal promisedAmount, DateOnly promiseDate, Guid collectorId, string channel, string? notes, DateTimeOffset createdAt)
     { if (promisedAmount <= 0) throw new ArgumentOutOfRangeException(nameof(promisedAmount)); Id = Guid.NewGuid(); CaseId = caseId; PromisedAmount = promisedAmount; PromiseDate = promiseDate; CollectorId = collectorId; Channel = channel.Trim(); Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(); Status = CollectionsValues.PromiseStatuses.Active; CreatedAt = createdAt; }
