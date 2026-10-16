@@ -239,6 +239,7 @@ export function DataEntryImportPage() {
 }
 
 function SheetGrid({ sheet, rowsLabel, count, hidden, nameColumn, onHide }: { sheet: DataEntrySheetPreview; rowsLabel: string; count: (value: number) => string; hidden: string[]; nameColumn: string; onHide: (column: string) => void }) {
+  const { ar: arabic } = useDataEntryText();
   const visible = sheet.columns.map((column, index) => ({ column, index })).filter((item) => !hidden.includes(item.column));
   return (
     <div className="space-y-2">
@@ -257,7 +258,7 @@ function SheetGrid({ sheet, rowsLabel, count, hidden, nameColumn, onHide }: { sh
                   <span className="inline-flex items-center gap-1">
                     {item.column || '—'}
                     {item.column && item.column !== nameColumn ? (
-                      <button className="rounded p-0.5 text-mis-muted hover:bg-red-50 hover:text-red-600" type="button" onClick={() => onHide(item.column)}>
+                      <button aria-label={`${arabic ? "إخفاء العمود" : "Hide column"}: ${item.column}`} className="inline-flex min-h-6 min-w-6 items-center justify-center rounded p-0.5 text-mis-muted hover:bg-red-50 hover:text-red-600" type="button" onClick={() => onHide(item.column)}>
                         <X className="h-3.5 w-3.5" />
                       </button>
                     ) : null}

@@ -28,7 +28,7 @@ export function Tabs({ activationMode = 'automatic', ariaLabel, className = '', 
     if (enabledItems.length === 0) return;
 
     const currentIndex = enabledItems.findIndex((item) => item.id === itemId);
-    const rtlMultiplier = document.documentElement.dir === 'rtl' ? -1 : 1;
+    const rtlMultiplier = getComputedStyle(event.currentTarget).direction === 'rtl' ? -1 : 1;
     let targetIndex: number | null = null;
 
     if (event.key === 'Home') targetIndex = 0;
@@ -70,7 +70,7 @@ export function Tabs({ activationMode = 'automatic', ariaLabel, className = '', 
           >
             {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
             <span className="min-w-0 [overflow-wrap:anywhere]">{item.label}</span>
-            {item.badge !== undefined ? <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{item.badge}</span> : null}
+            {item.badge !== undefined ? <span className="min-w-0 max-w-full rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 [overflow-wrap:anywhere]">{item.badge}</span> : null}
           </button>
         );
       })}
