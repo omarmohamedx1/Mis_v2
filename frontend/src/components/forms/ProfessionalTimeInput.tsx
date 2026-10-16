@@ -1,7 +1,7 @@
 import { Clock3, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type Ref } from 'react';
 import { createPortal } from 'react-dom';
-import { belongsToOverlay, OverlayScope, useFloatingPanel, useOverlayLayer, useOverlayOwners } from '../common/overlay';
+import { belongsToOverlay, OverlayScope, useFloatingPanel, useFocusBoundary, useOverlayLayer, useOverlayOwners } from '../common/overlay';
 import { useLocalization } from '../../context/LocalizationContext';
 import { ProfessionalSelect } from './ProfessionalSelect';
 
@@ -58,6 +58,7 @@ export function ProfessionalTimeInput({
   const overlayId = useId(); const owners = useOverlayOwners(overlayId);
   const position = useFloatingPanel(open, root, popup, 280);
   useOverlayLayer(overlayId, open, () => { setOpen(false); root.current?.querySelector<HTMLElement>('input:not([tabindex="-1"]),button')?.focus(); });
+  useFocusBoundary(overlayId, open, popup);
   const labels = language === 'ar'
     ? { choose: 'اختر الوقت', now: 'الآن', clear: 'مسح', done: 'تم', hour: 'الساعة', minute: 'الدقيقة' }
     : { choose: 'Choose time', now: 'Now', clear: 'Clear', done: 'Done', hour: 'Hour', minute: 'Minute' };

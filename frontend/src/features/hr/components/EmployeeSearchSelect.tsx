@@ -88,7 +88,7 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
     const next = `${employee.employeeNumber} - ${employee.fullName}`;
     setQuery(next);
     setSelectedLabel(next);
-    setOpen(false);
+    closeAndRestore();
     onChange(employee.id, employee);
   }
 

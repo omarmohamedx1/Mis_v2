@@ -2,7 +2,7 @@ import { westernDigits } from './normalizeDigits';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react';
 import { createPortal } from 'react-dom';
-import { belongsToOverlay, OverlayScope, useFloatingPanel, useOverlayLayer, useOverlayOwners } from '../common/overlay';
+import { belongsToOverlay, OverlayScope, useFloatingPanel, useFocusBoundary, useOverlayLayer, useOverlayOwners } from '../common/overlay';
 import { ProfessionalSelect } from './ProfessionalSelect';
 import { useLocalization } from '../../context/LocalizationContext';
 
@@ -88,6 +88,7 @@ export function ProfessionalDateInput({
   const overlayId = useId(); const owners = useOverlayOwners(overlayId);
   const position = useFloatingPanel(open, root, popup, 360);
   useOverlayLayer(overlayId, open, () => { setOpen(false); root.current?.querySelector<HTMLElement>('input:not([tabindex="-1"]),button')?.focus(); });
+  useFocusBoundary(overlayId, open, popup);
 
   useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
 
