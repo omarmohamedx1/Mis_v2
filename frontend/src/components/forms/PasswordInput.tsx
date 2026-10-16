@@ -28,7 +28,7 @@ export function PasswordInput({ id, label, error, className = '', ...props }: Pa
           aria-invalid={Boolean(error)}
           aria-describedby={errorId}
           className={twMerge(`form-control h-12 w-full rounded-form border bg-white py-3 pe-12 ps-4 text-sm text-mis-ink transition placeholder:text-mis-muted focus:border-mis-blue focus:shadow-input focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${
-            error ? 'border-red-400' : 'border-mis-border'
+            error ? 'border-red-500' : 'border-mis-control'
           } ${className}`)}
           {...props}
         />

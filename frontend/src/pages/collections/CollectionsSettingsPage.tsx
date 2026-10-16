@@ -222,9 +222,9 @@ export function CollectionsSettingsPage() {
           <label className="relative">
             <span className="sr-only">{ct('searchSettings')}</span>
             <Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" aria-hidden="true" />
-            <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={ct('searchSettings')} value={searchInput} />
+            <input className="h-11 w-full rounded-xl border border-mis-control pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={ct('searchSettings')} value={searchInput} />
           </label>
-          <ProfessionalSelect aria-label={ct('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm text-slate-700 outline-none focus:border-mis-blue" onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} value={statusFilter}>
+          <ProfessionalSelect aria-label={ct('status')} className="h-11 rounded-xl border border-mis-control bg-white px-3 text-sm text-slate-700 outline-none focus:border-mis-blue" onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} value={statusFilter}>
             <option value="all">{ct('allStatuses')}</option>
             <option value="active">{ct('active')}</option>
             <option value="inactive">{ct('inactive')}</option>

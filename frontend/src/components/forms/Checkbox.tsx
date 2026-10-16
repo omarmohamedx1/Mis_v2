@@ -13,7 +13,7 @@ export function Checkbox({ id, label, className = '', ...props }: CheckboxProps)
       <input
         id={inputId}
         type="checkbox"
-        className={`h-4 w-4 shrink-0 rounded border-mis-border text-mis-primary focus:ring-mis-blue ${className}`}
+        className={`h-4 w-4 shrink-0 rounded border-mis-control text-mis-primary focus:ring-mis-blue ${className}`}
         {...props}
       />
       <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>

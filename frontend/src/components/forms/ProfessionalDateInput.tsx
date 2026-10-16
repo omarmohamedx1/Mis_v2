@@ -218,7 +218,7 @@ export function ProfessionalDateInput({
         <button aria-label={labels.previous} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-mis-pale hover:text-mis-primary" onClick={() => shiftMonth(-1)} type="button">
           <ChevronLeft className={`h-5 w-5 ${isRtl ? 'rotate-180' : ''}`} />
         </button>
-        <ProfessionalSelect aria-label={labels.month} className="date-month h-10 min-h-10 py-1 min-w-0 flex-1 rounded-xl border border-mis-border bg-white px-2 text-sm font-semibold text-mis-navy outline-none focus:border-mis-blue" onChange={(event) => setView(new Date(view.getFullYear(), Number(event.target.value), 1))} value={view.getMonth()}>
+        <ProfessionalSelect aria-label={labels.month} className="date-month h-10 min-h-10 py-1 min-w-0 flex-1 rounded-xl border border-mis-control bg-white px-2 text-sm font-semibold text-mis-navy outline-none focus:border-mis-blue" onChange={(event) => setView(new Date(view.getFullYear(), Number(event.target.value), 1))} value={view.getMonth()}>
           {months.map((label, index) => <option key={label} value={index}>{label}</option>)}
         </ProfessionalSelect>
         <div className="date-year w-20 shrink-0">
@@ -258,11 +258,11 @@ export function ProfessionalDateInput({
           <Clock3 className="h-5 w-5 text-mis-primary" />
           <span className="text-xs font-bold text-slate-500">{labels.time}</span>
           <div className="ms-auto flex items-center gap-1" dir="ltr">
-            <ProfessionalSelect aria-label={language === 'ar' ? 'الساعة' : 'Hour'} className="h-9 min-h-9 py-1 w-20 rounded-lg border border-mis-border bg-white px-2 text-sm outline-none focus:border-mis-blue" onChange={(event) => setHour(event.target.value)} value={hour}>
+            <ProfessionalSelect aria-label={language === 'ar' ? 'الساعة' : 'Hour'} className="h-9 min-h-9 py-1 w-20 rounded-lg border border-mis-control bg-white px-2 text-sm outline-none focus:border-mis-blue" onChange={(event) => setHour(event.target.value)} value={hour}>
               {Array.from({ length: 24 }, (_, index) => pad(index)).map((item) => <option key={item}>{item}</option>)}
             </ProfessionalSelect>
             <span>:</span>
-            <ProfessionalSelect aria-label={language === 'ar' ? 'الدقيقة' : 'Minute'} className="h-9 min-h-9 py-1 w-20 rounded-lg border border-mis-border bg-white px-2 text-sm outline-none focus:border-mis-blue" onChange={(event) => setMinute(event.target.value)} value={minute}>
+            <ProfessionalSelect aria-label={language === 'ar' ? 'الدقيقة' : 'Minute'} className="h-9 min-h-9 py-1 w-20 rounded-lg border border-mis-control bg-white px-2 text-sm outline-none focus:border-mis-blue" onChange={(event) => setMinute(event.target.value)} value={minute}>
               {minutes.map((item) => <option key={item}>{item}</option>)}
             </ProfessionalSelect>
           </div>

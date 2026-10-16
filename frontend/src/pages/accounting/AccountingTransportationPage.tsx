@@ -89,10 +89,10 @@ export function AccountingTransportationPage() {
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
       <div className="flex flex-wrap gap-2">
-        <input className="min-w-[200px] flex-1 rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('الموظف', 'Employee')} value={search} onChange={(event) => setSearch(event.target.value)} />
+        <input className="min-w-[200px] flex-1 rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('الموظف', 'Employee')} value={search} onChange={(event) => setSearch(event.target.value)} />
         <DateControl aria-label={a.text('من تاريخ', 'From date')} className="min-w-[10rem]" value={from} onChange={(event) => setFrom(event.target.value)} />
         <DateControl aria-label={a.text('إلى تاريخ', 'To date')} className="min-w-[10rem]" value={to} onChange={(event) => setTo(event.target.value)} />
-        <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
+        <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-control bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">{a.text('كل الحالات', 'All statuses')}</option>
           {['READY', 'PAID', 'REJECTED', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
         </ProfessionalSelect>
@@ -166,14 +166,14 @@ export function AccountingTransportationPage() {
               <h2 className="text-lg font-bold text-mis-navy">{editing === 'new' ? a.text('مطالبة انتقال', 'Transportation claim') : a.text('تعديل المطالبة', 'Edit claim')}</h2>
             </div>
             <div className="mt-4 space-y-3">
-              <ProfessionalSelect className="min-h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" disabled={editing !== 'new'} value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
+              <ProfessionalSelect className="min-h-11 w-full rounded-xl border border-mis-control bg-white px-3 text-sm" disabled={editing !== 'new'} value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
                 <option value="">{a.text('اختر موظفاً', 'Select employee')}</option>
                 {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNumber} — {employee.fullName}</option>)}
               </ProfessionalSelect>
               <DateControl className="w-full" value={form.claimDate} onChange={(event) => setForm({ ...form, claimDate: event.target.value })} />
-              <input type="number" min="0.01" step="0.01" className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('المبلغ', 'Amount')} value={form.amount} onChange={(event) => setForm({ ...form, amount: Number(event.target.value) })} />
-              <input className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('الغرض', 'Purpose')} value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value })} />
-              <textarea className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('ملاحظات', 'Notes')} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+              <input type="number" min="0.01" step="0.01" className="w-full rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('المبلغ', 'Amount')} value={form.amount} onChange={(event) => setForm({ ...form, amount: Number(event.target.value) })} />
+              <input className="w-full rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('الغرض', 'Purpose')} value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value })} />
+              <textarea className="w-full rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('ملاحظات', 'Notes')} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
             </div>
             <div className="mt-5 flex gap-2">
               <Button disabled={busy || !form.employeeId || !form.purpose.trim() || !form.claimDate || form.claimDate > cairoToday() || !Number.isFinite(form.amount) || form.amount <= 0 || Math.abs(form.amount * 100 - Math.round(form.amount * 100)) > 0.0001} fullWidth={false} onClick={() => confirmMoney(form.amount, (employees.find(x => x.id === form.employeeId)?.fullName ?? '') + ' / ' + form.claimDate + '\n' + form.purpose + '\n' + form.notes, save)}>{a.text('تأكيد التسجيل', 'Confirm recording')}</Button>

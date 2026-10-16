@@ -62,7 +62,7 @@ export function DataEntryHistoryPage() {
         description={d.text('الملفات التي رُفعت من إدخال البيانات، مع حالة كل ملف.', 'Files uploaded from data entry, with the status of each file.')}
       />
       <input
-        className="h-12 w-full rounded-2xl border border-mis-border bg-white px-4 text-sm focus:border-mis-blue focus:outline-none"
+        className="h-12 w-full rounded-2xl border border-mis-control bg-white px-4 text-sm focus:border-mis-blue focus:outline-none"
         placeholder={d.text('بحث باسم الملف', 'Search by file name')}
         value={search}
         onChange={(event) => setSearch(event.target.value)}

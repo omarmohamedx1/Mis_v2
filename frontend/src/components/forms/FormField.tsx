@@ -12,7 +12,7 @@ export interface FormFieldProps {
   required?: boolean;
 }
 
-export const formControlClass = 'form-control w-full rounded-form border bg-white text-sm text-mis-ink transition placeholder:text-mis-muted focus:border-mis-blue focus:shadow-input focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500';
+export const formControlClass = 'form-control w-full rounded-form border border-mis-control bg-white text-sm text-mis-ink transition placeholder:text-mis-muted focus:border-mis-blue focus:shadow-input focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500';
 
 export function joinDescribedBy(...values: Array<string | undefined>): string | undefined {
   const ids = values.filter(Boolean);

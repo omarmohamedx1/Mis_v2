@@ -146,7 +146,7 @@ export function CollectionCasesPage() {
               <Search aria-hidden="true" className="pointer-events-none absolute start-3 top-3 h-5 w-5 text-mis-muted" />
               <input
                 autoComplete="off"
-                className="h-11 w-full rounded-xl border border-mis-border bg-white pe-10 ps-10 text-sm outline-none transition focus:border-mis-blue focus:shadow-input"
+                className="h-11 w-full rounded-xl border border-mis-control bg-white pe-10 ps-10 text-sm outline-none transition focus:border-mis-blue focus:shadow-input"
                 inputMode={numericSearch ? 'numeric' : 'search'}
                 maxLength={160}
                 onChange={(event) => setSearchInput(event.target.value)}

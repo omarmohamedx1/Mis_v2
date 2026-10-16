@@ -15,6 +15,8 @@
   --radius-form: 0.875rem;
   --color-muted: #596b82;
   --color-placeholder: var(--color-muted);
+  --color-control-border: #7b8da6;
+  --color-focus: #0b638f;
   --z-dialog: 50;
   --z-popover: 100;
   --z-select: 110;
@@ -309,9 +311,11 @@ select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid rgba(23, 136, 184, 0.35);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px white;
 }
+input[type='checkbox'], input[type='radio'] { accent-color: var(--color-focus); }
 
 /* Shared containment: content may shrink without shrinking its explicit icons. */
 :where(.grid, .flex, .inline-flex) > :where(div, section, article, header, footer, form, label) {
@@ -326,7 +330,7 @@ summary:focus-visible,
 }
 .composite-control[data-comfortable] { min-block-size: var(--form-control-height); padding-block: 5px; border-radius: var(--radius-form); }
 .composite-control:focus-within { border-color: #1788b8; box-shadow: 0 0 0 4px rgba(23, 136, 184, 0.14); }
-.composite-control[data-invalid] { border-color: #f87171; }
+.composite-control[data-invalid] { border-color: #ef4444; }
 .date-control { container-type: inline-size; }
 .date-panel { container-type: inline-size; container-name: date-panel; }
 @container (max-width: 16rem) {

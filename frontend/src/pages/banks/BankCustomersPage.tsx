@@ -54,7 +54,7 @@ export function BankCustomersPage() {
       </div>
       <label className="relative block">
         <Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" />
-        <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none" onChange={(event) => setSearchInput(event.target.value)} placeholder={ct('searchCustomers')} value={searchInput} />
+        <input className="h-11 w-full rounded-xl border border-mis-control pe-3 ps-10 text-sm outline-none" onChange={(event) => setSearchInput(event.target.value)} placeholder={ct('searchCustomers')} value={searchInput} />
       </label>
       <div className="overflow-hidden rounded-2xl border border-mis-border bg-white">
         {loading ? <div className="flex min-h-72 items-center justify-center"><LoadingSpinner /></div>

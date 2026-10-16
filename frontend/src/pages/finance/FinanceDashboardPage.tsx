@@ -89,7 +89,7 @@ export function FinanceDashboardPage() {
           </div>
           <div className="flex min-w-0 flex-wrap gap-2">
             <AccountingMonthSelect value={month} onChange={setMonth} />
-            <input aria-label={a.text('السنة', 'Year')} className="h-11 w-24 rounded-xl border border-mis-border bg-white px-3 text-sm" type="number" value={year} onChange={(event) => setYear(Number(event.target.value))} />
+            <input aria-label={a.text('السنة', 'Year')} className="h-11 w-24 rounded-xl border border-mis-control bg-white px-3 text-sm" type="number" value={year} onChange={(event) => setYear(Number(event.target.value))} />
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

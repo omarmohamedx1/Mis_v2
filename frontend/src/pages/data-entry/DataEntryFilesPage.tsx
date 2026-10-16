@@ -80,7 +80,7 @@ export function DataEntryFilesPage() {
               <div className="relative">
                 <Search className="pointer-events-none absolute top-3.5 h-4 w-4 text-mis-muted" style={{ insetInlineStart: '0.85rem' }} />
                 <input
-                  className="h-11 w-full rounded-xl border border-mis-border bg-white pe-3 ps-10 text-sm"
+                  className="h-11 w-full rounded-xl border border-mis-control bg-white pe-3 ps-10 text-sm"
                   placeholder={d.text('ابحث عن عميل', 'Search for a client')}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}

@@ -111,7 +111,7 @@ export function AccountingCommissionRulesPage() {
 
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
-      <ProfessionalSelect aria-label={a.text('النطاق', 'Scope')} className="min-h-11 w-full max-w-xs rounded-xl border border-mis-border bg-white px-3 text-sm" value={scope} onChange={(event) => setScope(event.target.value)}>
+      <ProfessionalSelect aria-label={a.text('النطاق', 'Scope')} className="min-h-11 w-full max-w-xs rounded-xl border border-mis-control bg-white px-3 text-sm" value={scope} onChange={(event) => setScope(event.target.value)}>
         <option value="">{a.text('كل النطاقات', 'All scopes')}</option>
         <option value="COLLECTOR">{a.text('محصل', 'Collector')}</option>
         <option value="SUPERVISOR">{a.text('مشرف', 'Supervisor')}</option>
@@ -177,21 +177,21 @@ export function AccountingCommissionRulesPage() {
               </div>
             </div>
             <div className="mt-4 grid gap-3">
-              <input className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('الكود', 'Code')} value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} />
-              <input className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('الاسم بالعربية', 'Arabic name')} value={form.nameArabic} onChange={(event) => setForm({ ...form, nameArabic: event.target.value })} />
-              <input className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('الاسم بالإنجليزية', 'English name')} value={form.nameEnglish} onChange={(event) => setForm({ ...form, nameEnglish: event.target.value })} />
-              <ProfessionalSelect className="min-h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={form.scope} onChange={(event) => setForm({ ...form, scope: event.target.value })}>
+              <input className="w-full rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('الكود', 'Code')} value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} />
+              <input className="w-full rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('الاسم بالعربية', 'Arabic name')} value={form.nameArabic} onChange={(event) => setForm({ ...form, nameArabic: event.target.value })} />
+              <input className="w-full rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('الاسم بالإنجليزية', 'English name')} value={form.nameEnglish} onChange={(event) => setForm({ ...form, nameEnglish: event.target.value })} />
+              <ProfessionalSelect className="min-h-11 w-full rounded-xl border border-mis-control bg-white px-3 text-sm" value={form.scope} onChange={(event) => setForm({ ...form, scope: event.target.value })}>
                 <option value="COLLECTOR">{a.text('محصل', 'Collector')}</option>
                 <option value="SUPERVISOR">{a.text('مشرف', 'Supervisor')}</option>
               </ProfessionalSelect>
-              <ProfessionalSelect className="min-h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={form.basis} onChange={(event) => setForm({ ...form, basis: event.target.value })}>
+              <ProfessionalSelect className="min-h-11 w-full rounded-xl border border-mis-control bg-white px-3 text-sm" value={form.basis} onChange={(event) => setForm({ ...form, basis: event.target.value })}>
                 <option value="PERCENT_OF_COLLECTED">{a.text('نسبة من التحصيل', 'Percent of collected')}</option>
                 <option value="FIXED_AMOUNT">{a.text('مبلغ ثابت', 'Fixed amount')}</option>
               </ProfessionalSelect>
               {form.basis === 'PERCENT_OF_COLLECTED' ? (
-                <input type="number" min={0} max={100} className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('النسبة %', 'Percentage %')} value={form.percentage} onChange={(event) => setForm({ ...form, percentage: Number(event.target.value) })} />
+                <input type="number" min={0} max={100} className="w-full rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('النسبة %', 'Percentage %')} value={form.percentage} onChange={(event) => setForm({ ...form, percentage: Number(event.target.value) })} />
               ) : (
-                <input type="number" min={0} className="w-full rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('المبلغ الثابت', 'Fixed amount')} value={form.fixedAmount} onChange={(event) => setForm({ ...form, fixedAmount: Number(event.target.value) })} />
+                <input type="number" min={0} className="w-full rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('المبلغ الثابت', 'Fixed amount')} value={form.fixedAmount} onChange={(event) => setForm({ ...form, fixedAmount: Number(event.target.value) })} />
               )}
               <DateControl className="w-full" value={form.effectiveFrom} onChange={(event) => setForm({ ...form, effectiveFrom: event.target.value })} />
             </div>

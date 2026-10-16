@@ -83,7 +83,7 @@ export function CollectionsCollectorsDashboardPage() {
 
       <label className="relative mt-8 block">
         <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mis-muted" />
-        <input className="h-12 w-full rounded-2xl border border-mis-border bg-white pe-4 ps-10 text-sm shadow-sm outline-none focus:border-mis-primary" onChange={event => setSearch(event.target.value)} placeholder={ct('searchCollectors')} value={search} />
+        <input className="h-12 w-full rounded-2xl border border-mis-control bg-white pe-4 ps-10 text-sm shadow-sm outline-none focus:border-mis-primary" onChange={event => setSearch(event.target.value)} placeholder={ct('searchCollectors')} value={search} />
       </label>
 
       <section className="mt-6">

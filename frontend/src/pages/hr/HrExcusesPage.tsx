@@ -498,7 +498,7 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
             value={search}
             placeholder={w.searchPlaceholder}
             aria-label={w.searchPlaceholder}
-            className="h-11 w-full rounded-xl border border-mis-border bg-white pe-4 ps-11 text-sm text-mis-navy shadow-sm outline-none ring-mis-primary/30 placeholder:text-mis-muted focus:border-mis-primary focus:ring-2"
+            className="h-11 w-full rounded-xl border border-mis-control bg-white pe-4 ps-11 text-sm text-mis-navy shadow-sm outline-none ring-mis-primary/30 placeholder:text-mis-muted focus:border-mis-primary focus:ring-2"
             onChange={(e) => {
               setSearch(e.target.value);
               setPendingOnly(false);
@@ -506,11 +506,11 @@ export function HrExcusesPage({ employeeId: profileEmployeeId }: { employeeId?: 
             }}
           />
         </div>
-        <ProfessionalSelect aria-label={w.type} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(e) => { setTypeFilter(e.target.value); setPendingOnly(false); setPage(1); }} value={typeFilter}>
+        <ProfessionalSelect aria-label={w.type} className="h-11 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(e) => { setTypeFilter(e.target.value); setPendingOnly(false); setPage(1); }} value={typeFilter}>
           <option value="">{w.allTypes}</option>
           {typeOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
         </ProfessionalSelect>
-        <ProfessionalSelect aria-label={w.status} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(e) => { setStatusFilter(e.target.value); setPendingOnly(false); setPage(1); }} value={statusFilter}>
+        <ProfessionalSelect aria-label={w.status} className="h-11 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(e) => { setStatusFilter(e.target.value); setPendingOnly(false); setPage(1); }} value={statusFilter}>
           <option value="">{w.allStatuses}</option>
           {['PendingApproval', 'Approved', 'Rejected', 'Cancelled'].map((item) => <option key={item} value={item}>{label(item)}</option>)}
         </ProfessionalSelect>

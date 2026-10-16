@@ -110,7 +110,7 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
           aria-expanded={open}
           aria-invalid={Boolean(error)}
           autoComplete="off"
-          className={`form-control h-12 w-full rounded-form border bg-white pe-20 ps-11 text-sm text-mis-ink outline-none transition focus:border-mis-blue focus:shadow-input ${error ? 'border-red-400' : 'border-mis-border'}`}
+          className={`form-control h-12 w-full rounded-form border bg-white pe-20 ps-11 text-sm text-mis-ink outline-none transition focus:border-mis-blue focus:shadow-input ${error ? 'border-red-500' : 'border-mis-control'}`}
           disabled={disabled}
           id={id}
           onChange={(event) => {

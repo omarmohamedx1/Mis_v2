@@ -138,7 +138,7 @@ export function CollectionsDataBatchesPage() {
       {actionError ? <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{actionError}</div> : null}
 
       <input
-        className="h-12 w-full rounded-2xl border border-mis-border bg-white px-4 text-sm focus:border-mis-blue focus:outline-none"
+        className="h-12 w-full rounded-2xl border border-mis-control bg-white px-4 text-sm focus:border-mis-blue focus:outline-none"
         placeholder={d.text('بحث برقم الدفعة أو الجهة أو الرافع', 'Search batch number, organization, or uploader')}
         value={search}
         onChange={(event) => setSearch(event.target.value)}

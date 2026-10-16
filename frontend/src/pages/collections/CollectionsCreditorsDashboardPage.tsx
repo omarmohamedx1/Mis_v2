@@ -78,7 +78,7 @@ export function CollectionsCreditorsDashboardPage() {
 
       <label className="relative mt-6 block">
         <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mis-muted" />
-        <input className="h-12 w-full rounded-2xl border border-mis-border bg-white pe-4 ps-10 text-sm shadow-sm outline-none focus:border-mis-primary" onChange={event => setSearch(event.target.value)} placeholder={ct('searchCreditors')} value={search} />
+        <input className="h-12 w-full rounded-2xl border border-mis-control bg-white pe-4 ps-10 text-sm shadow-sm outline-none focus:border-mis-primary" onChange={event => setSearch(event.target.value)} placeholder={ct('searchCreditors')} value={search} />
       </label>
 
       <div className="mt-8 space-y-10">

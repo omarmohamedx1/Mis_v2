@@ -34,7 +34,7 @@ export function useAccountingText() {
 export function AccountingMonthSelect({ value, onChange }: { value: number; onChange: (month: number) => void }) {
   const a = useAccountingText();
   return (
-    <ProfessionalSelect aria-label={a.text('الشهر', 'Month')} className="min-h-11 min-w-[10rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={String(value)} onChange={(event) => onChange(Number(event.target.value))}>
+    <ProfessionalSelect aria-label={a.text('الشهر', 'Month')} className="min-h-11 min-w-[10rem] rounded-xl border border-mis-control bg-white px-3 text-sm" value={String(value)} onChange={(event) => onChange(Number(event.target.value))}>
       {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>{a.monthName(month)}</option>)}
     </ProfessionalSelect>
   );

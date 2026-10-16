@@ -144,7 +144,7 @@ export function DataEntryDocumentsPanel({
             })}
           </div>
           <input
-            className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm"
+            className="h-11 w-full rounded-xl border border-mis-control bg-white px-3 text-sm"
             id="client-file-label"
             maxLength={500}
             placeholder={d.text('لو سبتها فاضية، اسم الملف هو الوصف', 'Leave empty and the file name is used')}

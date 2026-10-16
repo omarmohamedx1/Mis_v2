@@ -88,7 +88,7 @@ export function AccountingCollectorCommissionsPage() {
         </div>
         <PageActions><div className="flex flex-wrap gap-2">
           <AccountingMonthSelect value={month} onChange={setMonth} />
-          <input aria-label={a.text('السنة', 'Year')} type="number" className="h-11 w-24 rounded-xl border border-mis-border px-3 text-sm" value={year} onChange={(event) => setYear(Number(event.target.value))} />
+          <input aria-label={a.text('السنة', 'Year')} type="number" className="h-11 w-24 rounded-xl border border-mis-control px-3 text-sm" value={year} onChange={(event) => setYear(Number(event.target.value))} />
           <Button disabled={busy} fullWidth={false} leftIcon={<Calculator className="h-4 w-4" />} onClick={() => void calculate()}>{a.text('احتساب الشهر', 'Calculate month')}</Button>
           <Button fullWidth={false} leftIcon={<Percent className="h-4 w-4" />} onClick={() => navigate('/finance/commission-rules')} variant="outline">{a.text('قواعد العمولة', 'Commission rules')}</Button>
         </div>
@@ -97,8 +97,8 @@ export function AccountingCollectorCommissionsPage() {
       {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <input className="min-w-[200px] flex-1 rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('المحصل', 'Collector')} value={search} onChange={(event) => setSearch(event.target.value)} />
-        <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
+        <input className="min-w-[200px] flex-1 rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('المحصل', 'Collector')} value={search} onChange={(event) => setSearch(event.target.value)} />
+        <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-control bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">{a.text('كل الحالات', 'All statuses')}</option>
           {['READY', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
         </ProfessionalSelect>
@@ -169,7 +169,7 @@ export function AccountingCollectorCommissionsPage() {
             {editable.includes(details.summary.status) ? (
               <div className="mt-4 flex flex-wrap items-end gap-2">
                 <label className="text-sm"><span className="mb-1 block text-slate-500">{a.text('تسوية', 'Adjustment')}</span>
-                  <input type="number" step="0.01" className="rounded-xl border border-mis-border px-3 py-2" value={adjustValue} onChange={(event) => setAdjustValue(Number(event.target.value))} />
+                  <input type="number" step="0.01" className="rounded-xl border border-mis-control px-3 py-2" value={adjustValue} onChange={(event) => setAdjustValue(Number(event.target.value))} />
                 </label>
                 <Button disabled={busy} fullWidth={false} leftIcon={<Save className="h-4 w-4" />} onClick={() => confirmMoney(details.summary.commissionAmount + adjustValue, details.summary.collectorName + '\n' + a.money(adjustValue), adjust)} variant="outline">{a.text('حفظ التسوية', 'Save adjustment')}</Button>
               </div>

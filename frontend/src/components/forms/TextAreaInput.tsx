@@ -34,7 +34,7 @@ export const TextAreaInput = forwardRef<HTMLTextAreaElement, TextAreaInputProps>
       <textarea
         aria-describedby={joinDescribedBy(ariaDescribedBy, hintId, errorId)}
         aria-invalid={error ? true : undefined}
-        className={twMerge(`min-h-28 resize-y px-4 py-3 ${formControlClass} ${error ? 'border-red-400' : 'border-mis-border'} ${className}`)}
+        className={twMerge(`min-h-28 resize-y px-4 py-3 ${formControlClass} ${error ? 'border-red-500' : 'border-mis-control'} ${className}`)}
         id={inputId}
         name={name}
         ref={ref}

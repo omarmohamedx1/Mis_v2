@@ -517,28 +517,28 @@ export function HrEmployeesPage() {
               <label className="relative min-w-0">
                 <span className="sr-only">{t('searchValuePlaceholder')}</span>
                 <Search aria-hidden="true" className="pointer-events-none absolute start-3 top-3 h-5 w-5 text-mis-muted" />
-                <input autoComplete="off" className="h-11 w-full rounded-xl border border-mis-border bg-white pe-10 ps-10 text-sm outline-none transition focus:border-mis-blue focus:shadow-input" maxLength={160} onChange={(event) => setSearchInput(event.target.value)} placeholder={`${selectedSearchField}: ${t('searchValuePlaceholder')}`} type="search" value={searchInput} />
+                <input autoComplete="off" className="h-11 w-full rounded-xl border border-mis-control bg-white pe-10 ps-10 text-sm outline-none transition focus:border-mis-blue focus:shadow-input" maxLength={160} onChange={(event) => setSearchInput(event.target.value)} placeholder={`${selectedSearchField}: ${t('searchValuePlaceholder')}`} type="search" value={searchInput} />
                 {searchInput ? <button aria-label={t('clearSearch')} className="absolute end-2 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg text-mis-muted hover:bg-slate-100 hover:text-slate-700" onClick={() => setSearchInput('')} type="button"><X className="h-4 w-4" /></button> : null}
               </label>
             </div>
             <div className="module-filter-grid">
               <FilterField label={t('internalDepartment')}>
-                <ProfessionalSelect aria-label={t('internalDepartment')} className="h-11 min-w-44 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => setDepartmentId(event.target.value)} value={departmentId}><option value="">{t('allDepartments')}</option>{directoryDepartments(departments).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</ProfessionalSelect>
+                <ProfessionalSelect aria-label={t('internalDepartment')} className="h-11 min-w-44 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => setDepartmentId(event.target.value)} value={departmentId}><option value="">{t('allDepartments')}</option>{directoryDepartments(departments).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</ProfessionalSelect>
               </FilterField>
               <FilterField label={t('position')}>
-                <ProfessionalSelect aria-label={t('position')} className="h-11 min-w-44 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => setPositionId(event.target.value)} value={positionId}><option value="">{t('allPositions')}</option>{positionsForDepartment(positions, departmentId, positionId).map((item) => <option key={item.id} value={item.id}>{lookupLabel(item, language)}</option>)}</ProfessionalSelect>
+                <ProfessionalSelect aria-label={t('position')} className="h-11 min-w-44 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => setPositionId(event.target.value)} value={positionId}><option value="">{t('allPositions')}</option>{positionsForDepartment(positions, departmentId, positionId).map((item) => <option key={item.id} value={item.id}>{lookupLabel(item, language)}</option>)}</ProfessionalSelect>
               </FilterField>
               <FilterField label={t('clientAssignment')}>
-                <ProfessionalSelect aria-label={t('clientAssignment')} className="h-11 min-w-44 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => setOrganizationId(event.target.value)} value={organizationId}><option value="">{t('allOrganizations')}</option>{organizations.map((item) => <option key={item.id} value={item.id}>{organizationLabel(item, language)}</option>)}</ProfessionalSelect>
+                <ProfessionalSelect aria-label={t('clientAssignment')} className="h-11 min-w-44 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => setOrganizationId(event.target.value)} value={organizationId}><option value="">{t('allOrganizations')}</option>{organizations.map((item) => <option key={item.id} value={item.id}>{organizationLabel(item, language)}</option>)}</ProfessionalSelect>
               </FilterField>
               <FilterField label={t('gender')}>
-                <ProfessionalSelect aria-label={t('gender')} className="h-11 min-w-40 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => setGender(event.target.value)} value={gender}><option value="">{t('allGenders')}</option><option value="Male">{t('male')}</option><option value="Female">{t('female')}</option></ProfessionalSelect>
+                <ProfessionalSelect aria-label={t('gender')} className="h-11 min-w-40 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => setGender(event.target.value)} value={gender}><option value="">{t('allGenders')}</option><option value="Male">{t('male')}</option><option value="Female">{t('female')}</option></ProfessionalSelect>
               </FilterField>
               <FilterField label={t('status')}>
-                <ProfessionalSelect aria-label={t('status')} className="h-11 min-w-40 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setStatus(event.target.value); setArchived(false); }} value={status}><option value="all">{t('allStatuses')}</option>{statusOptions.map((item) => <option key={item} value={item.toLowerCase()}>{t(statusLabels[item])}</option>)}</ProfessionalSelect>
+                <ProfessionalSelect aria-label={t('status')} className="h-11 min-w-40 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => { setStatus(event.target.value); setArchived(false); }} value={status}><option value="all">{t('allStatuses')}</option>{statusOptions.map((item) => <option key={item} value={item.toLowerCase()}>{t(statusLabels[item])}</option>)}</ProfessionalSelect>
               </FilterField>
               <FilterField label={t('recordType')}>
-                <ProfessionalSelect aria-label={t('recordType')} className="h-11 min-w-44 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setArchived(event.target.value === 'true'); if (event.target.value === 'true') setStatus('all'); }} value={String(archived)}><option value="false">{t('currentEmployees')}</option><option value="true">{t('archivedEmployees')}</option></ProfessionalSelect>
+                <ProfessionalSelect aria-label={t('recordType')} className="h-11 min-w-44 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => { setArchived(event.target.value === 'true'); if (event.target.value === 'true') setStatus('all'); }} value={String(archived)}><option value="false">{t('currentEmployees')}</option><option value="true">{t('archivedEmployees')}</option></ProfessionalSelect>
               </FilterField>
             </div>
           </div>

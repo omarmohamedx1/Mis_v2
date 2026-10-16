@@ -679,7 +679,7 @@ function AuditTab({ employeeId }: { employeeId: string }) {
   return (
     <Section bodyClassName="p-0" description={t('auditHistoryHelp')} title={t('auditHistory')}>
       <div className="border-b border-mis-border p-4">
-        <label className="relative block"><span className="sr-only">{t('searchAudit')}</span><Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" aria-hidden="true" /><input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchAudit')} value={searchInput} /></label>
+        <label className="relative block"><span className="sr-only">{t('searchAudit')}</span><Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" aria-hidden="true" /><input className="h-11 w-full rounded-xl border border-mis-control pe-3 ps-10 text-sm outline-none focus:border-mis-blue focus:shadow-input" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchAudit')} value={searchInput} /></label>
       </div>
       {loading ? <div className="flex min-h-64 items-center justify-center"><LoadingSpinner /></div> : error ? <ErrorState compact message={error} onRetry={() => void load()} title={t('auditUnavailable')} /> : data.items.length === 0 ? <EmptyState compact description={t('noAuditHelp')} icon={<History className="h-6 w-6" aria-hidden="true" />} title={t('noAuditRecords')} /> : (
         <>

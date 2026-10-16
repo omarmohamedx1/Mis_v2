@@ -91,7 +91,7 @@ export function DataEntryClientsPage() {
         <div className="relative">
           <Search className="pointer-events-none absolute top-3.5 h-4 w-4 text-mis-muted" style={{ insetInlineStart: '0.9rem' }} />
           <input
-            className="h-11 w-full rounded-xl border border-mis-border bg-white pe-4 ps-10 text-sm text-mis-ink placeholder:text-mis-muted focus:border-mis-blue focus:outline-none"
+            className="h-11 w-full rounded-xl border border-mis-control bg-white pe-4 ps-10 text-sm text-mis-ink placeholder:text-mis-muted focus:border-mis-blue focus:outline-none"
             placeholder={d.text('ابحث بالاسم أو الرقم القومي أو أي تليفون أو العنوان', 'Search by name, national ID, any phone, or address')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -100,13 +100,13 @@ export function DataEntryClientsPage() {
         <div className="grid gap-3 md:grid-cols-[minmax(0,16rem)_minmax(0,12rem)_minmax(0,1fr)]">
           <label className="block text-sm">
             <span className="mb-1 block font-semibold text-slate-600">{d.text('العمود', 'Column')}</span>
-            <ProfessionalSelect className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={column} onChange={(event) => setColumn(event.target.value)}>
+            <ProfessionalSelect className="h-11 w-full rounded-xl border border-mis-control bg-white px-3 text-sm" value={column} onChange={(event) => setColumn(event.target.value)}>
               {sheetColumns(items, d.text).map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
             </ProfessionalSelect>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-semibold text-slate-600">{d.text('القيمة', 'Value')}</span>
-            <ProfessionalSelect className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={presence} onChange={(event) => setPresence(event.target.value as 'any' | 'filled' | 'empty')}>
+            <ProfessionalSelect className="h-11 w-full rounded-xl border border-mis-control bg-white px-3 text-sm" value={presence} onChange={(event) => setPresence(event.target.value as 'any' | 'filled' | 'empty')}>
               <option value="any">{d.text('الكل', 'Any')}</option>
               <option value="filled">{d.text('فيه بيانات', 'Filled')}</option>
               <option value="empty">{d.text('فاضي', 'Empty')}</option>
@@ -114,7 +114,7 @@ export function DataEntryClientsPage() {
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-semibold text-slate-600">{d.text('يحتوي على', 'Contains')}</span>
-            <input className="h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm" value={columnSearch} onChange={(event) => setColumnSearch(event.target.value)} />
+            <input className="h-11 w-full rounded-xl border border-mis-control bg-white px-3 text-sm" value={columnSearch} onChange={(event) => setColumnSearch(event.target.value)} />
           </label>
         </div>
       </div>

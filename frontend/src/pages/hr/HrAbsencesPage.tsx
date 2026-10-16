@@ -308,18 +308,18 @@ export function HrAbsencesPage({ embedded = false }: { embedded?: boolean }) {
         <div className="module-filter-grid border-b border-mis-border p-4">
           <label className="relative">
             <Search className="absolute start-3 top-3 h-5 w-5 text-mis-muted" aria-hidden="true" />
-            <input className="h-11 w-full rounded-xl border border-mis-border pe-3 ps-10 text-sm outline-none focus:border-mis-blue" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchEmployee')} value={searchInput} />
+            <input className="h-11 w-full rounded-xl border border-mis-control pe-3 ps-10 text-sm outline-none focus:border-mis-blue" onChange={(event) => setSearchInput(event.target.value)} placeholder={t('searchEmployee')} value={searchInput} />
           </label>
-          <ProfessionalSelect aria-label={t('department')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setDepartmentId(event.target.value); setPage(1); }} value={departmentId}>
+          <ProfessionalSelect aria-label={t('department')} className="h-11 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => { setDepartmentId(event.target.value); setPage(1); }} value={departmentId}>
             <option value="">{t('allDepartments')}</option>
             {departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </ProfessionalSelect>
-          <ProfessionalSelect aria-label={t('assignedBankCompany')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setOrganizationId(event.target.value); setPage(1); }} value={organizationId}>
+          <ProfessionalSelect aria-label={t('assignedBankCompany')} className="h-11 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => { setOrganizationId(event.target.value); setPage(1); }} value={organizationId}>
             <option value="">{t('allOrganizations')}</option>
             {organizations.map((item) => <option key={item.id} value={item.id}>{organizationLabel(item, language)}</option>)}
           </ProfessionalSelect>
           <DateControl aria-label={t('absenceDateFilter')} className="h-11 rounded-xl border border-mis-border px-3 text-sm" onChange={(event) => { setDate(event.target.value); setPage(1); }}  value={date} />
-          <ProfessionalSelect aria-label={t('status')} className="h-11 rounded-xl border border-mis-border bg-white px-3 text-sm" onChange={(event) => { setStatus(event.target.value); setPage(1); }} value={status}>
+          <ProfessionalSelect aria-label={t('status')} className="h-11 rounded-xl border border-mis-control bg-white px-3 text-sm" onChange={(event) => { setStatus(event.target.value); setPage(1); }} value={status}>
             <option value="all">{t('all')}</option>
             {statuses.map((item) => <option key={item} value={item.toLowerCase()}>{t(statusLabels[item])}</option>)}
           </ProfessionalSelect>

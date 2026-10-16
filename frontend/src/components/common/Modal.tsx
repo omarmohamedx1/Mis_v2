@@ -75,7 +75,8 @@ export function Modal({
       const dialog = dialogRef.current;
       if (!dialog) return;
       const chromeHeight = (headerRef.current?.scrollHeight ?? 0) + (footerRef.current?.scrollHeight ?? 0);
-      const controlHeight = parseFloat(getComputedStyle(document.documentElement).fontSize) * 2.75;
+      const tokens = getComputedStyle(document.documentElement);
+      const controlHeight = parseFloat(tokens.getPropertyValue('--control-height')) * parseFloat(tokens.fontSize);
       setScrollWholeDialog(chromeHeight + controlHeight > dialog.clientHeight);
     };
     measure();
@@ -103,7 +104,7 @@ export function Modal({
         role={dialogRole}
         tabIndex={-1}
       >
-        {hideHeader ? <h2 className="sr-only" id={titleId}>{title}</h2> : <header ref={headerRef} className="flex shrink-0 items-start justify-between gap-4 border-b border-mis-border px-4 py-4 sm:px-6 sm:py-5">
+        {hideHeader ? <h2 className="sr-only" id={titleId}>{title}</h2> : <header ref={headerRef} className="flex shrink-0 items-start justify-between gap-4 border-b border-mis-border px-4 py-4 sm:px-6 sm:py-5 [overflow-wrap:anywhere]">
           <div className="min-w-0">
             <h2 className="break-words text-xl font-bold text-mis-navy" id={titleId}>{title}</h2>
             {description ? <div className="mt-1 text-sm leading-5 text-slate-500" id={descriptionId}>{description}</div> : null}

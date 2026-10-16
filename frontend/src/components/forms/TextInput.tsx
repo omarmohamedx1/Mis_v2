@@ -26,7 +26,7 @@ export function TextInput({ id, label, error, hint, className = '', containerCla
         aria-describedby={errorId}
         dir={props.dir ?? (isTechnicalValue ? 'ltr' : undefined)}
         className={twMerge(`form-control h-12 w-full rounded-form border bg-white px-4 text-sm text-mis-ink transition placeholder:text-mis-muted focus:border-mis-blue focus:shadow-input focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${
-          error ? 'border-red-400' : 'border-mis-border'
+          error ? 'border-red-500' : 'border-mis-control'
         } ${className}`)}
         {...props}
       />

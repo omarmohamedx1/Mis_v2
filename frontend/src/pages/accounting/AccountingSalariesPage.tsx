@@ -123,7 +123,7 @@ ${selected.notes ?? ''}` : '';
         </div>
         <PageActions><div className="flex min-w-0 flex-wrap gap-2">
           <AccountingMonthSelect value={month} onChange={setMonth} />
-          <input aria-label={a.text('السنة', 'Year')} className="h-11 w-24 rounded-xl border border-mis-border px-3 text-sm" type="number" value={year} onChange={(event) => setYear(Number(event.target.value))} />
+          <input aria-label={a.text('السنة', 'Year')} className="h-11 w-24 rounded-xl border border-mis-control px-3 text-sm" type="number" value={year} onChange={(event) => setYear(Number(event.target.value))} />
           <Button disabled={busy} fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} onClick={() => void generate()} size="md">{a.text('توليد / تحديث', 'Generate / refresh')}</Button>
         </div>
       <AccountingExportButton report="salaries" filter={{ year, month, periodId: periodId || undefined, search: search || undefined, status: status || undefined }} disabled={!periodId} /></PageActions></header>
@@ -140,12 +140,12 @@ ${selected.notes ?? ''}` : '';
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <input className="min-w-[220px] flex-1 rounded-xl border border-mis-border px-3 py-2 text-sm" placeholder={a.text('بحث بالموظف', 'Search employee')} value={search} onChange={(event) => setSearch(event.target.value)} />
-        <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
+        <input className="min-w-[220px] flex-1 rounded-xl border border-mis-control px-3 py-2 text-sm" placeholder={a.text('بحث بالموظف', 'Search employee')} value={search} onChange={(event) => setSearch(event.target.value)} />
+        <ProfessionalSelect className="min-h-11 min-w-[12rem] rounded-xl border border-mis-control bg-white px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">{a.text('كل الحالات', 'All statuses')}</option>
           {['READY', 'PAID', 'CANCELLED'].map((value) => <option key={value} value={value}>{a.status(value)}</option>)}
         </ProfessionalSelect>
-        <ProfessionalSelect className="min-h-11 min-w-[14rem] rounded-xl border border-mis-border bg-white px-3 text-sm" value={periodId} onChange={(event) => setPeriodId(event.target.value)}>
+        <ProfessionalSelect className="min-h-11 min-w-[14rem] rounded-xl border border-mis-control bg-white px-3 text-sm" value={periodId} onChange={(event) => setPeriodId(event.target.value)}>
           <option value="">{a.text('اختر الفترة', 'Select period')}</option>
           {periods.map((period) => <option key={period.id} value={period.id}>{a.monthLabel(period.year, period.month)} · {a.number(period.employeeCount)}</option>)}
         </ProfessionalSelect>
@@ -219,7 +219,7 @@ ${selected.notes ?? ''}` : '';
                   <span className="mb-1 block text-slate-500">{label}</span>
                   <input
                     type="number"
-                    className="w-full rounded-xl border border-mis-border px-3 py-2 disabled:bg-slate-50"
+                    className="w-full rounded-xl border border-mis-control px-3 py-2 disabled:bg-slate-50"
                     disabled={readOnly || !editable.includes(selected.status)}
                     value={selected[key]}
                     step="0.01"
@@ -230,7 +230,7 @@ ${selected.notes ?? ''}` : '';
             </div>
             <label className="mt-3 block text-sm">
               <span className="mb-1 block text-slate-500">{a.text('ملاحظات', 'Notes')}</span>
-              <textarea className="w-full rounded-xl border border-mis-border px-3 py-2 disabled:bg-slate-50" disabled={!editable.includes(selected.status)} value={selected.notes ?? ''} onChange={(event) => setSelected({ ...selected, notes: event.target.value })} />
+              <textarea className="w-full rounded-xl border border-mis-control px-3 py-2 disabled:bg-slate-50" disabled={!editable.includes(selected.status)} value={selected.notes ?? ''} onChange={(event) => setSelected({ ...selected, notes: event.target.value })} />
             </label>
             <p className="mt-4 text-lg font-bold text-mis-navy" data-bidi="ltr">{a.text('الصافي', 'Net')}: {a.money(selected.netSalary)}</p>
             <div className="mt-5 flex flex-wrap gap-2">
