@@ -88,7 +88,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
 
     public async Task<FinancePagedResultDto<FinanceJournalListItemDto>> GetJournalsAsync(int page, int pageSize, string? status, DateOnly? from, DateOnly? to, CancellationToken token)
     {
-        EnsureAccess(); ValidatePage(page, pageSize); var query = _db.JournalEntries.AsNoTracking(); if (!string.IsNullOrWhiteSpace(status)) { var s = status.Trim().ToUpperInvariant(); query = query.Where(x => x.Status == s); } if (from.HasValue) query = query.Where(x => x.PostingDate >= from); if (to.HasValue) query = query.Where(x => x.PostingDate <= to);
+        EnsureAccess(); ValidatePage(page, pageSize); var query = AccountingJournalVisibility.Visible(_db); if (!string.IsNullOrWhiteSpace(status)) { var s = status.Trim().ToUpperInvariant(); query = query.Where(x => x.Status == s); } if (from.HasValue) query = query.Where(x => x.PostingDate >= from); if (to.HasValue) query = query.Where(x => x.PostingDate <= to);
         var count = await query.CountAsync(token); var items = await query.OrderByDescending(x => x.PostingDate).ThenByDescending(x => x.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new FinanceJournalListItemDto(x.Id, x.JournalNumber, x.EntryType, x.PostingDate, x.Description, x.TotalDebit, x.TotalCredit, x.Status, x.CreatedAt)).ToArrayAsync(token); return new(items, page, pageSize, count, (int)Math.Ceiling(count / (double)pageSize));
     }
 

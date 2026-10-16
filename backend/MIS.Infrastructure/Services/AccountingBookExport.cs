@@ -154,7 +154,8 @@ public sealed partial class AccountingBookService
         }
         if (all || report == "journals")
         {
-            var q = db.JournalEntryLines.AsNoTracking().Where(x => x.JournalEntry.PostingDate >= from && x.JournalEntry.PostingDate <= to);
+            var visibleJournals = AccountingJournalVisibility.Visible(db).Select(x => x.Id);
+            var q = db.JournalEntryLines.AsNoTracking().Where(x => visibleJournals.Contains(x.JournalEntryId) && x.JournalEntry.PostingDate >= from && x.JournalEntry.PostingDate <= to);
             if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.JournalEntry.Status == filter.Status);
             var rows = await q.OrderBy(x => x.JournalEntry.PostingDate).ThenBy(x => x.JournalEntryId).ThenBy(x => x.LineNumber).Select(x => new { x.JournalEntry.JournalNumber, x.JournalEntry.PostingDate, x.Account.Code, Name = ar ? x.Account.NameArabic : x.Account.NameEnglish, x.Description, x.BaseDebit, x.BaseCredit, x.JournalEntry.Status }).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("القيود اليومية", "Journal lines"), [T("رقم القيد", "Journal"), T("تاريخ الترحيل", "Posting date"), T("كود الحساب", "Code"), T("الحساب", "Account"), T("البيان", "Description"), T("مدين", "Debit"), T("دائن", "Credit"), T("الحالة", "Status")], rows.Select(x => new object?[] { x.JournalNumber, x.PostingDate, x.Code, x.Name, x.Description, x.BaseDebit, x.BaseCredit, StatusName(x.Status, ar) }));

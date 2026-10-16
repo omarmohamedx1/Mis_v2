@@ -112,6 +112,19 @@ public sealed class AccountingBookIntegrationTests
             Check(afterDelete.Expenses == beforeDelete.Expenses && afterDelete.CashIn == beforeDelete.CashIn && afterDelete.CashOut == beforeDelete.CashOut, "deletion removes both expense and cash effects completely");
             Assert.DoesNotContain((await bm.ListAsync(new(), default)).Items, x => x.Id == mistaken.Id);
             var correction = await db.JournalEntries.SingleAsync(x => x.ReversalOfJournalId == mistaken.JournalEntryId);
+            foreach (var registerStatus in new string?[] { null, "POSTED", "REVERSED" })
+            {
+                var register = await fm.GetJournalsAsync(1, 200, registerStatus, null, null, default);
+                Assert.DoesNotContain(register.Items, x => x.Id == mistaken.JournalEntryId || x.Id == correction.Id);
+                if (registerStatus is null) Assert.Contains(register.Items, x => x.Id == income.JournalEntryId);
+            }
+            using (var journalExport = new XLWorkbook(new MemoryStream(await bm.ExportAsync("journals", new(From: new(today.Year, today.Month, 1), To: today), default))))
+            {
+                var exportedText = journalExport.Worksheets.SelectMany(x => x.CellsUsed()).Select(x => x.GetString()).ToArray();
+                Assert.DoesNotContain(mistaken.JournalNumber!, exportedText);
+                Assert.DoesNotContain(correction.JournalNumber!, exportedText);
+                Assert.Contains(income.JournalNumber!, exportedText);
+            }
             Check(correction.EntryType == "ACCOUNTING_DELETE" && correction.TotalDebit == correction.TotalCredit, "repeated deletion creates one balanced audit correction");
             await Conflict(() => fr.ReverseJournalAsync(correction.Id, new("Undo"), default), "deletion correction cannot restore hidden money");
             await Conflict(() => bm.CreateAsync(request, default), "replaying a deleted request cannot restore the expense");
