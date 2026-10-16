@@ -140,6 +140,7 @@ public sealed class FinanceService : IFinanceService, IFinancePostingService
         if (await _db.CollectionFinancialReceipts.AnyAsync(x => x.JournalEntryId == id || x.ClearingJournalEntryId == id, token))
             throw new HrConflictException("Collection journals must be reversed from the financial collection screen to keep the receipt, case balance, client ledger, and custody synchronized.");
         var original = await LoadJournalAsync(id, token);
+        if (original.EntryType == "ACCOUNTING_DELETE") throw new HrConflictException("Deletion corrections cannot be reversed. Record a new entry instead.");
         if (original.Status != FinanceValues.JournalStatuses.Posted)
             throw new HrConflictException("Only a posted journal can be reversed.");
         var reversal = await CreateReversalJournalAsync(original, request.Reason.Trim(), CairoToday(), token);

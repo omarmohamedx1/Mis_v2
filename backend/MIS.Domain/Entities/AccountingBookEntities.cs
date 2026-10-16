@@ -44,6 +44,14 @@ public sealed class AccountingBookEntry
     public Guid CreatedById { get; private set; }
     public User CreatedBy { get; private set; } = null!;
     public DateTimeOffset CreatedAt { get; private set; }
+    public DateTimeOffset? DeletedAt { get; private set; }
+    public Guid? DeletedById { get; private set; }
+    public void Delete(Guid actorId, DateTimeOffset at)
+    {
+        if (DeletedAt.HasValue) return;
+        DeletedAt = at; DeletedById = actorId;
+        if (SourceKey?.StartsWith("RECURRING:") == true) SourceKey = $"DELETED:{Id}:{SourceKey}";
+    }
 }
 
 public sealed class AccountingRecurringExpense

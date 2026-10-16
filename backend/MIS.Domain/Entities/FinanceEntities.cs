@@ -177,6 +177,17 @@ public sealed class JournalEntry
         EnsureBalanced(); ArgumentException.ThrowIfNullOrWhiteSpace(journalNumber); JournalNumber = journalNumber.Trim(); Status = FinanceValues.JournalStatuses.Posted; PostedById = posterId; PostedAt = now;
     }
     public void MarkReversed() { if (Status != FinanceValues.JournalStatuses.Posted) throw new InvalidOperationException("Only a posted journal can be reversed."); Status = FinanceValues.JournalStatuses.Reversed; }
+    public void RecordConfirmedAccounting(string journalNumber, Guid actorId, DateTimeOffset now)
+    {
+        if (EntryType is not ("MANUAL" or "ACCOUNTING_OPERATION") || Status is not (FinanceValues.JournalStatuses.Draft or FinanceValues.JournalStatuses.PendingApproval or FinanceValues.JournalStatuses.Approved)) throw new InvalidOperationException("This accounting entry cannot be confirmed.");
+        EnsureBalanced(); ArgumentException.ThrowIfNullOrWhiteSpace(journalNumber);
+        JournalNumber = journalNumber; Status = FinanceValues.JournalStatuses.Posted; PostedById = actorId; PostedAt = now;
+    }
+    public void CancelUnrecordedAccounting()
+    {
+        if (Status is not (FinanceValues.JournalStatuses.Draft or FinanceValues.JournalStatuses.PendingApproval or FinanceValues.JournalStatuses.Approved)) throw new InvalidOperationException("Only unrecorded accounting entries can be cancelled.");
+        Status = FinanceValues.JournalStatuses.Cancelled;
+    }
     public void LinkReversal(Guid originalJournalId) { if (originalJournalId == Guid.Empty) throw new ArgumentException("Original journal is required."); ReversalOfJournalId = originalJournalId; }
     private void Recalculate() { TotalDebit = _lines.Sum(x => x.BaseDebit); TotalCredit = _lines.Sum(x => x.BaseCredit); }
     private void EnsureDraftAndBalanced() { if (Status != FinanceValues.JournalStatuses.Draft) throw new InvalidOperationException("Only a draft journal can be submitted."); EnsureBalanced(); }

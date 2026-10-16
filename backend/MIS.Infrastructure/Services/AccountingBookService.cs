@@ -26,7 +26,7 @@ public sealed partial class AccountingBookService : IAccountingBookService
     private void EnsureManage()
     {
         EnsureAccess();
-        if (!IsAdmin && !user.Permissions.Contains(SystemPermissionCodes.FinanceJournalCreate) && !user.Permissions.Contains("accounting.transaction.manage")) throw new HrForbiddenException("You do not have the required finance permission.");
+        if (!IsAdmin && !user.Permissions.Contains(SystemPermissionCodes.FinanceJournalCreate) && !user.Permissions.Contains("accounting.transaction.manage") && !user.Permissions.Contains(SystemPermissionCodes.AccountingPayrollManage) && !user.Permissions.Contains(SystemPermissionCodes.AccountingCommissionManage) && !user.Permissions.Contains(SystemPermissionCodes.AccountingTransportationManage) && !user.Permissions.Contains("accounting.access")) throw new HrForbiddenException("You do not have the required finance permission.");
     }
     private static DateOnly Today() => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime);
     private static (DateTimeOffset From, DateTimeOffset To) UtcRange(DateOnly from, DateOnly to)
@@ -37,7 +37,7 @@ public sealed partial class AccountingBookService : IAccountingBookService
     private static void CheckDates(DateOnly from, DateOnly to) { if (from.Year < 2000 || to.Year > 2100 || to < from) throw new HrValidationException("Provide a valid accounting date range."); }
     private void Audit(string action, Guid id, object? before, object? after, string? reason = null)
         => db.FinancialAuditLogs.Add(new FinancialAuditLog(user.UserId, action, nameof(AccountingBookEntry), id, JsonSerializer.Serialize(before ?? new { }), JsonSerializer.Serialize(after ?? new { }), reason, DateTimeOffset.UtcNow));
-    private IQueryable<AccountingBookEntry> Entries() => db.AccountingBookEntries.AsNoTracking().Include(x => x.JournalEntry).ThenInclude(x => x.Lines).ThenInclude(x => x.Account)
+    private IQueryable<AccountingBookEntry> Entries(bool includeDeleted = false) => db.AccountingBookEntries.AsNoTracking().Where(x => includeDeleted || x.DeletedAt == null).Include(x => x.JournalEntry).ThenInclude(x => x.Lines).ThenInclude(x => x.Account)
         .Include(x => x.Account).Include(x => x.CounterAccount).Include(x => x.Employee).Include(x => x.CreatedBy);
     private static AccountingBookEntryDto Map(AccountingBookEntry x) => new(x.Id, x.DocumentNumber, x.Category, AccountingBookValues.Direction(x.Category), x.TransactionDate, x.Amount,
         x.AccountId, x.Account.Code, ApiTextLocalizer.IsArabic ? x.Account.NameArabic : x.Account.NameEnglish, x.CounterAccountId,
@@ -80,26 +80,32 @@ public sealed partial class AccountingBookService : IAccountingBookService
         if (request.Amount <= 0 || decimal.Round(request.Amount, 2) != request.Amount) throw new HrValidationException("Use a positive amount with at most two decimal places.");
         if (request.EmployeeId.HasValue && !await db.Employees.AnyAsync(x => x.Id == request.EmployeeId && !x.IsArchived, token)) throw new HrNotFoundException("Employee was not found.");
         if (AccountingBookValues.IsAdvance(request.Category) && request.EmployeeId is null) throw new HrValidationException("An employee is required for an advance.");
-        if (request.Category == "ADVANCE_REPAYMENT") await ValidateRepayment(request.RelatedAdvanceId, request.Amount, request.EmployeeId, request.AccountId, request.TransactionDate, null, token);
-        await ValidateAccounts(request.Category, request.AccountId, request.CounterAccountId, token);
         var source = request.RequestId.HasValue ? $"MANUAL:{request.RequestId}" : null;
         var existing = source is null ? null : await db.AccountingBookEntries.AsNoTracking().SingleOrDefaultAsync(x => x.SourceKey == source, token);
         if (existing is not null)
         {
+            if (existing.DeletedAt.HasValue) throw new HrConflictException("This entry was deleted. Start a new entry to record it again.");
             if (existing.Amount != request.Amount || existing.Category != request.Category || existing.TransactionDate != request.TransactionDate || existing.AccountId != request.AccountId || existing.CounterAccountId != request.CounterAccountId || existing.Description != request.Description.Trim() || existing.EmployeeId != request.EmployeeId || existing.RelatedAdvanceId != request.RelatedAdvanceId || existing.Reference != (string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim())) throw new HrConflictException("This request was already used with different accounting data.");
             return await GetAsync(existing.Id, token);
         }
-        var result = await CreateDraft(request, null, source, token);
+        if (request.Category == "ADVANCE_REPAYMENT") await ValidateRepayment(request.RelatedAdvanceId, request.Amount, request.EmployeeId, request.AccountId, request.TransactionDate, null, token);
+        await ValidateAccounts(request.Category, request.AccountId, request.CounterAccountId, token);
+        var result = await CreateRecordedEntry(request, null, source, token);
         if (tx is not null) await tx.CommitAsync(token);
         return result;
     }
-    private async Task<AccountingBookEntryDto> CreateDraft(CreateAccountingBookEntryRequest request, Guid? recurringId, string? source, CancellationToken token)
+    private async Task<AccountingBookEntryDto> CreateRecordedEntry(CreateAccountingBookEntryRequest request, Guid? recurringId, string? source, CancellationToken token)
     {
         var incoming = AccountingBookValues.IsCashIn(request.Category);
         var debitId = incoming ? request.CounterAccountId : request.AccountId;
         var creditId = incoming ? request.AccountId : request.CounterAccountId;
-        var journal = await finance.CreateManualJournalAsync(new(request.TransactionDate, request.TransactionDate, "EGP", request.Description,
-            [new(debitId, request.Amount, 0, request.Description, null, null, null), new(creditId, 0, request.Amount, request.Description, null, null, null)]), token);
+        var period = await OpenPeriod(request.TransactionDate, token);
+        var now = DateTimeOffset.UtcNow;
+        var journal = new JournalEntry(FinanceSeed.LegalEntityId, period.Id, null, "ACCOUNTING_OPERATION", request.TransactionDate, request.TransactionDate, "EGP", request.Description, user.UserId, now);
+        journal.AddLine(debitId, request.Amount, 0, request.Amount, 0, 1, request.Description);
+        journal.AddLine(creditId, 0, request.Amount, 0, request.Amount, 1, request.Description);
+        journal.RecordConfirmedAccounting(Number(request.TransactionDate, journal.Id), user.UserId, now);
+        db.JournalEntries.Add(journal);
         var row = new AccountingBookEntry(Guid.NewGuid(), request.Category, request.TransactionDate, request.Amount, request.AccountId, request.CounterAccountId, request.Description, request.Reference,
             journal.Id, user.UserId, DateTimeOffset.UtcNow, request.EmployeeId, request.RelatedAdvanceId, recurringId, source);
         db.AccountingBookEntries.Add(row); Audit("AccountingEntryCreated", row.Id, null, request);
@@ -120,8 +126,19 @@ public sealed partial class AccountingBookService : IAccountingBookService
         if (entry.SourceKey is not null && !entry.SourceKey.StartsWith("MANUAL:") && !entry.SourceKey.StartsWith("RECURRING:")) throw new HrConflictException("Use the original payroll or commission record to manage this payment.");
         try
         {
+            if (entry.DeletedAt.HasValue) throw new HrConflictException("This entry was deleted. Start a new entry to record it again.");
             switch (action)
             {
+                case "record":
+                    EnsureManage();
+                    if (entry.JournalEntry.Status == "POSTED") break;
+                    if (entry.TransactionDate > Today()) throw new HrConflictException("Future accounting entries cannot be posted before their date.");
+                    await OpenPeriod(entry.TransactionDate, token);
+                    await ValidateAccounts(entry.Category, entry.AccountId, entry.CounterAccountId, token);
+                    if (entry.Category == "ADVANCE_REPAYMENT") await ValidateRepayment(entry.RelatedAdvanceId, entry.Amount, entry.EmployeeId, entry.AccountId, entry.TransactionDate, entry.Id, token);
+                    await db.Entry(entry.JournalEntry).Collection(x => x.Lines).LoadAsync(token);
+                    entry.JournalEntry.RecordConfirmedAccounting(Number(entry.TransactionDate, entry.JournalEntryId), user.UserId, DateTimeOffset.UtcNow);
+                    Audit("AccountingEntryRecorded", entry.Id, null, new { entry.Amount, entry.JournalEntry.Status }); await db.SaveChangesAsync(token); break;
                 case "submit": EnsureManage(); await finance.SubmitJournalAsync(entry.JournalEntryId, token); break;
                 case "approve": await finance.ApproveJournalAsync(entry.JournalEntryId, token); break;
                 case "post":
@@ -176,17 +193,18 @@ public sealed partial class AccountingBookService : IAccountingBookService
     public async Task<GenerateRecurringExpensesResult> GenerateRecurringAsync(GenerateRecurringExpensesRequest request, CancellationToken token)
     {
         EnsureManage(); await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
-        var templates = await db.AccountingRecurringExpenses.Where(x => x.IsActive).ToListAsync(token); int created = 0, exists = 0, outside = 0;
+        var templates = await db.AccountingRecurringExpenses.Where(x => x.IsActive).ToListAsync(token); int created = 0, exists = 0, outside = 0, notDue = 0;
         foreach (var template in templates)
         {
             var date = template.DueDate(request.Year, request.Month);
             if (!date.HasValue) { outside++; continue; }
+            if (date.Value > Today()) { notDue++; continue; }
             var key = $"RECURRING:{template.Id}:{request.Year:D4}{request.Month:D2}";
             if (await db.AccountingBookEntries.AnyAsync(x => x.SourceKey == key, token)) { exists++; continue; }
             await ValidateAccounts("FIXED", template.AccountId, template.CashAccountId, token);
-            await CreateDraft(new("FIXED", date.Value, template.Amount, template.AccountId, template.CashAccountId, template.Name, $"RECURRING-{request.Year:D4}{request.Month:D2}"), template.Id, key, token); created++;
+            await CreateRecordedEntry(new("FIXED", date.Value, template.Amount, template.AccountId, template.CashAccountId, template.Name, $"RECURRING-{request.Year:D4}{request.Month:D2}"), template.Id, key, token); created++;
         }
         if (tx is not null) await tx.CommitAsync(token);
-        return new(created, exists, outside);
+        return new(created, exists, outside, notDue);
     }
 }

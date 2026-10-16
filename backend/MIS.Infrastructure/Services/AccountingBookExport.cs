@@ -94,8 +94,8 @@ public sealed partial class AccountingBookService
         }
         if (all || report == "salaries")
         {
-            var q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.Period.Year * 12 + x.Period.Month >= lowerPeriod && x.Period.Year * 12 + x.Period.Month <= upperPeriod);
-            if (filter.PeriodId.HasValue) q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.PeriodId == filter.PeriodId);
+            var q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.Status != "DELETED" && x.Period.Year * 12 + x.Period.Month >= lowerPeriod && x.Period.Year * 12 + x.Period.Month <= upperPeriod);
+            if (filter.PeriodId.HasValue) q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.Status != "DELETED" && x.PeriodId == filter.PeriodId);
             if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(x => x.Status == filter.Status);
             if (!string.IsNullOrWhiteSpace(filter.Search)) q = q.Where(x => x.EmployeeName.ToLower().Contains(filter.Search.ToLower()) || x.EmployeeNumber.ToLower().Contains(filter.Search.ToLower()));
             var rows = await q.OrderBy(x => x.EmployeeNumber).Select(x => new { x.Period.Year, x.Period.Month, x.EmployeeNumber, x.EmployeeName, x.DepartmentName, x.BasicSalary, x.Allowances, x.Transportation, x.Commissions, x.Bonuses, x.Deductions, x.OtherAdjustments, x.NetSalary, x.Status }).Take(ExportLimit + 1).ToListAsync(token);

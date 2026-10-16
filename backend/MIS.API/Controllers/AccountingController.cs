@@ -51,7 +51,7 @@ public sealed class AccountingController(IAccountingService accounting) : Contro
     public Task<AccountingEmployeePayrollDto> ApproveSalary(Guid id, CancellationToken token) => accounting.ApprovePayrollAsync(id, token);
 
     [HttpPost("salaries/{id:guid}/pay")]
-    [Authorize(Policy = AuthorizationPolicies.AccountingPayrollApprove)]
+    [Authorize(Policy = AuthorizationPolicies.AccountingPayrollManage)]
     public Task<AccountingEmployeePayrollDto> PaySalary(Guid id, CancellationToken token) => accounting.PayPayrollAsync(id, token);
 
     [HttpPost("salaries/{id:guid}/cancel")]

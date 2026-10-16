@@ -15,7 +15,8 @@ public sealed class HrNetSalaryService(ApplicationDbContext db, ICurrentUserCont
     [
         AccountingValues.PayrollStatuses.Approved,
         AccountingValues.PayrollStatuses.Paid,
-        AccountingValues.PayrollStatuses.Cancelled
+        AccountingValues.PayrollStatuses.Cancelled,
+        "DELETED"
     ];
 
     public async Task<HrPayrollSheetDto> GetSheetAsync(int year, int month, CancellationToken cancellationToken)
@@ -66,7 +67,7 @@ public sealed class HrNetSalaryService(ApplicationDbContext db, ICurrentUserCont
             .ToListAsync(cancellationToken);
 
         var payrollRows = await db.AccountingEmployeePayrolls.AsNoTracking()
-            .Where(item => item.Period.Year == year && item.Period.Month == month && item.Status != AccountingValues.PayrollStatuses.Cancelled)
+            .Where(item => item.Period.Year == year && item.Period.Month == month && item.Status != AccountingValues.PayrollStatuses.Cancelled && item.Status != "DELETED")
             .Select(item => new { item.Id, item.EmployeeId, item.Status })
             .ToListAsync(cancellationToken);
 
@@ -130,7 +131,7 @@ public sealed class HrNetSalaryService(ApplicationDbContext db, ICurrentUserCont
 
         await ApplyToAccountingAsync(year, month, rows, cancellationToken);
         var posted = await db.AccountingEmployeePayrolls.AsNoTracking()
-            .Where(item => item.Period.Year == year && item.Period.Month == month && item.Status != AccountingValues.PayrollStatuses.Cancelled)
+            .Where(item => item.Period.Year == year && item.Period.Month == month && item.Status != AccountingValues.PayrollStatuses.Cancelled && item.Status != "DELETED")
             .Select(item => new { item.Id, item.EmployeeId, item.Status })
             .ToListAsync(cancellationToken);
         return new HrPayrollSheetDto(

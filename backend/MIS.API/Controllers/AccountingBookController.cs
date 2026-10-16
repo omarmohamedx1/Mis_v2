@@ -19,6 +19,10 @@ public sealed class AccountingBookController(IAccountingBookService service) : C
     public Task<AccountingBookEntryDto> Create(CreateAccountingBookEntryRequest request, CancellationToken token) => service.CreateAsync(request, token);
     [HttpPost("entries/{id:guid}/{operation}")]
     public Task<AccountingBookEntryDto> Transition(Guid id, [FromRoute] string operation, [FromBody] AccountingBookActionRequest request, CancellationToken token) => service.TransitionAsync(id, operation, request.Reason, token);
+    [HttpPost("entries/{id:guid}/delete")]
+    public async Task<IActionResult> Delete(Guid id, ConfirmAccountingDeletionRequest request, CancellationToken token) { await service.DeleteAsync(id, request, token); return NoContent(); }
+    [HttpPost("records/{kind}/{id:guid}/delete")]
+    public async Task<IActionResult> DeleteSource(string kind, Guid id, ConfirmAccountingDeletionRequest request, CancellationToken token) { await service.DeleteSourceAsync(kind, id, request, token); return NoContent(); }
     [HttpGet("summary")]
     public Task<AccountingBookSummaryDto> Summary([FromQuery] DateOnly from, [FromQuery] DateOnly to, CancellationToken token) => service.SummaryAsync(from, to, token);
     [HttpGet("advances")]

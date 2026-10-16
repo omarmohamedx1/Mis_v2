@@ -53,7 +53,7 @@ public sealed class AccountingService(
     {
         EnsureAccess();
         return await db.AccountingPayrollPeriods.AsNoTracking().OrderByDescending(x => x.Year).ThenByDescending(x => x.Month)
-            .Select(x => new AccountingPayrollPeriodDto(x.Id, x.Year, x.Month, x.Status, x.Notes, x.Payrolls.Count(p => p.Status != AccountingValues.PayrollStatuses.Cancelled), x.Payrolls.Where(p => p.Status != AccountingValues.PayrollStatuses.Cancelled).Sum(p => p.NetSalary), x.CreatedAt))
+            .Select(x => new AccountingPayrollPeriodDto(x.Id, x.Year, x.Month, x.Status, x.Notes, x.Payrolls.Count(p => p.Status != AccountingValues.PayrollStatuses.Cancelled && p.Status != "DELETED"), x.Payrolls.Where(p => p.Status != AccountingValues.PayrollStatuses.Cancelled && p.Status != "DELETED").Sum(p => p.NetSalary), x.CreatedAt))
             .ToArrayAsync(token);
     }
 
@@ -79,6 +79,8 @@ public sealed class AccountingService(
         if (period.Status is AccountingValues.PayrollStatuses.Approved or AccountingValues.PayrollStatuses.Paid)
             throw new HrConflictException("Approved or paid payroll periods cannot be regenerated.");
 
+        var removedPayrolls = await db.AccountingEmployeePayrolls.Where(x => x.PeriodId == period.Id && x.Status == "DELETED").ToListAsync(token);
+        if (removedPayrolls.Count > 0) { db.AccountingEmployeePayrolls.RemoveRange(removedPayrolls); await db.SaveChangesAsync(token); }
         var monthEnd = period.MonthEnd;
         var existing = await db.AccountingEmployeePayrolls.Where(x => x.PeriodId == period.Id).Select(x => x.EmployeeId).ToListAsync(token);
         var existingSet = existing.ToHashSet();
@@ -114,7 +116,7 @@ public sealed class AccountingService(
         var period = await db.AccountingPayrollPeriods.AsNoTracking().SingleOrDefaultAsync(x => x.Id == periodId, token)
             ?? throw new HrNotFoundException("Payroll period was not found.");
         await hrPayroll.GetSheetAsync(period.Year, period.Month, token);
-        var q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.PeriodId == periodId);
+        var q = db.AccountingEmployeePayrolls.AsNoTracking().Where(x => x.PeriodId == periodId && x.Status != "DELETED");
         if (!string.IsNullOrWhiteSpace(status)) q = q.Where(x => x.Status == status.Trim().ToUpperInvariant());
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -156,7 +158,7 @@ public sealed class AccountingService(
     private async Task<AccountingEmployeePayrollDto> TransitionPayroll(Guid id, string action, CancellationToken token)
     {
         action = action.Trim().ToLowerInvariant();
-        if (action is "approve" or "pay") EnsureApprove(); else EnsureManage();
+        if (action == "approve") EnsureApprove(); else EnsureManage();
         await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingEmployeePayrolls.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Payroll row was not found.");
         if (action == "pay")
@@ -172,7 +174,7 @@ public sealed class AccountingService(
             {
                 case "submit": row.SubmitForReview(now); break;
                 case "approve": row.Approve(now); break;
-                case "pay": row.MarkPaid(now); break;
+                case "pay": if (row.Status is "DRAFT" or "PENDING_REVIEW") row.Approve(now); row.MarkPaid(now); break;
                 case "cancel": row.Cancel(now); break;
                 default: throw new HrValidationException("Unsupported payroll action.");
             }
@@ -213,8 +215,11 @@ public sealed class AccountingService(
     public async Task<AccountingTransportationDto> CreateTransportationAsync(CreateTransportationRequest request, CancellationToken token)
     {
         EnsureManage();
+        await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         ValidateCurrency(request.Amount);
 
+        if (request.ClaimDate.Year < 2000 || request.ClaimDate > AccountingToday()) throw new HrValidationException("Choose an accounting date no later than today.");
+        if (await db.AccountingEmployeePayrolls.AnyAsync(x => x.EmployeeId == request.EmployeeId && x.Period.Year == request.ClaimDate.Year && x.Period.Month == request.ClaimDate.Month && x.Status == "PAID" && x.Transportation > 0, token)) throw new HrConflictException("This expense component was already paid in the employee payroll for this month.");
         await EnsureEmployee(request.EmployeeId, token);
         if (request.FieldVisitId.HasValue && !await db.CollectionFieldVisits.AnyAsync(x => x.Id == request.FieldVisitId, token))
             throw new HrValidationException("Linked field visit was not found.");
@@ -222,8 +227,11 @@ public sealed class AccountingService(
             throw new HrValidationException("Linked case was not found.");
         var row = new AccountingTransportationClaim(request.EmployeeId, request.ClaimDate, request.Amount, request.Purpose, user.UserId, DateTimeOffset.UtcNow, request.FieldVisitId, request.CaseId, request.Notes);
         db.AccountingTransportationClaims.Add(row);
+        row.Approve(user.UserId, DateTimeOffset.UtcNow); row.MarkPaid(DateTimeOffset.UtcNow);
+        await book.RecordPaidSourceAsync(new("TRANSPORT", row.Id, "TRANSPORTATION", row.Amount, row.EmployeeId, row.Purpose, request.ClaimDate), token);
         await WriteAudit("AccountingTransportationCreated", nameof(AccountingTransportationClaim), row.Id.ToString(), null, null, new { row.Amount, row.EmployeeId }, "Transportation claim created.", token);
         await db.SaveChangesAsync(token);
+        if (tx is not null) await tx.CommitAsync(token);
         return await GetTransportationAsync(row.Id, token);
     }
 
@@ -243,7 +251,7 @@ public sealed class AccountingService(
     public async Task<AccountingTransportationDto> TransitionTransportationAsync(Guid id, string action, CancellationToken token)
     {
         action = action.Trim().ToLowerInvariant();
-        if (action is "approve" or "reject" or "pay") EnsureApprove(); else EnsureManage();
+        if (action is "approve" or "reject") EnsureApprove(); else EnsureManage();
         await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingTransportationClaims.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Transportation claim was not found.");
         if (action == "pay" && await db.AccountingEmployeePayrolls.AnyAsync(x => x.EmployeeId == row.EmployeeId && x.Period.Year == row.ClaimDate.Year && x.Period.Month == row.ClaimDate.Month && x.Status == "PAID" && x.Transportation > 0, token)) throw new HrConflictException("This expense component was already paid in the employee payroll for this month.");
@@ -254,7 +262,7 @@ public sealed class AccountingService(
             {
                 case "approve": row.Approve(user.UserId, now); break;
                 case "reject": row.Reject(user.UserId, now); break;
-                case "pay": row.MarkPaid(now); break;
+                case "pay": if (row.Status == "PENDING") row.Approve(user.UserId, now); row.MarkPaid(now); break;
                 case "cancel": row.Cancel(now); break;
                 default: throw new HrValidationException("Unsupported transportation action.");
             }
@@ -439,7 +447,7 @@ public sealed class AccountingService(
     public async Task<AccountingCollectorCommissionDto> TransitionCollectorCommissionAsync(Guid id, string action, CancellationToken token)
     {
         action = action.Trim().ToLowerInvariant();
-        if (action is "approve" or "pay") EnsureApprove(); else EnsureManage();
+        if (action == "approve") EnsureApprove(); else EnsureManage();
         await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingCollectorCommissions.Include(x => x.CollectorUser).ThenInclude(u => u.Employee).Include(x => x.CommissionRule)
             .SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Collector commission was not found.");
@@ -451,7 +459,7 @@ public sealed class AccountingService(
             {
                 case "submit": row.Submit(now); break;
                 case "approve": row.Approve(now); break;
-                case "pay": row.MarkPaid(now); break;
+                case "pay": if (row.Status is "DRAFT" or "PENDING_REVIEW") row.Approve(now); row.MarkPaid(now); break;
                 case "cancel": row.Cancel(now); break;
                 default: throw new HrValidationException("Unsupported action.");
             }
@@ -550,7 +558,7 @@ public sealed class AccountingService(
     public async Task<AccountingSupervisorCommissionDto> TransitionSupervisorCommissionAsync(Guid id, string action, CancellationToken token)
     {
         action = action.Trim().ToLowerInvariant();
-        if (action is "approve" or "pay") EnsureApprove(); else EnsureManage();
+        if (action == "approve") EnsureApprove(); else EnsureManage();
         await using var paymentTx = action == "pay" && db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token) : null;
         var row = await db.AccountingSupervisorCommissions.Include(x => x.SupervisorUser).ThenInclude(u => u.Employee).Include(x => x.CommissionRule)
             .SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Supervisor commission was not found.");
@@ -562,7 +570,7 @@ public sealed class AccountingService(
             {
                 case "submit": row.Submit(now); break;
                 case "approve": row.Approve(now); break;
-                case "pay": row.MarkPaid(now); break;
+                case "pay": if (row.Status is "DRAFT" or "PENDING_REVIEW") row.Approve(now); row.MarkPaid(now); break;
                 case "cancel": row.Cancel(now); break;
                 default: throw new HrValidationException("Unsupported action.");
             }
@@ -603,7 +611,7 @@ public sealed class AccountingService(
 
     private async Task<AccountingPayrollPeriodDto> MapPeriod(Guid id, CancellationToken token) =>
         await db.AccountingPayrollPeriods.AsNoTracking().Where(x => x.Id == id)
-            .Select(x => new AccountingPayrollPeriodDto(x.Id, x.Year, x.Month, x.Status, x.Notes, x.Payrolls.Count(p => p.Status != AccountingValues.PayrollStatuses.Cancelled), x.Payrolls.Where(p => p.Status != AccountingValues.PayrollStatuses.Cancelled).Sum(p => p.NetSalary), x.CreatedAt))
+            .Select(x => new AccountingPayrollPeriodDto(x.Id, x.Year, x.Month, x.Status, x.Notes, x.Payrolls.Count(p => p.Status != AccountingValues.PayrollStatuses.Cancelled && p.Status != "DELETED"), x.Payrolls.Where(p => p.Status != AccountingValues.PayrollStatuses.Cancelled && p.Status != "DELETED").Sum(p => p.NetSalary), x.CreatedAt))
             .SingleAsync(token);
 
     private static System.Linq.Expressions.Expression<Func<AccountingEmployeePayroll, AccountingEmployeePayrollDto>> MapPayrollExpr() =>
@@ -651,6 +659,8 @@ public sealed class AccountingService(
             return;
         throw new HrForbiddenException("Accounting approve permission is required.");
     }
+
+    private static DateOnly AccountingToday() => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime);
 
     private static void ValidateCurrency(decimal amount, bool zeroAllowed = false, bool negativeAllowed = false)
     {

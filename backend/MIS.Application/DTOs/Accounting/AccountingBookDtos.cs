@@ -20,7 +20,8 @@ public sealed record SaveRecurringExpenseRequest([Required, MaxLength(200)] stri
     [Range(typeof(decimal), "0.01", "9999999999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal Amount,
     [Range(1, 31)] int DueDay, Guid AccountId, Guid CashAccountId, DateOnly StartsOn, DateOnly? EndsOn, [MaxLength(1000)] string? Notes, bool IsActive = true);
 public sealed record GenerateRecurringExpensesRequest([Range(2000, 2100)] int Year, [Range(1, 12)] int Month);
-public sealed record GenerateRecurringExpensesResult(int Created, int AlreadyGenerated, int OutsideSchedule);
+public sealed record GenerateRecurringExpensesResult(int Created, int AlreadyGenerated, int OutsideSchedule, int NotDue = 0);
+public sealed record ConfirmAccountingDeletionRequest(bool Confirmed, [MaxLength(1000)] string? Reason = null);
 public sealed record AccountingExportFilter(DateOnly? From = null, DateOnly? To = null, int? Year = null, int? Month = null, string? Category = null, string? Status = null, string? Search = null, Guid? PeriodId = null, DateOnly? AsOf = null);
 public sealed record AccountingCommissionPreviewRowDto(string Scope, Guid UserId, string Name, int CaseCount, decimal Collected, decimal Commission, string RuleCode, string Basis, decimal? Percentage, decimal? FixedAmount, bool Locked);
 public sealed record AccountingCommissionPreviewDto(int Year, int Month, decimal ApprovedCollections, IReadOnlyList<AccountingCommissionPreviewRowDto> Rows, IReadOnlyList<string> MissingRuleScopes);

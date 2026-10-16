@@ -86,10 +86,11 @@ public sealed partial class AccountingBookService
                     Add(category, sign * amount); var salary = totals["SALARY"]; totals["SALARY"] = (salary.Amount - sign * amount, salary.Count);
                 }
         }
-        var originals = await Entries().Where(x => (x.JournalEntry.Status == "POSTED" || x.JournalEntry.Status == "REVERSED") && x.JournalEntry.PostingDate >= from && x.JournalEntry.PostingDate <= to).ToListAsync(token);
+        var financialEntries = Entries(true).Where(e => e.DeletedAt == null || !db.JournalEntries.Any(r => r.ReversalOfJournalId == e.JournalEntryId && r.EntryType == "ACCOUNTING_DELETE"));
+        var originals = await financialEntries.Where(x => (x.JournalEntry.Status == "POSTED" || x.JournalEntry.Status == "REVERSED") && x.JournalEntry.PostingDate >= from && x.JournalEntry.PostingDate <= to).ToListAsync(token);
         foreach (var entry in originals) Include(entry, 1);
         var reversedIds = await db.JournalEntries.Where(x => x.ReversalOfJournalId != null && (x.Status == "POSTED" || x.Status == "REVERSED") && x.PostingDate >= from && x.PostingDate <= to).Select(x => x.ReversalOfJournalId!.Value).ToArrayAsync(token);
-        foreach (var entry in await Entries().Where(x => reversedIds.Contains(x.JournalEntryId)).ToListAsync(token)) Include(entry, -1);
+        foreach (var entry in await financialEntries.Where(x => reversedIds.Contains(x.JournalEntryId)).ToListAsync(token)) Include(entry, -1);
 
         var legacy = await LegacyExpenses(from, to, token);
         foreach (var entry in legacy)
@@ -112,12 +113,12 @@ public sealed partial class AccountingBookService
         var otherCash = await otherLines.Where(x => x.Account.IsCashAccount).GroupBy(x => x.JournalEntryId).Select(g => g.Sum(x => x.BaseDebit - x.BaseCredit)).ToListAsync(token);
         var bookCashIn = originals.Where(x => AccountingBookValues.IsCashIn(x.Category)).Sum(x => x.Amount);
         var bookCashOut = originals.Where(x => AccountingBookValues.IsCashOut(x.Category)).Sum(x => x.Amount);
-        var reversed = await db.AccountingBookEntries.Where(x => reversedIds.Contains(x.JournalEntryId)).ToListAsync(token);
+        var reversed = await financialEntries.Where(x => reversedIds.Contains(x.JournalEntryId)).ToListAsync(token);
         bookCashIn += reversed.Where(x => AccountingBookValues.IsCashOut(x.Category)).Sum(x => x.Amount);
         bookCashOut += reversed.Where(x => AccountingBookValues.IsCashIn(x.Category)).Sum(x => x.Amount);
         var cashIn = bookCashIn + otherCash.Where(x => x > 0).Sum();
         var cashOut = bookCashOut + legacy.Sum(x => x.Amount) - otherCash.Where(x => x < 0).Sum();
-        var pending = db.AccountingBookEntries.Where(x => x.TransactionDate >= from && x.TransactionDate <= to && (x.JournalEntry.Status == "DRAFT" || x.JournalEntry.Status == "PENDING_APPROVAL" || x.JournalEntry.Status == "APPROVED"));
+        var pending = db.AccountingBookEntries.Where(x => x.DeletedAt == null && x.TransactionDate >= from && x.TransactionDate <= to && (x.JournalEntry.Status == "DRAFT" || x.JournalEntry.Status == "PENDING_APPROVAL" || x.JournalEntry.Status == "APPROVED"));
         var outstanding = await AdvancesAsync(to, null, null, token);
         return new(from, to, income, expenses, advances, repayments, cashIn, cashOut, cashIn - cashOut, await pending.SumAsync(x => (decimal?)x.Amount, token) ?? 0, await pending.CountAsync(token),
             outstanding.Sum(x => x.Remaining), outstanding.Where(x => x.Date < from || x.Carried).Sum(x => x.Remaining), legacy.Count,

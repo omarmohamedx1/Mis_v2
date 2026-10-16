@@ -7,6 +7,8 @@ public interface IAccountingBookService
     Task<AccountingBookPageDto> ListAsync(AccountingBookFilter filter, CancellationToken token);
     Task<AccountingBookEntryDto> CreateAsync(CreateAccountingBookEntryRequest request, CancellationToken token);
     Task<AccountingBookEntryDto> TransitionAsync(Guid id, string action, string? reason, CancellationToken token);
+    Task DeleteAsync(Guid id, ConfirmAccountingDeletionRequest request, CancellationToken token);
+    Task DeleteSourceAsync(string kind, Guid id, ConfirmAccountingDeletionRequest request, CancellationToken token);
     Task<AccountingBookSummaryDto> SummaryAsync(DateOnly from, DateOnly to, CancellationToken token);
     Task<IReadOnlyList<AccountingAdvanceDto>> AdvancesAsync(DateOnly asOf, string? search, Guid? employeeId, CancellationToken token);
     Task<IReadOnlyList<AccountingRecurringExpenseDto>> RecurringAsync(CancellationToken token);

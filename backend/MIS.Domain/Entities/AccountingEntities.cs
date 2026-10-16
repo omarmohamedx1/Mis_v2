@@ -100,6 +100,7 @@ public sealed class AccountingEmployeePayroll
     }
 
     private void RecalculateNet() => NetSalary = BasicSalary + Allowances + Transportation + Commissions + Bonuses + OtherAdjustments - Deductions;
+    public void DeleteAfterConfirmation(DateTimeOffset now) { Status = "DELETED"; UpdatedAt = now; }
     private void EnsureEditable()
     {
         if (!AccountingValues.PayrollStatuses.Editable.Contains(Status))
@@ -157,12 +158,12 @@ public sealed class AccountingTransportationClaim
 
     public void SetAttachment(string fileName, string contentType, string storageKey, long length, string sha256, DateTimeOffset now)
     {
-        EnsurePending();
+        if (Status is not ("PENDING" or "PAID" or "APPROVED")) throw new InvalidOperationException("This claim cannot accept attachments.");
         AttachmentFileName = fileName; AttachmentContentType = contentType; AttachmentStorageKey = storageKey;
         AttachmentLength = length; AttachmentSha256 = sha256; UpdatedAt = now;
     }
 
-    public void ClearAttachment(DateTimeOffset now) { EnsurePending(); AttachmentFileName = AttachmentContentType = AttachmentStorageKey = AttachmentSha256 = null; AttachmentLength = null; UpdatedAt = now; }
+    public void ClearAttachment(DateTimeOffset now) { if (Status is not ("PENDING" or "PAID" or "APPROVED")) throw new InvalidOperationException("This claim cannot accept attachments."); AttachmentFileName = AttachmentContentType = AttachmentStorageKey = AttachmentSha256 = null; AttachmentLength = null; UpdatedAt = now; }
     public void Approve(Guid userId, DateTimeOffset now) { EnsurePending(); Status = AccountingValues.TransportationStatuses.Approved; ApprovedByUserId = userId; UpdatedAt = now; }
     public void Reject(Guid userId, DateTimeOffset now) { EnsurePending(); Status = AccountingValues.TransportationStatuses.Rejected; ApprovedByUserId = userId; UpdatedAt = now; }
     public void MarkPaid(DateTimeOffset now) { if (Status != AccountingValues.TransportationStatuses.Approved) throw new InvalidOperationException("Only approved claims can be paid."); Status = AccountingValues.TransportationStatuses.Paid; UpdatedAt = now; }
