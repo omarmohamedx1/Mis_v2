@@ -22,11 +22,18 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
   const id = useId();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null); const popupRef = useRef<HTMLDivElement>(null);
+  const suppressOpenOnFocus = useRef(false);
   const owners = useOverlayOwners(id);
   const previousValueRef = useRef(value);
   const [open, setOpen] = useState(false);
   const position = useFloatingPanel(open, anchorRef, popupRef, anchorRef.current?.getBoundingClientRect().width ?? 360);
-  useOverlayLayer(id, open, () => { setOpen(false); wrapperRef.current?.querySelector('input')?.focus(); });
+  function closeAndRestore() {
+    setOpen(false); suppressOpenOnFocus.current = true;
+    wrapperRef.current?.querySelector('input')?.focus();
+    requestAnimationFrame(() => { suppressOpenOnFocus.current = false; });
+  }
+  useOverlayLayer(id, open, closeAndRestore);
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
   const [query, setQuery] = useState(initialSelection ? `${initialSelection.employeeNumber} - ${initialSelection.fullName}` : '');
   const [selectedLabel, setSelectedLabel] = useState(initialSelection ? `${initialSelection.employeeNumber} - ${initialSelection.fullName}` : '');
   const [options, setOptions] = useState<EmployeeListItem[]>([]);
@@ -99,7 +106,7 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
         <Search className="pointer-events-none absolute start-4 top-3.5 h-5 w-5 text-mis-muted" aria-hidden="true" />
         <input
           aria-autocomplete="list"
-          aria-controls={`${id}-options`}
+          aria-controls={open ? `${id}-options` : undefined}
           aria-expanded={open}
           aria-invalid={Boolean(error)}
           autoComplete="off"
@@ -111,18 +118,23 @@ export function EmployeeSearchSelect({ disabled = false, error, includeInactive 
             if (value) onChange('', null);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => { if (!suppressOpenOnFocus.current) setOpen(true); }}
+          onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setTimeout(() => popupRef.current?.querySelector<HTMLElement>('[role=option]')?.focus(), 0); } }}
           placeholder={t('searchEmployee')}
           role="combobox"
           value={query}
         />
-        {value ? <button aria-label={t('clearSelection')} className="absolute end-10 top-2.5 rounded-lg p-1.5 text-mis-muted hover:bg-slate-100" onClick={clear} type="button"><X className="h-4 w-4" /></button> : null}
+        {value ? <button disabled={disabled} aria-label={t('clearSelection')} className="absolute end-10 top-2.5 rounded-lg p-1.5 text-mis-muted hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={clear} type="button"><X className="h-4 w-4" /></button> : null}
         <button aria-label={t('openEmployeeList')} className="absolute end-2 top-2.5 rounded-lg p-1.5 text-mis-muted hover:bg-slate-100" disabled={disabled} onClick={() => setOpen((current) => !current)} type="button"><ChevronDown className="h-4 w-4" /></button>
         {open ? createPortal(
-          <div ref={popupRef} data-overlay-owners={owners.join(' ')} style={{...position,maxHeight:Math.min(position.maxHeight,256)}} className="fixed z-[var(--z-select)] overflow-y-auto rounded-xl border border-mis-border bg-white p-1 shadow-panel" id={`${id}-options`} role="listbox">
+          <div ref={popupRef} data-overlay-owners={owners.join(' ')} style={{...position,maxHeight:Math.min(position.maxHeight,256)}} className="fixed z-[var(--z-select)] overflow-y-auto rounded-xl border border-mis-border bg-white p-1 shadow-panel" id={`${id}-options`} role="listbox" onKeyDown={event => {
+            const items=[...popupRef.current!.querySelectorAll<HTMLButtonElement>('[role=option]')]; const index=items.indexOf(document.activeElement as HTMLButtonElement);
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); items[(index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus(); }
+            if (event.key === 'Tab') { event.preventDefault(); closeAndRestore(); }
+          }}>
             {loading ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('loading')}</p> : loadError ? <p className="px-3 py-4 text-center text-sm text-red-600" role="alert">{loadError}</p> : options.length === 0 ? <p className="px-3 py-4 text-center text-sm text-slate-500">{t('noEmployeesFound')}</p> : options.map((employee) => (
               <button className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-start text-sm hover:bg-mis-pale" key={employee.id} onClick={() => select(employee)} role="option" aria-selected={employee.id === value} type="button">
-                <span className="min-w-0"><span className="block truncate font-semibold text-mis-navy">{employee.fullName}</span><span className="block text-xs text-slate-500 [overflow-wrap:anywhere]">{employee.employeeNumber} - {employee.departmentName}</span></span>
+                <span className="min-w-0"><span className="block whitespace-normal font-semibold text-mis-navy [overflow-wrap:anywhere]">{employee.fullName}</span><span className="block text-xs text-slate-500 [overflow-wrap:anywhere]">{employee.employeeNumber} - {employee.departmentName}</span></span>
                 {employee.id === value ? <Check className="h-4 w-4 flex-none text-mis-primary" aria-hidden="true" /> : null}
               </button>
             ))}

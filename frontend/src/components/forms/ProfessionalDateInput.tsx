@@ -93,6 +93,8 @@ export function ProfessionalDateInput({
   const position = useFloatingPanel(open, root, popup, 360);
   useOverlayLayer(overlayId, open, () => { setOpen(false); root.current?.querySelector<HTMLElement>('input:not([tabindex="-1"]),button')?.focus(); });
 
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
+
   useEffect(() => {
     const next = parseValue(current);
     if (!typing.current) setDraft(formatTyped(next, mode));

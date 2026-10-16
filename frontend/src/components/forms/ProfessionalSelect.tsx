@@ -128,6 +128,8 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
 
   useImperativeHandle(forwardedRef, () => nativeRef.current as HTMLSelectElement, []);
 
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
+
   useEffect(() => {
     if (controlledValue === undefined && !options.some((option) => option.value === internalValue)) {
       setInternalValue(scalarValue(defaultValue) ?? options.find((option) => !option.disabled)?.value ?? '');

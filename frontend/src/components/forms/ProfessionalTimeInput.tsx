@@ -61,6 +61,8 @@ export function ProfessionalTimeInput({
     ? { choose: 'اختر الوقت', now: 'الآن', clear: 'مسح', done: 'تم', hour: 'الساعة', minute: 'الدقيقة' }
     : { choose: 'Choose time', now: 'Now', clear: 'Clear', done: 'Done', hour: 'Hour', minute: 'Minute' };
 
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
+
   useEffect(() => {
     const next = parseTime(current);
     if (next) {
