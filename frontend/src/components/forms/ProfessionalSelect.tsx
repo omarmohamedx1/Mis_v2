@@ -19,7 +19,7 @@ import {
   type SelectHTMLAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { OverlayScope, useBodyScrollLock, useOverlayLayer, useOverlayOwners } from '../common/overlay';
+import { OverlayScope, useBodyScrollLock, useOverlayLayer, useOverlayOwners, viewportBounds } from '../common/overlay';
 import { useLocalization } from '../../context/LocalizationContext';
 
 interface SelectOption {
@@ -153,26 +153,26 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
       const trigger = triggerRef.current;
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
-      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
       const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+      const bounds = viewportBounds(12);
       const mobile = viewportWidth < 640;
       if (mobile) {
-        setLayout({ bottom: 12, left: 12, maxHeight: Math.min(560, viewportHeight - 24), mobile: true, top: 0, width: viewportWidth - 24 });
+        setLayout({ bottom: innerHeight - bounds.bottom, left: bounds.left, maxHeight: Math.min(560, bounds.height), mobile: true, top: 0, width: bounds.width });
         return;
       }
-      const width = Math.min(Math.max(rect.width, 260), window.innerWidth - 24);
-      const left = Math.min(Math.max(isRtl ? rect.right - width : rect.left, 12), window.innerWidth - width - 12);
-      const below = viewportHeight - rect.bottom - 12;
-      const above = rect.top - 12;
+      const width = Math.min(Math.max(rect.width, 260), bounds.width);
+      const left = Math.min(Math.max(isRtl ? rect.right - width : rect.left, bounds.left), bounds.right - width);
+      const below = bounds.bottom - rect.bottom;
+      const above = rect.top - bounds.top;
       if (Math.max(below, above) < 180) {
-        setLayout({ bottom: undefined, left, maxHeight: Math.max(40, viewportHeight - 24), mobile: false, top: 12, width });
+        setLayout({ bottom: undefined, left, maxHeight: bounds.height, mobile: false, top: bounds.top, width });
         return;
       }
       const openAbove = below < 240 && above > below;
       setLayout({
-        bottom: openAbove ? viewportHeight - rect.top + 6 : undefined,
+        bottom: openAbove ? innerHeight - rect.top + 6 : undefined,
         left,
-        maxHeight: Math.max(40, Math.min(360, viewportHeight - 24, openAbove ? above - 6 : below - 6)),
+        maxHeight: Math.max(0, Math.min(360, bounds.height, openAbove ? above - 6 : below - 6)),
         mobile: false,
         top: openAbove ? 0 : rect.bottom + 6,
         width,
@@ -181,10 +181,12 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
     updateLayout();
     window.addEventListener('resize', updateLayout);
     window.visualViewport?.addEventListener('resize', updateLayout);
+    window.visualViewport?.addEventListener('scroll', updateLayout);
     window.addEventListener('scroll', updateLayout, true);
     return () => {
       window.removeEventListener('resize', updateLayout);
       window.visualViewport?.removeEventListener('resize', updateLayout);
+      window.visualViewport?.removeEventListener('scroll', updateLayout);
       window.removeEventListener('scroll', updateLayout, true);
     };
   }, [isRtl, open]);

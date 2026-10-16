@@ -63,23 +63,30 @@ export function useMediaQuery(query: string) {
   return matches;
 }
 
+export function viewportBounds(gutter = 8) {
+  const viewport = window.visualViewport;
+  const tokens = getComputedStyle(document.documentElement);
+  const safe = (side: string) => parseFloat(tokens.getPropertyValue(`--safe-${side}`)) || 0;
+  const left = (viewport?.offsetLeft ?? 0) + gutter + safe('left');
+  const top = (viewport?.offsetTop ?? 0) + gutter + safe('top');
+  const right = (viewport?.offsetLeft ?? 0) + (viewport?.width ?? innerWidth) - gutter - safe('right');
+  const bottom = (viewport?.offsetTop ?? 0) + (viewport?.height ?? innerHeight) - gutter - safe('bottom');
+  return { left, top, right, bottom, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+}
+
 export function useFloatingPanel(open: boolean, anchor: RefObject<HTMLElement | null>, panel: RefObject<HTMLElement | null>, preferredWidth: number) {
   const [position, setPosition] = useState({ left: 8, top: 8, width: preferredWidth, maxHeight: 320 });
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
       const rect = anchor.current?.getBoundingClientRect(); if (!rect) return;
-      const viewport = window.visualViewport;
-      const viewportWidth = viewport?.width ?? window.innerWidth; const viewportHeight = viewport?.height ?? window.innerHeight;
-      const offsetLeft = viewport?.offsetLeft ?? 0; const offsetTop = viewport?.offsetTop ?? 0;
-      const tokens = getComputedStyle(document.documentElement);
-      const safe = (side: string) => parseFloat(tokens.getPropertyValue(`--safe-${side}`)) || 0;
-      const width = Math.min(preferredWidth, viewportWidth - 16 - safe('left') - safe('right'));
-      const left = Math.max(offsetLeft + 8 + safe('left'), Math.min(getComputedStyle(anchor.current!).direction === 'rtl' ? rect.right - width : rect.left, offsetLeft + viewportWidth - width - 8 - safe('right')));
-      const maxHeight = viewportHeight - 16 - safe('top') - safe('bottom');
+      const bounds = viewportBounds();
+      const width = Math.min(preferredWidth, bounds.width);
+      const left = Math.max(bounds.left, Math.min(getComputedStyle(anchor.current!).direction === 'rtl' ? rect.right - width : rect.left, bounds.right - width));
+      const maxHeight = bounds.height;
       const height = Math.min(panel.current?.scrollHeight ?? 0, maxHeight);
       const below = rect.bottom + 8;
-      const top = Math.max(offsetTop + 8 + safe('top'), Math.min(below + height <= offsetTop + viewportHeight - 8 - safe('bottom') ? below : rect.top - height - 8, offsetTop + viewportHeight - height - 8 - safe('bottom')));
+      const top = Math.max(bounds.top, Math.min(below + height <= bounds.bottom ? below : rect.top - height - 8, bounds.bottom - height));
       setPosition(old => old.left === left && old.top === top && old.width === width && old.maxHeight === maxHeight ? old : { left, top, width, maxHeight });
     };
     place(); const observer = new ResizeObserver(place); if (panel.current) observer.observe(panel.current);
