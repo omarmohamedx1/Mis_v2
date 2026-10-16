@@ -115,8 +115,8 @@ public sealed record PortfolioConfigurationDto(Guid Id, Guid OrganizationId, str
 public sealed record EnsureCollectionDeskRequest(Guid OrganizationId, [Required, MaxLength(20)] string PrimaryClassification, [Required, MaxLength(20)] string SubClassification);
 public sealed record BucketConfigurationDto(Guid Id, Guid OrganizationId, Guid? PortfolioId, string Code, string NameArabic, string NameEnglish, int? MinimumDays, int? MaximumDays, int SortOrder, bool IsActive);
 public sealed record CollectionsConfigurationDto(IReadOnlyCollection<ClientConfigurationDto> Clients, IReadOnlyCollection<PortfolioConfigurationDto> Portfolios, IReadOnlyCollection<BucketConfigurationDto> Buckets);
-public sealed record SaveClientConfigurationRequest([Required, MaxLength(40)] string Code, [Required, MaxLength(200)] string NameArabic, [Required, MaxLength(200)] string NameEnglish, [Required, MaxLength(40)] string OrganizationType, [EmailAddress, MaxLength(256)] string? ContactEmail, [MaxLength(32)] string? ContactPhone, [Range(0, 30)] int? PtpGraceDays, [Range(typeof(decimal), "0", "999999999")] decimal? PtpToleranceAmount, bool IsActive = true);
-public sealed record SavePortfolioConfigurationRequest(Guid OrganizationId, [Required, MaxLength(60)] string Code, [Required, MaxLength(200)] string NameArabic, [Required, MaxLength(200)] string NameEnglish, [Required, StringLength(3, MinimumLength = 3)] string CurrencyCode, [Range(typeof(decimal), "0", "9999999999999999")] decimal? TargetAmount, [MaxLength(20)] string? PrimaryClassification, [MaxLength(20)] string? SubClassification, [Range(0, 30)] int? PtpGraceDays, [Range(typeof(decimal), "0", "999999999")] decimal? PtpToleranceAmount, bool IsActive = true);
+public sealed record SaveClientConfigurationRequest([Required, MaxLength(40)] string Code, [Required, MaxLength(200)] string NameArabic, [Required, MaxLength(200)] string NameEnglish, [Required, MaxLength(40)] string OrganizationType, [EmailAddress, MaxLength(256)] string? ContactEmail, [MaxLength(32)] string? ContactPhone, [Range(0, 30)] int? PtpGraceDays, [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal? PtpToleranceAmount, bool IsActive = true);
+public sealed record SavePortfolioConfigurationRequest(Guid OrganizationId, [Required, MaxLength(60)] string Code, [Required, MaxLength(200)] string NameArabic, [Required, MaxLength(200)] string NameEnglish, [Required, StringLength(3, MinimumLength = 3)] string CurrencyCode, [Range(typeof(decimal), "0", "9999999999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal? TargetAmount, [MaxLength(20)] string? PrimaryClassification, [MaxLength(20)] string? SubClassification, [Range(0, 30)] int? PtpGraceDays, [Range(typeof(decimal), "0", "999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal? PtpToleranceAmount, bool IsActive = true);
 public sealed record SaveBucketConfigurationRequest(Guid OrganizationId, Guid? PortfolioId, [Required, MaxLength(40)] string Code, [Required, MaxLength(100)] string NameArabic, [Required, MaxLength(100)] string NameEnglish, int? MinimumDays, int? MaximumDays, int SortOrder, bool IsActive = true);
 
 public sealed record CreateActivityRequest(
@@ -127,13 +127,13 @@ public sealed record CreateActivityRequest(
     DateTimeOffset? NextFollowUpAt);
 
 public sealed record CreatePromiseRequest(
-    [Range(typeof(decimal), "0.01", "9999999999999999")] decimal PromisedAmount,
+    [Range(typeof(decimal), "0.01", "9999999999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal PromisedAmount,
     DateOnly PromiseDate,
     [Required, MaxLength(40)] string Channel,
     [MaxLength(2000)] string? Notes);
 
 public sealed record SubmitPaymentRequest(
-    [Range(typeof(decimal), "0.01", "9999999999999999")] decimal Amount,
+    [Range(typeof(decimal), "0.01", "9999999999999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal Amount,
     DateOnly PaymentDate,
     [Required, MaxLength(40)] string Method,
     [Required, MaxLength(160)] string ReferenceNumber,
