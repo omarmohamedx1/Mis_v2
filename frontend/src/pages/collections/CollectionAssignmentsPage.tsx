@@ -211,9 +211,9 @@ export function CollectionAssignmentsPage() {
         <summary className="cursor-pointer flex flex-col gap-1 border-b border-mis-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <UsersRound className="h-4 w-4 text-mis-primary" />
-            <h2 className="text-sm font-bold text-mis-navy">{ct('collectorsOnDesk')}</h2>
+            <h2 className="text-sm font-bold text-mis-navy">{ct('distributionTeamTitle')}</h2>
           </div>
-          <p className="text-xs text-slate-500">{ct('collectorsOnDeskHelp')}</p>
+          <p className="text-xs text-slate-500">{ct('distributionTeamHelp')}</p>
         </summary>
         {collectors.length === 0 ? (
           <div className="px-5 py-6">
@@ -334,7 +334,7 @@ export function CollectionAssignmentsPage() {
       <Modal
         footer={(
           <>
-            <Button disabled={saving} fullWidth={false} onClick={() => preview ? setPreview(undefined) : setDialog(undefined)} variant="outline">{ct(preview ? 'back' : 'cancel')}</Button>
+            <Button disabled={saving} fullWidth={false} onClick={() => preview ? setPreview(undefined) : setDialog(undefined)} variant="outline">{ct(preview ? 'backToEdit' : 'cancel')}</Button>
             <Button disabled={(dialog === 'assign' && !collectorId) || (dialog === 'auto' && (autoCollectors.length === 0 || !validCapacity || (autoScope === 'selected' && !selected.length) || (autoScope === 'queue' && !cases?.totalCount))) || reason.trim().length < 2} fullWidth={false} isLoading={saving} onClick={() => void continueAction()} variant={dialog === 'unassign' ? 'danger' : 'primary'}>
               {ct(preview ? dialog === 'unassign' ? 'unassign' : 'confirmAssignment' : 'previewAssignment')}
             </Button>
@@ -384,9 +384,9 @@ export function CollectionAssignmentsPage() {
                 </fieldset>
               </>
             ) : null}
-            <label className="block text-sm font-semibold">{ct('assignmentReasonLabel')}
+            {dialog !== 'auto' && <label className="block text-sm font-semibold">{ct('assignmentReasonLabel')}
               <textarea className="field mt-2" maxLength={500} onChange={(event) => setReason(event.target.value)} rows={3} value={reason} />
-            </label>
+            </label>}
           </div>
         )}
       </Modal>

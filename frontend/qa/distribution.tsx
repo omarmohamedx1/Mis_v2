@@ -21,7 +21,7 @@ const collectors = [
   { id: 'c1', name: 'أحمد محمد · Ahmed Mohamed', assignedCases: 12, totalOutstanding: 24000, activeWorkload: 12, teamName: 'فريق التحصيل / Collections', teamId: 'team' },
   { id: 'c2', name: 'سارة علي · Sara Ali', assignedCases: 7, totalOutstanding: 14000, activeWorkload: 7, teamName: 'فريق التحصيل / Collections', teamId: 'team' },
 ];
-const rows = Array.from({ length: 125 }, (_, i) => ({ id: `case-${i}`, caseNumber: `CASE-${String(i).padStart(3, '0')}`, customerName: i < 3 ? 'FILTER عميل مطابق' : `عميل رقم ${i} · Customer ${i}`, outstandingAmount: 1000 + i, outstandingBalance: 1000 + i, mobile: '01012345678', status: 'ACTIVE', importName: 'محفظة أكتوبر / October portfolio', clientName: 'بنك تجريبي / Demo bank', portfolioName: 'October portfolio', customerCode: `C-${i}`, daysPastDue: 45, bucket: '31–60', priority: 'MEDIUM' }));
+const rows = Array.from({ length: Number(options.get('count') ?? 125) }, (_, i) => ({ id: `case-${i}`, caseNumber: `CASE-${String(i).padStart(3, '0')}`, customerName: i < 3 ? 'FILTER عميل مطابق' : `عميل رقم ${i} · Customer ${i}`, outstandingAmount: 1000 + i, outstandingBalance: 1000 + i, mobile: '01012345678', status: 'ACTIVE', importName: 'محفظة أكتوبر / October portfolio', clientName: 'بنك تجريبي / Demo bank', portfolioName: 'October portfolio', customerCode: `C-${i}`, daysPastDue: 45, bucket: '31–60', priority: 'MEDIUM' }));
 const assignedRows = rows.slice(0, 2).map(row => ({ ...row, collectorId: 'c1', collectorName: collectors[0].name, assignedCollectorName: collectors[0].name, assignedAt: '2026-10-10T10:00:00Z' }));
 apiClient.defaults.adapter = async config => {
   const url = new URL(config.url!, 'http://synthetic.test');
