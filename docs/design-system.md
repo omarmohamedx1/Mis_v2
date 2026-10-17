@@ -55,6 +55,8 @@ Truncation is intentional only when the full value remains available through a d
 
 Use `PageActions` to group related header actions. Keep the group beside the title on wide layouts and allow it to wrap below on narrow layouts. Do not distribute individual actions with `justify-between` across an entire page header.
 
+Use `ActionMenu` for groups of record actions in tables and cards. It renders a 44px three-dot trigger, localized text with icons, and a viewport-aware portal. Keep permission conditions, disabled states and handlers on the existing buttons/links inside it. Icon-only actions need a localized `title` or `aria-label` for their visible menu text. Stateful action components must expose a menu-item trigger (`AccountingDeleteButton` uses `menuItem`); their dialogs stay mounted when the menu closes. Page creation buttons and form submit/cancel controls remain visible.
+
 Wrap wide tables in `.table-scroll` or an explicit horizontal scroller. A table minimum width is acceptable inside that wrapper. Page-wide horizontal scrolling is not. Check header cells, empty bodies, one row, many rows and large numbers.
 
 ## RTL and localization

@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocalization } from '../../context/LocalizationContext';
+import { viewportBounds } from './overlay';
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
@@ -97,6 +98,36 @@ function ToastItem({ dismissLabel, dismissToast, toast }: { dismissLabel: string
 export function ToastProvider({ children, defaultDuration = 5000, dismissLabel, maxToasts = 5 }: ToastProviderProps) {
   const { t } = useLocalization();
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
+  const stackRef = useRef<HTMLDivElement>(null);
+  const [actionClearance, setActionClearance] = useState(0);
+  useLayoutEffect(() => {
+    if (!toasts.length) { setActionClearance(0); return; }
+    const observed = new WeakSet<Element>();
+    const sizeObserver = new ResizeObserver(() => place());
+    const place = () => {
+      const stack = stackRef.current;
+      if (!stack) return;
+      const gutter = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const bounds = viewportBounds(gutter);
+      const stackBox = stack.getBoundingClientRect();
+      let clearance = Math.max(0, innerHeight - bounds.bottom);
+      const dialog = [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].at(-1);
+      const footer = dialog?.querySelector<HTMLElement>('footer');
+      if (footer) {
+        if (!observed.has(footer)) { observed.add(footer); sizeObserver.observe(footer); }
+        const box = footer.getBoundingClientRect();
+        if (box.top < bounds.bottom && box.bottom > bounds.top && stackBox.right > box.left && stackBox.left < box.right) clearance = Math.max(clearance, innerHeight - box.top + gutter / 2);
+      }
+      setActionClearance(previous => previous === clearance ? previous : clearance);
+    };
+    place();
+    if (stackRef.current) sizeObserver.observe(stackRef.current);
+    const mutations = new MutationObserver(place);
+    mutations.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', place); window.addEventListener('scroll', place, true);
+    window.visualViewport?.addEventListener('resize', place); window.visualViewport?.addEventListener('scroll', place);
+    return () => { sizeObserver.disconnect(); mutations.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); window.visualViewport?.removeEventListener('resize', place); window.visualViewport?.removeEventListener('scroll', place); };
+  }, [toasts.length]);
   const dismissToast = useCallback((id: string) => setToasts((current) => current.filter((toast) => toast.id !== id)), []);
   const clearToasts = useCallback(() => setToasts([]), []);
   const showToast = useCallback((options: ToastOptions) => {
@@ -123,7 +154,7 @@ export function ToastProvider({ children, defaultDuration = 5000, dismissLabel, 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div aria-atomic="false" aria-live="polite" className="toast-stack pointer-events-none fixed inset-x-4 bottom-4 z-[var(--z-toast)] max-h-[50dvh] overflow-y-auto p-1 flex flex-col items-end gap-3 sm:start-auto sm:end-4 sm:w-full sm:max-w-sm">
+      <div ref={stackRef} style={{ bottom: `max(1rem, var(--safe-bottom), ${actionClearance}px)`, maxHeight: `min(50dvh, max(0px, calc(100dvh - ${actionClearance}px - 1rem)))` }} aria-atomic="false" aria-live="polite" className="toast-stack pointer-events-none fixed inset-x-4 bottom-4 z-[var(--z-toast)] max-h-[50dvh] overflow-y-auto p-1.5 flex flex-col items-end gap-3 sm:start-auto sm:end-4 sm:w-full sm:max-w-sm">
         {toasts.map((toast) => <ToastItem dismissLabel={dismissLabel ?? t('dismissNotification')} dismissToast={dismissToast} key={toast.id} toast={toast} />)}
       </div>
     </ToastContext.Provider>

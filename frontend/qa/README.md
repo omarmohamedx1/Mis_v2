@@ -20,4 +20,6 @@ The route sweep discovers dynamic links and checks both bank and installment-com
 
 Type-check the harness with `cd frontend` then `npx tsc -p qa/tsconfig.json`. Build the product with `npm run build`. Confirm `dist` contains no `qa` entry or mutation-blocking test code before packaging.
 
+Run `python frontend/qa/check_action_menus.py` against the development server for focused row-action checks. It uses synthetic records, checks both languages across six viewport widths, and covers keyboard navigation, disabled actions, long labels, table-row click isolation, outside dismissal, links, nested dialogs and stateful deletion confirmation. It cancels the confirmation without submitting a mutation. Evidence is saved in `.runtime/visual-qa/action-menus/`.
+
 The component lab deliberately includes long Arabic/English names, unbroken emails/IDs, large negative amounts, disabled options, validation messages, many tags, empty/error/loading content and nested dialogs. The extended checks also exercise empty, one-row and 200-row table bodies. These tests supplement human screenshot review; they do not certify every browser, device or possible data combination.
