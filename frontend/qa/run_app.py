@@ -83,6 +83,8 @@ def inspect(route):
     for lang in ['en','ar']:
         driver.execute_script('window.__qa.language(arguments[0])',lang);settle()
         for width in ([1440 if lang=='en' else 390] if capture_only else [320,360,390,768,1024,1440]):
+            if not driver.execute_script('return !!window.__qa?.ready'):
+                driver.get(base+'?mode=app&route='+route);wait.until(lambda d:d.execute_script('return window.__qa?.ready'));driver.execute_script('window.__qa.language(arguments[0])',lang);settle()
             resize(width);time.sleep(.25);r=driver.execute_script(geometry);links.update(x for x in r.pop('links') if x and x.startswith('/'))
             r.update(route=route,actual=driver.execute_script('return location.pathname'),lang=lang,width=width);page.append(r)
             if capture_only:
@@ -123,8 +125,19 @@ try:
     if not auth['ok']:raise RuntimeError('Login failed: '+str(auth.get('status')))
     driver.get(base+'?mode=app&route=/modules');wait.until(lambda d:d.execute_script('return window.__qa?.ready'))
     driver.execute_async_script("const done=arguments[0];Promise.all([document.fonts.load('14px \"IBM Plex Sans Arabic\"'),document.fonts.load('14px \"IBM Plex Sans\"')]).then(()=>document.fonts.ready).then(()=>done());")
+    fixtures=json.loads(Path('frontend/qa/detail-fixtures.json').read_text(encoding='utf-8'))
+    fid=fixtures['id'];arname=fixtures['longArabic'];enname=fixtures['longEnglish'];token=fixtures['unbroken']
+    journal=fixtures['journal'];journal.update(description=token,createdBy=enname,postedBy=arname)
+    journal['lines']=[{'id':str(i),'lineNumber':i+1,'accountCode':'1234567890','accountNameArabic':arname,'accountNameEnglish':enname,'description':token,'debit':9999999999999.99 if i==0 else 0,'credit':9999999999999.99 if i==1 else 0} for i in range(2)]
+    client=fixtures['client'];client.update(customerNameArabic=arname,customerNameEnglish=enname,organizationName=enname,address=token,fields={'long-field':token})
+    legal=fixtures['legal'];legal.update(customerName=arname,organizationName=enname,portfolioName=token,receivedByName=enname,notes=token)
+    visit=fixtures['visit'];visit.update(employeeName=arname,customer=enname,organization=enname,address=token,visitNotes=token,visitCreatedBy=enname)
+    data={f'/finance/journals/{fid}':journal,f'/data-entry/clients/{fid}':client,f'/data-entry/clients/{fid}/documents':[],f'/legal/cases/{fid}':legal,f'/hr/excuses/visits/{fid}':visit}
+    driver.execute_script('Object.assign(window.__qa.fixtures,arguments[0])',data)
+    driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument',{'source':'window.__qaFixtureSeed='+json.dumps(data)+';'})
     routes=list(dict.fromkeys(x['path'] for x in inventory['routes'] if not x['redirect'] and not x['dynamic'] and '*' not in x['path'] and x['path'] not in ['/','/change-password','/login','/unauthorized']))
     for route in routes:inspect(route)
+    links.difference_update(x for x in list(links) if fid in x)
     patterns=list(dict.fromkeys(x['path'] for x in inventory['routes'] if not x['redirect'] and x['dynamic']))
     visited=[]
     for pattern in patterns:
@@ -139,17 +152,8 @@ try:
                 route=pattern.replace('/installment-companies/:companyId/:primary/:secondary',company['route'])
                 inspect(route);visited.append({'pattern':pattern,'route':route})
     # Audit missing detail routes using explicit synthetic responses only in the QA entry.
-    fixtures=json.loads(Path('frontend/qa/detail-fixtures.json').read_text(encoding='utf-8'))
-    fid=fixtures['id'];arname=fixtures['longArabic'];enname=fixtures['longEnglish'];token=fixtures['unbroken']
-    journal=fixtures['journal'];journal.update(description=token,createdBy=enname,postedBy=arname)
-    journal['lines']=[{'id':str(i),'lineNumber':i+1,'accountCode':'1234567890','accountNameArabic':arname,'accountNameEnglish':enname,'description':token,'debit':9999999999999.99 if i==0 else 0,'credit':9999999999999.99 if i==1 else 0} for i in range(2)]
-    client=fixtures['client'];client.update(customerNameArabic=arname,customerNameEnglish=enname,organizationName=enname,address=token,fields={'long-field':token})
-    legal=fixtures['legal'];legal.update(customerName=arname,organizationName=enname,portfolioName=token,receivedByName=enname,notes=token)
-    visit=fixtures['visit'];visit.update(employeeName=arname,customer=enname,organization=enname,address=token,visitNotes=token,visitCreatedBy=enname)
-    data={f'/finance/journals/{fid}':journal,f'/data-entry/clients/{fid}':client,f'/data-entry/clients/{fid}/documents':[],f'/legal/cases/{fid}':legal,f'/hr/excuses/visits/{fid}':visit}
-    driver.execute_script('Object.assign(window.__qa.fixtures,arguments[0])',data)
     for pattern in ['/finance/journals/:id','/data-entry/clients/:id','/legal/cases/:id','/hr/excuses/visits/:visitId']:
-        route=re.sub(r':[a-zA-Z]+',fid,pattern);inspect(route);visited.append({'pattern':pattern,'route':route,'synthetic':True})
+        route=re.sub(r':[a-zA-Z]+',fid,pattern);completed.discard(route);results[:]=[x for x in results if x['route']!=route];accessibility[:]=[x for x in accessibility if x['route']!=route];overlays[:]=[x for x in overlays if x['route']!=route];inspect(route);visited.append({'pattern':pattern,'route':route,'synthetic':True})
     for kind in ['banks','installment-companies']:
         existing=next((x for x in visited if x['route'].startswith('/'+kind+'/') and x['route'].endswith('/customers')),None)
         if existing:
