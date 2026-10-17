@@ -35,9 +35,9 @@ export function BankCaseDistributionPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const [autoCaseIds, setAutoCaseIds] = useState<string[]>([]);
-  const filtersKey = `${assigned}:${page}:${pageSize}:${search}:${status}:${collectorId}:${importId}:${sortBy}`;
+  const filtersKey = `${bank.id}:${assigned}:${page}:${pageSize}:${search}:${status}:${collectorId}:${importId}:${sortBy}`;
   const [loadedKey, setLoadedKey] = useState('');
-  const ready = !loading && !error && loadedKey === filtersKey;
+  const ready = !loading && !error && loadedKey === filtersKey && searchInput.trim() === search;
   useEffect(() => { setSelected([]); }, [filtersKey]);
   const openAutomatic = (scope: 'selected' | 'queue') => {
     setAutoScope(scope); setAutoPreview(undefined); setAutoCaseIds([]);
@@ -64,7 +64,7 @@ export function BankCaseDistributionPage() {
     if (!autoCollectors.length) { toast.error(ct('autoNoCollectorsSelected')); return; }
     if (autoReason.trim().length < 2) return;
     if (autoScope === 'selected' && selected.length === 0) { toast.error(ct('selectCasesHelp')); return; }
-    if (autoScope === 'queue' && (summary?.unassignedCases ?? 0) === 0) { toast.error(ct('autoQueueEmpty')); return; }
+    if (autoScope === 'queue' && (data?.totalCount ?? 0) === 0) { toast.error(ct('autoQueueEmpty')); return; }
     setSaving(true);
     try {
       const caseIds = confirm ? autoCaseIds : autoScope === 'selected' ? [...selected] : (await collectionsService.distributionCases(bank.id, false, { page: 1, pageSize: 100, search, status, importId, sortBy, allMatching: true })).items.slice(0, 500).map(item => item.id);

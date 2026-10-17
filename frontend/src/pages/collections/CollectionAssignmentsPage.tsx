@@ -52,7 +52,7 @@ export function CollectionAssignmentsPage() {
   const tableRef = useRef<HTMLDivElement>(null);
   const filtersKey = `${queue}:${page}:${pageSize}:${search}:${organizationId}:${collectorFilter}:${status}`;
   const [loadedKey, setLoadedKey] = useState('');
-  const ready = !loading && !error && loadedKey === filtersKey;
+  const ready = !loading && !error && loadedKey === filtersKey && searchInput.trim() === search;
   const validCapacity = Number.isInteger(capacity) && capacity >= 1 && capacity <= 5000;
   useEffect(() => { setSelected([]); }, [filtersKey]);
   const focusCases = () => { tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); tableRef.current?.focus({ preventScroll: true }); };
@@ -112,7 +112,7 @@ export function CollectionAssignmentsPage() {
     if (autoCollectors.length === 0) { toast.error(ct('autoNoCollectorsSelected')); return; }
     if (usedReason.length < 2) return;
     if (autoScope === 'selected' && selected.length === 0) { toast.error(ct('selectCasesHelp')); return; }
-    if (autoScope === 'queue' && (dashboard?.unassignedCases ?? 0) === 0) { toast.error(ct('autoQueueEmpty')); return; }
+    if (autoScope === 'queue' && (cases?.totalCount ?? 0) === 0) { toast.error(ct('autoQueueEmpty')); return; }
     setSaving(true);
     try {
       let caseIds: string[];
@@ -398,7 +398,7 @@ function Preview({ preview, ct, format }: { preview: AssignmentPreview | AutoAss
   const automatic = 'assignments' in preview;
   return (
     <div className="space-y-4">
-      {automatic ? <p className="text-xs font-bold text-mis-primary">{ct('distributionRule')}: {preview.ruleCode}</p> : null}
+      {automatic ? <p className="text-xs leading-6 text-mis-primary">{ct('distributionAutoPolicy')}</p> : null}
       <p className="text-sm font-semibold text-slate-600">{ct('selectedCases')}: {format.number(preview.caseCount)}</p>
       {preview.collectors.map((item) => (
         <div className="rounded-xl bg-slate-50 p-4" key={item.collectorId}>
