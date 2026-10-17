@@ -58,7 +58,14 @@ export const collectionsService = {
   async previewBankCustomerImport(bankId: string, id: string, mapping: BankCustomerImportMapping) { return (await apiClient.post<BankCustomerImportPreview>(`/banks/${bankId}/customers/import/${id}/preview`, mapping)).data; },
   async confirmBankCustomerImport(bankId: string, id: string, previewId: string, excludedRows?: number[]) { return (await apiClient.post<BankCustomerImportResult>(`/banks/${bankId}/customers/import/${id}/confirm`, { previewId, excludedRows })).data; },
   async distributionSummary(bankId: string) { return (await apiClient.get<CaseDistributionSummary>(`/banks/${bankId}/distribution/summary`)).data; },
-  async distributionCases(bankId: string, assigned: boolean, values: Record<string, unknown> = {}) { return allPages((page, pageSize) => apiClient.get<CaseDistributionPage>(`/banks/${bankId}/distribution/${assigned ? 'assigned' : 'unassigned'}`, { params: { ...withoutPaging(values), page, pageSize } }).then(r => r.data)); },
+  async distributionCases(bankId: string, assigned: boolean, values: Record<string, unknown> = {}) {
+    const { allMatching, ...query } = values;
+    const load = (page: number, pageSize: number) => apiClient.get<CaseDistributionPage>(`/banks/${bankId}/distribution/${assigned ? 'assigned' : 'unassigned'}`, { params: { ...query, page, pageSize } }).then(r => r.data);
+    if (!allMatching) return load(Number(query.page ?? 1), Number(query.pageSize ?? 20));
+    const first = await load(1, 100);
+    const rest = await Promise.all(Array.from({ length: Math.min(Math.max(first.totalPages - 1, 0), 4) }, (_, index) => load(index + 2, 100)));
+    return { ...first, items: [...first.items, ...rest.flatMap(page => page.items)] };
+  },
   async distributionCollectors(bankId: string) { return (await apiClient.get<DistributionCollector[]>(`/banks/${bankId}/distribution/collectors`)).data; },
   async distributionImports(bankId: string) { return (await apiClient.get<DistributionImport[]>(`/banks/${bankId}/distribution/imports`)).data; },
   async previewDistribution(bankId: string, action: 'assign' | 'reassign' | 'unassign', value: { caseIds: string[]; collectorId?: string; reason: string }) { return (await apiClient.post<DistributionPreview>(`/banks/${bankId}/distribution/${action}/preview`, value)).data; },

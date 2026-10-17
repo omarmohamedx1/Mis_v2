@@ -1,6 +1,6 @@
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { Landmark, RefreshCw, Search, SlidersHorizontal, Sparkles, UserMinus, UserRoundCheck, UsersRound } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -15,6 +15,8 @@ import { useCollectionsLocalization } from '../../features/collections/localizat
 import { collectionsService } from '../../features/collections/services/collectionsService';
 import type { AssignmentPreview, AutoAssignmentPreview, ClientCard, CollectionCase, CollectionDashboard, CollectorLookup, PagedResult } from '../../features/collections/types/collections';
 import { getApiErrorMessage } from '../../services/apiClient';
+
+import { DistributionActions, DistributionScope, DistributionSteps } from '../../features/collections/components/DistributionWorkflow';
 
 type Queue = 'unassigned' | 'assigned';
 type Dialog = 'assign' | 'auto' | 'unassign';
@@ -44,10 +46,17 @@ export function CollectionAssignmentsPage() {
   const [autoCollectors, setAutoCollectors] = useState<string[]>([]);
   const [capacity, setCapacity] = useState(500);
   const [reason, setReason] = useState('');
-  const [autoReason, setAutoReason] = useState('');
   const [autoScope, setAutoScope] = useState<'selected' | 'queue'>('queue');
   const [preview, setPreview] = useState<AssignmentPreview | AutoAssignmentPreview>();
   const [saving, setSaving] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const filtersKey = `${queue}:${page}:${pageSize}:${search}:${organizationId}:${collectorFilter}:${status}`;
+  const [loadedKey, setLoadedKey] = useState('');
+  const ready = !loading && !error && loadedKey === filtersKey;
+  const validCapacity = Number.isInteger(capacity) && capacity >= 1 && capacity <= 5000;
+  useEffect(() => { setSelected([]); }, [filtersKey]);
+  const focusCases = () => { tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); tableRef.current?.focus({ preventScroll: true }); };
+
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setSearch(searchInput.trim()); setPage(1); }, 350);
@@ -74,12 +83,13 @@ export function CollectionAssignmentsPage() {
       collectionsService.dashboard(organizationId || undefined),
     ]).then(([pageResult, collectorRows, clientPage, snapshot]) => {
       if (!active) return;
+      setLoadedKey(filtersKey);
       setCases(pageResult);
       setCollectors(collectorRows);
       setClients(clientPage.items);
       setDashboard(snapshot);
       setSelected((current) => current.filter((id) => pageResult.items.some((item) => item.id === id)));
-      setAutoCollectors((current) => current.length === 0 ? collectorRows.map((item) => item.id) : current.filter((id) => collectorRows.some((item) => item.id === id)));
+      setAutoCollectors((current) => current.filter((id) => collectorRows.some((item) => item.id === id)));
     }).catch(() => { if (active) setError(true); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [collectorFilter, organizationId, page, pageSize, queue, reload, search, status]);
@@ -92,21 +102,30 @@ export function CollectionAssignmentsPage() {
     setDialog(next);
     setPreview(undefined);
     setCollectorId('');
-    if (next === 'auto') setAutoCollectors((current) => current.length === 0 ? collectors.map((item) => item.id) : current);
-    else setAutoCollectors(collectors.map((item) => item.id));
-    setReason(defaultReason);
+    if (next === 'auto') setAutoScope(selected.length ? 'selected' : 'queue');
+    setReason(next === 'unassign' ? ct('distributionUnassignReason') : defaultReason);
   };
 
-  async function runAutomatic(fromDialog: boolean) {
-    const usedReason = (fromDialog ? reason : autoReason || defaultReason).trim();
+  async function runAutomatic() {
+    const usedReason = reason.trim();
+    if (!validCapacity) { toast.error(ct('distributionInvalidCapacity')); return; }
     if (autoCollectors.length === 0) { toast.error(ct('autoNoCollectorsSelected')); return; }
     if (usedReason.length < 2) return;
     if (autoScope === 'selected' && selected.length === 0) { toast.error(ct('selectCasesHelp')); return; }
     if (autoScope === 'queue' && (dashboard?.unassignedCases ?? 0) === 0) { toast.error(ct('autoQueueEmpty')); return; }
-    const caseIds = autoScope === 'selected' ? selected : [];
     setSaving(true);
     try {
-      if (!fromDialog || !preview) {
+      let caseIds: string[];
+      if (preview && 'assignments' in preview) caseIds = preview.assignments.map(item => item.caseId);
+      else if (autoScope === 'selected') caseIds = [...selected];
+      else {
+        const filters = { page: 1, pageSize: 100, search, organizationId: organizationId || undefined, status: status || undefined, unassigned: true };
+        const first = await collectionsService.listCases(filters);
+        const rest = await Promise.all(Array.from({ length: Math.min(Math.max(first.totalPages - 1, 0), 4) }, (_, index) => collectionsService.listCases({ ...filters, page: index + 2 })));
+        caseIds = [...first.items, ...rest.flatMap(page => page.items)].slice(0, 500).map(item => item.id);
+      }
+      if (!caseIds.length) { toast.error(ct('autoQueueEmpty')); return; }
+      if (!preview) {
         setDialog('auto');
         setPreview(await collectionsService.previewAutomaticAssignment({ caseIds, collectorIds: autoCollectors, maxActiveCases: capacity, confirmed: false }));
         return;
@@ -135,7 +154,7 @@ export function CollectionAssignmentsPage() {
 
   async function continueAction() {
     if (!dialog || reason.trim().length < 2) return;
-    if (dialog === 'auto') { await runAutomatic(true); return; }
+    if (dialog === 'auto') { await runAutomatic(); return; }
     if (selected.length === 0) return;
     if (dialog === 'assign' && !collectorId) return;
     setSaving(true);
@@ -188,14 +207,14 @@ export function CollectionAssignmentsPage() {
         ))}
       </section>
 
-      <section className="mb-5 overflow-hidden rounded-2xl border border-mis-border bg-white">
-        <header className="flex flex-col gap-1 border-b border-mis-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <details className="mb-5 overflow-hidden rounded-2xl border border-mis-border bg-white">
+        <summary className="cursor-pointer flex flex-col gap-1 border-b border-mis-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <UsersRound className="h-4 w-4 text-mis-primary" />
             <h2 className="text-sm font-bold text-mis-navy">{ct('collectorsOnDesk')}</h2>
           </div>
           <p className="text-xs text-slate-500">{ct('collectorsOnDeskHelp')}</p>
-        </header>
+        </summary>
         {collectors.length === 0 ? (
           <div className="px-5 py-6">
             <p className="font-semibold text-mis-navy">{ct('noCollectorsWithAccounts')}</p>
@@ -212,64 +231,9 @@ export function CollectionAssignmentsPage() {
             ))}
           </div>
         )}
-      </section>
-
-      {queue === 'unassigned' ? (
-        <section className="mb-5 rounded-2xl border border-mis-sky bg-white p-5 shadow-sm">
-          <header className="mb-4 flex items-start gap-2">
-            <Sparkles className="mt-0.5 h-5 w-5 text-mis-primary" />
-            <div>
-              <h2 className="text-sm font-bold text-mis-navy">{ct('autoDistributionSection')}</h2>
-              <p className="mt-1 text-sm text-slate-500">{ct('autoDistributionSectionHelp')}</p>
-            </div>
-          </header>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <label className="block text-sm font-semibold">{ct('maximumCapacity')}
-              <input className="field mt-2" max={5000} min={1} onChange={(event) => setCapacity(Number(event.target.value))} type="number" value={capacity} />
-            </label>
-            <fieldset>
-              <legend className="mb-2 text-sm font-semibold">{ct('autoScopeLabel')}</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 text-sm ${autoScope === 'queue' ? 'border-mis-primary bg-mis-pale' : 'border-mis-border'}`}>
-                  <input checked={autoScope === 'queue'} name="assignment-auto-scope" onChange={() => setAutoScope('queue')} type="radio" />
-                  <span><strong className="block">{ct('autoScopeQueue')}</strong><small className="text-slate-500">{format.number(dashboard?.unassignedCases ?? 0)} {ct('unassignedCases')}</small></span>
-                </label>
-                <label className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 text-sm ${autoScope === 'selected' ? 'border-mis-primary bg-mis-pale' : 'border-mis-border'}`}>
-                  <input checked={autoScope === 'selected'} name="assignment-auto-scope" onChange={() => setAutoScope('selected')} type="radio" />
-                  <span><strong className="block">{ct('autoScopeSelected')}</strong><small className="text-slate-500">{selected.length} {ct('casesSelected')}</small></span>
-                </label>
-              </div>
-            </fieldset>
-          </div>
-          <fieldset className="mt-4">
-            <legend className="mb-2 flex flex-wrap items-center gap-3 text-sm font-semibold">
-              {ct('collectorsLabel')}
-              <button className="text-xs font-bold text-mis-primary" onClick={() => setAutoCollectors(collectors.map((item) => item.id))} type="button">{ct('selectAllCollectors')}</button>
-              <button className="text-xs font-bold text-slate-500" onClick={() => setAutoCollectors([])} type="button">{ct('clearCollectorSelection')}</button>
-            </legend>
-            {collectors.length === 0 ? <p className="text-sm text-slate-500">{ct('noCollectorsWithAccounts')}</p> : (
-              <div className="grid max-h-56 gap-2 overflow-auto sm:grid-cols-2 xl:grid-cols-3">
-                {collectors.map((item) => (
-                  <label className="flex items-center gap-3 rounded-xl border border-mis-border p-3" key={item.id}>
-                    <input checked={autoCollectors.includes(item.id)} onChange={(event) => setAutoCollectors((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} type="checkbox" />
-                    <span>
-                      <strong className="block text-sm">{item.name}</strong>
-                      <small className="text-slate-500">{format.number(item.activeWorkload)} · {item.teamName || ct('collectorTeam')}</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </fieldset>
-          <label className="mt-4 block text-sm font-semibold">{ct('assignmentReasonLabel')}
-            <textarea className="field mt-2" maxLength={500} onChange={(event) => setAutoReason(event.target.value)} rows={2} value={autoReason || defaultReason} />
-          </label>
-          <div className="mt-4">
-            <Button disabled={!autoCollectors.length} fullWidth={false} isLoading={saving && dialog === 'auto' && !preview} leftIcon={<Sparkles className="h-4 w-4" />} onClick={() => { setPreview(undefined); setReason(autoReason || defaultReason); void runAutomatic(false); }} size="sm">{ct('autoDistributeNow')}</Button>
-          </div>
-        </section>
-      ) : null}
-
+      </details>
+      <DistributionActions disabled={!ready || !collectors.length || queue === 'assigned' || (!selected.length && !cases?.totalCount)} onManual={focusCases} onAutomatic={() => openDialog('auto')} />
+      <div ref={tableRef} tabIndex={-1} className="scroll-mt-5 rounded-xl outline-none focus-visible:ring-4 focus-visible:ring-mis-pale"><p className="mb-3 text-xs leading-6 text-slate-500">{ct('distributionSelectionHelp')}</p></div>
       <div className="mb-4 flex gap-2 border-b border-mis-border">
         <button className={`px-4 py-3 text-sm font-bold ${queue === 'unassigned' ? 'border-b-2 border-mis-primary text-mis-primary' : 'text-slate-500'}`} onClick={() => { setQueue('unassigned'); setSelected([]); setPage(1); setCollectorFilter(''); }} type="button">
           {ct('unassignedCases')} ({format.number(dashboard?.unassignedCases ?? 0)})
@@ -293,7 +257,7 @@ export function CollectionAssignmentsPage() {
             <option value="">{ct('allCollectors')}</option>
             {collectors.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </ProfessionalSelect>
-        ) : <span />}
+        ) : null}
         <ProfessionalSelect className="field h-11 py-2 leading-normal" onChange={(event) => { setStatus(event.target.value); setPage(1); }} value={status}>
           <option value="">{ct('allStatuses')}</option>
           {['ACTIVE', 'ON_HOLD', 'SETTLED', 'CLOSED', 'LEGAL', 'WRITE_OFF'].map((item) => <option key={item} value={item}>{ct(item)}</option>)}
@@ -301,9 +265,9 @@ export function CollectionAssignmentsPage() {
         <Button leftIcon={<SlidersHorizontal className="h-4 w-4" />} onClick={clearFilters} size="sm" variant="ghost">{ct('clearFilters')}</Button>
       </section>
 
-      {selected.length > 0 ? (
+      {ready && selected.length > 0 ? (
         <div className="sticky top-3 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-mis-sky bg-mis-pale px-4 py-3 shadow-sm">
-          <strong className="text-sm text-mis-navy">{selected.length} {ct('casesSelected')}</strong>
+          <div><strong className="text-sm text-mis-navy">{selected.length} {ct('casesSelected')}</strong><p className="mt-1 text-xs text-slate-500">{ct('distributionSelectedTotal')}: {format.money(cases?.items.filter(item => selected.includes(item.id)).reduce((total, item) => total + item.outstandingBalance, 0) ?? 0)}</p></div>
           <Button fullWidth={false} leftIcon={<UserRoundCheck className="h-4 w-4" />} onClick={() => openDialog('assign')} size="sm">{ct(queue === 'assigned' ? 'reassign' : 'assignToCollector')}</Button>
           {queue === 'unassigned' ? <Button fullWidth={false} leftIcon={<Sparkles className="h-4 w-4" />} onClick={() => { setAutoScope('selected'); openDialog('auto'); }} size="sm" variant="outline">{ct('autoDistribute')}</Button> : null}
           {queue === 'assigned' ? <Button fullWidth={false} leftIcon={<UserMinus className="h-4 w-4" />} onClick={() => openDialog('unassign')} size="sm" variant="danger">{ct('unassign')}</Button> : null}
@@ -311,7 +275,7 @@ export function CollectionAssignmentsPage() {
         </div>
       ) : null}
 
-      {error ? <ErrorState title={ct('loadError')} onRetry={() => setReload((value) => value + 1)} /> : loading && !cases ? (
+      {error ? <ErrorState title={ct('loadError')} onRetry={() => setReload((value) => value + 1)} /> : !ready ? (
         <div className="flex min-h-64 items-center justify-center"><LoadingSpinner /></div>
       ) : cases && cases.items.length === 0 ? (
         <EmptyState
@@ -338,8 +302,8 @@ export function CollectionAssignmentsPage() {
               </thead>
               <tbody className="divide-y divide-mis-border">
                 {cases.items.map((item) => (
-                  <tr className="hover:bg-slate-50" key={item.id}>
-                    <Td><input checked={selected.includes(item.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id))} type="checkbox" /></Td>
+                  <tr className={selected.includes(item.id) ? "bg-mis-pale" : "hover:bg-slate-50"} key={item.id}>
+                    <Td><input aria-label={`${ct('caseId')} ${item.caseNumber}`} checked={selected.includes(item.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id))} type="checkbox" /></Td>
                     <Td>
                       <p className="font-bold text-mis-navy">{item.customerName}</p>
                       <p className="mt-1 text-xs text-slate-500"><span data-bidi="ltr">{item.caseNumber}</span> · {item.customerCode}</p>
@@ -370,8 +334,8 @@ export function CollectionAssignmentsPage() {
       <Modal
         footer={(
           <>
-            <Button disabled={saving} fullWidth={false} onClick={() => preview ? setPreview(undefined) : setDialog(undefined)} variant="outline">{ct('back')}</Button>
-            <Button disabled={(dialog === 'assign' && !collectorId) || (dialog === 'auto' && autoCollectors.length === 0) || reason.trim().length < 2} fullWidth={false} isLoading={saving} onClick={() => void continueAction()} variant={dialog === 'unassign' ? 'danger' : 'primary'}>
+            <Button disabled={saving} fullWidth={false} onClick={() => preview ? setPreview(undefined) : setDialog(undefined)} variant="outline">{ct(preview ? 'back' : 'cancel')}</Button>
+            <Button disabled={(dialog === 'assign' && !collectorId) || (dialog === 'auto' && (autoCollectors.length === 0 || !validCapacity || (autoScope === 'selected' && !selected.length) || (autoScope === 'queue' && !cases?.totalCount))) || reason.trim().length < 2} fullWidth={false} isLoading={saving} onClick={() => void continueAction()} variant={dialog === 'unassign' ? 'danger' : 'primary'}>
               {ct(preview ? dialog === 'unassign' ? 'unassign' : 'confirmAssignment' : 'previewAssignment')}
             </Button>
           </>
@@ -381,9 +345,11 @@ export function CollectionAssignmentsPage() {
         size={dialog === 'auto' ? 'lg' : 'md'}
         title={ct(dialog === 'unassign' ? 'confirmUnassignment' : dialog === 'auto' ? 'autoDistribute' : queue === 'assigned' ? 'reassign' : 'assignCases')}
       >
+        <DistributionSteps review={Boolean(preview)} />
+        <p className="mb-4 text-xs leading-6 text-slate-500">{ct(preview ? 'distributionReviewHelp' : 'distributionNoChanges')}</p>
         {preview ? <Preview preview={preview} ct={ct} format={format} /> : (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">{selected.length} {ct('casesSelected')}</p>
+            {dialog !== 'auto' && <p className="text-sm text-slate-600">{selected.length} {ct('casesSelected')}</p>}
             {dialog === 'assign' ? (
               <label className="block text-sm font-semibold">{ct('selectCollector')}
                 <ProfessionalSelect className="field mt-2" onChange={(event) => setCollectorId(event.target.value)} value={collectorId}>
@@ -394,11 +360,16 @@ export function CollectionAssignmentsPage() {
             ) : null}
             {dialog === 'auto' ? (
               <>
+                <DistributionScope value={autoScope} onChange={setAutoScope} selectedCount={selected.length} queueCount={queue === 'unassigned' ? cases?.totalCount ?? 0 : 0} />
+                <p className="rounded-xl bg-mis-pale p-3 text-sm leading-7 text-mis-primary">{ct('distributionAutoPolicy')}</p>
                 <label className="block text-sm font-semibold">{ct('maximumCapacity')}
-                  <input className="field mt-2" max={5000} min={1} onChange={(event) => setCapacity(Number(event.target.value))} type="number" value={capacity} />
+                  <input className="field mt-2" max={5000} min={1} onChange={(event) => setCapacity(Number(event.target.value))} type="number" value={capacity} aria-invalid={!validCapacity} />
+                  <p className="mt-2 text-xs font-normal leading-6 text-slate-500">{ct('distributionCapacityHelp')}</p>
+                  {!validCapacity && <p role="alert" className="mt-1 text-xs text-red-600">{ct('distributionInvalidCapacity')}</p>}
                 </label>
                 <fieldset>
-                  <legend className="mb-2 text-sm font-semibold">{ct('collectorsLabel')}</legend>
+                  <legend className="mb-2 text-sm font-semibold">{ct('collectorsLabel')} · {autoCollectors.length}</legend>
+                  <div className="mb-3 flex flex-wrap gap-4"><button className="text-xs font-bold text-mis-primary" onClick={() => setAutoCollectors(collectors.map(item => item.id))} type="button">{ct('selectAllCollectors')}</button><button className="text-xs font-bold text-slate-500" onClick={() => setAutoCollectors([])} type="button">{ct('clearCollectorSelection')}</button></div>
                   <div className="grid max-h-64 gap-2 overflow-auto sm:grid-cols-2">
                     {collectors.map((item) => (
                       <label className="flex items-center gap-3 rounded-xl border border-mis-border p-3" key={item.id}>
@@ -432,7 +403,7 @@ function Preview({ preview, ct, format }: { preview: AssignmentPreview | AutoAss
       {preview.collectors.map((item) => (
         <div className="rounded-xl bg-slate-50 p-4" key={item.collectorId}>
           <p className="font-bold text-mis-navy">{item.collectorName}</p>
-          <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
             <div><p className="text-slate-500">{ct('currentWorkload')}</p><p className="mt-1 text-lg font-bold">{format.number(item.currentWorkload)}</p></div>
             <div><p className="text-slate-500">{ct('proposedCases')}</p><p className="mt-1 text-lg font-bold">{format.number(item.proposedAdditionalCases)}</p></div>
             <div><p className="text-slate-500">{ct('resultingWorkload')}</p><p className="mt-1 text-lg font-bold text-mis-primary">{format.number(item.resultingWorkload)}</p></div>
