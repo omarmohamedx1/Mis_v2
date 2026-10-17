@@ -94,6 +94,9 @@ img, svg { max-width: 100%; }
 .module-content { min-width: 0; padding-inline-start: 0; }
 .module-sidebar { transition-property: transform; }
 .module-sidebar { max-width: calc(100vw - 2.5rem); overflow: visible; }
+@media (max-width: 1023px) {
+  .module-sidebar[inert] { display: none; }
+}
 .module-sidebar-header {
   padding-top: max(1.25rem, var(--safe-top));
 }
@@ -223,7 +226,7 @@ tbody tr { transition: background-color 150ms ease; }
 .overview-stat:hover { border-color: #7b8da6; }
 .overview-stat .collection-metric-value { font-size: clamp(1.125rem, 9cqi, 1.875rem); }
 .overview-panels { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
-.overview-panel { min-width: 0; overflow: hidden; border: 1px solid #d8e3ec; border-radius: .75rem; background: #fff; }
+.overview-panel { position: relative; min-width: 0; overflow: hidden; border: 1px solid #d8e3ec; border-radius: .75rem; background: #fff; }
 .overview-panel-heading { display: flex; min-width: 0; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .75rem; border-bottom: 1px solid #edf1f5; padding: 1rem 1.25rem; }
 .overview-panel-body { min-width: 0; padding: 1.25rem; }
 .overview-text-action { display: inline-flex; align-items: center; gap: .35rem; color: #0b638f; font-size: .75rem; font-weight: 600; white-space: nowrap; }
@@ -234,7 +237,7 @@ tbody tr { transition: background-color 150ms ease; }
 .overview-client-tools { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: 1rem 1.25rem; }
 .overview-segments { display: flex; flex-wrap: wrap; gap: .125rem; border-radius: .5rem; background: #f1f5f9; padding: .25rem; }
 .overview-segments button { min-height: 2rem; border-radius: .375rem; padding: .35rem .625rem; font-size: .75rem; font-weight: 500; white-space: nowrap; }
-.overview-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #b9c9d6 transparent; }
+.overview-table-scroll { position: relative; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #b9c9d6 transparent; }
 .overview-table { width: 100%; font-size: .8125rem; }
 .overview-table :is(th, td) { padding: .875rem 1rem; vertical-align: middle; }
 .overview-table thead { background: #f8fafc; color: #64748b; font-size: .75rem; }

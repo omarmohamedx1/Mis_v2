@@ -34,6 +34,7 @@ public interface ICollectionsService
     Task<AutoAssignmentPreviewDto> PreviewAutomaticAssignmentAsync(AutoAssignmentRequest request, CancellationToken cancellationToken);
     Task<AutoAssignmentPreviewDto> ApplyAutomaticAssignmentAsync(AutoAssignmentRequest request, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<CollectorLookupDto>> GetCollectorsAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<AssignmentOrganizationDto>> GetAssignmentOrganizationsAsync(CancellationToken cancellationToken);
     Task<IReadOnlyCollection<CollectorLookupDto>> GetCaseFilterCollectorsAsync(CancellationToken cancellationToken);
     Task<PagedResultDto<FieldVisitDto>> GetVisitsAsync(VisitFilters filters, CancellationToken cancellationToken);
     Task<FieldVisitSummaryDto> GetVisitSummaryAsync(CancellationToken cancellationToken);

@@ -45,6 +45,7 @@ apiClient.defaults.adapter = async config => {
     return reply(summary);
   }
   if (config.url === '/collections/work-queue/my') {
+    if (scenario === 'queue-slow') await new Promise(resolve => setTimeout(resolve, 4500));
     if (scenario === 'queue-error') throw new Error('Synthetic personal queue failure');
     const queue = { callsDue: [] as unknown[], highPriorityCases: [] as unknown[], promisesDue: [] as unknown[], brokenPromises: [] as unknown[], visitsToday: 0, pendingReviews: 0, openComplaints: 0 };
     if (scenario === 'busy') {

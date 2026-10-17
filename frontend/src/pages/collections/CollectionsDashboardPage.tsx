@@ -31,22 +31,23 @@ export function CollectionsDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [workError, setWorkError] = useState(false);
+  const [workLoading, setWorkLoading] = useState(true);
   const [reload, setReload] = useState(0);
   const [updatedAt, setUpdatedAt] = useState<Date>();
   const [showAllPriorities, setShowAllPriorities] = useState(false);
 
   useEffect(() => {
     let active = true;
-    setLoading(true); setError(false); setWorkError(false);
-    void Promise.allSettled([collectionsService.dashboard(organizationId), collectionsService.myWork()]).then(([snapshot, queue]) => {
+    setLoading(true); setError(false); setWorkError(false); setWorkLoading(true);
+    void collectionsService.dashboard(organizationId).then(snapshot => {
       if (!active) return;
-      if (snapshot.status === 'fulfilled') { setData(snapshot.value); setLoadedScope(scope); setUpdatedAt(new Date()); }
-      else setError(true);
-      setWork(queue.status === 'fulfilled' ? queue.value : undefined);
-      setWorkError(queue.status === 'rejected');
-    }).finally(() => { if (active) setLoading(false); });
+      setData(snapshot); setLoadedScope(scope); setUpdatedAt(new Date());
+    }).catch(() => { if (active) setError(true); }).finally(() => { if (active) setLoading(false); });
+    void collectionsService.myWork().then(queue => {
+      if (active) setWork(queue);
+    }).catch(() => { if (active) { setWork(undefined); setWorkError(true); } }).finally(() => { if (active) setWorkLoading(false); });
     return () => { active = false; };
-  }, [organizationId, scope, reload]);
+  }, [organizationId, scope, reload, language]);
 
   const ready = data && loadedScope === scope;
   const coverage = data?.totalCases ? data.assignedCases / data.totalCases * 100 : 0;
@@ -104,7 +105,7 @@ export function CollectionsDashboardPage() {
 
       <div className="overview-panels">
         <OverviewPanel title={ct(showTrend ? 'collectionTrend' : 'dashboardPortfolioHealth')} description={ct(showTrend ? 'dashboardTrendHelp' : 'dashboardPortfolioHealthHelp')}>
-          {showTrend ? <CollectionTrend points={trend} format={f} language={language} /> : <div className="space-y-6 py-2">
+          {showTrend ? <CollectionTrend points={trend} format={f} language={language} /> : <div className="space-y-5 py-1">
             <CoverageRow label={ct('dashboardCoverage')} value={coverage} description={`${f.number(data.assignedCases)} / ${f.number(data.totalCases)}`} />
             <CoverageRow label={ct('dashboardOverdueShare')} value={overdueShare} description={f.money(data.totalOverdue)} warning />
           </div>}
@@ -125,10 +126,10 @@ export function CollectionsDashboardPage() {
         </OverviewPanel>
       </div>
 
-      <ClientPortfolios clients={data.byClient ?? []} format={f} />
+      <ClientPortfolios key={scope} clients={data.byClient ?? []} format={f} />
 
       <OverviewPanel title={ct('dashboardMyQueue')} description={ct(organizationId ? 'dashboardMyQueueGlobalHelp' : 'dashboardMyQueueHelp')} action={<Link className="overview-text-action" to="/collections/cases">{ct('dashboardOpenCases')}<Arrow aria-hidden="true" className="h-3.5 w-3.5" /></Link>}>
-        {workError ? <ErrorState compact title={ct('dashboardQueueError')} onRetry={() => setReload(value => value + 1)} /> : followUps.length ? <div className="overview-table-scroll">
+        {workLoading ? <div className="flex min-h-20 items-center justify-center" aria-busy="true"><LoadingSpinner /></div> : workError ? <ErrorState compact title={ct('dashboardQueueError')} onRetry={() => setReload(value => value + 1)} /> : followUps.length ? <div className="overview-table-scroll">
           <table className="overview-table min-w-[42rem]">
             <thead><tr><th>{ct('customerName')}</th><th>{ct('dashboardFollowUpType')}</th><th>{ct('dashboardFollowUpDate')}</th><th><span className="sr-only">{ct('actions')}</span></th></tr></thead>
             <tbody>{followUps.map(row => <tr key={row.caseId}>
@@ -165,9 +166,8 @@ function OverviewPanel({ title, description, action, children }: { title: string
 }
 
 function CoverageRow({ label, value, description, warning = false }: { label: string; value: number; description: string; warning?: boolean }) {
-  return <div><div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm"><span className="text-slate-600">{label}</span><bdi dir="ltr" className="font-semibold text-mis-ink">{value.toFixed(0)}%</bdi></div>
+  return <div><div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm"><span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600"><span>{label}</span><span className="text-xs text-slate-400" data-bidi="ltr">{description}</span></span><bdi dir="ltr" className="font-semibold text-mis-ink">{value.toFixed(0)}%</bdi></div>
     <div role="progressbar" aria-label={label} aria-valuenow={Math.max(0, Math.min(value, 100))} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${warning ? 'bg-amber-500' : 'bg-mis-primary'}`} style={{ width: `${Math.max(0, Math.min(value, 100))}%` }} /></div>
-    <p className="mt-2 text-xs text-slate-500" data-bidi="ltr">{description}</p>
   </div>;
 }
 

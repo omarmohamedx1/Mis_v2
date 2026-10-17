@@ -158,6 +158,8 @@ public sealed class CollectionAssignmentsController : ControllerBase
 {
     private readonly ICollectionsService _service;
     public CollectionAssignmentsController(ICollectionsService service) => _service = service;
+    [HttpGet("organizations")]
+    public Task<IReadOnlyCollection<AssignmentOrganizationDto>> Organizations(CancellationToken token) => _service.GetAssignmentOrganizationsAsync(token);
     [HttpGet("collectors")]
     public Task<IReadOnlyCollection<CollectorLookupDto>> Collectors(CancellationToken token) => _service.GetCollectorsAsync(token);
     [HttpPost("preview")]

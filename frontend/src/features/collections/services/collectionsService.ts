@@ -32,6 +32,7 @@ apiClient.interceptors.request.use(config => {
 });
 
 export const collectionsService = {
+  async assignmentOrganizations() { return (await apiClient.get<import('../types/collections').AssignmentOrganization[]>('/collections/assignments/organizations')).data; },
   async banks(search?: string) { return (await apiClient.get<BankDirectoryItem[]>('/banks', { params: { search } })).data; },
   async bank(id: string) { return (await apiClient.get<BankDirectoryItem>(`/banks/${id}`)).data; },
   async installmentCompanies(search?: string) { return (await apiClient.get<BankDirectoryItem[]>('/installment-companies', { params: { search } })).data; },

@@ -27,3 +27,15 @@ writing direction. A Latin amount or identifier may use `data-bidi="ltr"` or a
 `bdi` element without moving to the opposite edge of its column. Apply the same
 `text-start`, `text-end` or `text-center` choice to a column's header and data cells.
 Keep wide tables within a horizontal scrolling container.
+
+The collections overview uses four concise indicators, actionable priorities,
+one ranked client-portfolio table, and a deduplicated personal follow-up queue.
+Load the overview and personal queue independently; a slow or failed queue must
+not hide valid balances. Empty queues use compact messages. Tables scroll inside
+their section; position the scroller so screen-reader-only headings stay inside
+its clipping boundary. Avoid `overflow-wrap: anywhere` on the module shell.
+
+Collections navigation groups performance, operations, client organizations,
+and reports/control. Keep stable group IDs across translations, retain role
+filters, and give icon-only links accessible names. The mobile drawer is inert
+and removed from layout while closed; Escape returns focus to its opener.

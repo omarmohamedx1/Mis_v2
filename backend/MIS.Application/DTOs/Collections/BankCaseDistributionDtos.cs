@@ -8,7 +8,7 @@ public sealed record CaseDistributionItemDto(Guid Id, string CaseNumber, string 
     Guid? ImportId, string? ImportName);
 public sealed record CaseDistributionPageDto(IReadOnlyCollection<CaseDistributionItemDto> Items, int TotalCount,
     int Page, int PageSize, int TotalPages);
-public sealed record DistributionCollectorDto(Guid Id, string Name, int AssignedCases, decimal TotalOutstanding);
+public sealed record DistributionCollectorDto(Guid Id, string Name, int AssignedCases, decimal TotalOutstanding, bool IsResponsible = false);
 public sealed record DistributionImportDto(Guid Id, string Name);
 public sealed record DistributionMutationRequest(IReadOnlyCollection<Guid> CaseIds, Guid? CollectorId, string Reason);
 public sealed record DistributionPreviewDto(int CaseCount, decimal TotalOutstanding, Guid? CollectorId,

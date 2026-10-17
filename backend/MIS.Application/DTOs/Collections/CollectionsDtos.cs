@@ -92,7 +92,8 @@ public sealed record ImportedCollectorLinkResultDto(int LinkedCases, int Ambiguo
 public sealed record AutoAssignmentRequest(IReadOnlyCollection<Guid>? CaseIds, IReadOnlyCollection<Guid>? CollectorIds, Guid? TeamId, [Range(1, 5000)] int MaxActiveCases, bool Confirmed);
 public sealed record AutoAssignmentCaseDto(Guid CaseId, string CaseNumber, Guid CollectorId, string CollectorName, string Reason);
 public sealed record AutoAssignmentPreviewDto(string RuleCode, int CaseCount, IReadOnlyCollection<AssignmentPreviewItemDto> Collectors, IReadOnlyCollection<AutoAssignmentCaseDto> Assignments);
-public sealed record CollectorLookupDto(Guid Id, string Name, int ActiveWorkload, Guid? TeamId, string? TeamName);
+public sealed record CollectorLookupDto(Guid Id, string Name, int ActiveWorkload, Guid? TeamId, string? TeamName, IReadOnlyCollection<Guid>? OrganizationIds = null);
+public sealed record AssignmentOrganizationDto(Guid Id, string Name, string Code, string OrganizationType, string? LogoUrl, int TotalCases, int AssignedCases, int UnassignedCases, decimal Outstanding);
 public sealed record FieldVisitDto(Guid Id, Guid CaseId, string CaseNumber, string CustomerName, Guid OrganizationId, string OrganizationName, string OrganizationType, Guid CollectorId, string CollectorName, DateTimeOffset ScheduledAt, string Status, string Address, string? Governorate, string? Area, string? Result, string? Notes);
 public sealed record FieldVisitSummaryDto(int VisitsToday, int ScheduledVisits, int CompletedVisits);
 public sealed record FieldVisitFilterOptionDto(Guid Id, string Name);

@@ -47,11 +47,14 @@ public sealed class BankDistributionImportService(
         EnsurePermission();
         await RequireAccessAsync(organizationId, token);
         var scoped = ScopedCases(organizationId);
-        return await AuthorizedCollectors(organizationId).AsNoTracking().OrderBy(x => x.FullName)
+        var responsibleIds = await AuthorizedCollectors(organizationId).Responsibilities(db.EmployeeOrganizationAssignments, db.CollectionUserAccess)
+            .Where(x => x.OrganizationId == organizationId).Select(x => x.CollectorId).ToArrayAsync(token);
+        var rows = await AuthorizedCollectors(organizationId).AsNoTracking().OrderBy(x => x.FullName)
             .Select(x => new DistributionCollectorDto(x.Id, x.FullName,
                 scoped.Count(c => c.AssignedCollectorId == x.Id),
                 scoped.Where(c => c.AssignedCollectorId == x.Id).Sum(c => (decimal?)c.OutstandingBalance) ?? 0))
             .ToArrayAsync(token);
+        return rows.Select(x => x with { IsResponsible = responsibleIds.Contains(x.Id) }).ToArray();
     }
 
     public async Task<BankDistributionImportUpload> UploadAsync(Guid organizationId, HrUploadFile file, CancellationToken token)

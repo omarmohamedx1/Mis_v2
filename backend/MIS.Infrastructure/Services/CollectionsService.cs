@@ -631,6 +631,19 @@ public sealed class CollectionsService : ICollectionsService
         var summary = collectors.Where(x => proposed[x.Id] > 0).Select(x => new AssignmentPreviewItemDto(x.Id, x.FullName, workloads.GetValueOrDefault(x.Id), proposed[x.Id], workloads.GetValueOrDefault(x.Id) + proposed[x.Id])).ToArray(); return new AutoAssignmentPreviewDto("BALANCED_GEO_V1", cases.Length, summary, assignments);
     }
 
+    public async Task<IReadOnlyCollection<AssignmentOrganizationDto>> GetAssignmentOrganizationsAsync(CancellationToken token)
+    {
+        if (!CanAssign()) throw new HrForbiddenException("You do not have permission to distribute cases.");
+        var ar = ApiTextLocalizer.IsArabic;
+        var rows = await AccessibleCases().AsNoTracking()
+            .Where(x => x.Portfolio.Organization.IsActive)
+            .GroupBy(x => new { Id = x.Portfolio.OrganizationId, Name = ar ? x.Portfolio.Organization.NameArabic : x.Portfolio.Organization.NameEnglish, x.Portfolio.Organization.Code, x.Portfolio.Organization.OrganizationType, LogoKey = x.Portfolio.Organization.LogoStorageKey })
+            .Select(group => new { group.Key, Total = group.Count(), Assigned = group.Count(x => x.AssignedCollectorId != null), Outstanding = group.Sum(x => x.OutstandingBalance) })
+            .OrderByDescending(x => x.Total - x.Assigned).ThenBy(x => x.Key.Name)
+            .ToArrayAsync(token);
+        return rows.Select(x => new AssignmentOrganizationDto(x.Key.Id, x.Key.Name, x.Key.Code, x.Key.OrganizationType, OrganizationLogo(x.Key.Id, x.Key.LogoKey), x.Total, x.Assigned, x.Total - x.Assigned, x.Outstanding)).ToArray();
+    }
+
     public async Task<IReadOnlyCollection<CollectorLookupDto>> GetCollectorsAsync(CancellationToken token)
     {
         if (!CanAssign()) throw new HrForbiddenException("You do not have permission to view collector workloads.");
@@ -652,12 +665,14 @@ public sealed class CollectionsService : ICollectionsService
     private async Task<IReadOnlyCollection<CollectorLookupDto>> EligibleCollectorLookupsAsync(CancellationToken token)
     {
         var userId = _user.UserId; var supervisorOnly = HasRole(SystemRoleNames.CollectionsSupervisor) && !HasRole(SystemRoleNames.Admin) && !HasRole(SystemRoleNames.CollectionsOperationsManager);
-        var rows = await _db.Users.AsNoTracking().EligibleCollectors()
-            .ForSupervisorScope(_db, userId, !supervisorOnly)
+        var eligible = _db.Users.AsNoTracking().EligibleCollectors().ForSupervisorScope(_db, userId, !supervisorOnly);
+        var responsibilities = await eligible.Responsibilities(_db.EmployeeOrganizationAssignments, _db.CollectionUserAccess).ToArrayAsync(token);
+        var organizations = responsibilities.GroupBy(x => x.CollectorId).ToDictionary(x => x.Key, x => x.Select(link => link.OrganizationId).ToArray());
+        var rows = await eligible
             .OrderBy(x => x.FullName)
             .Select(x => new CollectorLookupDto(x.Id, x.FullName, _db.CollectionCases.Count(c => c.AssignedCollectorId == x.Id && c.Status == CollectionsValues.CaseStatuses.Active), _db.CollectionTeamMembers.Where(m => m.UserId == x.Id && m.IsActive).Select(m => (Guid?)m.TeamId).FirstOrDefault(), _db.CollectionTeamMembers.Where(m => m.UserId == x.Id && m.IsActive).Select(m => ApiTextLocalizer.IsArabic ? m.Team.NameArabic : m.Team.NameEnglish).FirstOrDefault()))
             .ToArrayAsync(token);
-        return rows.GroupBy(x => x.Id).Select(group => group.First()).ToArray();
+        return rows.GroupBy(x => x.Id).Select(group => group.First() with { OrganizationIds = organizations.GetValueOrDefault(group.Key, []) }).ToArray();
     }
 
     public async Task<PagedResultDto<FieldVisitDto>> GetVisitsAsync(VisitFilters filters, CancellationToken token)

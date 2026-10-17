@@ -61,7 +61,7 @@ export interface BankCustomerImportResult { imported: number; skipped: number; f
 export interface CaseDistributionSummary { totalCases: number; unassignedCases: number; assignedCases: number; collectors: number }
 export interface CaseDistributionItem { id: string; caseNumber: string; customerName: string; mobile?: string; outstandingAmount: number; status: string; collectorId?: string; collectorName?: string; assignedAt?: string; importId?: string; importName?: string }
 export interface CaseDistributionPage { items: CaseDistributionItem[]; totalCount: number; page: number; pageSize: number; totalPages: number }
-export interface DistributionCollector { id: string; name: string; assignedCases: number; totalOutstanding: number }
+export interface DistributionCollector { id: string; name: string; assignedCases: number; totalOutstanding: number; isResponsible?: boolean }
 export interface DistributionImport { id: string; name: string }
 export interface DistributionPreview { caseCount: number; totalOutstanding: number; collectorId?: string; collectorName?: string; previousCollectors: string[] }
 export interface DistributionResult { caseCount: number; collectorId?: string; collectorName?: string }
@@ -134,7 +134,8 @@ export interface AssignmentPreview { caseCount: number; collectors: AssignmentPr
 export interface ImportedCollectorLinkSlice { collectorId: string; collectorName: string; fileName: string; cases: number }
 export interface ImportedCollectorLinkResult { linkedCases: number; ambiguousCases: number; unmatchedCases: number; byCollector: ImportedCollectorLinkSlice[] }
 export interface AutoAssignmentPreview extends AssignmentPreview { ruleCode: string; assignments: { caseId: string; caseNumber: string; collectorId: string; collectorName: string; reason: string }[] }
-export interface CollectorLookup { id: string; name: string; activeWorkload: number; teamId?: string; teamName?: string }
+export interface CollectorLookup { id: string; name: string; activeWorkload: number; teamId?: string; teamName?: string; organizationIds?: string[] }
+export interface AssignmentOrganization { id: string; name: string; code: string; organizationType: string; logoUrl?: string; totalCases: number; assignedCases: number; unassignedCases: number; outstanding: number }
 export interface FieldVisit { id: string; caseId: string; caseNumber: string; customerName: string; organizationId: string; organizationName: string; organizationType: string; collectorId: string; collectorName: string; scheduledAt: string; status: string; address: string; governorate?: string; area?: string; result?: string; notes?: string }
 export interface FieldVisitSummary { visitsToday: number; scheduledVisits: number; completedVisits: number }
 export interface FieldVisitFilterOption { id: string; name: string }

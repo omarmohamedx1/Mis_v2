@@ -1,8 +1,8 @@
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { westernDigits } from '../../components/forms/normalizeDigits';
-import { Landmark, RefreshCw, Search, SlidersHorizontal, Sparkles, UserMinus, UserRoundCheck, UsersRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RefreshCw, Search, SlidersHorizontal, Sparkles, UserMinus, UserRoundCheck } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
@@ -14,34 +14,65 @@ import { useToast } from '../../components/common/Toast';
 import { CollectionStatus, FileCollectorLinkBanner, useCollectionFormat } from '../../features/collections/components/CollectionsUi';
 import { useCollectionsLocalization } from '../../features/collections/localization/collectionsTranslations';
 import { collectionsService } from '../../features/collections/services/collectionsService';
-import type { AssignmentPreview, AutoAssignmentPreview, ClientCard, CollectionCase, CollectionDashboard, CollectorLookup, PagedResult } from '../../features/collections/types/collections';
+import type { AssignmentOrganization, AssignmentPreview, AutoAssignmentPreview, CollectionCase, CollectorLookup, PagedResult } from '../../features/collections/types/collections';
 import { getApiErrorMessage } from '../../services/apiClient';
 
 import { DistributionActions, DistributionScope, DistributionSteps } from '../../features/collections/components/DistributionWorkflow';
 import { suggestedAssignmentCapacity } from '../../features/collections/assignmentCapacity';
+import { DistributionOrganizationPicker } from '../../features/collections/components/DistributionOrganizationPicker';
+import { DistributionExternalNotice, DistributionTeamOption, DistributionTeamScope } from '../../features/collections/components/DistributionTeamScope';
 
 type Queue = 'unassigned' | 'assigned';
 type Dialog = 'assign' | 'auto' | 'unassign';
 
 export function CollectionAssignmentsPage() {
-  const { ct } = useCollectionsLocalization();
+  const { ct, language } = useCollectionsLocalization();
+  const [params, setParams] = useSearchParams();
+  const [organizations, setOrganizations] = useState<AssignmentOrganization[]>([]);
+  const [collectors, setCollectors] = useState<CollectorLookup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const [reload, setReload] = useState(0);
+  const organizationId = params.get('organizationId') ?? '';
+  const organization = organizations.find(item => item.id === organizationId);
+  const Back = language === 'ar' ? ArrowRight : ArrowLeft;
+  const choose = (id: string) => {
+    setParams(current => { const next = new URLSearchParams(current); if (id) next.set('organizationId', id); else next.delete('organizationId'); return next; });
+  };
+  useEffect(() => {
+    let active = true; setLoading(true); setError(false);
+    void Promise.all([collectionsService.assignmentOrganizations(), collectionsService.collectors()]).then(([rows, team]) => {
+      if (active) { setOrganizations(rows); setCollectors(team); setLoaded(true); }
+    }).catch(() => { if (active) setError(true); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [reload, language]);
+  return <div>
+    <PageHeader eyebrow={ct('collections')} title={organization?.name ?? ct('distributionOrganizationsTitle')} description={ct(organization ? 'distributionOrganizationWorkspaceHelp' : 'distributionOrganizationsHelp')} actions={<Button fullWidth={false} size="sm" variant="outline" leftIcon={<RefreshCw className="h-4 w-4" />} isLoading={loading} onClick={() => setReload(value => value + 1)}>{ct('refresh')}</Button>} />
+    {organizationId && <button className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-mis-primary" type="button" onClick={() => choose('')}><Back aria-hidden="true" className="h-4 w-4" />{ct('distributionBackToOrganizations')}</button>}
+    {error && <ErrorState title={ct('loadError')} onRetry={() => setReload(value => value + 1)} />}
+    {!loaded ? !error && <div className="flex min-h-64 items-center justify-center"><LoadingSpinner /></div> : organizationId ? organization ? <OrganizationAssignmentWorkspace key={organization.id} organization={organization} collectors={collectors} refreshing={loading || error} reload={reload} onChanged={() => setReload(value => value + 1)} /> : <EmptyState className="rounded-xl border border-mis-border bg-white" title={ct('distributionOrganizationUnavailable')} /> : !error && <DistributionOrganizationPicker organizations={organizations} collectors={collectors} onChoose={choose} />}
+  </div>;
+}
+
+function OrganizationAssignmentWorkspace({ organization, collectors, refreshing, reload, onChanged }: { organization: AssignmentOrganization; collectors: CollectorLookup[]; refreshing: boolean; reload: number; onChanged: () => void }) {
+  const { ct, language } = useCollectionsLocalization();
   const format = useCollectionFormat();
   const toast = useToast();
   const [queue, setQueue] = useState<Queue>('unassigned');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [organizationId, setOrganizationId] = useState('');
+  const organizationId = organization.id;
+  const [includeOthers, setIncludeOthers] = useState(false);
+  const availableCollectors = collectors.filter(item => includeOthers || item.organizationIds?.includes(organizationId));
+  const responsibleCollectors = collectors.filter(item => item.organizationIds?.includes(organizationId));
   const [collectorFilter, setCollectorFilter] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [reload, setReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [cases, setCases] = useState<PagedResult<CollectionCase>>();
-  const [collectors, setCollectors] = useState<CollectorLookup[]>([]);
-  const [clients, setClients] = useState<ClientCard[]>([]);
-  const [dashboard, setDashboard] = useState<CollectionDashboard>();
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState<Dialog>();
   const [collectorId, setCollectorId] = useState('');
@@ -54,14 +85,20 @@ export function CollectionAssignmentsPage() {
   const tableRef = useRef<HTMLDivElement>(null);
   const filtersKey = `${queue}:${page}:${pageSize}:${search}:${organizationId}:${collectorFilter}:${status}`;
   const [loadedKey, setLoadedKey] = useState('');
-  const ready = !loading && !error && loadedKey === filtersKey && searchInput.trim() === search;
+  const ready = !loading && !error && !refreshing && loadedKey === filtersKey && searchInput.trim() === search;
   const batchCaseCount = autoScope === 'selected' ? selected.length : Math.min(cases?.totalCount ?? 0, 500);
-  const capacityCollectors = autoCollectors.length ? collectors.filter(item => autoCollectors.includes(item.id)) : collectors;
+  const capacityCollectors = autoCollectors.length ? availableCollectors.filter(item => autoCollectors.includes(item.id)) : availableCollectors;
   const suggestedCapacity = suggestedAssignmentCapacity(batchCaseCount, capacityCollectors.map(item => item.activeWorkload));
   const capacityValue = capacityInput ?? String(suggestedCapacity);
   const capacity = Number(capacityValue);
   const validCapacity = /^\d+$/.test(capacityValue) && Number.isInteger(capacity) && capacity >= 1 && capacity <= 5000;
   useEffect(() => { setSelected([]); }, [filtersKey]);
+  const changeTeamScope = (value: boolean) => { setIncludeOthers(value); setCollectorId(''); setAutoCollectors([]); setPreview(undefined); };
+  useEffect(() => {
+    const allowed = collectors.filter(item => includeOthers || item.organizationIds?.includes(organizationId));
+    setAutoCollectors(current => current.filter(id => allowed.some(item => item.id === id)));
+    setCollectorId(current => allowed.some(item => item.id === current) ? current : '');
+  }, [collectors, includeOthers, organizationId]);
   const focusCases = () => { tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); tableRef.current?.focus({ preventScroll: true }); };
 
 
@@ -83,26 +120,17 @@ export function CollectionAssignmentsPage() {
       status: status || undefined,
       unassigned: queue === 'unassigned',
     };
-    void Promise.all([
-      collectionsService.listCases(filters),
-      collectionsService.collectors(),
-      collectionsService.clients({ pageSize: 100, active: true }),
-      collectionsService.dashboard(organizationId || undefined),
-    ]).then(([pageResult, collectorRows, clientPage, snapshot]) => {
+    void collectionsService.listCases(filters).then(pageResult => {
       if (!active) return;
       setLoadedKey(filtersKey);
       setCases(pageResult);
-      setCollectors(collectorRows);
-      setClients(clientPage.items);
-      setDashboard(snapshot);
       setSelected((current) => current.filter((id) => pageResult.items.some((item) => item.id === id)));
-      setAutoCollectors((current) => current.filter((id) => collectorRows.some((item) => item.id === id)));
     }).catch(() => { if (active) setError(true); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [collectorFilter, organizationId, page, pageSize, queue, reload, search, status]);
+  }, [collectorFilter, organizationId, page, pageSize, queue, reload, search, status, language]);
 
   const allChecked = Boolean(cases?.items.length) && cases!.items.every((item) => selected.includes(item.id));
-  const chosenCollector = collectors.find((item) => item.id === collectorId);
+  const chosenCollector = availableCollectors.find((item) => item.id === collectorId);
   const defaultReason = ct('assignmentReasonDefault');
 
   const openDialog = (next: Dialog) => {
@@ -116,7 +144,7 @@ export function CollectionAssignmentsPage() {
   async function runAutomatic() {
     const usedReason = reason.trim();
     if (!validCapacity) { toast.error(ct('distributionInvalidCapacity')); return; }
-    if (autoCollectors.length === 0) { toast.error(ct('autoNoCollectorsSelected')); return; }
+    if (autoCollectors.length === 0 || autoCollectors.some(id => !availableCollectors.some(item => item.id === id))) { toast.error(ct('autoNoCollectorsSelected')); return; }
     if (usedReason.length < 2) return;
     if (autoScope === 'selected' && selected.length === 0) { toast.error(ct('selectCasesHelp')); return; }
     if (autoScope === 'queue' && (cases?.totalCount ?? 0) === 0) { toast.error(ct('autoQueueEmpty')); return; }
@@ -142,7 +170,7 @@ export function CollectionAssignmentsPage() {
       setDialog(undefined);
       setPreview(undefined);
       setSelected([]);
-      setReload((value) => value + 1);
+      onChanged();
     } catch (failure) {
       toast.error(getApiErrorMessage(failure, ct('distributionActionError')));
     } finally {
@@ -153,7 +181,6 @@ export function CollectionAssignmentsPage() {
   const clearFilters = () => {
     setSearchInput('');
     setSearch('');
-    setOrganizationId('');
     setCollectorFilter('');
     setStatus('');
     setPage(1);
@@ -163,7 +190,7 @@ export function CollectionAssignmentsPage() {
     if (!dialog || reason.trim().length < 2) return;
     if (dialog === 'auto') { await runAutomatic(); return; }
     if (selected.length === 0) return;
-    if (dialog === 'assign' && !collectorId) return;
+    if (dialog === 'assign' && !chosenCollector) return;
     setSaving(true);
     try {
       if (!preview) {
@@ -177,7 +204,7 @@ export function CollectionAssignmentsPage() {
       setDialog(undefined);
       setPreview(undefined);
       setSelected([]);
-      setReload((value) => value + 1);
+      onChanged();
     } catch (failure) {
       toast.error(getApiErrorMessage(failure, ct('distributionActionError')));
     } finally {
@@ -185,8 +212,8 @@ export function CollectionAssignmentsPage() {
     }
   }
 
-  const noCasesInSystem = (dashboard?.totalCases ?? 0) === 0;
-  const emptyTitle = search || organizationId || collectorFilter || status
+  const noCasesInSystem = organization.totalCases === 0;
+  const emptyTitle = search || collectorFilter || status
     ? ct('noFilteredCases')
     : noCasesInSystem
       ? ct('assignmentEmptyTitle')
@@ -196,17 +223,10 @@ export function CollectionAssignmentsPage() {
 
   return (
     <div>
-      <PageHeader
-        actions={<Button fullWidth={false} leftIcon={<RefreshCw className="h-4 w-4" />} onClick={() => setReload((value) => value + 1)} size="sm" variant="outline">{ct('refresh')}</Button>}
-        description={ct('assignmentSubtitle')}
-        eyebrow={ct('collections')}
-        title={ct('assignments')}
-      />
-
-      <FileCollectorLinkBanner organizationId={organizationId || undefined} refreshKey={reload} onApplied={() => setReload((value) => value + 1)} />
+      <FileCollectorLinkBanner organizationId={organizationId} refreshKey={reload} onApplied={onChanged} />
 
       <section className="workspace-kpis mb-5 overflow-hidden rounded-2xl border border-mis-border bg-white shadow-sm">
-        {[[ct('totalCases'), dashboard?.totalCases], [ct('unassignedCases'), dashboard?.unassignedCases], [ct('assignedCases'), dashboard?.assignedCases], [ct('collectorsLabel'), dashboard?.activeCollectors ?? collectors.length]].map(([label, value]) => (
+        {[[ct('totalCases'), organization.totalCases], [ct('unassignedCases'), organization.unassignedCases], [ct('assignedCases'), organization.assignedCases], [ct('distributionResponsibleTeam'), responsibleCollectors.length]].map(([label, value]) => (
           <div key={String(label)}>
             <p className="text-xs font-semibold text-slate-500">{label}</p>
             <p className="mt-1 text-xl font-bold tabular-nums text-mis-navy">{value == null ? '—' : format.number(Number(value))}</p>
@@ -214,39 +234,15 @@ export function CollectionAssignmentsPage() {
         ))}
       </section>
 
-      <details className="mb-5 overflow-hidden rounded-2xl border border-mis-border bg-white">
-        <summary className="cursor-pointer flex flex-col gap-1 border-b border-mis-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <UsersRound className="h-4 w-4 text-mis-primary" />
-            <h2 className="text-sm font-bold text-mis-navy">{ct('distributionTeamTitle')}</h2>
-          </div>
-          <p className="text-xs text-slate-500">{ct('distributionTeamHelp')}</p>
-        </summary>
-        {collectors.length === 0 ? (
-          <div className="px-5 py-6">
-            <p className="font-semibold text-mis-navy">{ct('noCollectorsWithAccounts')}</p>
-            <p className="mt-1 text-sm text-slate-500">{ct('noCollectorsWithAccountsHelp')}</p>
-          </div>
-        ) : (
-          <div className="grid gap-px bg-mis-border sm:grid-cols-2 xl:grid-cols-4">
-            {collectors.map((item) => (
-              <div className="bg-white p-4" key={item.id}>
-                <p className="truncate font-semibold text-mis-navy">{item.name}</p>
-                <p className="mt-1 text-xs text-slate-500">{item.teamName || ct('collectorTeam')}</p>
-                <p className="mt-2 text-sm font-bold tabular-nums text-mis-primary">{format.number(item.activeWorkload)} {ct('assignedCases')}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </details>
-      <DistributionActions disabled={!ready || !collectors.length || queue === 'assigned' || (!selected.length && !cases?.totalCount)} onManual={focusCases} onAutomatic={() => openDialog('auto')} />
+      <DistributionTeamScope includeOthers={includeOthers} onIncludeOthersChange={changeTeamScope} members={collectors.map(item => ({ id: item.id, name: item.name, workload: item.activeWorkload, responsible: Boolean(item.organizationIds?.includes(organizationId)) }))} />
+      <DistributionActions disabled={!ready || !availableCollectors.length || queue === 'assigned' || (!selected.length && !cases?.totalCount)} onManual={focusCases} onAutomatic={() => openDialog('auto')} />
       <div ref={tableRef} tabIndex={-1} className="scroll-mt-5 rounded-xl outline-none focus-visible:ring-4 focus-visible:ring-mis-pale"><p className="mb-3 text-xs leading-6 text-slate-500">{ct('distributionSelectionHelp')}</p></div>
       <div className="mb-4 flex gap-2 border-b border-mis-border">
         <button className={`px-4 py-3 text-sm font-bold ${queue === 'unassigned' ? 'border-b-2 border-mis-primary text-mis-primary' : 'text-slate-500'}`} onClick={() => { setQueue('unassigned'); setSelected([]); setPage(1); setCollectorFilter(''); }} type="button">
-          {ct('unassignedCases')} ({format.number(dashboard?.unassignedCases ?? 0)})
+          {ct('unassignedCases')} ({format.number(organization.unassignedCases)})
         </button>
         <button className={`px-4 py-3 text-sm font-bold ${queue === 'assigned' ? 'border-b-2 border-mis-primary text-mis-primary' : 'text-slate-500'}`} onClick={() => { setQueue('assigned'); setSelected([]); setPage(1); }} type="button">
-          {ct('assignedCases')} ({format.number(dashboard?.assignedCases ?? 0)})
+          {ct('assignedCases')} ({format.number(organization.assignedCases)})
         </button>
       </div>
 
@@ -255,10 +251,6 @@ export function CollectionAssignmentsPage() {
           <Search className="absolute top-3.5 h-4 w-4 text-mis-muted" style={{ insetInlineStart: '.85rem' }} />
           <input className="field h-11 py-2 ps-10 leading-normal" onChange={(event) => setSearchInput(event.target.value)} placeholder={ct('searchCases')} value={searchInput} />
         </label>
-        <ProfessionalSelect className="field h-11 py-2 leading-normal" onChange={(event) => { setOrganizationId(event.target.value); setPage(1); }} value={organizationId}>
-          <option value="">{ct('allClients')}</option>
-          {clients.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </ProfessionalSelect>
         {queue === 'assigned' ? (
           <ProfessionalSelect className="field h-11 py-2 leading-normal" onChange={(event) => { setCollectorFilter(event.target.value); setPage(1); }} value={collectorFilter}>
             <option value="">{ct('allCollectors')}</option>
@@ -286,7 +278,6 @@ export function CollectionAssignmentsPage() {
         <div className="flex min-h-64 items-center justify-center"><LoadingSpinner /></div>
       ) : cases && cases.items.length === 0 ? (
         <EmptyState
-          action={noCasesInSystem ? <Link className="inline-flex items-center gap-2 rounded-xl bg-mis-primary px-4 py-2.5 text-sm font-bold text-white" to="/banks"><Landmark className="h-4 w-4" />{ct('startFromCreditor')}</Link> : undefined}
           className="rounded-2xl border border-mis-border bg-white"
           description={noCasesInSystem ? ct('assignmentEmptyHelp') : undefined}
           title={emptyTitle}
@@ -342,7 +333,7 @@ export function CollectionAssignmentsPage() {
         footer={(
           <>
             <Button disabled={saving} fullWidth={false} onClick={() => preview ? setPreview(undefined) : setDialog(undefined)} variant="outline">{ct(preview ? 'backToEdit' : 'cancel')}</Button>
-            <Button disabled={(dialog === 'assign' && !collectorId) || (dialog === 'auto' && (autoCollectors.length === 0 || !validCapacity || (autoScope === 'selected' && !selected.length) || (autoScope === 'queue' && !cases?.totalCount))) || reason.trim().length < 2} fullWidth={false} isLoading={saving} onClick={() => void continueAction()} variant={dialog === 'unassign' ? 'danger' : 'primary'}>
+            <Button disabled={!ready || (dialog === 'assign' && !chosenCollector) || (dialog === 'auto' && (autoCollectors.length === 0 || autoCollectors.length > 100 || !validCapacity || (autoScope === 'selected' && !selected.length) || (autoScope === 'queue' && !cases?.totalCount))) || reason.trim().length < 2} fullWidth={false} isLoading={saving} onClick={() => void continueAction()} variant={dialog === 'unassign' ? 'danger' : 'primary'}>
               {ct(preview ? dialog === 'unassign' ? 'unassign' : 'confirmAssignment' : 'previewAssignment')}
             </Button>
           </>
@@ -353,15 +344,18 @@ export function CollectionAssignmentsPage() {
         title={ct(dialog === 'unassign' ? 'confirmUnassignment' : dialog === 'auto' ? 'autoDistribute' : queue === 'assigned' ? 'reassign' : 'assignCases')}
       >
         <DistributionSteps review={Boolean(preview)} />
+        <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold">{organization.name}</p>
         <p className="mb-4 text-xs leading-6 text-slate-500">{ct(preview ? 'distributionReviewHelp' : 'distributionNoChanges')}</p>
+        {preview && <DistributionExternalNotice names={collectors.filter(item => !item.organizationIds?.includes(organizationId) && (dialog === 'auto' ? autoCollectors.includes(item.id) : item.id === collectorId)).map(item => item.name)} />}
         {preview ? <Preview preview={preview} ct={ct} format={format} /> : (
           <div className="space-y-4">
             {dialog !== 'auto' && <p className="text-sm text-slate-600">{selected.length} {ct('casesSelected')}</p>}
+            {dialog !== 'unassign' && <DistributionTeamOption checked={includeOthers} onChange={changeTeamScope} />}
             {dialog === 'assign' ? (
               <label className="block text-sm font-semibold">{ct('selectCollector')}
                 <ProfessionalSelect className="field mt-2" onChange={(event) => setCollectorId(event.target.value)} value={collectorId}>
                   <option value="">{ct('selectPortfolioCollector')}</option>
-                  {collectors.map((item) => <option key={item.id} value={item.id}>{item.name} — {format.number(item.activeWorkload)}</option>)}
+                  {availableCollectors.map((item) => <option key={item.id} value={item.id}>{item.name} — {format.number(item.activeWorkload)}{!item.organizationIds?.includes(organizationId) ? ` · ${ct('distributionExternalCollector')}` : ''}</option>)}
                 </ProfessionalSelect>
               </label>
             ) : null}
@@ -379,14 +373,15 @@ export function CollectionAssignmentsPage() {
                 </div>
                 <fieldset>
                   <legend className="mb-2 text-sm font-semibold">{ct('collectorsLabel')} · {autoCollectors.length}</legend>
-                  <div className="mb-3 flex flex-wrap gap-4"><button className="text-xs font-bold text-mis-primary" onClick={() => setAutoCollectors(collectors.map(item => item.id))} type="button">{ct('selectAllCollectors')}</button><button className="text-xs font-bold text-slate-500" onClick={() => setAutoCollectors([])} type="button">{ct('clearCollectorSelection')}</button></div>
+                  <div className="mb-3 flex flex-wrap gap-4"><button className="text-xs font-bold text-mis-primary" onClick={() => setAutoCollectors(availableCollectors.map(item => item.id))} type="button">{ct('selectAllCollectors')}</button><button className="text-xs font-bold text-slate-500" onClick={() => setAutoCollectors([])} type="button">{ct('clearCollectorSelection')}</button></div>
                   <div className="grid max-h-64 gap-2 overflow-auto sm:grid-cols-2">
-                    {collectors.map((item) => (
+                    {availableCollectors.map((item) => (
                       <label className="flex items-center gap-3 rounded-xl border border-mis-border p-3" key={item.id}>
                         <input checked={autoCollectors.includes(item.id)} onChange={(event) => setAutoCollectors((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} type="checkbox" />
                         <span>
                           <strong className="block text-sm">{item.name}</strong>
                           <small className="text-slate-500">{format.number(item.activeWorkload)} · {item.teamName || ct('collectorTeam')}</small>
+                          {!item.organizationIds?.includes(organizationId) && <small className="block text-amber-700">{ct('distributionExternalCollector')}</small>}
                         </span>
                       </label>
                     ))}

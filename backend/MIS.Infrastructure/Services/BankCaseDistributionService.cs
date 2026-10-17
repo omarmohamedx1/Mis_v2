@@ -44,10 +44,12 @@ public sealed class BankCaseDistributionService(ApplicationDbContext db, ICurren
     public async Task<IReadOnlyCollection<DistributionCollectorDto>> CollectorsAsync(Guid bankId, CancellationToken token)
     {
         await RequireAccessAsync(bankId, token); var scoped = ScopedCases(bankId);
+        var responsibleIds = await AuthorizedCollectors(bankId).Responsibilities(db.EmployeeOrganizationAssignments, db.CollectionUserAccess)
+            .Where(x => x.OrganizationId == bankId).Select(x => x.CollectorId).ToArrayAsync(token);
         var rows = await AuthorizedCollectors(bankId).AsNoTracking().OrderBy(x => x.FullName).Select(x => new DistributionCollectorDto(
             x.Id, x.FullName, scoped.Count(c => c.AssignedCollectorId == x.Id),
             scoped.Where(c => c.AssignedCollectorId == x.Id).Sum(c => (decimal?)c.OutstandingBalance) ?? 0)).ToArrayAsync(token);
-        return rows.GroupBy(x => x.Id).Select(group => group.First()).ToArray();
+        return rows.GroupBy(x => x.Id).Select(group => group.First() with { IsResponsible = responsibleIds.Contains(group.Key) }).ToArray();
     }
 
     public async Task<IReadOnlyCollection<DistributionImportDto>> ImportsAsync(Guid bankId, CancellationToken token)
