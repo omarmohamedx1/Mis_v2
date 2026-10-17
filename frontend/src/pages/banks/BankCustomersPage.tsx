@@ -1,3 +1,4 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { Eye, FileUp, RefreshCw, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
@@ -23,7 +24,7 @@ export function BankCustomersPage() {
   const [data, setData] = useState<BankCustomerPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const money = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 }).format(value);
+  const money = (value: number) => formatMoney(value, language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 });
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setSearch(searchInput.trim()); setPage(1); }, 300);

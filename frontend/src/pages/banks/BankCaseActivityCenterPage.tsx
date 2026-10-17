@@ -1,3 +1,4 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { DateControl } from '../../components/forms/DateControl';
 import { Eye, Plus, RefreshCw, Search, SlidersHorizontal } from 'lucide-react';
@@ -26,7 +27,7 @@ export function BankCaseActivityCenterPage() {
   useEffect(() => { const id=window.setTimeout(()=>{setSearch(searchInput.trim());setPage(1);},350); return()=>window.clearTimeout(id); },[searchInput]);
   useEffect(() => { let active=true; setLoading(true); setError(''); const query={page,pageSize,search,activityType:type,outcome,date:dateFilter,followUpState:followUp,collectorId}; void Promise.all([collectionsService.bankActivities(bank.id,query),collectionsService.bankActivitySummary(bank.id),collectionsService.bankActivityCollectors(bank.id)]).then(([d,s,c])=>{if(active){setData(d);setSummary(s);setCollectors(c);}}).catch(e=>{if(active)setError(getApiErrorMessage(e,ct('activityLoadError')));}).finally(()=>{if(active)setLoading(false);}); return()=>{active=false;}; },[bank.id,collectorId,ct,dateFilter,followUp,outcome,page,pageSize,reload,search,type]);
   const dateTime=(v?:string)=>v?new Intl.DateTimeFormat(language==='ar'?'ar-EG-u-nu-latn':'en-GB',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'—';
-  const money=(v:number)=>new Intl.NumberFormat(language==='ar'?'ar-EG-u-nu-latn':'en-EG',{style:'currency',currency:'EGP',maximumFractionDigits:0}).format(v);
+  const money=(v:number)=>formatMoney(v, language==='ar'?'ar-EG-u-nu-latn':'en-EG', {style:'currency',currency:'EGP',maximumFractionDigits:0});
   const clear=()=>{setSearchInput('');setSearch('');setType('');setOutcome('');setDateFilter('');setCollectorId('');setFollowUp('ALL');setPage(1);};
   async function openDetails(id:string){setDetailsLoading(true);try{setDetails(await collectionsService.bankActivity(bank.id,id));}catch(e){toast.error(getApiErrorMessage(e,ct('activityLoadError')));}finally{setDetailsLoading(false);}}
   const emptyTitle=search||type||outcome||dateFilter||collectorId?ct('noMatchingActivities'):followUp==='TODAY'?ct('noFollowUpsToday'):followUp==='OVERDUE'?ct('noOverdueFollowUps'):ct('noActivityFound');

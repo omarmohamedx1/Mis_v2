@@ -3,6 +3,13 @@ all formatted numbers with Latin digits (0–9). Arabic number, currency, date a
 time formatters must use `ar-EG-u-nu-latn`; keep each formatter's existing precision,
 currency, time zone and calendar options. Do not change API language headers.
 
+Use `formatMoney` from `frontend/src/utils/formatMoney.ts` for currency values.
+Arabic amounts read the number first, then the currency (`55 ج.م`): the number is
+on the right and the currency on the left. Unicode isolation preserves this order
+in both RTL text and Latin numeric cells, including negative amounts.
+For an already formatted amount, use `formatCurrencyAmount` instead of concatenating
+the currency directly. Keep number precision and the actual currency unchanged.
+
 The application bundles Inter and Noto Sans Arabic under `frontend/src/assets/fonts`.
 Use the shared `--font-interface` token or Tailwind's `font-sans`; avoid external
 font stylesheets and per-page font overrides.

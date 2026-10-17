@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '../../../services/apiClient';
 import { useCollectionsLocalization } from '../localization/collectionsTranslations';
 import { collectionsService } from '../services/collectionsService';
 import type { ImportedCollectorLinkResult } from '../types/collections';
+import { formatCurrencyAmount } from '../../../utils/formatMoney';
 
 const ASSIGN_ROLES = ['Admin', 'CollectionsOperationsManager', 'CollectionsSupervisor'];
 
@@ -152,7 +153,7 @@ export function FileCollectorLinkBanner({ organizationId, refreshKey, onApplied 
 export function useCollectionFormat() {
   const { language, ct } = useCollectionsLocalization(); const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG';
   return {
-    money: (value: number) => new Intl.NumberFormat(locale, { notation: Math.abs(value) >= 1_000_000 ? 'compact' : 'standard', maximumFractionDigits: Math.abs(value) >= 1_000_000 ? 1 : 0 }).format(value) + ` ${ct('currency')}`,
+    money: (value: number) => formatCurrencyAmount(new Intl.NumberFormat(locale, { notation: Math.abs(value) >= 1_000_000 ? 'compact' : 'standard', maximumFractionDigits: Math.abs(value) >= 1_000_000 ? 1 : 0 }).format(value), ct('currency')),
     number: (value: number) => new Intl.NumberFormat(locale).format(value),
     date: (value?: string) => {
       if (!value) return '—';

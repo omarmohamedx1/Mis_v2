@@ -1,3 +1,4 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Wallet, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,7 +21,7 @@ import { canAccessModule } from '../../features/modules/moduleAccess';
 import { getApiErrorMessage } from '../../services/apiClient';
 
 function money(value: number, language: string) {
-  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value);
+  return formatMoney(value, language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2, minimumFractionDigits: 2 });
 }
 
 function monthName(month: number, language: string) {

@@ -1,3 +1,4 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { ActionMenu } from '../../components/common/ActionMenu';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { DateControl } from '../../components/forms/DateControl';
@@ -47,7 +48,7 @@ function payrollLabel(status: PayrollImpactStatus, language: 'en' | 'ar'): strin
 
 function money(value: number | null, language: 'en' | 'ar'): string {
   if (value === null) return '—';
-  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { currency: 'EGP', style: 'currency', maximumFractionDigits: 2 }).format(value);
+  return formatMoney(value, language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { currency: 'EGP', style: 'currency', maximumFractionDigits: 2 });
 }
 
 function displayDate(value: string, language: 'en' | 'ar'): string {

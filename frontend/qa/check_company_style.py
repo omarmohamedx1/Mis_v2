@@ -62,6 +62,24 @@ try:
         fonts = font_families('[data-module=finance] td:nth-child(2)')
         check(any(font['familyName'] == 'Inter' and font['isCustomFont'] for font in fonts), language + ': numbers render with bundled Inter')
         check(not driver.execute_script("return performance.getEntriesByType('resource').some(item=>/fonts\\.(googleapis|gstatic)\\.com/.test(item.name))"), language + ': fonts load without an external font request')
+        if language == 'ar':
+            order = driver.execute_script('''
+              return [...document.querySelectorAll('[data-money-value]:not([data-currency])')].map(element=>{
+                const node=element.firstChild,text=node.textContent,number=/-?\\d[\\d,.]*/.exec(text),currency=text.indexOf('ج.م');
+                const range=document.createRange();
+                range.setStart(node,number.index);range.setEnd(node,number.index+number[0].length);const amount=range.getBoundingClientRect();
+                range.setStart(node,currency);range.setEnd(node,currency+3);const unit=range.getBoundingClientRect();
+                return {module:element.dataset.moduleName,context:element.dataset.context,amount:element.dataset.amount,numberLeft:amount.left,currencyRight:unit.right};
+              });
+            ''')
+            check(len(order) == 50, 'Currency order covers five module formatters, five amounts and both text directions')
+            for item in order:
+                check(item['currencyRight'] <= item['numberLeft'] + 1, f"{item['module']} {item['context']} {item['amount']}: currency follows the number in Arabic reading order")
+            currency_text = driver.find_element(By.CSS_SELECTOR, '[data-qa=currency-order]').text
+            check(not re.search(r'[\u0660-\u0669\u06f0-\u06f9]', currency_text), 'Currency ordering preserves Latin digits')
+            for currency in ['USD', 'SAR']:
+                text = driver.find_element(By.CSS_SELECTOR, f'[data-currency="{currency}"]').text
+                check('ج.م' not in text and '55.00' in text, currency + ': other currency labels and decimal places are preserved')
         for width in [320, 360, 390, 768, 1024, 1440]:
             resize(width)
             check(driver.execute_script('return document.documentElement.scrollWidth<=innerWidth+1'), f'{language} {width}: page fits viewport')

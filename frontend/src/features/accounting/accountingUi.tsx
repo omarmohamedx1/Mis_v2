@@ -1,3 +1,4 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { StatusBadge, type StatusTone } from '../../components/common/StatusBadge';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -6,7 +7,7 @@ export function useAccountingText() {
   const { language } = useLocalization();
   const ar = language === 'ar';
   const text = (arabic: string, english: string) => (ar ? arabic : english);
-  const money = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 2 }).format(value);
+  const money = (value: number) => formatMoney(value, ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 2 });
   const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG').format(value);
   const monthName = (month: number) => new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { month: 'long' }).format(new Date(2000, month - 1, 1));
   const monthLabel = (year: number, month: number) => new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));

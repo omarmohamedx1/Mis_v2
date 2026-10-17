@@ -1,3 +1,4 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { DateControl } from '../../components/forms/DateControl';
 import { Download, ExternalLink, RefreshCw, Search, SlidersHorizontal, Upload, UserRoundCheck } from 'lucide-react';
@@ -37,7 +38,7 @@ export function BankPortfolioManagementPage() {
       const parsed = new Date(value);
       return Number.isNaN(parsed.getTime()) ? '—' : new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(parsed);
     };
-  const money = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 }).format(value);
+  const money = (value: number) => formatMoney(value, language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 });
   const format = (template: string, values: Record<string, number>) => Object.entries(values).reduce((text, [key, value]) => text.replace(`{${key}}`, new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB').format(value)), template);
   async function openCase(item: BankPortfolioCase) { setDetailsLoading(true); setEditing(false); try { setDetails(await collectionsService.bankPortfolioCase(bank.id, item.id)); } catch (e) { toast.error(getApiErrorMessage(e, ct('loadPortfolioCasesError'))); } finally { setDetailsLoading(false); } }
   async function saveCase(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!details) return; setSaving(true); const form = new FormData(event.currentTarget); try { const updated = await collectionsService.updateBankPortfolioCase(bank.id, details.id, { mobile: String(form.get('mobile') || ''), alternativeMobile: String(form.get('alternativeMobile') || ''), address: String(form.get('address') || ''), status: String(form.get('status')), nextFollowUpAt: String(form.get('nextFollowUpAt') || '') || undefined }); setDetails(updated); setEditing(false); setReload(v => v + 1); toast.success(ct('caseUpdated')); } catch (e) { toast.error(getApiErrorMessage(e, ct('savePortfolioCaseError'))); } finally { setSaving(false); } }

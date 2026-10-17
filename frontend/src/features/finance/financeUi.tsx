@@ -1,10 +1,11 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { StatusBadge, type StatusTone } from '../../components/common/StatusBadge';
 import { useLocalization } from '../../context/LocalizationContext';
 
 export function useFinanceText() {
   const { language } = useLocalization(); const ar = language === 'ar';
   const text = (arabic: string, english: string) => ar ? arabic : english;
-  const money = (value: number, currency = 'EGP') => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  const money = (value: number, currency = 'EGP') => formatMoney(value, ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG').format(value);
   const date = (value: string) => new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value}T00:00:00`));
   const status = (value: string) => ({ POSTED: text('مُرحّل', 'Posted'), CLEARED: text('تمت التسوية', 'Cleared'), REVERSED: text('معكوس', 'Reversed'), OPEN: text('مفتوحة', 'Open'), SOFT_CLOSED: text('إقفال مبدئي', 'Soft closed'), CLOSED: text('مغلقة', 'Closed'), DRAFT: text('مسودة', 'Draft'), PENDING_APPROVAL: text('بانتظار الاعتماد', 'Pending approval'), APPROVED: text('معتمد', 'Approved') }[value] ?? value.replaceAll('_', ' '));

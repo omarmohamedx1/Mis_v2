@@ -1,3 +1,4 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { StatusBadge, type StatusTone } from '../../components/common/StatusBadge';
 import { useLocalization } from '../../context/LocalizationContext';
 
@@ -6,7 +7,7 @@ export function useDataEntryText() {
   const ar = language === 'ar';
   const text = (arabic: string, english: string) => (ar ? arabic : english);
   const money = (value: number, currency = 'EGP') =>
-    new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+    formatMoney(value, ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG').format(value);
   const dateTime = (value: string) =>
     new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value));

@@ -13,6 +13,7 @@ import { useDataEntryText } from '../src/features/data-entry/dataEntryUi';
 import { useCollectionFormat } from '../src/features/collections/components/CollectionsUi';
 import { HrPayrollPage } from '../src/pages/hr/HrPayrollPage';
 import { apiClient } from '../src/services/apiClient';
+import { formatMoney } from '../src/utils/formatMoney';
 import '../src/styles.css';
 
 const options = new URLSearchParams(location.search);
@@ -46,6 +47,12 @@ function CompanyStyle() {
       </tbody></table></div>
     </section>
     <section data-qa="alignment" className="overflow-hidden rounded-2xl border border-mis-border bg-white"><div className="overflow-x-auto"><table className="w-full min-w-[700px] text-sm"><thead className="bg-slate-50"><tr><th className="px-5 py-3 text-start">{ar ? 'رقم الحساب' : 'Account no.'}</th><th className="px-3 py-3 text-start">{ar ? 'اسم العميل' : 'Customer name'}</th><th className="px-6 py-3 text-end">{ar ? 'إجمالي المديونية' : 'Total outstanding'}</th><th className="px-2 py-3 text-center">{ar ? 'عدد الحالات' : 'Case count'}</th></tr></thead><tbody><tr><td className="px-3 py-4 text-start" dir="ltr">ACC-00125</td><td className="px-6 py-4">{ar ? 'أحمد محمود عبدالرحمن' : 'Ahmed Mahmoud Abdelrahman'}</td><td className="px-4 py-4 text-end" data-bidi="ltr">{finance.money(987654.32)}</td><td className="px-5 py-4 text-center" data-bidi="ltr">125</td></tr></tbody></table></div></section>
+    <section data-qa="currency-order" className="grid gap-3 rounded-2xl border border-mis-border bg-white p-4 sm:grid-cols-2">
+      {(['rtl', 'ltr'] as const).flatMap(direction => formats.flatMap(([module, , money]) => [0, 55, -55, 12345.67, 1500000].map(value =>
+        <p className="text-sm" dir={direction} key={`${module}-${direction}-${value}`}><span>{module}: </span><strong data-money-value data-module-name={module} data-context={direction} data-amount={value}>{money(value)}</strong></p>
+      )))}
+      {['USD', 'SAR'].map(currency => <p key={currency}><strong data-money-value data-context="rtl" data-amount="55" data-currency={currency}>{formatMoney(55, ar ? 'ar-EG-u-nu-latn' : 'en-EG', { currency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></p>)}
+    </section>
     <section className="rounded-2xl border border-mis-border bg-white p-4"><ProfessionalDateInput name="calendar" defaultValue="2026-10-17" /></section>
     <section data-qa="payroll"><HrPayrollPage /></section>
   </main>;

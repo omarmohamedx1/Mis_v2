@@ -1,3 +1,4 @@
+import { formatMoney } from '../../utils/formatMoney';
 import { StatusBadge, type StatusTone } from '../../components/common/StatusBadge';
 import { useLocalization } from '../../context/LocalizationContext';
 import { LEGAL_ACTIONS, LEGAL_STAGES } from './types/legal';
@@ -7,7 +8,7 @@ export function useLegalText() {
   const ar = language === 'ar';
   const text = (arabic: string, english: string) => (ar ? arabic : english);
   const money = (value: number) =>
-    new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+    formatMoney(value, ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG').format(value);
   const date = (value?: string | null) => {
     if (!value) return '—';

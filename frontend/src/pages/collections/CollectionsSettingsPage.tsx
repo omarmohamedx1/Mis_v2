@@ -1,5 +1,6 @@
 import { ActionMenu } from '../../components/common/ActionMenu';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
+import { formatCurrencyAmount } from '../../utils/formatMoney';
 import { Car, CreditCard, ImageUp, Landmark, Layers3, Pencil, Plus, Search, ShieldCheck, Timer, Trash2, WalletCards } from 'lucide-react';
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -134,7 +135,7 @@ export function CollectionsSettingsPage() {
     if (graceDays == null && tolerance == null) return ct('ptpNotSet');
     const days = `${graceDays ?? 0} ${ct('daysUnit')}`;
     const amount = new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG').format(tolerance ?? 0);
-    return `${days} · ${amount} ${ct('currency')}`;
+    return `${days} · ${formatCurrencyAmount(amount, ct('currency'))}`;
   };
 
   const uploadLogo = async (client: ClientConfiguration, file: File) => {
