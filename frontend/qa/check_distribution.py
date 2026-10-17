@@ -72,16 +72,44 @@ try:
             check(not dialog().find_elements(By.CSS_SELECTOR, 'footer button')[-1].is_enabled(), f'{kind} {language}: clearing collectors stays cleared')
             click(dialog().find_elements(By.CSS_SELECTOR, 'fieldset button')[0])
             if kind == 'general':
-                capacity = dialog().find_element(By.CSS_SELECTOR, 'input[type=number]')
+                capacity = dialog().find_element(By.ID, 'assignment-capacity')
+                check(capacity.get_attribute('value') == '8', f'{kind} {language}: selected batch calculates capacity from existing workloads')
                 capacity.send_keys(Keys.CONTROL, 'a')
                 capacity.send_keys('0')
                 check(not dialog().find_elements(By.CSS_SELECTOR, 'footer button')[-1].is_enabled(), f'{kind} {language}: invalid capacity blocked')
                 capacity.send_keys(Keys.CONTROL, 'a')
-                capacity.send_keys('500')
+                capacity.send_keys(Keys.BACKSPACE)
+                check(capacity.get_attribute('value') == '', f'{kind} {language}: clearing the field does not force zero')
+                capacity.send_keys('١٢٣')
+                check(capacity.get_attribute('value') == '123', f'{kind} {language}: Arabic digits can be entered')
+                capacity.send_keys(Keys.CONTROL, 'a')
+                capacity.send_keys('۱۲۴')
+                check(capacity.get_attribute('value') == '124', f'{kind} {language}: Persian digits can be entered')
+                capacity.send_keys(Keys.CONTROL, 'a')
+                capacity.send_keys('25')
+                check(capacity.get_attribute('value') == '25', f'{kind} {language}: English digits can replace the value')
+                capacity.send_keys(Keys.CONTROL, 'a')
+                capacity.send_keys('5001')
+                check(not dialog().find_elements(By.CSS_SELECTOR, 'footer button')[-1].is_enabled(), f'{kind} {language}: values above the supported limit are blocked')
+                capacity.send_keys(Keys.CONTROL, 'a')
+                capacity.send_keys('2.5')
+                check(not dialog().find_elements(By.CSS_SELECTOR, 'footer button')[-1].is_enabled(), f'{kind} {language}: fractional capacity is blocked')
+                reset_capacity = dialog().find_element(By.ID, 'assignment-capacity-help').find_element(By.XPATH, 'following-sibling::button')
+                click(reset_capacity)
+                check(capacity.get_attribute('value') == '8', f'{kind} {language}: automatic calculation can be restored')
+                click(dialog().find_elements(By.CSS_SELECTOR, 'input[type=checkbox]')[1])
+                check(capacity.get_attribute('value') == '13', f'{kind} {language}: changing collectors recalculates capacity')
+                click(dialog().find_elements(By.CSS_SELECTOR, 'input[type=checkbox]')[1])
+                click(dialog().find_elements(By.CSS_SELECTOR, 'input[type=radio]')[1])
+                check(capacity.get_attribute('value') == '72', f'{kind} {language}: matching queue uses 125 actual cases')
+                click(dialog().find_elements(By.CSS_SELECTOR, 'input[type=radio]')[0])
+                check(capacity.get_attribute('value') == '8', f'{kind} {language}: selected scope restores the one-case calculation')
             click(dialog().find_elements(By.CSS_SELECTOR, 'footer button')[-1])
             wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, '[aria-current=step]')[-1].text.startswith('2'))
             preview_request = [item for item in requests() if item['method'] == 'post'][-1]
             check(preview_request['payload']['caseIds'] == ['case-0'], f'{kind} {language}: preview uses only selected cases')
+            if kind == 'general':
+                check(preview_request['payload']['maxActiveCases'] == 8, f'{kind} {language}: calculated capacity reaches the preview API')
             check(len([item for item in requests() if item['method'] == 'post']) == 1, f'{kind} {language}: preview does not save')
             for width in [320, 390, 768, 1440]:
                 driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {'width': width, 'height': 800, 'deviceScaleFactor': 1, 'mobile': False})
@@ -91,6 +119,8 @@ try:
             wait.until(lambda d: not d.find_elements(By.CSS_SELECTOR, '[role=dialog]'))
             confirmation = [item for item in requests() if item['method'] == 'post'][-1]
             check(confirmation['payload']['caseIds'] == preview_request['payload']['caseIds'], f'{kind} {language}: confirm preserves reviewed cases')
+            if kind == 'general':
+                check(confirmation['payload']['maxActiveCases'] == 8, f'{kind} {language}: confirmation preserves the calculated capacity')
             # Dismiss the success notification before interacting with pagination underneath it.
             for notification in driver.find_elements(By.CSS_SELECTOR, 'button[aria-label="Dismiss notification"],button[aria-label="إغلاق الإشعار"]'):
                 click(notification)
@@ -110,6 +140,8 @@ try:
             wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, '[aria-current=step]')[-1].text.startswith('2'))
             payload = [item for item in requests() if item['method'] == 'post'][-1]['payload']
             check(payload['caseIds'] == ['case-0', 'case-1', 'case-2'], f'{kind} {language}: automatic queue honors search')
+            if kind == 'general':
+                check(payload['maxActiveCases'] == 10, f'{kind} {language}: filtering recalculates capacity for three actual cases')
             close()
             search = driver.find_element(By.CSS_SELECTOR, 'main input:not([type])')
             search.send_keys(Keys.CONTROL, 'a')
@@ -126,6 +158,8 @@ try:
             click(dialog().find_elements(By.CSS_SELECTOR, 'footer button')[-1])
             wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, '[aria-current=step]')[-1].text.startswith('2'))
             check(len([item for item in requests() if item['method'] == 'post'][-1]['payload']['caseIds']) == 125, f'{kind} {language}: queue spans matching pages')
+            if kind == 'general':
+                check([item for item in requests() if item['method'] == 'post'][-1]['payload']['maxActiveCases'] == 72, f'{kind} {language}: queue capacity covers the entire batch')
             close()
             for width in [320, 390, 768, 1440]:
                 driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {'width': width, 'height': 900, 'deviceScaleFactor': 1, 'mobile': False})

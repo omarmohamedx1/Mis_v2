@@ -1,4 +1,5 @@
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
+import { westernDigits } from '../../components/forms/normalizeDigits';
 import { Landmark, RefreshCw, Search, SlidersHorizontal, Sparkles, UserMinus, UserRoundCheck, UsersRound } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -17,6 +18,7 @@ import type { AssignmentPreview, AutoAssignmentPreview, ClientCard, CollectionCa
 import { getApiErrorMessage } from '../../services/apiClient';
 
 import { DistributionActions, DistributionScope, DistributionSteps } from '../../features/collections/components/DistributionWorkflow';
+import { suggestedAssignmentCapacity } from '../../features/collections/assignmentCapacity';
 
 type Queue = 'unassigned' | 'assigned';
 type Dialog = 'assign' | 'auto' | 'unassign';
@@ -44,7 +46,7 @@ export function CollectionAssignmentsPage() {
   const [dialog, setDialog] = useState<Dialog>();
   const [collectorId, setCollectorId] = useState('');
   const [autoCollectors, setAutoCollectors] = useState<string[]>([]);
-  const [capacity, setCapacity] = useState(500);
+  const [capacityInput, setCapacityInput] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [autoScope, setAutoScope] = useState<'selected' | 'queue'>('queue');
   const [preview, setPreview] = useState<AssignmentPreview | AutoAssignmentPreview>();
@@ -53,7 +55,12 @@ export function CollectionAssignmentsPage() {
   const filtersKey = `${queue}:${page}:${pageSize}:${search}:${organizationId}:${collectorFilter}:${status}`;
   const [loadedKey, setLoadedKey] = useState('');
   const ready = !loading && !error && loadedKey === filtersKey && searchInput.trim() === search;
-  const validCapacity = Number.isInteger(capacity) && capacity >= 1 && capacity <= 5000;
+  const batchCaseCount = autoScope === 'selected' ? selected.length : Math.min(cases?.totalCount ?? 0, 500);
+  const capacityCollectors = autoCollectors.length ? collectors.filter(item => autoCollectors.includes(item.id)) : collectors;
+  const suggestedCapacity = suggestedAssignmentCapacity(batchCaseCount, capacityCollectors.map(item => item.activeWorkload));
+  const capacityValue = capacityInput ?? String(suggestedCapacity);
+  const capacity = Number(capacityValue);
+  const validCapacity = /^\d+$/.test(capacityValue) && Number.isInteger(capacity) && capacity >= 1 && capacity <= 5000;
   useEffect(() => { setSelected([]); }, [filtersKey]);
   const focusCases = () => { tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); tableRef.current?.focus({ preventScroll: true }); };
 
@@ -102,7 +109,7 @@ export function CollectionAssignmentsPage() {
     setDialog(next);
     setPreview(undefined);
     setCollectorId('');
-    if (next === 'auto') setAutoScope(selected.length ? 'selected' : 'queue');
+    if (next === 'auto') { setAutoScope(selected.length ? 'selected' : 'queue'); setCapacityInput(null); }
     setReason(next === 'unassign' ? ct('distributionUnassignReason') : defaultReason);
   };
 
@@ -362,11 +369,14 @@ export function CollectionAssignmentsPage() {
               <>
                 <DistributionScope value={autoScope} onChange={setAutoScope} selectedCount={selected.length} queueCount={queue === 'unassigned' ? cases?.totalCount ?? 0 : 0} />
                 <p className="rounded-xl bg-mis-pale p-3 text-sm leading-7 text-mis-primary">{ct('distributionAutoPolicy')}</p>
-                <label className="block text-sm font-semibold">{ct('maximumCapacity')}
-                  <input className="field mt-2" max={5000} min={1} onChange={(event) => setCapacity(Number(event.target.value))} type="number" value={capacity} aria-invalid={!validCapacity} />
-                  <p className="mt-2 text-xs font-normal leading-6 text-slate-500">{ct('distributionCapacityHelp')}</p>
-                  {!validCapacity && <p role="alert" className="mt-1 text-xs text-red-600">{ct('distributionInvalidCapacity')}</p>}
-                </label>
+                <div className="rounded-xl border border-mis-border p-4">
+                  <p className="mb-3 text-sm font-semibold text-mis-primary">{ct('distributionBatchCases')}: {format.number(batchCaseCount)}</p>
+                  <label className="block text-sm font-semibold" htmlFor="assignment-capacity">{ct('distributionCapacityPerCollector')}</label>
+                  <input id="assignment-capacity" className="field mt-2" dir="ltr" inputMode="numeric" pattern="[0-9]*" onChange={(event) => setCapacityInput(westernDigits(event.target.value))} type="text" value={capacityValue} aria-invalid={!validCapacity} aria-describedby={`assignment-capacity-help${!validCapacity ? ' assignment-capacity-error' : ''}`} />
+                  <p id="assignment-capacity-help" className="mt-2 text-xs leading-6 text-slate-500">{ct('distributionCapacityCalculatedHelp')}</p>
+                  {capacityInput !== null && <button className="mt-2 text-xs font-bold text-mis-primary" onClick={() => setCapacityInput(null)} type="button">{ct('distributionCapacityReset')} ({format.number(suggestedCapacity)})</button>}
+                  {!validCapacity && <p id="assignment-capacity-error" role="alert" className="mt-1 text-xs text-red-600">{ct('distributionInvalidCapacity')}</p>}
+                </div>
                 <fieldset>
                   <legend className="mb-2 text-sm font-semibold">{ct('collectorsLabel')} · {autoCollectors.length}</legend>
                   <div className="mb-3 flex flex-wrap gap-4"><button className="text-xs font-bold text-mis-primary" onClick={() => setAutoCollectors(collectors.map(item => item.id))} type="button">{ct('selectAllCollectors')}</button><button className="text-xs font-bold text-slate-500" onClick={() => setAutoCollectors([])} type="button">{ct('clearCollectorSelection')}</button></div>
