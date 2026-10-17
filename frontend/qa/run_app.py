@@ -25,6 +25,23 @@ class Proxy(BaseHTTPRequestHandler):
         except urllib.error.HTTPError as e:self.headers_out(e.code);self.wfile.write(e.read())
         except Exception:self.headers_out(502);self.wfile.write(b'{"message":"QA proxy could not reach API"}')
     do_GET=proxy;do_POST=proxy
+if os.environ.get('MIS_QA_RESUME') == '1':
+    for name,target in [('app',results),('overlays',overlays),('accessibility',accessibility),('app-requests',requests)]:
+        artifact=out/(f'app-{phase}-requests.json' if name=='app-requests' else f'{name}-{phase}.json')
+        if artifact.exists():target.extend(json.loads(artifact.read_text(encoding='utf-8')))
+    for name in ['dynamic-final-coverage.json','dynamic-coverage.json']:
+        artifact=out/name
+        if artifact.exists():links.update(x['route'] for x in json.loads(artifact.read_text(encoding='utf-8'))['visited'])
+    artifact=out/f'links-{phase}.json'
+    if artifact.exists():links.update(json.loads(artifact.read_text(encoding='utf-8')))
+retest=set(filter(None,os.environ.get('MIS_QA_RETEST_ROUTES','').split(',')))
+results[:]=[x for x in results if x['route'] not in retest]
+overlays[:]=[x for x in overlays if x['route'] not in retest]
+accessibility[:]=[x for x in accessibility if x['route'] not in retest]
+completed={x['route'] for x in results}
+capture_only=os.environ.get('MIS_QA_CAPTURE_ONLY')=='1'
+captures=out/'screenshots';captures.mkdir(exist_ok=True)
+
 proxy=ThreadingHTTPServer(('127.0.0.1',0),Proxy);threading.Thread(target=proxy.serve_forever,daemon=True).start()
 driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument',{'source':f'window.__qaApiOverride="http://127.0.0.1:{proxy.server_port}/api";'})
 def resize(w):driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride',{'width':w,'height':950,'deviceScaleFactor':1,'mobile':False})
@@ -34,7 +51,14 @@ const scroller=e=>{let n=e.parentElement;while(n&&n!==document.body){const s=get
 const bad=[...document.querySelectorAll('main *')].filter(visible).filter(e=>e.innerText?.trim()||e.matches('input,select,textarea,button')).filter(e=>{const r=e.getBoundingClientRect();return (r.left < -2 || r.right > innerWidth+2)&&!scroller(e)&&!['SCRIPT','STYLE'].includes(e.tagName)});
 return {viewport:innerWidth,scroll:document.documentElement.scrollWidth,title:document.querySelector('main h1,h1')?.innerText??'',overflow:bad.slice(0,12).map(e=>({tag:e.tagName,cls:String(e.className).slice(0,200),text:(e.innerText||'').slice(0,60),left:Math.round(e.getBoundingClientRect().left),right:Math.round(e.getBoundingClientRect().right)})),links:[...document.querySelectorAll('a[href]')].map(x=>x.getAttribute('href')),dialogs:document.querySelectorAll('[role=dialog],[role=alertdialog]').length,errors:window.__qa.errors.slice(-3)};
 '''
+def settle():
+    start=time.monotonic();stable=0
+    while time.monotonic()-start<20:
+        pending=driver.execute_script('return window.__qa?.pending??0');stable=stable+1 if pending==0 else 0
+        if stable>=3:return
+        time.sleep(.1)
 def inspect(route):
+    if route in completed:return
     if not driver.execute_script('return !!window.__qa?.navigate'):
         driver.get(base+'?mode=app&route='+route);wait.until(lambda d:d.execute_script('return window.__qa?.ready'))
     driver.execute_script('window.__qa.navigate(arguments[0])',route)
@@ -53,20 +77,24 @@ def inspect(route):
             entries.append({'tag':node['nodeName'],'attributes':node.get('attributes',[])})
         except Exception:entries.append({'role':n.get('role',{}).get('value')})
     accessibility.append({'route':route,'unnamedActions':entries})
+    (out/f'app-{phase}-requests.json').write_text(json.dumps(requests,indent=2))
     (out/f'accessibility-{phase}.json').write_text(json.dumps(accessibility,ensure_ascii=False,indent=2),encoding='utf-8')
     page=[]
     for lang in ['en','ar']:
-        driver.execute_script('window.__qa.language(arguments[0])',lang);time.sleep(.2)
-        for width in [320,360,390,768,1024,1440]:
+        driver.execute_script('window.__qa.language(arguments[0])',lang);settle()
+        for width in ([1440 if lang=='en' else 390] if capture_only else [320,360,390,768,1024,1440]):
             resize(width);time.sleep(.25);r=driver.execute_script(geometry);links.update(x for x in r.pop('links') if x and x.startswith('/'))
             r.update(route=route,actual=driver.execute_script('return location.pathname'),lang=lang,width=width);page.append(r)
+            if capture_only:
+                driver.save_screenshot(str(captures/(lang+'-'+re.sub(r'[^a-zA-Z0-9]+','-',route)+'.png')))
             if r['overflow'] and width in [320,1024]:driver.save_screenshot(str(out/('app-'+phase+'-'+re.sub(r'[^a-zA-Z0-9]+','-',route)+'-'+lang+'-'+str(width)+'.png')))
     if os.environ.get('MIS_QA_OVERLAYS') == '1':
         driver.execute_script("window.__qa.language('en')");resize(1440);time.sleep(.2)
-        texts=[x.text for x in driver.find_elements(By.TAG_NAME,'button') if x.is_displayed() and re.match(r'^(New |Add |Create |Edit\b|View\b|Schedule\b|Record\b|Details$)',x.text)]
+        settle()
+        texts=driver.execute_script("return [...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&!e.disabled&&/^(New |Add |Create |Edit\\b|View\\b|Schedule\\b|Record\\b|Details$)/.test(e.innerText)).map(e=>e.innerText)")
         for text in list(dict.fromkeys(texts))[:4]:
             try:
-                button=next(x for x in driver.find_elements(By.TAG_NAME,'button') if x.is_displayed() and x.text==text)
+                button=WebDriverWait(driver,5).until(lambda d:d.execute_script("return [...document.querySelectorAll('button')].find(e=>e.getClientRects().length&&!e.disabled&&e.innerText===arguments[0])??null",text))
                 driver.execute_script('arguments[0].scrollIntoView({block:"center"})',button);button.click();time.sleep(.35)
                 if not driver.find_elements(By.CSS_SELECTOR,'[role=dialog],[role=alertdialog]'):continue
                 for lang in ['en','ar']:
@@ -82,7 +110,8 @@ def inspect(route):
                     driver.execute_script('window.__qa.navigate("/modules")');time.sleep(.15);driver.execute_script('window.__qa.navigate(arguments[0])',route);time.sleep(.3)
             except Exception as e:overlays.append({'route':route,'opener':text,'error':type(e).__name__})
         (out/f'overlays-{phase}.json').write_text(json.dumps(overlays,ensure_ascii=False,indent=2),encoding='utf-8')
-    results.extend(page)
+    results.extend(page);completed.add(route)
+    (out/f'links-{phase}.json').write_text(json.dumps(sorted(links)))
     (out/f'app-{phase}.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps({'route':route,'samples':len(page),'overflowSamples':sum(bool(x['overflow']) for x in page),'actual':page[-1]['actual'],'errors':page[-1]['errors']}),flush=True)
 try:

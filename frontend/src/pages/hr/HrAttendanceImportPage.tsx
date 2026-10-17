@@ -79,6 +79,18 @@ function initialMapping(sheet: AttendanceImportSheet): AttendanceImportMappingRe
     punchDateTimeColumn: null, punchTypeColumn: null, dateFormat: 'dd-MMM-yy', timeSystem: '12-hour',
     timeFormat: 'h:mm:ss', timeZoneId: 'Africa/Cairo', cultureName: 'en-GB',
   };
+  // Device exports can repeat Date/Time and leave the split time headers blank.
+  // Use the complete timestamp so those extra columns need no manual mapping.
+  const deviceNumber = findColumn(columns, [/^No\.?$/i]);
+  const deviceTimestamp = findColumn(columns, [/^Date\s*\/\s*Time$/i]);
+  if (deviceNumber && deviceTimestamp) return {
+    sheetName: sheet.sheetName, headerRowNumber: header, dataStartRowNumber: header + 1,
+    layout: 'PunchRows', employeeNumberColumn: deviceNumber, employeeNameColumn: null,
+    attendanceDateColumn: null, timeColumn: null, amPmColumn: null,
+    checkInColumn: null, checkOutColumn: null, punchDateTimeColumn: deviceTimestamp,
+    punchTypeColumn: null, dateFormat: 'dd-MMM-yy', timeSystem: '12-hour',
+    timeFormat: 'h:mm:ss tt', timeZoneId: 'Africa/Cairo', cultureName: 'en-GB',
+  };
   return {
     attendanceDateColumn: findColumn(columns, [/attendance.*date/i, /^date$/i, /التاريخ/]),
     checkInColumn: findColumn(columns, [/check.?in/i, /in.*time/i, /دخول|حضور/]),

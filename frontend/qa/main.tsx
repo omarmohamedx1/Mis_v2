@@ -46,7 +46,7 @@ const params = new URLSearchParams(location.search);
 const lab = params.get('mode') !== 'app';
 if (!lab) history.replaceState(null, '', params.get('route') ?? '/modules');
 localStorage.setItem('mis.language', params.get('lang') ?? 'en');
-const qa: any = (window as any).__qa = { pending: 0, requests: [], blocked: [], errors: [], fixtures: {} };
+const qa: any = (window as any).__qa = { pending: 0, requests: [], blocked: [], errors: [], fixtures: (window as any).__qaFixtureSeed ?? {} };
 if ((window as any).__qaApiOverride) apiClient.defaults.baseURL = (window as any).__qaApiOverride;
 apiClient.interceptors.request.use(config => {
   if (!['get', 'head', 'options'].includes(config.method?.toLowerCase() ?? 'get') && !config.url?.includes('/auth/login')) {

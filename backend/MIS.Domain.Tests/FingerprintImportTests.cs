@@ -119,6 +119,56 @@ public sealed class FingerprintImportTests
         Assert.Equal(2, row.SourceRows.Count);
     }
 
+    [Theory]
+    [InlineData(".csv")]
+    [InlineData(".xlsx")]
+    public async Task Device_export_with_duplicate_and_blank_headers_uses_complete_timestamp(string extension)
+    {
+        string[][] cells =
+        [
+            ["Name", "No.", "Date/Time", "Date/Time", "", ""],
+            ["999", "47", "08-Sep-26 1:36:02 PM", "9/8/2026 0:00", "1:36:02", "PM"],
+            ["999", "47", "08-Sep-26 10:07:52 AM", "9/8/2026 0:00", "10:07:52", "AM"],
+            ["11", "11", "25-Aug-26 10:16:31 AM", "8/25/2026 0:00", "10:16:31", "AM"],
+            ["11", "11", "25-Aug-26 10:16:31 AM", "8/25/2026 0:00", "10:16:31", "AM"],
+            ["47", "47", "15-Sep-26 12:14:49 PM", "9/15/2026 0:00", "12:14:49", "PM"]
+        ];
+        using var stream = new MemoryStream();
+        if (extension == ".csv")
+        {
+            var bytes = Encoding.UTF8.GetBytes(string.Join("\n", cells.Select(row => string.Join("\t", row))));
+            stream.Write(bytes);
+        }
+        else
+        {
+            using var workbook = new XLWorkbook();
+            var sheet = workbook.AddWorksheet("Fingerprint");
+            for (var row = 0; row < cells.Length; row++)
+            for (var column = 0; column < cells[row].Length; column++)
+                sheet.Cell(row + 1, column + 1).Value = cells[row][column];
+            workbook.SaveAs(stream);
+        }
+
+        var inspected = Assert.Single(await Parser().InspectAsync(stream, extension, default));
+        Assert.Equal(1, inspected.SuggestedHeaderRowNumber);
+        Assert.Equal(new[] { "Name", "No.", "Date/Time", "Date/Time (2)", "Column 5", "Column 6" }, inspected.DetectedColumns);
+        Assert.Equal("12-hour", inspected.SuggestedTimeSystem);
+        var parsed = await Parser().ParseAsync(stream, extension, Mapping(true), default);
+        Assert.Equal(5, parsed.SourceRowCount);
+        Assert.Equal(3, parsed.Groups.Count);
+        Assert.All(parsed.Groups, group => Assert.Empty(group.Errors));
+        var day = Assert.Single(parsed.Groups, group => group.AttendanceDate == new DateOnly(2026, 9, 8));
+        Assert.Equal("47", day.SourceEmployeeNumber);
+        Assert.Null(day.SourceEmployeeName);
+        Assert.Equal(new TimeOnly(10, 7, 52), TimeOnly.FromDateTime(day.CheckIn!.Value.DateTime));
+        Assert.Equal(new TimeOnly(13, 36, 2), TimeOnly.FromDateTime(day.CheckOut!.Value.DateTime));
+        var single = Assert.Single(parsed.Groups, group => group.SourceEmployeeNumber == "11");
+        Assert.Single(single.Punches);
+        Assert.Null(single.CheckOut);
+        var noon = Assert.Single(parsed.Groups, group => group.AttendanceDate == new DateOnly(2026, 9, 15));
+        Assert.Equal(12, noon.CheckIn!.Value.Hour);
+    }
+
     [Fact]
     public async Task Invalid_clock_is_not_reinterpreted_as_valid_morning_time()
     {

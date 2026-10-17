@@ -1,3 +1,4 @@
+import { useActionDialog } from '../../components/common/useActionDialog';
 import { ArrowLeft, CheckCircle2, Send, ShieldCheck, Undo2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -9,6 +10,8 @@ import type { Journal } from '../../features/finance/types/finance';
 import { getApiErrorMessage } from '../../services/apiClient';
 
 export function FinanceJournalDetailsPage() {
+  const { prompt: askReason, dialog: actionDialog } = useActionDialog();
+
   const { id = '' } = useParams();
   const f = useFinanceText();
   const [data, setData] = useState<Journal>();
@@ -23,7 +26,7 @@ export function FinanceJournalDetailsPage() {
     finally { setBusy(false); }
   };
   const reverse = async () => {
-    const reason = prompt(f.text('سبب العكس', 'Reversal reason'));
+    const reason = await askReason(f.text('سبب العكس', 'Reversal reason'));
     if (!reason) return;
     setBusy(true);
     try { setData(await financeService.reverseJournal(id, reason)); }
@@ -32,7 +35,7 @@ export function FinanceJournalDetailsPage() {
   };
   if (error && !data) return <ErrorState title={error} onRetry={load} />;
   if (!data) return <div className="grid min-h-[420px] place-items-center"><LoadingSpinner /></div>;
-  return (
+  return <> {(
     <div>
       <Link to="/finance/journals" className="inline-flex items-center gap-2 text-sm font-bold text-mis-primary"><ArrowLeft className="h-4 w-4 rtl:rotate-180" />{f.text('العودة للقيود', 'Back to journals')}</Link>
       <header className="mt-5 flex flex-col justify-between gap-4 rounded-2xl border border-mis-border bg-white p-6 shadow-sm lg:flex-row lg:items-start">
@@ -95,5 +98,5 @@ export function FinanceJournalDetailsPage() {
         ))}
       </section>
     </div>
-  );
+  )} {actionDialog}</>;
 }

@@ -60,7 +60,7 @@ export function DataEntryDashboardPage() {
 
       <section className="grid gap-4 sm:grid-cols-2">
         {kpis.map((kpi) => (
-          <Link key={kpi.to} className="block transition hover:-translate-y-0.5" to={kpi.to}>
+          <Link aria-label={kpi.label} key={kpi.to} className="block transition hover:-translate-y-0.5" to={kpi.to}>
             <DataEntryKpi hint={kpi.hint} label={kpi.label} tone={kpi.tone} value={d.number(kpi.value)} />
           </Link>
         ))}
