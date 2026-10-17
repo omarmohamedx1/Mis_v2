@@ -1,7 +1,9 @@
 import { Archive, ArrowLeft, ClipboardList, FileUp, Gauge, HandCoins, MapPinned, MessageSquareWarning, Route, Users, WalletCards, Activity } from 'lucide-react';
+import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { EmptyState } from '../../components/common/EmptyState';
+import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { BankLogo } from '../../features/collections/components/BankLogo';
 import { useCollectionsLocalization } from '../../features/collections/localization/collectionsTranslations';
@@ -69,6 +71,8 @@ export function BankWorkspaceLayout() {
   const { language, ct } = useCollectionsLocalization();
   const [bank, setBank] = useState<BankDirectoryItem>();
   const [notFound, setNotFound] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reload, setReload] = useState(0);
   const canLoad = Boolean(classification && isUuid(organizationId));
   const classificationHome = isUuid(organizationId) ? organizationPath(kind, organizationId) : root;
   const workspaceBase = classification && isUuid(organizationId)
@@ -78,11 +82,15 @@ export function BankWorkspaceLayout() {
   useEffect(() => {
     if (!canLoad) return;
     let active = true;
-    setBank(undefined); setNotFound(false);
+    setBank(undefined); setNotFound(false); setLoadFailed(false);
     const request = installment ? collectionsService.installmentCompany(organizationId) : collectionsService.bank(organizationId);
-    void request.then((value) => { if (active) setBank(value); }).catch(() => { if (active) setNotFound(true); });
+    void request.then((value) => { if (active) setBank(value); }).catch(error => {
+      if (!active) return;
+      if (isAxiosError(error) && error.response?.status === 404) setNotFound(true);
+      else setLoadFailed(true);
+    });
     return () => { active = false; };
-  }, [canLoad, installment, organizationId]);
+  }, [canLoad, installment, organizationId, reload]);
 
   if (rewritten) return <Navigate to={rewritten} replace />;
 
@@ -100,6 +108,7 @@ export function BankWorkspaceLayout() {
       />
     );
   }
+  if (loadFailed) return <ErrorState title={ct('loadError')} onRetry={() => setReload(value => value + 1)} />;
   if (!bank) return <div className="flex min-h-72 items-center justify-center"><LoadingSpinner /></div>;
   const name = language === 'ar' ? bank.nameArabic : bank.nameEnglish;
 

@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Upload, Eye, CheckCircle2, AlertTriangle, Download, FileSpreadsheet, Loader2, Pencil, Trash2 } from 'lucide-react';
@@ -601,7 +602,7 @@ export function HrEmployeeImportPage() {
                           type="checkbox"
                         />
                       </td>
-                      <td className="p-3">
+                      <td className="p-3"><ActionMenu>
                         {row.status === 'Existing' ? null : (
                           <div className="flex flex-wrap gap-1">
                             <button className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-mis-primary hover:bg-mis-pale" onClick={() => setEditRow(row.row)} type="button">
@@ -618,7 +619,7 @@ export function HrEmployeeImportPage() {
                           </div>
                         )}
                         {excludedRows.includes(row.row) ? <p className="mt-1 text-xs text-slate-500">{importCopy.excludedBadge(ar)}</p> : null}
-                      </td>
+                      </ActionMenu></td>
                       <td className="p-3">
                         <bdi>{row.employee.employeeNumber}</bdi>
                       </td>

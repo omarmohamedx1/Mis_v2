@@ -1,0 +1,2895 @@
+{
+  "bankId": "00000000-0000-4000-8000-00000000009a",
+  "companyId": "00000000-0000-4000-8000-00000000009b",
+  "id": "00000000-0000-4000-8000-000000000099",
+  "responses": {
+    "/banks/00000000-0000-4000-8000-00000000009a": {
+      "id": "00000000-0000-4000-8000-00000000009a",
+      "code": "QA-ORGANIZATION-12345678901234567890",
+      "nameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "nameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+      "logoUrl": ""
+    },
+    "/banks/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "code": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "nameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "nameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+      "logoUrl": ""
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/portfolio-imports": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "bankId": "00000000-0000-4000-8000-00000000009a",
+          "bankNameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "bankNameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalFileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "fileType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "fileSize": 0,
+          "rowCount": 0,
+          "status": "READY",
+          "uploadedByUserId": "00000000-0000-4000-8000-000000000099",
+          "uploadedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "uploadedAt": "2026-10-17T09:00:00Z",
+          "confirmedAt": "2026-10-17T09:00:00Z",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/portfolio-cases": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "status": "ACTIVE",
+          "lastActivityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canEdit": true,
+        "canAssign": true,
+        "canExport": true,
+        "statuses": [
+          "ACTIVE",
+          "CLOSED"
+        ]
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/portfolio-cases/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+      "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "status": "ACTIVE",
+      "lastActivityAt": "2026-10-17T09:00:00Z",
+      "nextFollowUpAt": "2026-10-17T09:00:00Z",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "alternativeMobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "secondaryAddress": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "productType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "originalAmount": 9999999999999.99,
+      "paidAmount": 9999999999999.99,
+      "remainingAmount": 9999999999999.99,
+      "latestNote": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "sourceImportId": "00000000-0000-4000-8000-000000000099",
+      "importedFrom": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "importDate": "2026-10-17",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "access": {
+        "isManager": true,
+        "canEdit": true,
+        "canAssign": true,
+        "canExport": true,
+        "statuses": [
+          "ACTIVE",
+          "CLOSED"
+        ]
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/portfolio-cases/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/customers": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "nationalId": "00000000-0000-4000-8000-000000000099",
+          "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "outstandingAmount": 9999999999999.99,
+          "paidAmount": 9999999999999.99,
+          "remainingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "caseCount": 1
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/customers/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "fullNameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "fullNameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+      "mobile": "01012345678",
+      "alternativeMobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "secondaryAddress": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "governorate": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "area": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "organizationName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "organizationType": "BANK",
+      "totalOriginalAmount": 9999999999999.99,
+      "totalOutstandingAmount": 9999999999999.99,
+      "totalPaidAmount": 9999999999999.99,
+      "totalRemainingAmount": 9999999999999.99,
+      "totalOverdueAmount": 9999999999999.99,
+      "cases": [
+        {
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "productType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalAmount": 9999999999999.99,
+          "outstandingAmount": 9999999999999.99,
+          "overdueAmount": 9999999999999.99,
+          "paidAmount": 9999999999999.99,
+          "remainingAmount": 9999999999999.99,
+          "daysPastDue": 0,
+          "status": "OPEN",
+          "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignmentDate": "2026-10-17",
+          "lastPaymentAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "payments": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "promises": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "visits": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "complaints": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "activities": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "timeline": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ]
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/customers/import/portfolios": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "organizationId": "00000000-0000-4000-8000-00000000009a",
+        "code": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "currencyCode": "EGP",
+        "isActive": true
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/distribution/summary": {
+      "totalCases": 1,
+      "unassignedCases": 0,
+      "assignedCases": 1,
+      "collectors": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/distribution/assigned": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignedAt": "2026-10-17T09:00:00Z",
+          "importId": "00000000-0000-4000-8000-000000000099",
+          "importName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/distribution/unassigned": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignedAt": "2026-10-17T09:00:00Z",
+          "importId": "00000000-0000-4000-8000-000000000099",
+          "importName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/distribution/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "assignedCases": 1,
+        "totalOutstanding": 9999999999999.99
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/distribution/imports": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/distribution/import/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "assignedCases": 1,
+        "totalOutstanding": 9999999999999.99
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/activities": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityType": "CALL",
+          "outcome": "CONNECTED",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z",
+          "performedById": "00000000-0000-4000-8000-000000000099",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "access": {
+            "isManager": true,
+            "canCreate": true,
+            "activityTypes": [
+              "CALL",
+              "VISIT"
+            ],
+            "callOutcomes": [
+              "CONNECTED"
+            ],
+            "filterActivityTypes": [
+              "CALL",
+              "VISIT"
+            ]
+          }
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "activityTypes": [
+          "CALL",
+          "VISIT"
+        ],
+        "callOutcomes": [
+          "CONNECTED"
+        ],
+        "filterActivityTypes": [
+          "CALL",
+          "VISIT"
+        ]
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/activities/summary": {
+      "activitiesToday": 0,
+      "followUpsToday": 0,
+      "overdueFollowUps": 0,
+      "casesContactedToday": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/activities/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "activityType": "CALL",
+      "outcome": "CONNECTED",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "activityAt": "2026-10-17T09:00:00Z",
+      "nextFollowUpAt": "2026-10-17T09:00:00Z",
+      "performedById": "00000000-0000-4000-8000-000000000099",
+      "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "activityTypes": [
+          "CALL",
+          "VISIT"
+        ],
+        "callOutcomes": [
+          "CONNECTED"
+        ],
+        "filterActivityTypes": [
+          "CALL",
+          "VISIT"
+        ]
+      },
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "caseStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+      "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "timeline": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityType": "CALL",
+          "outcome": "CONNECTED",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z",
+          "performedById": "00000000-0000-4000-8000-000000000099",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "access": {
+            "isManager": true,
+            "canCreate": true,
+            "activityTypes": [
+              "CALL",
+              "VISIT"
+            ],
+            "callOutcomes": [
+              "CONNECTED"
+            ],
+            "filterActivityTypes": [
+              "CALL",
+              "VISIT"
+            ]
+          }
+        }
+      ]
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/activities/case/00000000-0000-4000-8000-000000000099": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseId": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "activityType": "CALL",
+        "outcome": "CONNECTED",
+        "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "activityAt": "2026-10-17T09:00:00Z",
+        "nextFollowUpAt": "2026-10-17T09:00:00Z",
+        "performedById": "00000000-0000-4000-8000-000000000099",
+        "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "access": {
+          "isManager": true,
+          "canCreate": true,
+          "activityTypes": [
+            "CALL",
+            "VISIT"
+          ],
+          "callOutcomes": [
+            "CONNECTED"
+          ],
+          "filterActivityTypes": [
+            "CALL",
+            "VISIT"
+          ]
+        }
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/activities/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/activities/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/ptps": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "promiseAmount": 9999999999999.99,
+          "promiseDate": "2026-10-17",
+          "status": "PENDING",
+          "operationalState": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canChangeStatus": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/ptps/summary": {
+      "dueToday": 0,
+      "upcoming": 0,
+      "overdue": 0,
+      "broken": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/ptps/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "promiseAmount": 9999999999999.99,
+      "promiseDate": "2026-10-17",
+      "status": "PENDING",
+      "operationalState": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "collectorId": "00000000-0000-4000-8000-000000000099",
+      "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/ptps/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/ptps/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/visits": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "scheduledAt": "2026-10-17T09:00:00Z",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "status": "SCHEDULED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canManageAssignment": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/visits/summary": {
+      "visitsToday": 0,
+      "upcomingVisits": 0,
+      "overdueVisits": 0,
+      "completedToday": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/visits/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "scheduledAt": "2026-10-17T09:00:00Z",
+      "collectorId": "00000000-0000-4000-8000-000000000099",
+      "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "status": "SCHEDULED",
+      "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "mobile": "01012345678",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "purpose": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "completedAt": "2026-10-17T09:00:00Z",
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canManageAssignment": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/visits/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "governorate": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "area": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/visits/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/dcr": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "bankId": "00000000-0000-4000-8000-00000000009a",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "dcrDate": "2026-10-17",
+          "actionCover": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "feedback": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "comment": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdByUserId": "00000000-0000-4000-8000-000000000099",
+          "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "ptpDate": "2026-10-17",
+          "ptpAmount": 9999999999999.99,
+          "paidDate": "2026-10-17",
+          "paidAmount": 9999999999999.99,
+          "followUpAt": "2026-10-17T09:00:00Z",
+          "visitDate": "2026-10-17",
+          "linkedPtpId": "00000000-0000-4000-8000-000000000099",
+          "linkedPtpStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "linkedVisitId": "00000000-0000-4000-8000-000000000099",
+          "createdAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "timeZoneId": "UTC",
+        "businessToday": "2026-10-17"
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/dcr/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "bankId": "00000000-0000-4000-8000-00000000009a",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "dcrDate": "2026-10-17",
+      "actionCover": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "feedback": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "comment": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdByUserId": "00000000-0000-4000-8000-000000000099",
+      "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "ptpDate": "2026-10-17",
+      "ptpAmount": 9999999999999.99,
+      "paidDate": "2026-10-17",
+      "paidAmount": 9999999999999.99,
+      "followUpAt": "2026-10-17T09:00:00Z",
+      "visitDate": "2026-10-17",
+      "linkedPtpId": "00000000-0000-4000-8000-000000000099",
+      "linkedPtpStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "linkedVisitId": "00000000-0000-4000-8000-000000000099",
+      "createdAt": "2026-10-17T09:00:00Z"
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/dcr/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/dcr/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/complaints": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "complaintNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "priority": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "assignedToId": "00000000-0000-4000-8000-000000000099",
+          "assignedToName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z",
+          "dueAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z",
+          "isOverdue": true
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canAssign": true,
+        "canManageWorkflow": true,
+        "canAddNote": true,
+        "canUploadAttachment": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/complaints/summary": {
+      "open": 0,
+      "inProgress": 0,
+      "highCritical": 0,
+      "overdue": 0,
+      "resolvedToday": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/complaints/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "complaintNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "priority": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "status": "OPEN",
+      "assignedToId": "00000000-0000-4000-8000-000000000099",
+      "assignedToName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "dueAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "isOverdue": true,
+      "mobile": "01012345678",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "description": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdById": "00000000-0000-4000-8000-000000000099",
+      "createdByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "resolution": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "resolvedById": "00000000-0000-4000-8000-000000000099",
+      "resolvedByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "resolvedAt": "2026-10-17T09:00:00Z",
+      "closedAt": "2026-10-17T09:00:00Z",
+      "rejectionReason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "text": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "createdById": "00000000-0000-4000-8000-000000000099",
+          "createdByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "attachments": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "fileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "contentType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "fileSize": 0,
+          "uploadedById": "00000000-0000-4000-8000-000000000099",
+          "uploadedByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "uploadedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "history": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "beforeJson": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "afterJson": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "userId": "00000000-0000-4000-8000-000000000099",
+          "userName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canAssign": true,
+        "canManageWorkflow": true,
+        "canAddNote": true,
+        "canUploadAttachment": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/complaints/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/complaints/employees": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009a/archive/summary": {
+      "archivedCases": 0,
+      "archivedPortfolios": 0,
+      "archivedThisMonth": 0,
+      "restoredThisMonth": 0,
+      "canManage": true
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/archive/cases": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "previousCollectorId": "00000000-0000-4000-8000-000000000099",
+          "previousCollector": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "canManage": true
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/archive/cases/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "originalAmount": 9999999999999.99,
+      "outstandingAmount": 9999999999999.99,
+      "status": "ARCHIVED",
+      "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "archivedAt": "2026-10-17T09:00:00Z",
+      "previousCollector": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "lifecycle": [
+        {
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "activities": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "ptps": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "visits": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "attachments": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "canRestore": true,
+      "updatedAt": "2026-10-17T09:00:00Z"
+    },
+    "/banks/00000000-0000-4000-8000-00000000009a/archive/portfolios": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalFileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "records": 0,
+          "importDate": "2026-10-17",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "canManage": true
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b": {
+      "id": "00000000-0000-4000-8000-00000000009b",
+      "code": "QA-ORGANIZATION-12345678901234567890",
+      "nameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "nameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+      "logoUrl": ""
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b": {
+      "id": "00000000-0000-4000-8000-00000000009b",
+      "code": "QA-ORGANIZATION-12345678901234567890",
+      "nameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "nameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+      "logoUrl": ""
+    },
+    "/installment-companies/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "code": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "nameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "nameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+      "logoUrl": ""
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/portfolio-imports": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "bankId": "00000000-0000-4000-8000-00000000009b",
+          "bankNameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "bankNameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalFileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "fileType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "fileSize": 0,
+          "rowCount": 0,
+          "status": "READY",
+          "uploadedByUserId": "00000000-0000-4000-8000-000000000099",
+          "uploadedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "uploadedAt": "2026-10-17T09:00:00Z",
+          "confirmedAt": "2026-10-17T09:00:00Z",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/portfolio-imports": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "bankId": "00000000-0000-4000-8000-00000000009b",
+          "bankNameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "bankNameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalFileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "fileType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "fileSize": 0,
+          "rowCount": 0,
+          "status": "READY",
+          "uploadedByUserId": "00000000-0000-4000-8000-000000000099",
+          "uploadedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "uploadedAt": "2026-10-17T09:00:00Z",
+          "confirmedAt": "2026-10-17T09:00:00Z",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/portfolio-cases": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "status": "ACTIVE",
+          "lastActivityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canEdit": true,
+        "canAssign": true,
+        "canExport": true,
+        "statuses": [
+          "ACTIVE",
+          "CLOSED"
+        ]
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/portfolio-cases": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "status": "ACTIVE",
+          "lastActivityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canEdit": true,
+        "canAssign": true,
+        "canExport": true,
+        "statuses": [
+          "ACTIVE",
+          "CLOSED"
+        ]
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/portfolio-cases/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+      "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "status": "ACTIVE",
+      "lastActivityAt": "2026-10-17T09:00:00Z",
+      "nextFollowUpAt": "2026-10-17T09:00:00Z",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "alternativeMobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "secondaryAddress": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "productType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "originalAmount": 9999999999999.99,
+      "paidAmount": 9999999999999.99,
+      "remainingAmount": 9999999999999.99,
+      "latestNote": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "sourceImportId": "00000000-0000-4000-8000-000000000099",
+      "importedFrom": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "importDate": "2026-10-17",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "access": {
+        "isManager": true,
+        "canEdit": true,
+        "canAssign": true,
+        "canExport": true,
+        "statuses": [
+          "ACTIVE",
+          "CLOSED"
+        ]
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/portfolio-cases/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+      "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "status": "ACTIVE",
+      "lastActivityAt": "2026-10-17T09:00:00Z",
+      "nextFollowUpAt": "2026-10-17T09:00:00Z",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "alternativeMobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "secondaryAddress": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "productType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "originalAmount": 9999999999999.99,
+      "paidAmount": 9999999999999.99,
+      "remainingAmount": 9999999999999.99,
+      "latestNote": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "sourceImportId": "00000000-0000-4000-8000-000000000099",
+      "importedFrom": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "importDate": "2026-10-17",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "access": {
+        "isManager": true,
+        "canEdit": true,
+        "canAssign": true,
+        "canExport": true,
+        "statuses": [
+          "ACTIVE",
+          "CLOSED"
+        ]
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/portfolio-cases/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/portfolio-cases/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/customers": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "nationalId": "00000000-0000-4000-8000-000000000099",
+          "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "outstandingAmount": 9999999999999.99,
+          "paidAmount": 9999999999999.99,
+          "remainingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "caseCount": 1
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/customers": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "nationalId": "00000000-0000-4000-8000-000000000099",
+          "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "outstandingAmount": 9999999999999.99,
+          "paidAmount": 9999999999999.99,
+          "remainingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "caseCount": 1
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/customers/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "fullNameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "fullNameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+      "mobile": "01012345678",
+      "alternativeMobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "secondaryAddress": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "governorate": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "area": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "organizationName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "organizationType": "INSTALLMENT_COMPANY",
+      "totalOriginalAmount": 9999999999999.99,
+      "totalOutstandingAmount": 9999999999999.99,
+      "totalPaidAmount": 9999999999999.99,
+      "totalRemainingAmount": 9999999999999.99,
+      "totalOverdueAmount": 9999999999999.99,
+      "cases": [
+        {
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "productType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalAmount": 9999999999999.99,
+          "outstandingAmount": 9999999999999.99,
+          "overdueAmount": 9999999999999.99,
+          "paidAmount": 9999999999999.99,
+          "remainingAmount": 9999999999999.99,
+          "daysPastDue": 0,
+          "status": "OPEN",
+          "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignmentDate": "2026-10-17",
+          "lastPaymentAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "payments": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "promises": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "visits": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "complaints": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "activities": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "timeline": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ]
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/customers/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "fullNameArabic": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "fullNameEnglish": "Alexandria Christopher Montgomery very long customer and employee display name for visual QA",
+      "mobile": "01012345678",
+      "alternativeMobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "secondaryAddress": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "governorate": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "area": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "organizationName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "organizationType": "INSTALLMENT_COMPANY",
+      "totalOriginalAmount": 9999999999999.99,
+      "totalOutstandingAmount": 9999999999999.99,
+      "totalPaidAmount": 9999999999999.99,
+      "totalRemainingAmount": 9999999999999.99,
+      "totalOverdueAmount": 9999999999999.99,
+      "cases": [
+        {
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "accountReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "contractReference": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "productType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalAmount": 9999999999999.99,
+          "outstandingAmount": 9999999999999.99,
+          "overdueAmount": 9999999999999.99,
+          "paidAmount": 9999999999999.99,
+          "remainingAmount": 9999999999999.99,
+          "daysPastDue": 0,
+          "status": "OPEN",
+          "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+          "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignmentDate": "2026-10-17",
+          "lastPaymentAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "payments": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "promises": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "visits": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "complaints": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "activities": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ],
+      "timeline": [
+        {
+          "module": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "id": "00000000-0000-4000-8000-000000000099",
+          "title": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "occurredAt": "2026-10-17T09:00:00Z",
+          "amount": 9999999999999.99
+        }
+      ]
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/customers/import/portfolios": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "organizationId": "00000000-0000-4000-8000-00000000009b",
+        "code": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "currencyCode": "EGP",
+        "isActive": true
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/customers/import/portfolios": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "organizationId": "00000000-0000-4000-8000-00000000009b",
+        "code": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "currencyCode": "EGP",
+        "isActive": true
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/distribution/summary": {
+      "totalCases": 1,
+      "unassignedCases": 0,
+      "assignedCases": 1,
+      "collectors": 0
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/distribution/summary": {
+      "totalCases": 1,
+      "unassignedCases": 0,
+      "assignedCases": 1,
+      "collectors": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/distribution/assigned": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignedAt": "2026-10-17T09:00:00Z",
+          "importId": "00000000-0000-4000-8000-000000000099",
+          "importName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/distribution/assigned": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignedAt": "2026-10-17T09:00:00Z",
+          "importId": "00000000-0000-4000-8000-000000000099",
+          "importName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/distribution/unassigned": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignedAt": "2026-10-17T09:00:00Z",
+          "importId": "00000000-0000-4000-8000-000000000099",
+          "importName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/distribution/unassigned": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "status": "OPEN",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "assignedAt": "2026-10-17T09:00:00Z",
+          "importId": "00000000-0000-4000-8000-000000000099",
+          "importName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/distribution/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "assignedCases": 1,
+        "totalOutstanding": 9999999999999.99
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/distribution/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "assignedCases": 1,
+        "totalOutstanding": 9999999999999.99
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/distribution/imports": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/distribution/imports": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/distribution/import/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "assignedCases": 1,
+        "totalOutstanding": 9999999999999.99
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/distribution/import/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "assignedCases": 1,
+        "totalOutstanding": 9999999999999.99
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/activities": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityType": "CALL",
+          "outcome": "CONNECTED",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z",
+          "performedById": "00000000-0000-4000-8000-000000000099",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "access": {
+            "isManager": true,
+            "canCreate": true,
+            "activityTypes": [
+              "CALL",
+              "VISIT"
+            ],
+            "callOutcomes": [
+              "CONNECTED"
+            ],
+            "filterActivityTypes": [
+              "CALL",
+              "VISIT"
+            ]
+          }
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "activityTypes": [
+          "CALL",
+          "VISIT"
+        ],
+        "callOutcomes": [
+          "CONNECTED"
+        ],
+        "filterActivityTypes": [
+          "CALL",
+          "VISIT"
+        ]
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/activities": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityType": "CALL",
+          "outcome": "CONNECTED",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z",
+          "performedById": "00000000-0000-4000-8000-000000000099",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "access": {
+            "isManager": true,
+            "canCreate": true,
+            "activityTypes": [
+              "CALL",
+              "VISIT"
+            ],
+            "callOutcomes": [
+              "CONNECTED"
+            ],
+            "filterActivityTypes": [
+              "CALL",
+              "VISIT"
+            ]
+          }
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "activityTypes": [
+          "CALL",
+          "VISIT"
+        ],
+        "callOutcomes": [
+          "CONNECTED"
+        ],
+        "filterActivityTypes": [
+          "CALL",
+          "VISIT"
+        ]
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/activities/summary": {
+      "activitiesToday": 0,
+      "followUpsToday": 0,
+      "overdueFollowUps": 0,
+      "casesContactedToday": 0
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/activities/summary": {
+      "activitiesToday": 0,
+      "followUpsToday": 0,
+      "overdueFollowUps": 0,
+      "casesContactedToday": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/activities/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "activityType": "CALL",
+      "outcome": "CONNECTED",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "activityAt": "2026-10-17T09:00:00Z",
+      "nextFollowUpAt": "2026-10-17T09:00:00Z",
+      "performedById": "00000000-0000-4000-8000-000000000099",
+      "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "activityTypes": [
+          "CALL",
+          "VISIT"
+        ],
+        "callOutcomes": [
+          "CONNECTED"
+        ],
+        "filterActivityTypes": [
+          "CALL",
+          "VISIT"
+        ]
+      },
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "caseStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+      "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "timeline": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityType": "CALL",
+          "outcome": "CONNECTED",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z",
+          "performedById": "00000000-0000-4000-8000-000000000099",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "access": {
+            "isManager": true,
+            "canCreate": true,
+            "activityTypes": [
+              "CALL",
+              "VISIT"
+            ],
+            "callOutcomes": [
+              "CONNECTED"
+            ],
+            "filterActivityTypes": [
+              "CALL",
+              "VISIT"
+            ]
+          }
+        }
+      ]
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/activities/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "activityType": "CALL",
+      "outcome": "CONNECTED",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "activityAt": "2026-10-17T09:00:00Z",
+      "nextFollowUpAt": "2026-10-17T09:00:00Z",
+      "performedById": "00000000-0000-4000-8000-000000000099",
+      "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "activityTypes": [
+          "CALL",
+          "VISIT"
+        ],
+        "callOutcomes": [
+          "CONNECTED"
+        ],
+        "filterActivityTypes": [
+          "CALL",
+          "VISIT"
+        ]
+      },
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "caseStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+      "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "timeline": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityType": "CALL",
+          "outcome": "CONNECTED",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "activityAt": "2026-10-17T09:00:00Z",
+          "nextFollowUpAt": "2026-10-17T09:00:00Z",
+          "performedById": "00000000-0000-4000-8000-000000000099",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "access": {
+            "isManager": true,
+            "canCreate": true,
+            "activityTypes": [
+              "CALL",
+              "VISIT"
+            ],
+            "callOutcomes": [
+              "CONNECTED"
+            ],
+            "filterActivityTypes": [
+              "CALL",
+              "VISIT"
+            ]
+          }
+        }
+      ]
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/activities/case/00000000-0000-4000-8000-000000000099": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseId": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "activityType": "CALL",
+        "outcome": "CONNECTED",
+        "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "activityAt": "2026-10-17T09:00:00Z",
+        "nextFollowUpAt": "2026-10-17T09:00:00Z",
+        "performedById": "00000000-0000-4000-8000-000000000099",
+        "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "access": {
+          "isManager": true,
+          "canCreate": true,
+          "activityTypes": [
+            "CALL",
+            "VISIT"
+          ],
+          "callOutcomes": [
+            "CONNECTED"
+          ],
+          "filterActivityTypes": [
+            "CALL",
+            "VISIT"
+          ]
+        }
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/activities/case/00000000-0000-4000-8000-000000000099": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseId": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "activityType": "CALL",
+        "outcome": "CONNECTED",
+        "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "activityAt": "2026-10-17T09:00:00Z",
+        "nextFollowUpAt": "2026-10-17T09:00:00Z",
+        "performedById": "00000000-0000-4000-8000-000000000099",
+        "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "access": {
+          "isManager": true,
+          "canCreate": true,
+          "activityTypes": [
+            "CALL",
+            "VISIT"
+          ],
+          "callOutcomes": [
+            "CONNECTED"
+          ],
+          "filterActivityTypes": [
+            "CALL",
+            "VISIT"
+          ]
+        }
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/activities/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/activities/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/activities/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/activities/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/ptps": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "promiseAmount": 9999999999999.99,
+          "promiseDate": "2026-10-17",
+          "status": "PENDING",
+          "operationalState": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canChangeStatus": true
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/ptps": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "promiseAmount": 9999999999999.99,
+          "promiseDate": "2026-10-17",
+          "status": "PENDING",
+          "operationalState": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canChangeStatus": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/ptps/summary": {
+      "dueToday": 0,
+      "upcoming": 0,
+      "overdue": 0,
+      "broken": 0
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/ptps/summary": {
+      "dueToday": 0,
+      "upcoming": 0,
+      "overdue": 0,
+      "broken": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/ptps/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "promiseAmount": 9999999999999.99,
+      "promiseDate": "2026-10-17",
+      "status": "PENDING",
+      "operationalState": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "collectorId": "00000000-0000-4000-8000-000000000099",
+      "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/ptps/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "promiseAmount": 9999999999999.99,
+      "promiseDate": "2026-10-17",
+      "status": "PENDING",
+      "operationalState": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "collectorId": "00000000-0000-4000-8000-000000000099",
+      "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "mobile": "01012345678",
+      "outstandingAmount": 9999999999999.99,
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/ptps/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/ptps/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/ptps/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/ptps/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/visits": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "scheduledAt": "2026-10-17T09:00:00Z",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "status": "SCHEDULED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canManageAssignment": true
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/visits": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "scheduledAt": "2026-10-17T09:00:00Z",
+          "collectorId": "00000000-0000-4000-8000-000000000099",
+          "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "status": "SCHEDULED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canManageAssignment": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/visits/summary": {
+      "visitsToday": 0,
+      "upcomingVisits": 0,
+      "overdueVisits": 0,
+      "completedToday": 0
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/visits/summary": {
+      "visitsToday": 0,
+      "upcomingVisits": 0,
+      "overdueVisits": 0,
+      "completedToday": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/visits/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "scheduledAt": "2026-10-17T09:00:00Z",
+      "collectorId": "00000000-0000-4000-8000-000000000099",
+      "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "status": "SCHEDULED",
+      "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "mobile": "01012345678",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "purpose": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "completedAt": "2026-10-17T09:00:00Z",
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canManageAssignment": true
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/visits/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "scheduledAt": "2026-10-17T09:00:00Z",
+      "collectorId": "00000000-0000-4000-8000-000000000099",
+      "collectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "status": "SCHEDULED",
+      "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "mobile": "01012345678",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "purpose": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "completedAt": "2026-10-17T09:00:00Z",
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canManageAssignment": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/visits/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "governorate": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "area": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/visits/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "governorate": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "area": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/visits/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/visits/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/dcr": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "bankId": "00000000-0000-4000-8000-00000000009b",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "dcrDate": "2026-10-17",
+          "actionCover": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "feedback": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "comment": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdByUserId": "00000000-0000-4000-8000-000000000099",
+          "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "ptpDate": "2026-10-17",
+          "ptpAmount": 9999999999999.99,
+          "paidDate": "2026-10-17",
+          "paidAmount": 9999999999999.99,
+          "followUpAt": "2026-10-17T09:00:00Z",
+          "visitDate": "2026-10-17",
+          "linkedPtpId": "00000000-0000-4000-8000-000000000099",
+          "linkedPtpStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "linkedVisitId": "00000000-0000-4000-8000-000000000099",
+          "createdAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "timeZoneId": "UTC",
+        "businessToday": "2026-10-17"
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/dcr": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "bankId": "00000000-0000-4000-8000-00000000009b",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "dcrDate": "2026-10-17",
+          "actionCover": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "feedback": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "comment": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdByUserId": "00000000-0000-4000-8000-000000000099",
+          "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "ptpDate": "2026-10-17",
+          "ptpAmount": 9999999999999.99,
+          "paidDate": "2026-10-17",
+          "paidAmount": 9999999999999.99,
+          "followUpAt": "2026-10-17T09:00:00Z",
+          "visitDate": "2026-10-17",
+          "linkedPtpId": "00000000-0000-4000-8000-000000000099",
+          "linkedPtpStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "linkedVisitId": "00000000-0000-4000-8000-000000000099",
+          "createdAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "timeZoneId": "UTC",
+        "businessToday": "2026-10-17"
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/dcr/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "bankId": "00000000-0000-4000-8000-00000000009b",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "dcrDate": "2026-10-17",
+      "actionCover": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "feedback": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "comment": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdByUserId": "00000000-0000-4000-8000-000000000099",
+      "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "ptpDate": "2026-10-17",
+      "ptpAmount": 9999999999999.99,
+      "paidDate": "2026-10-17",
+      "paidAmount": 9999999999999.99,
+      "followUpAt": "2026-10-17T09:00:00Z",
+      "visitDate": "2026-10-17",
+      "linkedPtpId": "00000000-0000-4000-8000-000000000099",
+      "linkedPtpStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "linkedVisitId": "00000000-0000-4000-8000-000000000099",
+      "createdAt": "2026-10-17T09:00:00Z"
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/dcr/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "bankId": "00000000-0000-4000-8000-00000000009b",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "dcrDate": "2026-10-17",
+      "actionCover": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "feedback": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "comment": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdByUserId": "00000000-0000-4000-8000-000000000099",
+      "createdBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "ptpDate": "2026-10-17",
+      "ptpAmount": 9999999999999.99,
+      "paidDate": "2026-10-17",
+      "paidAmount": 9999999999999.99,
+      "followUpAt": "2026-10-17T09:00:00Z",
+      "visitDate": "2026-10-17",
+      "linkedPtpId": "00000000-0000-4000-8000-000000000099",
+      "linkedPtpStatus": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "linkedVisitId": "00000000-0000-4000-8000-000000000099",
+      "createdAt": "2026-10-17T09:00:00Z"
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/dcr/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/dcr/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678",
+        "outstandingAmount": 9999999999999.99,
+        "status": "OPEN",
+        "assignedCollectorId": "00000000-0000-4000-8000-000000000099",
+        "assignedCollectorName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/dcr/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/dcr/collectors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/complaints": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "complaintNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "priority": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "assignedToId": "00000000-0000-4000-8000-000000000099",
+          "assignedToName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z",
+          "dueAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z",
+          "isOverdue": true
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canAssign": true,
+        "canManageWorkflow": true,
+        "canAddNote": true,
+        "canUploadAttachment": true
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/complaints": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "complaintNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "caseId": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "priority": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "OPEN",
+          "assignedToId": "00000000-0000-4000-8000-000000000099",
+          "assignedToName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z",
+          "dueAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z",
+          "isOverdue": true
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canAssign": true,
+        "canManageWorkflow": true,
+        "canAddNote": true,
+        "canUploadAttachment": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/complaints/summary": {
+      "open": 0,
+      "inProgress": 0,
+      "highCritical": 0,
+      "overdue": 0,
+      "resolvedToday": 0
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/complaints/summary": {
+      "open": 0,
+      "inProgress": 0,
+      "highCritical": 0,
+      "overdue": 0,
+      "resolvedToday": 0
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/complaints/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "complaintNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "priority": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "status": "OPEN",
+      "assignedToId": "00000000-0000-4000-8000-000000000099",
+      "assignedToName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "dueAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "isOverdue": true,
+      "mobile": "01012345678",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "description": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdById": "00000000-0000-4000-8000-000000000099",
+      "createdByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "resolution": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "resolvedById": "00000000-0000-4000-8000-000000000099",
+      "resolvedByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "resolvedAt": "2026-10-17T09:00:00Z",
+      "closedAt": "2026-10-17T09:00:00Z",
+      "rejectionReason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "text": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "createdById": "00000000-0000-4000-8000-000000000099",
+          "createdByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "attachments": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "fileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "contentType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "fileSize": 0,
+          "uploadedById": "00000000-0000-4000-8000-000000000099",
+          "uploadedByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "uploadedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "history": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "beforeJson": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "afterJson": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "userId": "00000000-0000-4000-8000-000000000099",
+          "userName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canAssign": true,
+        "canManageWorkflow": true,
+        "canAddNote": true,
+        "canUploadAttachment": true
+      }
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/complaints/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "complaintNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "caseId": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "priority": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "status": "OPEN",
+      "assignedToId": "00000000-0000-4000-8000-000000000099",
+      "assignedToName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdAt": "2026-10-17T09:00:00Z",
+      "dueAt": "2026-10-17T09:00:00Z",
+      "updatedAt": "2026-10-17T09:00:00Z",
+      "isOverdue": true,
+      "mobile": "01012345678",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "description": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "createdById": "00000000-0000-4000-8000-000000000099",
+      "createdByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "resolution": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "resolvedById": "00000000-0000-4000-8000-000000000099",
+      "resolvedByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "resolvedAt": "2026-10-17T09:00:00Z",
+      "closedAt": "2026-10-17T09:00:00Z",
+      "rejectionReason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "text": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "createdById": "00000000-0000-4000-8000-000000000099",
+          "createdByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "createdAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "attachments": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "fileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "contentType": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "fileSize": 0,
+          "uploadedById": "00000000-0000-4000-8000-000000000099",
+          "uploadedByName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "uploadedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "history": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "beforeJson": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "afterJson": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "userId": "00000000-0000-4000-8000-000000000099",
+          "userName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "access": {
+        "isManager": true,
+        "canCreate": true,
+        "canAssign": true,
+        "canManageWorkflow": true,
+        "canAddNote": true,
+        "canUploadAttachment": true
+      }
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/complaints/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/complaints/cases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+        "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+        "mobile": "01012345678"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/complaints/employees": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/complaints/employees": [
+      {
+        "id": "00000000-0000-4000-8000-000000000099",
+        "name": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات"
+      }
+    ],
+    "/banks/00000000-0000-4000-8000-00000000009b/archive/summary": {
+      "archivedCases": 0,
+      "archivedPortfolios": 0,
+      "archivedThisMonth": 0,
+      "restoredThisMonth": 0,
+      "canManage": true
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/archive/summary": {
+      "archivedCases": 0,
+      "archivedPortfolios": 0,
+      "archivedThisMonth": 0,
+      "restoredThisMonth": 0,
+      "canManage": true
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/archive/cases": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "previousCollectorId": "00000000-0000-4000-8000-000000000099",
+          "previousCollector": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "canManage": true
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/archive/cases": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "mobile": "01012345678",
+          "outstandingAmount": 9999999999999.99,
+          "previousCollectorId": "00000000-0000-4000-8000-000000000099",
+          "previousCollector": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedAt": "2026-10-17T09:00:00Z",
+          "updatedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "canManage": true
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/archive/cases/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "originalAmount": 9999999999999.99,
+      "outstandingAmount": 9999999999999.99,
+      "status": "ARCHIVED",
+      "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "archivedAt": "2026-10-17T09:00:00Z",
+      "previousCollector": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "lifecycle": [
+        {
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "activities": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "ptps": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "visits": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "attachments": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "canRestore": true,
+      "updatedAt": "2026-10-17T09:00:00Z"
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/archive/cases/00000000-0000-4000-8000-000000000099": {
+      "id": "00000000-0000-4000-8000-000000000099",
+      "caseNumber": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "customerName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "customerCode": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "mobile": "01012345678",
+      "nationalId": "00000000-0000-4000-8000-000000000099",
+      "address": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "bankName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "originalAmount": 9999999999999.99,
+      "outstandingAmount": 9999999999999.99,
+      "status": "ARCHIVED",
+      "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+      "archivedAt": "2026-10-17T09:00:00Z",
+      "previousCollector": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+      "lifecycle": [
+        {
+          "action": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "performedBy": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "activities": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "ptps": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "visits": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "attachments": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "type": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "status": "ARCHIVED",
+          "result": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "notes": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "occurredAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "canRestore": true,
+      "updatedAt": "2026-10-17T09:00:00Z"
+    },
+    "/banks/00000000-0000-4000-8000-00000000009b/archive/portfolios": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalFileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "records": 0,
+          "importDate": "2026-10-17",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "canManage": true
+    },
+    "/installment-companies/00000000-0000-4000-8000-00000000009b/archive/portfolios": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000099",
+          "portfolioName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "originalFileName": "محمد عبدالرحمن أحمد محمود الاسم الطويل جدًا لاختبار وضوح البيانات العربية داخل جميع المكونات",
+          "records": 0,
+          "importDate": "2026-10-17",
+          "reason": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedBy": "very.long.unbroken.customer.department.name.and.email.address.with.additional.characters.and.reference@example.invalid",
+          "archivedAt": "2026-10-17T09:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 20,
+      "totalPages": 1,
+      "canManage": true
+    }
+  }
+}

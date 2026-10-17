@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { Car, CreditCard, ImageUp, Landmark, Layers3, Pencil, Plus, Search, ShieldCheck, Timer, Trash2, WalletCards } from 'lucide-react';
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
@@ -382,10 +383,10 @@ export function CollectionsSettingsPage() {
                       <td className="px-5 py-4 text-sm tabular-nums text-slate-600">{item.minimumDays ?? 0}–{item.maximumDays ?? '∞'}</td>
                       <td className="px-5 py-4"><StatusBadge dot tone={item.isActive ? 'success' : 'neutral'}>{ct(item.isActive ? 'active' : 'inactive')}</StatusBadge></td>
                       <td className="px-5 py-4">
-                        <div className="flex justify-end gap-1">
+                        <ActionMenu>
                           <Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" aria-hidden="true" />} onClick={() => setEditor({ type: 'bucket', item })} size="sm" variant="ghost">{ct('edit')}</Button>
                           <Button className="text-red-600 hover:bg-red-50 hover:text-red-700" fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />} onClick={() => setRemoval({ type: 'bucket', id: item.id, name: language === 'ar' ? item.nameArabic : item.nameEnglish })} size="sm" variant="ghost">{ct('delete')}</Button>
-                        </div>
+                        </ActionMenu>
                       </td>
                     </tr>
                   );

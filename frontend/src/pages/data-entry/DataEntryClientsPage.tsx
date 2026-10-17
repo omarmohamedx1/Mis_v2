@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { FileUp, Paperclip, Pencil, Plus, Search, Trash2, UsersRound } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -147,7 +148,7 @@ export function DataEntryClientsPage() {
                       <td className="max-w-xs px-4 py-3 text-slate-700" key={columnName}>{item.fields?.[columnName] || '—'}</td>
                     ))}
                     <td className="px-4 py-3 text-end">
-                      <div className="flex justify-end gap-1">
+                      <ActionMenu>
                         <Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" />} size="sm" type="button" variant="ghost" onClick={(event) => { event.stopPropagation(); setEditTarget(item); }}>
                           {d.text('تعديل', 'Edit')}
                         </Button>
@@ -159,7 +160,7 @@ export function DataEntryClientsPage() {
                             {d.text('حذف', 'Delete')}
                           </Button>
                         ) : null}
-                      </div>
+                      </ActionMenu>
                     </td>
                   </tr>
                 ))}

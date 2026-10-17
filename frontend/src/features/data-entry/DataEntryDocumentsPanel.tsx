@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { Download, Eye, FileText, Image as ImageIcon, Paperclip, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
@@ -189,7 +190,7 @@ export function DataEntryDocumentsPanel({
                     </p>
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-1">
+                <ActionMenu>
                   {canOpen(item) ? (
                     <Button disabled={busyId === item.id} fullWidth={false} leftIcon={<Eye className="h-4 w-4" />} size="sm" type="button" variant="outline" onClick={() => void openFile(item)}>
                       {d.text('عرض', 'View')}
@@ -224,7 +225,7 @@ export function DataEntryDocumentsPanel({
                       {d.text('حذف', 'Delete')}
                     </Button>
                   ) : null}
-                </div>
+                </ActionMenu>
               </li>
             );
           })}

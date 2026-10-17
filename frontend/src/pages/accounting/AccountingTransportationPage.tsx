@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { PageActions } from '../../components/common/PageActions';
 import { Modal } from '../../components/common/Modal';
 import { AccountingDeleteButton } from '../../features/accounting/AccountingDeleteButton';
@@ -133,15 +134,15 @@ export function AccountingTransportationPage() {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    <div className="flex flex-wrap justify-end gap-1">
+                    <ActionMenu>
                       {row.status === 'PENDING' ? (
                         <>
                           <Button disabled={busy} fullWidth={false} leftIcon={<Pencil className="h-3.5 w-3.5" />} onClick={() => openEdit(row)} size="sm" variant="ghost">{a.text('تعديل', 'Edit')}</Button>
                         </>
                       ) : null}
                       {['PENDING', 'APPROVED'].includes(row.status) ? <Button disabled={busy} fullWidth={false} onClick={() => confirmMoney(row.amount, row.employeeName + ' / ' + row.claimDate + '\n' + row.purpose, () => act(row.id, 'pay'))} size="sm" variant="outline">{a.text('صرف', 'Pay')}</Button> : null}
-                      <AccountingDeleteButton kind="TRANSPORT" id={row.id} amount={row.amount} description={`${row.employeeName} / ${row.claimDate}\n${row.purpose}`} onDeleted={load} />
-                    </div>
+                      <AccountingDeleteButton menuItem kind="TRANSPORT" id={row.id} amount={row.amount} description={`${row.employeeName} / ${row.claimDate}\n${row.purpose}`} onDeleted={load} />
+                    </ActionMenu>
                   </td>
                 </tr>
               ))}

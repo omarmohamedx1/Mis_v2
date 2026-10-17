@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { Archive, Eye, ListFilter, Pencil, Plus, RotateCcw, Search, Trash2, UsersRound, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
@@ -490,14 +491,14 @@ export function HrEmployeesPage() {
     { id: 'archived', label: t('archivedEmployees'), active: archived, action: () => applyPreset('all', true) },
   ];
   const employeeActions = (employee: EmployeeListItem) => (
-    <div className="flex items-center gap-1">
+    <ActionMenu>
       <Link aria-label={`${t('view')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-mis-primary hover:bg-mis-pale" title={t('view')} to={`/hr/employees/${employee.id}`}><Eye className="h-4 w-4" /></Link>
       <button aria-label={`${t('edit')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-mis-primary hover:bg-mis-pale" onClick={() => void edit(employee)} title={t('edit')} type="button"><Pencil className="h-4 w-4" /></button>
       {employee.isArchived
         ? <button aria-label={`${t('restoreEmployee')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50" onClick={() => setRestoreTarget(employee)} title={t('restoreEmployee')} type="button"><RotateCcw className="h-4 w-4" /></button>
         : <button aria-label={`${t('archiveEmployee')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-50" onClick={() => setArchiveTarget(employee)} title={t('archiveEmployee')} type="button"><Archive className="h-4 w-4" /></button>}
       {!employee.isArchived || canDelete ? <button aria-label={`${t('delete')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-600 hover:bg-red-50" onClick={() => setRemoveIds([employee.id])} title={t('delete')} type="button"><Trash2 className="h-4 w-4" /></button> : null}
-    </div>
+    </ActionMenu>
   );
 
   return (

@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { Bell, ClipboardList } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -170,7 +171,7 @@ export function CollectionsDataBatchesPage() {
                     <td className="px-4 py-3"><DataEntryBatchStatus value={item.status} /></td>
                     <td className="px-4 py-3">{d.dateTime(item.createdAt)}</td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
+                      <ActionMenu>
                         <Button fullWidth={false} size="sm" type="button" variant="ghost" onClick={() => void openDetails(item.id)}>{d.text('عرض', 'View')}</Button>
                         {item.status === 'SUBMITTED' ? (
                           <>
@@ -181,7 +182,7 @@ export function CollectionsDataBatchesPage() {
                         {item.status === 'ACCEPTED' ? (
                           <Button disabled={busyId === item.id} fullWidth={false} size="sm" type="button" variant="outline" onClick={() => void runAction(item.id, async () => { await dataEntryService.sendToDistribution(item.id); setDistributionHint(true); })}>{d.text('إرسال للتوزيع', 'Send to distribution')}</Button>
                         ) : null}
-                      </div>
+                      </ActionMenu>
                     </td>
                   </tr>
                 ))}

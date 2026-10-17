@@ -17,7 +17,7 @@ This document describes the existing MIS visual identity and the shared fixes fr
 | `--color-placeholder` | Muted token | Input placeholders |
 | `--color-control-border` | `#7b8da6` | Interactive control boundaries; keep decorative card borders light |
 | `--color-focus` | `#0b638f` | Keyboard outline and native checkbox/radio accent |
-| Invalid control border | Red 500 / `#ef4444` | Error state, accompanied by a message |
+| `--color-danger` | Red 500 / `#ef4444` | Error border, retained on focus and accompanied by a message |
 | `--z-dialog` | 50 | Dialog frames |
 | `--z-popover` | 100 | Calendar/time popups and select backdrops |
 | `--z-select` | 110 | Nested option lists |

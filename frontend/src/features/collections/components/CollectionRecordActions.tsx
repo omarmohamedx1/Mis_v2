@@ -1,5 +1,6 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
+import { ActionMenu } from '../../../components/common/ActionMenu';
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { Modal } from '../../../components/common/Modal';
 import { useToast } from '../../../components/common/Toast';
@@ -10,8 +11,8 @@ import { collectionsService } from '../services/collectionsService';
 import type { Activity, PromiseItem } from '../types/collections';
 import { CollectionEntryForm } from './CollectionEntryForm';
 
-type Props = { caseId: string; context: string; onSaved: () => Promise<void> } & ({ activity: Activity; promise?: never } | { promise: PromiseItem; activity?: never });
-export function CollectionRecordActions({ activity, promise, caseId, context, onSaved }: Props) {
+type Props = { caseId: string; context: string; onSaved: () => Promise<void>; children?: ReactNode } & ({ activity: Activity; promise?: never } | { promise: PromiseItem; activity?: never });
+export function CollectionRecordActions({ activity, promise, caseId, context, onSaved, children }: Props) {
   const { user } = useAuth();
   const { ct } = useCollectionsLocalization();
   const toast = useToast();
@@ -23,7 +24,7 @@ export function CollectionRecordActions({ activity, promise, caseId, context, on
   const operational = manager || user?.roles.includes('CollectionsCollector') || user?.permissions.some(permission => ['*', 'collections.activity.manage', 'collections.ptp.manage'].includes(permission));
   const ownerId = activity?.createdById ?? promise?.collectorId;
   const manual = !activity || ['CALL', 'SMS', 'EMAIL', 'NOTE', 'FOLLOW_UP'].includes(activity.type);
-  if (!operational || (!manager && ownerId !== user?.id) || !manual || (promise && promise.actualPaidAmount > 0)) return null;
+  const canManageRecord = operational && (manager || ownerId === user?.id) && manual && !(promise && promise.actualPaidAmount > 0);
 
   async function remove() {
     if (submitting.current) return;
@@ -41,10 +42,13 @@ export function CollectionRecordActions({ activity, promise, caseId, context, on
   }
 
   return <>
-    <div className="mt-2 flex items-center gap-2">
-      <button type="button" disabled={saving} onClick={() => setEditing(true)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-mis-primary hover:bg-mis-pale"><Pencil className="h-3.5 w-3.5" />{ct('editRecord')}</button>
-      <button type="button" disabled={saving} onClick={() => setDeleting(true)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" />{ct('delete')}</button>
-    </div>
+    <ActionMenu>
+      {children}
+      {canManageRecord && <>
+        <button type="button" disabled={saving} onClick={() => setEditing(true)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-mis-primary hover:bg-mis-pale"><Pencil className="h-3.5 w-3.5" />{ct('editRecord')}</button>
+        <button type="button" disabled={saving} onClick={() => setDeleting(true)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" />{ct('delete')}</button>
+      </>}
+    </ActionMenu>
     {editing && <Modal open title={ct(activity ? 'editActivity' : 'editPromise')} description={context} onClose={() => { if (!saving) setEditing(false); }} closeOnBackdrop={!saving} closeOnEscape={!saving} hideCloseButton={saving}>
       <CollectionEntryForm type={activity ? 'activity' : 'promise'} caseId={caseId} context={context} activity={activity} promise={promise} saving={saving} setSaving={setSaving} onSaved={async () => { setEditing(false); await onSaved(); }} />
     </Modal>}

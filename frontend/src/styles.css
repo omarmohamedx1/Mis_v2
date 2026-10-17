@@ -17,6 +17,7 @@
   --color-placeholder: var(--color-muted);
   --color-control-border: #7b8da6;
   --color-focus: #0b638f;
+  --color-danger: #ef4444;
   --z-dialog: 50;
   --z-popover: 100;
   --z-select: 110;
@@ -330,7 +331,15 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--color-focus); 
 }
 .composite-control[data-comfortable] { min-block-size: var(--form-control-height); padding-block: 5px; border-radius: var(--radius-form); }
 .composite-control:focus-within { border-color: #1788b8; box-shadow: 0 0 0 4px rgba(23, 136, 184, 0.14); }
-.composite-control[data-invalid] { border-color: #ef4444; }
+.composite-control[data-invalid],
+.form-control[aria-invalid='true'],
+.form-control[data-invalid],
+button[aria-haspopup='listbox'][aria-invalid='true'] { border-color: var(--color-danger); }
+/* Generated focus utilities follow custom CSS; combined error/focus states win. */
+.composite-control[data-invalid]:focus-within,
+.form-control[aria-invalid='true']:focus,
+.form-control[data-invalid]:focus-within,
+button[aria-haspopup='listbox'][aria-invalid='true']:focus { border-color: var(--color-danger); }
 .date-control { container-type: inline-size; }
 .date-panel { container-type: inline-size; container-name: date-panel; }
 @container (max-width: 16rem) {

@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { DateControl } from '../../components/forms/DateControl';
 import { BadgeDollarSign, Ban, CalendarX2, CheckCircle2, Eye, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
@@ -349,12 +350,12 @@ export function HrAbsencesPage({ embedded = false }: { embedded?: boolean }) {
                       <td className="px-5 py-4 text-sm text-slate-600">{displayDate(item.absenceDate, language)}</td>
                       <td className="px-5 py-4"><StatusBadge tone={statusTones[item.status]}>{t(statusLabels[item.status])}</StatusBadge></td>
                       <td className="px-5 py-4"><div className="space-y-1"><StatusBadge tone={payrollTones[item.payrollImpactStatus]}>{payrollLabel(item.payrollImpactStatus, language)}</StatusBadge>{canReviewPayroll && item.payrollImpactStatus === 'Approved' ? <p className="text-xs font-bold text-emerald-700">{money(item.approvedDeductionAmount, language)}</p> : canReviewPayroll && item.payrollImpactStatus === 'PendingReview' ? <p className="text-xs font-semibold text-amber-700">{money(item.suggestedDeductionAmount, language)}</p> : null}</div></td>
-                      <td className="px-5 py-4"><div className="flex justify-end gap-1">
+                      <td className="px-5 py-4"><ActionMenu>
                         <button aria-label={t('view')} className="rounded-lg p-2 text-mis-primary hover:bg-mis-pale" onClick={() => void openRecord(item, 'view')} type="button"><Eye className="h-4 w-4" /></button>
                         <button aria-label={t('edit')} className="rounded-lg p-2 text-mis-primary hover:bg-mis-pale" onClick={() => void openRecord(item, 'edit')} type="button"><Pencil className="h-4 w-4" /></button>
                         {canReviewPayroll && item.status === 'Unexcused' ? <button aria-label={payrollCopy[language].review} className="rounded-lg p-2 text-emerald-700 hover:bg-emerald-50" onClick={() => void openRecord(item, 'payroll')} title={payrollCopy[language].review} type="button"><BadgeDollarSign className="h-4 w-4" /></button> : null}
                         <button aria-label={t('delete')} className="rounded-lg p-2 text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(item)} type="button"><Trash2 className="h-4 w-4" /></button>
-                      </div></td>
+                      </ActionMenu></td>
                     </tr>
                   ))}
                 </tbody>

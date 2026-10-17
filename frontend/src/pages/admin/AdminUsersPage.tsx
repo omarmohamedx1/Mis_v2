@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { AlertOctagon, Check, Copy, KeyRound, LockKeyhole, Plus, Search, ShieldCheck, SlidersHorizontal, Trash2, UserCheck, UserX } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../components/common/Button';
@@ -216,7 +217,7 @@ export function AdminUsersPage() {
                     </td>
                     <td className="px-5 py-4 text-slate-600">{user.lastLoginAt ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(user.lastLoginAt)) : t.never}</td>
                     <td className="px-5 py-4">
-                      <div className="flex gap-2">
+                      <ActionMenu>
                         <button className="inline-flex items-center gap-1.5 rounded-lg bg-[#09263d] px-3 py-2 text-xs font-bold text-white hover:bg-[#164867]" onClick={() => { setSelected(user); setMode('access'); }} type="button">
                           <SlidersHorizontal className="h-3.5 w-3.5" />{t.review}
                         </button>
@@ -226,7 +227,7 @@ export function AdminUsersPage() {
                         <button className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50" onClick={() => setDeleteTarget(user)} type="button">
                           <Trash2 className="h-3.5 w-3.5" />{t.deleteUser}
                         </button>
-                      </div>
+                      </ActionMenu>
                     </td>
                   </tr>
                 ))}

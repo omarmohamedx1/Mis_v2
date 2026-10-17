@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { Database, Pencil, Plus, Power, PowerOff, Search, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -336,11 +337,11 @@ export function HrMasterPage() {
                       {hasExtraColumn ? <td className="px-5 py-4 text-sm text-slate-600">{category === 'positions' ? item.departmentName || t('notAssigned') : category === 'branches' ? item.address || '—' : category === 'leave-types' ? item.defaultAnnualEntitlement ?? 0 : item.requiresExpiryDate ? t('yes') : t('no')}</td> : null}
                       <td className="px-5 py-4"><StatusBadge dot tone={item.isActive ? 'success' : 'neutral'}>{t(item.isActive ? 'active' : 'inactive')}</StatusBadge></td>
                       <td className="px-5 py-4">
-                        <div className="flex justify-end gap-1">
+                        <ActionMenu>
                           <Button disabled={openingEditId === item.id} fullWidth={false} leftIcon={<Pencil className="h-4 w-4" aria-hidden="true" />} onClick={() => void editItem(item)} size="sm" variant="ghost">{t('edit')}</Button>
                           <Button className={item.isActive ? 'text-red-600 hover:bg-red-50 hover:text-red-700' : ''} fullWidth={false} leftIcon={item.isActive ? <PowerOff className="h-4 w-4" aria-hidden="true" /> : <Power className="h-4 w-4" aria-hidden="true" />} onClick={() => setActivationTarget(item)} size="sm" variant="ghost">{t(item.isActive ? 'deactivate' : 'activate')}</Button>
                           <Button className="text-red-600 hover:bg-red-50 hover:text-red-700" fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />} onClick={() => setDeleteTarget(item)} size="sm" variant="ghost">{t('delete')}</Button>
-                        </div>
+                        </ActionMenu>
                       </td>
                     </tr>
                   ))}

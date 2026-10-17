@@ -87,7 +87,7 @@ def inspect(route):
                 driver.get(base+'?mode=app&route='+route);wait.until(lambda d:d.execute_script('return window.__qa?.ready'));driver.execute_script('window.__qa.language(arguments[0])',lang);settle()
             resize(width);time.sleep(.25);r=driver.execute_script(geometry);links.update(x for x in r.pop('links') if x and x.startswith('/'))
             r.update(route=route,actual=driver.execute_script('return location.pathname'),lang=lang,width=width);page.append(r)
-            if capture_only:
+            if capture_only or (os.environ.get('MIS_QA_SCREENSHOTS')=='1' and ((lang=='en' and width==1440) or (lang=='ar' and width==390))):
                 driver.save_screenshot(str(captures/(lang+'-'+re.sub(r'[^a-zA-Z0-9]+','-',route)+'.png')))
             if r['overflow'] and width in [320,1024]:driver.save_screenshot(str(out/('app-'+phase+'-'+re.sub(r'[^a-zA-Z0-9]+','-',route)+'-'+lang+'-'+str(width)+'.png')))
     if os.environ.get('MIS_QA_OVERLAYS') == '1':
@@ -136,6 +136,38 @@ try:
     data={f'/finance/journals/{fid}':journal,f'/data-entry/clients/{fid}':client,f'/data-entry/clients/{fid}/documents':[],f'/legal/cases/{fid}':legal,f'/hr/excuses/visits/{fid}':visit}
     driver.execute_script('Object.assign(window.__qa.fixtures,arguments[0])',data)
     driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument',{'source':'window.__qaFixtureSeed='+json.dumps(data)+';'})
+    if os.environ.get('MIS_QA_WORKSPACE_ONLY') == '1':
+        workspace=json.loads(Path('frontend/qa/workspace-fixtures.json').read_text(encoding='utf-8'))
+        data.update(workspace['responses'])
+        driver.execute_script('Object.assign(window.__qa.fixtures,arguments[0])',data)
+        driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument',{'source':'window.__qaFixtureSeed='+json.dumps(data)+';'})
+        ws_patterns=list(dict.fromkeys(x['path'] for x in inventory['routes'] if not x['redirect'] and '*' not in x['path'] and (x['path'].startswith('/banks/:bankId') or x['path'].startswith('/installment-companies/:companyId'))))
+        for pattern in ws_patterns:
+            driver.execute_script('window.__qa.navigate("/modules")');settle()
+            route=pattern.replace(':bankId',workspace['bankId']).replace(':companyId',workspace['companyId']).replace(':primary','act').replace(':secondary','auto').replace(':customerId',workspace['id'])
+            inspect(route)
+        error_checks=[]
+        for lang in ['en','ar']:
+            driver.execute_script('window.__qa.language(arguments[0])',lang);resize(320 if lang=='ar' else 1440)
+            for kind,oid in [('banks',workspace['bankId']),('installment-companies',workspace['companyId'])]:
+                for status in [503,404]:
+                    driver.execute_script('window.__qa.navigate("/modules")');settle()
+                    hook=driver.execute_script("return window.__qa.api.interceptors.response.use(r=>{if(r.config.url===arguments[0]){const e=new Error('Synthetic UI failure');e.isAxiosError=true;e.config=r.config;e.response={status:arguments[1],data:{}};return Promise.reject(e)}return r})",'/'+kind+'/'+oid,status)
+                    driver.execute_script('window.__qa.navigate(arguments[0])','/'+kind+'/'+oid+'/act/auto');settle()
+                    state=driver.execute_script('const m=document.querySelector("main");return {header:!!m.querySelector("h1"),retry:!!m.querySelector("button"),back:!!m.querySelector("a")}')
+                    ok=not state['header'] and state['retry']==(status==503)
+                    error_checks.append({'lang':lang,'kind':kind,'status':status,'pass':ok})
+                    if not ok:raise AssertionError('Incorrect organization error presentation: '+str(state))
+                    driver.execute_script('window.__qa.api.interceptors.response.eject(arguments[0])',hook)
+                    if status==503:
+                        driver.find_element(By.CSS_SELECTOR,'main button').click();settle()
+                        ok=bool(driver.find_elements(By.CSS_SELECTOR,'main h1'));error_checks.append({'lang':lang,'kind':kind,'retryRestoresContent':ok})
+                        if not ok:raise AssertionError('Organization retry failed')
+        (out/'workspace-error-checks.json').write_text(json.dumps(error_checks,indent=2))
+        (out/f'workspace-{phase}-coverage.json').write_text(json.dumps({'patterns':ws_patterns,'synthetic':True},indent=2))
+        (out/f'app-{phase}-requests.json').write_text(json.dumps(requests+driver.execute_script('return window.__qa.requests'),indent=2))
+        print('COMPLETE WORKSPACE',len(results),'samples',flush=True)
+        raise SystemExit(0)
     routes=list(dict.fromkeys(x['path'] for x in inventory['routes'] if not x['redirect'] and not x['dynamic'] and '*' not in x['path'] and x['path'] not in ['/','/change-password','/login','/unauthorized']))
     for route in routes:inspect(route)
     links.difference_update(x for x in list(links) if fid in x)

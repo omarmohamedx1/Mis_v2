@@ -41,6 +41,7 @@ import { ExcelSheetPicker } from '../src/features/import/ExcelSheetPicker';
 import { ExcelColumnReview } from '../src/features/import/ExcelColumnReview';
 import { ExcelPreviewToolbar } from '../src/features/import/ExcelPreviewToolbar';
 import '../src/styles.css';
+import { ActionMenuLab } from './ActionMenuLab';
 
 const params = new URLSearchParams(location.search);
 const lab = params.get('mode') !== 'app';
@@ -76,6 +77,7 @@ function Lab() {
   if(lab) hrEmployeeService.getEmployees=async()=>({items:Array.from({length:12},(_,i)=>({id:'employee'+i,employeeNumber:'EMP-'+i,fullName:long+' '+i,departmentName:token})),page:1,pageSize:12,totalCount:12,totalPages:1}) as any;
   const opts=Array.from({length:30},(_,i)=><option key={i} value={String(i)} disabled={i===5}>{i===1?token:`${long} ${i}`}</option>);
   return <main className="mx-auto max-w-6xl space-y-6 p-4">
+    <ActionMenuLab />
     <PageHeader title={long} description={token} actions={<><Button fullWidth={false} onClick={()=>setLoading(x=>!x)}>Toggle loading</Button><Button fullWidth={false} onClick={()=>setError(x=>!x)}>Toggle error</Button></>} />
     <section data-qa="buttons" className="grid gap-3 sm:grid-cols-2">
       {(['primary','secondary','outline','ghost','danger'] as const).map(variant=><div key={variant} className="flex min-w-0 flex-wrap gap-2"><Button variant={variant} fullWidth={false} isLoading={loading} leftIcon={<Plus/>}>{variant}</Button><Button variant={variant} disabled fullWidth={false}>Disabled</Button><Button variant={variant} fullWidth={false}>{token}</Button></div>)}

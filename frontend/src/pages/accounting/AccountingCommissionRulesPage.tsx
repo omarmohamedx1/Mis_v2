@@ -1,3 +1,4 @@
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { PageActions } from '../../components/common/PageActions';
 import { Modal } from '../../components/common/Modal';
 import { AccountingExportButton, useAccountingMoneyConfirm } from '../../features/accounting/bookUi';
@@ -143,12 +144,12 @@ export function AccountingCommissionRulesPage() {
                   <td className="px-3 py-2">{a.date(row.effectiveFrom)}</td>
                   <td className="px-3 py-2"><AccountingStatus value={row.isActive ? 'ACTIVE' : 'INACTIVE'} /></td>
                   <td className="px-3 py-2">
-                    <div className="flex justify-end gap-1">
+                    <ActionMenu>
                       {row.isActive ? (
                         <Button fullWidth={false} leftIcon={<PowerOff className="h-4 w-4" />} onClick={() => setDeactivateTarget(row)} size="sm" variant="ghost">{a.text('إيقاف', 'Deactivate')}</Button>
                       ) : null}
                       <Button className="text-red-600 hover:bg-red-50 hover:text-red-700" fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteTarget(row)} size="sm" variant="ghost">{a.text('حذف', 'Delete')}</Button>
-                    </div>
+                    </ActionMenu>
                   </td>
                 </tr>
               ))}
