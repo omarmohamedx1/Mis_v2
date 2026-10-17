@@ -180,12 +180,12 @@ function Metric({ label, money, value }: { label: string; money?: boolean; value
 
 function SummaryCard({ hint, icon, label, value }: { hint: string; icon: ReactNode; label: string; value: string }) {
   return (
-    <article className="rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
+    <article className="collection-metric rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-semibold text-slate-500">{label}</p>
         <span className="grid h-11 w-11 place-items-center rounded-xl bg-mis-pale text-mis-primary">{icon}</span>
       </div>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-mis-navy" data-bidi="ltr">{value}</p>
+      <p className="collection-metric-value mt-3 text-2xl font-bold tabular-nums text-mis-navy" data-bidi="ltr">{value}</p>
       <p className="mt-2 text-xs leading-6 text-slate-500">{hint}</p>
     </article>
   );

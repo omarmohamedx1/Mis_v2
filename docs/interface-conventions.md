@@ -9,6 +9,14 @@ on the right and the currency on the left. Unicode isolation preserves this orde
 in both RTL text and Latin numeric cells, including negative amounts.
 For an already formatted amount, use `formatCurrencyAmount` instead of concatenating
 the currency directly. Keep number precision and the actual currency unchanged.
+Compact amounts contain three separate runs: number, scale (thousand/million/
+billion), then currency. Do not force the entire compact amount to LTR. For counts
+or percentages followed by a translated label, use `formatNumberWithUnit`.
+
+Collections summary tables use `collection-summary-table` and a readable minimum
+width within a horizontal scroller. Keep numeric cells and short headers unbroken.
+Use `collection-metric`/`collection-metric-value` for dashboard cards so amounts
+scale to the card width and stay aligned with their label.
 
 The application bundles Inter and Noto Sans Arabic under `frontend/src/assets/fonts`.
 Use the shared `--font-interface` token or Tailwind's `font-sans`; avoid external

@@ -1,5 +1,5 @@
-import { ChevronLeft, ChevronRight, Languages, LogOut, Menu, UserCircle, X, type LucideIcon } from 'lucide-react';
-import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, Languages, LogOut, Menu, UserCircle, X, type LucideIcon } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import misLogo from '../../assets/mis-logo.svg';
 import { ModuleSwitcherLink } from '../navigation/ModuleSwitcherLink';
@@ -9,6 +9,7 @@ export type ModuleTheme = 'admin' | 'collections' | 'finance' | 'hr' | 'legal';
 
 export interface ModuleNavigationItem {
   group?: string;
+  groupId?: string;
   icon: LucideIcon;
   label: string;
   to: string;
@@ -48,7 +49,7 @@ const chrome = {
 
 function linkClass(active: boolean) {
   return [
-    'module-sidebar-link group relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
+    'module-sidebar-link group relative flex min-h-9 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
     active ? chrome.active : 'text-slate-600 hover:bg-slate-50 hover:text-[#0a1e36]',
   ].join(' ');
 }
@@ -64,6 +65,16 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
   useOverlayLayer(navigationId, open && !desktop, () => { setOpen(false); menuButton.current?.focus(); });
   useFocusBoundary(navigationId, open && !desktop, navigationRef);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(props.storageKey) === 'collapsed');
+  const [closedGroups, setClosedGroups] = useState<string[]>([]);
+  const groups = useMemo(() => {
+    const grouped = new Map<string, { id: string; label?: string; items: ModuleNavigationItem[] }>();
+    props.navigation.forEach(item => {
+      const id = item.groupId ?? item.group ?? 'navigation';
+      if (!grouped.has(id)) grouped.set(id, { id, label: item.group, items: [] });
+      grouped.get(id)!.items.push(item);
+    });
+    return [...grouped.values()];
+  }, [props.navigation]);
   const currentNavigationItem = [...props.navigation]
     .sort((left, right) => right.to.length - left.to.length)
     .find((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`));
@@ -71,7 +82,11 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
     ? (props.isRtl ? ChevronLeft : ChevronRight)
     : (props.isRtl ? ChevronRight : ChevronLeft);
 
-  useEffect(() => setOpen(false), [location.pathname]);
+  useEffect(() => {
+    setOpen(false);
+    const activeGroup = currentNavigationItem?.groupId ?? currentNavigationItem?.group;
+    if (activeGroup) setClosedGroups(current => current.filter(group => group !== activeGroup));
+  }, [location.pathname, currentNavigationItem?.groupId, currentNavigationItem?.group]);
 
   const toggleCollapsed = () => setCollapsed((current) => {
     const next = !current;
@@ -112,42 +127,46 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
           </button>
         </div>
 
-        <nav className="module-sidebar-scroll min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-3 py-3">
-          {props.navigation.map(({ to, label, group, icon: Icon }, index) => (
-            <Fragment key={to}>
-              {group && group !== props.navigation[index - 1]?.group ? (
-                <p className="module-sidebar-label px-3 pb-1 pt-3 text-xs font-bold leading-5 text-mis-muted first:pt-0">{group}</p>
-              ) : null}
-              <NavLink to={to} title={label} className={({ isActive }) => linkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
+        <nav className="module-sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+          {groups.map((group, index) => {
+            const expanded = (collapsed && desktop) || !closedGroups.includes(group.id);
+            const groupId = `${navigationId}-group-${index}`;
+            return <section className="module-sidebar-section" key={group.id}>
+              {group.label ? <button aria-controls={groupId} aria-expanded={expanded} className="module-sidebar-group flex w-full items-center justify-between gap-2 px-3 pb-1.5 pt-2 text-start text-[11px] font-semibold text-slate-500" onClick={() => setClosedGroups(current => current.includes(group.id) ? current.filter(id => id !== group.id) : [...current, group.id])} type="button">
+                <span>{group.label}</span><ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? '' : '-rotate-90 rtl:rotate-90'}`} />
+              </button> : null}
+              <div className="space-y-0.5" hidden={!expanded} id={groupId}>
+                {group.items.map(({ to, label, icon: Icon }) => <NavLink aria-label={label} to={to} title={label} onClick={() => setOpen(false)} className={({ isActive }) => linkClass(isActive)} key={to}>
+                  {({ isActive }) => <>
                     {isActive ? <span aria-hidden="true" className={`absolute inset-y-2 start-0 w-[3px] rounded-full ${chrome.accent}`} /> : null}
-                    <Icon aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? chrome.icon : 'text-mis-muted group-hover:text-slate-600'}`} />
-                    <span className="module-sidebar-label min-w-0 truncate leading-5">{label}</span>
-                  </>
-                )}
-              </NavLink>
-            </Fragment>
-          ))}
+                    <Icon aria-hidden="true" className={`h-[18px] w-[18px] shrink-0 ${isActive ? chrome.icon : 'text-mis-muted group-hover:text-slate-600'}`} />
+                    <span className="module-sidebar-label min-w-0 leading-5">{label}</span>
+                  </>}
+                </NavLink>)}
+              </div>
+            </section>;
+          })}
         </nav>
 
         <div className="module-sidebar-footer shrink-0 border-t border-mis-border bg-slate-50/90 p-3">
           <NavLink
             to={props.profilePath}
+            aria-label={props.profileLabel}
             title={props.profileLabel}
             className={({ isActive }) => `module-sidebar-link mb-1 flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 ${isActive ? chrome.active : 'text-slate-600 hover:bg-white'}`}
           >
-            <UserCircle className="h-8 w-8 shrink-0 text-mis-muted" />
+            <UserCircle className="h-7 w-7 shrink-0 text-mis-muted" />
             <div className="module-sidebar-label min-w-0">
               <p className="truncate text-sm font-semibold leading-5 text-mis-navy">{props.userName || '—'}</p>
               <p className="truncate text-xs leading-5 text-slate-500">{props.profileLabel}</p>
             </div>
           </NavLink>
           <ModuleSwitcherLink collapsed={collapsed} />
-          <div className="module-sidebar-footer-actions mt-1 grid grid-cols-1 gap-1">
+          <div className="module-sidebar-footer-actions mt-1 grid grid-cols-2 gap-1">
             <button
               className="module-sidebar-link flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white hover:text-mis-primary"
               onClick={props.onLanguageToggle}
+              aria-label={props.languageLabel}
               title={props.languageLabel}
               type="button"
             >
@@ -157,6 +176,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
             <button
               className="module-sidebar-link flex min-h-10 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-700"
               onClick={props.onSignOut}
+              aria-label={props.signOutLabel}
               title={props.signOutLabel}
               type="button"
             >
@@ -178,7 +198,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
           </div>
           {props.headerAside ? <div className="ms-auto flex min-w-0 items-center gap-2">{props.headerAside}</div> : null}
         </header>
-        <main className="ds-readable min-w-0 overflow-x-hidden p-4 sm:p-6 xl:p-8">
+        <main className="module-main min-w-0 overflow-x-hidden p-4 sm:p-6 xl:p-8">
           <div className="mx-auto min-w-0 w-full max-w-[1680px]"><Outlet /></div>
         </main>
       </div>

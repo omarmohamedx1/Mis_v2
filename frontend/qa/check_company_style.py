@@ -16,6 +16,18 @@ driver = webdriver.Chrome(options=options)
 wait = WebDriverWait(driver, 20)
 checks, measurements = [], []
 
+money_geometry = '''
+return [...document.querySelectorAll(arguments[0])].flatMap(element=>{
+ const node=element.firstChild;
+ if(!node||node.nodeType!==Node.TEXT_NODE)return [];
+ const text=node.textContent,number=/-?\\d[\\d,.]*/.exec(text),unit=/(?:مليون|مليار|ألف|آلاف|تريليون)/.exec(text),currency=text.indexOf('ج.م');
+ if(!number||!unit||currency<0)return [];
+ const range=document.createRange();
+ const bounds=(start,length)=>{range.setStart(node,start);range.setEnd(node,start+length);const r=range.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,lines:range.getClientRects().length};};
+ return [{text,amount:bounds(number.index,number[0].length),unit:bounds(unit.index,unit[0].length),currency:bounds(currency,3)}];
+});
+'''
+
 def check(value, label):
     if not value:
         raise AssertionError(label)
@@ -80,6 +92,19 @@ try:
             for currency in ['USD', 'SAR']:
                 text = driver.find_element(By.CSS_SELECTOR, f'[data-currency="{currency}"]').text
                 check('ج.م' not in text and '55.00' in text, currency + ': other currency labels and decimal places are preserved')
+            compact = driver.execute_script(money_geometry, '[data-money-value],[data-compact-money]')
+            check(len(compact) >= 12, 'Compact regression covers thousand, million, billion and negative values in both directions')
+            for index, item in enumerate(compact):
+                check(item['unit']['right'] <= item['amount']['left'] + 1 and item['currency']['right'] <= item['unit']['left'] + 1, f'compact {index}: number, scale and currency follow Arabic reading order')
+            quantities = driver.execute_script('''
+              return [...document.querySelectorAll('[data-quantity-value]')].map(element=>{
+                const node=element.firstChild,text=node.textContent,number=/-?\\d[\\d,.]*/.exec(text),unit=text.indexOf(element.dataset.unit),range=document.createRange();
+                range.setStart(node,number.index);range.setEnd(node,number.index+number[0].length);const amount=range.getBoundingClientRect();
+                range.setStart(node,unit);range.setEnd(node,unit+element.dataset.unit.length);const label=range.getBoundingClientRect();
+                return {numberLeft:amount.left,unitRight:label.right};
+              });
+            ''')
+            check(len(quantities) == 4 and all(item['unitRight'] <= item['numberLeft'] + 1 for item in quantities), 'Counts and percentages keep their translated label after the value in both directions')
         for width in [320, 360, 390, 768, 1024, 1440]:
             resize(width)
             check(driver.execute_script('return document.documentElement.scrollWidth<=innerWidth+1'), f'{language} {width}: page fits viewport')
@@ -100,6 +125,30 @@ try:
         driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
         check(not driver.execute_script('return window.__companyStyleQa.errors'), language + ': no browser errors')
         print('PASS', language, 'formatters, payroll, typography, calendar and six table widths', flush=True)
+    # Use the actual dashboard components and the amounts/counts in the reported screenshot.
+    for page in ['dashboard', 'creditors', 'collectors']:
+        for language in ['ar', 'en']:
+            resize(1440)
+            driver.get(f'http://127.0.0.1:5181/qa/company-style.html?lang={language}&page={page}')
+            wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, 'main .collection-metric-value'))
+            driver.execute_async_script('document.fonts.ready.then(()=>arguments[0]())')
+            for width in [320, 390, 768, 1024, 1280, 1440]:
+                resize(width)
+                check(driver.execute_script('return document.documentElement.scrollWidth<=innerWidth+1'), f'{page} {language} {width}: page fits viewport')
+                check(driver.execute_script("return [...document.querySelectorAll('.collection-metric-value')].every(e=>e.scrollWidth<=e.clientWidth+1)"), f'{page} {language} {width}: metric amounts stay within their cards')
+                if language == 'ar':
+                    values = driver.execute_script(money_geometry, '.collection-metric-value,[data-bidi=ltr]')
+                    check(len(values) >= 3, f'{page} {width}: actual page contains compact amounts')
+                    check(all(item['unit']['right'] <= item['amount']['left'] + 1 and item['currency']['right'] <= item['unit']['left'] + 1 for item in values), f'{page} {width}: actual compact amounts read number then scale then currency')
+                    check(all(item['amount']['lines'] == 1 and item['unit']['lines'] == 1 and item['currency']['lines'] == 1 and abs(item['amount']['top']-item['unit']['top']) < 8 for item in values), f'{page} {width}: compact amounts never split across lines')
+                if page != 'collectors':
+                    check(driver.execute_script("return [...document.querySelectorAll('.collection-summary-table th,.collection-summary-table td:not(:first-child)')].every(e=>getComputedStyle(e).whiteSpace==='nowrap')"), f'{page} {language} {width}: summary table preserves headers and numeric cells')
+                    check(driver.execute_script("return [...document.querySelectorAll('.collection-summary-table tbody tr')].every(row=>[...row.cells].slice(1).every(cell=>{const r=document.createRange();r.selectNodeContents(cell);return [...r.getClientRects()].every(rect=>rect.height<40)}))"), f'{page} {language} {width}: case counts and amounts remain readable')
+                if width in [390, 1440]:
+                    driver.execute_script('window.scrollTo(0,0)')
+                    driver.save_screenshot(str(out / f'{page}-{language}-{width}.png'))
+            check(not driver.execute_script('return window.__companyStyleQa.errors'), f'{page} {language}: no browser errors')
+            print('PASS', page, language, 'compact amounts and dashboard layouts', flush=True)
     # Exercise the real distribution tables after the common styles changed.
     for kind in ['bank', 'installment', 'general']:
         for language in ['en', 'ar']:

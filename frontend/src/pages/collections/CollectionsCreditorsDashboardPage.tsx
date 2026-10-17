@@ -12,6 +12,7 @@ import { useCollectionsLocalization } from '../../features/collections/localizat
 import { classificationPath, deskLabelKey, organizationPath, parseClassification, type OrganizationKind } from '../../features/collections/organizationClassification';
 import { collectionsService } from '../../features/collections/services/collectionsService';
 import type { CollectionCreditorBook, CollectionCreditorDashboard, CollectionCreditorDesk } from '../../features/collections/types/collections';
+import { formatNumberWithUnit } from '../../utils/formatMoney';
 
 export function CollectionsCreditorsDashboardPage() {
   const { ct } = useCollectionsLocalization();
@@ -72,7 +73,7 @@ export function CollectionsCreditorsDashboardPage() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard hint={ct('bankBookCount').replace('{count}', f.number(data.banks.length))} icon={<Landmark className="h-5 w-5" />} label={ct('debtByBank')} value={f.number(data.banks.length)} />
         <SummaryCard hint={ct('companyBookCount').replace('{count}', f.number(data.companies.length))} icon={<Building2 className="h-5 w-5" />} label={ct('debtByCompany')} value={f.number(data.companies.length)} />
-        <SummaryCard hint={`${f.number(totalCases)} ${ct('casesCount')}`} icon={<Landmark className="h-5 w-5" />} label={ct('totalOutstanding')} value={f.money(totalOutstanding)} />
+        <SummaryCard hint={formatNumberWithUnit(f.number(totalCases), ct('casesCount'))} icon={<Landmark className="h-5 w-5" />} label={ct('totalOutstanding')} value={f.money(totalOutstanding)} />
         <SummaryCard hint={ct('unassigned')} icon={<Building2 className="h-5 w-5" />} label={ct('unassigned')} value={f.number(totalUnassigned)} />
       </section>
 
@@ -167,10 +168,10 @@ function CreditorGroup({ books, deskLabel, empty, icon, kind, labels, money, num
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-mis-muted">{labels.desks}</p>
                 {book.desks.length ? (
                   <div className="overflow-x-auto rounded-xl border border-mis-border bg-white">
-                    <table className="min-w-full text-sm">
+                    <table className="collection-summary-table w-full min-w-[52rem] text-sm">
                       <thead>
                         <tr className="border-b border-slate-100 text-start text-xs font-semibold uppercase tracking-wide text-mis-muted">
-                          <th className="px-4 py-2.5 font-semibold">{labels.desks}</th>
+                          <th className="min-w-[13rem] px-4 py-2.5 font-semibold">{labels.desks}</th>
                           <th className="px-4 py-2.5 text-end font-semibold">{labels.cases}</th>
                           <th className="px-4 py-2.5 text-end font-semibold">{labels.assigned}</th>
                           <th className="px-4 py-2.5 text-end font-semibold">{labels.unassigned}</th>
@@ -220,12 +221,12 @@ function Metric({ label, money, value }: { label: string; money?: boolean; value
 
 function SummaryCard({ hint, icon, label, value }: { hint: string; icon: ReactNode; label: string; value: string }) {
   return (
-    <article className="rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
+    <article className="collection-metric rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-semibold text-slate-500">{label}</p>
         <span className="grid h-11 w-11 place-items-center rounded-xl bg-mis-pale text-mis-primary">{icon}</span>
       </div>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-mis-navy" data-bidi="ltr">{value}</p>
+      <p className="collection-metric-value mt-3 text-2xl font-bold tabular-nums text-mis-navy" data-bidi="ltr">{value}</p>
       <p className="mt-2 text-xs text-slate-500">{hint}</p>
     </article>
   );
