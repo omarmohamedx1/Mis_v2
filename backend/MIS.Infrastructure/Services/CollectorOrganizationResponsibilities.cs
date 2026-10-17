@@ -2,7 +2,13 @@ using MIS.Domain.Entities;
 
 namespace MIS.Infrastructure.Services;
 
-public sealed record CollectorOrganizationResponsibility(Guid CollectorId, Guid OrganizationId);
+// Init-only properties (not a positional record): EF Core can only translate set operations
+// (Concat/Union/Distinct) over member-init projections, not constructor calls.
+public sealed record CollectorOrganizationResponsibility
+{
+    public Guid CollectorId { get; init; }
+    public Guid OrganizationId { get; init; }
+}
 
 public static class CollectorOrganizationResponsibilities
 {
@@ -16,12 +22,12 @@ public static class CollectorOrganizationResponsibilities
         var employeeLinks = from collector in collectors
                             from assignment in employment
                             where collector.EmployeeId == assignment.EmployeeId
-                            select new CollectorOrganizationResponsibility(collector.Id, assignment.OrganizationId);
+                            select new CollectorOrganizationResponsibility { CollectorId = collector.Id, OrganizationId = assignment.OrganizationId };
         var accountLinks = from collector in collectors
                            from grant in access
                            where grant.UserId == collector.Id
                                && !employment.Any(assignment => assignment.EmployeeId == collector.EmployeeId)
-                           select new CollectorOrganizationResponsibility(collector.Id, grant.OrganizationId);
+                           select new CollectorOrganizationResponsibility { CollectorId = collector.Id, OrganizationId = grant.OrganizationId };
         return employeeLinks.Concat(accountLinks).Distinct();
     }
 }
