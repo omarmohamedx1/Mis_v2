@@ -95,6 +95,7 @@ def inspect(route):
         settle()
         texts=driver.execute_script("return [...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&!e.disabled&&/^(New |Add |Create |Edit\\b|View\\b|Schedule\\b|Record\\b|Details$)/.test(e.innerText)).map(e=>e.innerText)")
         for text in list(dict.fromkeys(texts))[:4]:
+            driver.execute_script("window.__qa.language('en')");resize(1440);settle()
             try:
                 button=WebDriverWait(driver,5).until(lambda d:d.execute_script("return [...document.querySelectorAll('button')].find(e=>e.getClientRects().length&&!e.disabled&&e.innerText===arguments[0])??null",text))
                 driver.execute_script('arguments[0].scrollIntoView({block:"center"})',button);button.click();time.sleep(.35)

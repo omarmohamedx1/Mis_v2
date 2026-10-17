@@ -17,7 +17,7 @@ try:
    button('Prompt').click();wait.until(lambda d:d.find_elements(By.CSS_SELECTOR,'[aria-modal=true]'))
    check(driver.execute_script('const r=document.querySelector("[aria-modal=true]").getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight'),f'{lang} prompt fits {width}x480')
    driver.switch_to.active_element.send_keys('  reason / \u0633\u0628\u0628  ',Keys.ENTER);wait.until(lambda d:not d.find_elements(By.CSS_SELECTOR,'[aria-modal=true]'))
-   check(json.loads(driver.find_element(By.ID,'result').text)=='  reason / \u0633\u0628\u0628  ',f'{lang} prompt preserves exact input {width}')
+   check(json.loads(driver.find_element(By.ID,'result').get_attribute('textContent'))=='  reason / \u0633\u0628\u0628  ',f'{lang} prompt preserves exact input {width}')
   button('Prompt').click();wait.until(lambda d:d.find_elements(By.TAG_NAME,'input'));driver.switch_to.active_element.send_keys(Keys.ESCAPE);time.sleep(.1)
   check(driver.find_element(By.ID,'result').text=='null',lang+' prompt Escape retains null cancellation contract')
   button('Prompt').click();wait.until(lambda d:d.find_elements(By.TAG_NAME,'input'));driver.switch_to.active_element.send_keys(Keys.ENTER);time.sleep(.1)
