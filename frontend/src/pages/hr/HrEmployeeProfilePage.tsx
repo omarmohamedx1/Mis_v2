@@ -133,18 +133,18 @@ function formatDate(value: string | null, language: 'ar' | 'en'): string {
   if (!value) return '—';
   const date = value.length === 10 ? new Date(`${value}T00:00:00`) : new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(date);
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(date);
 }
 
 function formatDateTime(value: string, language: 'ar' | 'en'): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(date);
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(date);
 }
 
 function formatMoney(value: number | null | undefined, language: 'ar' | 'en'): string {
   if (value == null) return '—';
-  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value);
 }
 
 function InfoItem({ label, value }: { label: ReactNode; value: ReactNode }) {
@@ -548,7 +548,7 @@ function CompensationTab({ onUpdated, profile }: { onUpdated: (profile: Employee
   }
 
   const total = form.basicSalary + form.allowances;
-  const formattedTotal = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(total);
+  const formattedTotal = new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(total);
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800" role="note"><ShieldAlert className="mt-0.5 h-5 w-5 flex-none" aria-hidden="true" /><div><p className="font-bold">{t('restrictedInformation')}</p><p className="mt-1 text-sm leading-5">{t('compensationWarning')}</p></div></div>

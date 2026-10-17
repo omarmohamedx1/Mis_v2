@@ -127,7 +127,7 @@ export function CollectionEntryForm({ type, caseId, context, activity, promise, 
       <p className="mb-4 font-semibold">{ct('confirmEntryHelp')}</p>
       <dl className="space-y-3 rounded-xl border border-mis-border bg-slate-50 p-4">
         <ReviewRow label={ct('entryOperation')} value={ct(type === 'promise' ? (editing ? 'editPromise' : 'addPromise') : 'submitCollection')} />
-        <ReviewRow label={ct('amount')} value={<strong className="text-xl text-mis-primary" data-bidi="ltr">{new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(review.get('amount')))}</strong>} />
+        <ReviewRow label={ct('amount')} value={<strong className="text-xl text-mis-primary" data-bidi="ltr">{new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(review.get('amount')))}</strong>} />
         <ReviewRow label={ct(type === 'promise' ? 'promiseDate' : 'paymentDate')} value={format.date(String(review.get('date')))} />
         <ReviewRow label={ct(type === 'promise' ? 'channel' : 'method')} value={ct(String(review.get(type === 'promise' ? 'channel' : 'method')))} />
         {type === 'payment' && <ReviewRow label={ct('reference')} value={String(review.get('reference')).trim()} />}

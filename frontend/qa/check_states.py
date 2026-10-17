@@ -19,8 +19,8 @@ def picker_button(label):return driver.find_element(By.CSS_SELECTOR,'button[aria
 try:
  for lang in ['en','ar']:
   resize(1440);driver.get('http://127.0.0.1:5179/qa/index.html?lang='+lang);wait.until(lambda d:d.find_elements(By.TAG_NAME,'h1'))
-  driver.execute_async_script("const done=arguments[0];Promise.all([document.fonts.load('14px \"IBM Plex Sans Arabic\"'),document.fonts.load('14px \"IBM Plex Sans\"')]).then(()=>document.fonts.ready).then(()=>done(true)).catch(e=>done(false));")
-  check(driver.execute_script('return document.fonts.check(\'14px "IBM Plex Sans Arabic"\')'),lang+' production Arabic font available')
+  driver.execute_async_script("const done=arguments[0];Promise.all([document.fonts.load('14px \"Noto Sans Arabic\"'),document.fonts.load('14px \"Inter\"')]).then(()=>document.fonts.ready).then(()=>done(true)).catch(e=>done(false));")
+  check(driver.execute_script('return document.fonts.check(\'14px "Noto Sans Arabic"\')'),lang+' production Arabic font available')
   sizes={key:driver.find_element(By.CSS_SELECTOR,f'[data-qa="{key}"]').rect for key in ['loading-no-icon','loading-right-icon']}
   click(btn('Toggle loading'));time.sleep(.1)
   check(all(abs(driver.find_element(By.CSS_SELECTOR,f'[data-qa="{key}"]').rect['width']-r['width'])<1 and abs(driver.find_element(By.CSS_SELECTOR,f'[data-qa="{key}"]').rect['height']-r['height'])<1 for key,r in sizes.items()),lang+' loading button dimensions remain stable with and without icons')

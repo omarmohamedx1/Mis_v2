@@ -20,11 +20,11 @@ import { canAccessModule } from '../../features/modules/moduleAccess';
 import { getApiErrorMessage } from '../../services/apiClient';
 
 function money(value: number, language: string) {
-  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value);
 }
 
 function monthName(month: number, language: string) {
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { month: 'long' }).format(new Date(2000, month - 1, 1));
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { month: 'long' }).format(new Date(2000, month - 1, 1));
 }
 
 function deductionTone(code: string): StatusTone {

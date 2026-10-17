@@ -23,7 +23,7 @@ export function CollectionsDashboardPage() {
   const [params] = useSearchParams();
   const organizationId = params.get('organizationId') ?? undefined;
   const isManager = user?.roles.some(role => ['Admin', 'CollectionsOperationsManager', 'CollectionsSupervisor'].includes(role));
-  const locale = language === 'ar' ? 'ar-EG' : 'en-EG';
+  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG';
   const [data, setData] = useState<CollectionDashboard>();
   const [work, setWork] = useState<WorkQueue>();
   const [error, setError] = useState(false);

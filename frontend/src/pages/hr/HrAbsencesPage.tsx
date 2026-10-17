@@ -47,11 +47,11 @@ function payrollLabel(status: PayrollImpactStatus, language: 'en' | 'ar'): strin
 
 function money(value: number | null, language: 'en' | 'ar'): string {
   if (value === null) return '—';
-  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', { currency: 'EGP', style: 'currency', maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { currency: 'EGP', style: 'currency', maximumFractionDigits: 2 }).format(value);
 }
 
 function displayDate(value: string, language: 'en' | 'ar'): string {
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`));
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`));
 }
 
 function AbsenceForm({ absence, onClose, onSaved }: { absence: AbsenceDetails | null; onClose: () => void; onSaved: () => void }) {

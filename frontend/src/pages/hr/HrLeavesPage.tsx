@@ -37,11 +37,11 @@ const statusLabels: Record<LeaveRequestStatus, TranslationKey> = { Approved: 'le
 const statusTones: Record<LeaveRequestStatus, StatusTone> = { Approved: 'success', Cancelled: 'neutral', Pending: 'warning', Rejected: 'danger' };
 
 function formatDate(value: string, language: string): string {
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`));
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`));
 }
 function formatDateTime(value: string | null, language: string): string {
   if (!value) return '—';
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 function emptyForm(): SaveLeaveRequest { const today = new Date().toISOString().slice(0, 10); return { attachmentDocumentId: null, employeeId: '', endDate: today, leaveTypeId: '', notes: null, reason: null, startDate: today }; }
 

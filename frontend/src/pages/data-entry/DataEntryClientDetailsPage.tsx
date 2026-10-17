@@ -199,7 +199,7 @@ export function DataEntryClientDetailsPage() {
 function NationalIdSection({ id, arabic, text }: { id?: string | null; arabic: boolean; text: (arabic: string, english: string) => string }) {
   const card = readNationalIdCard(id);
   if (!card) return null;
-  const birth = new Intl.DateTimeFormat(arabic ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).format(card.birthDate);
+  const birth = new Intl.DateTimeFormat(arabic ? 'ar-EG-u-nu-latn' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).format(card.birthDate);
   return (
     <DetailSection
       title={text('من الرقم القومي', 'From the national ID')}

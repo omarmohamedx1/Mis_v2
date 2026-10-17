@@ -37,7 +37,7 @@ function normalizeDay(value: CalendarDayOfWeek | string): CalendarDayOfWeek {
   return typeof value === 'number' ? value : dayNameIndex[value] ?? 0;
 }
 function timeValue(value: string | null): string { return value?.slice(0, 5) ?? ''; }
-function dateLabel(value: string, language: string): string { return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`)); }
+function dateLabel(value: string, language: string): string { return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`)); }
 
 function WorkingWeekPanel() {
   const { t } = useLocalization(); const toast = useToast(); const [calendar, setCalendar] = useState<WorkingCalendar | null>(null); const [name, setName] = useState(''); const [timeZoneId, setTimeZoneId] = useState(''); const [days, setDays] = useState<WorkingDaySetting[]>([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState('');

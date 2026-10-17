@@ -53,8 +53,8 @@ export function BankCaseDistributionPage() {
   useEffect(() => { let active = true; setLoading(true); setError(''); const query = { page, pageSize, search, status, collectorId: assigned ? collectorId : undefined, importId, sortBy };
     void Promise.all([collectionsService.distributionSummary(bank.id), collectionsService.distributionCases(bank.id, assigned, query), collectionsService.distributionCollectors(bank.id), collectionsService.distributionImports(bank.id)])
       .then(([s, d, c, i]) => { if (active) { setLoadedKey(filtersKey); setSummary(s); setData(d); setCollectors(c); setImports(i); setSelected(current => current.filter(id => d.items.some(x => x.id === id))); setAutoCollectors(current => current.filter(id => c.some(x => x.id === id))); } }).catch(e => { if (active) setError(getApiErrorMessage(e, ct('distributionLoadError'))); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [assigned, bank.id, collectorId, ct, importId, page, pageSize, reload, search, sortBy, status]);
-  const money = (v: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(v);
-  const date = (v?: string) => v ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(v)) : '—';
+  const money = (v: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(v);
+  const date = (v?: string) => v ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(new Date(v)) : '—';
   const allPage = Boolean(data?.items.length) && data!.items.every(x => selected.includes(x.id));
   const chosenCollector = collectors.find(x => x.id === targetCollector);
   const additionalCases = data?.items.filter(x => selected.includes(x.id) && x.collectorId !== targetCollector).length ?? 0;

@@ -151,7 +151,7 @@ function alertCategoryLabel(category: string, copy: typeof dashboardCopy.en | ty
 export function HrDashboardPage() {
   const { language, t } = useLocalization();
   const copy = dashboardCopy[language];
-  const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB';
   const [summary, setSummary] = useState<HrDashboardSummary | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);

@@ -57,12 +57,12 @@ function isoDateTime(value: string): string | null {
 }
 
 function displayDate(value: string, language: string): string {
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`));
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`));
 }
 
 function displayDateTime(value: string | null, language: string): string {
   if (!value) return '—';
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
 function emptyManualForm(): SaveManualAttendanceRequest {

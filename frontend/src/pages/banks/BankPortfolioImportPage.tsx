@@ -38,8 +38,8 @@ export function BankPortfolioImportPage() {
   const [replacement, setReplacement] = useState<BankPortfolioReplacementPreview>(), [replacing, setReplacing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BankPortfolioImport>(), [deleting, setDeleting] = useState(false);
   const bankName = language === 'ar' ? bank.nameArabic : bank.nameEnglish;
-  const date = (value: string) => new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value));
-  const number = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-GB').format(value);
+  const date = (value: string) => new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value));
+  const number = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB').format(value);
 
   useEffect(() => { const timer = window.setTimeout(() => { setSearch(searchInput.trim()); setPage(1); }, 300); return () => clearTimeout(timer); }, [searchInput]);
   useEffect(() => { let active = true; setHistoryError(false); void collectionsService.bankPortfolioImports(bank.id, { page, pageSize: 10, search }).then(v => { if (active) setHistory(v); }).catch(() => { if (active) setHistoryError(true); }); return () => { active = false; }; }, [bank.id, page, refresh, search]);

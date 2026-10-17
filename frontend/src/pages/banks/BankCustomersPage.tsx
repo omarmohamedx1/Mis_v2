@@ -23,7 +23,7 @@ export function BankCustomersPage() {
   const [data, setData] = useState<BankCustomerPage>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const money = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 }).format(value);
+  const money = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 }).format(value);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setSearch(searchInput.trim()); setPage(1); }, 300);

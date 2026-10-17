@@ -749,7 +749,7 @@ export function HrEmployeeImportPage() {
                 <tr key={item.id} className="border-t border-mis-border">
                   <td className="p-3">{item.fileName}</td>
                   <td className="p-3">{item.uploadedBy}</td>
-                  <td className="p-3">{new Date(item.uploadedAt).toLocaleString(ar ? 'ar-EG' : 'en-GB')}</td>
+                  <td className="p-3">{new Date(item.uploadedAt).toLocaleString(ar ? 'ar-EG-u-nu-latn' : 'en-GB')}</td>
                   <td className="p-3">{item.totalRows ?? '—'}</td>
                   <td className="p-3">
                     <bdi>{item.result ? `${item.result.imported} / ${item.result.skipped} / ${item.result.failed}` : text('Awaiting confirmation', 'في انتظار التأكيد')}</bdi>

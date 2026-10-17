@@ -79,7 +79,7 @@ function UploadModal({ employee, document, onClose, onSaved }: { employee: Emplo
 }
 
 function PersonnelFileModal({ employeeId, onClose, onChanged }: { employeeId: string; onClose: () => void; onChanged: () => void }) {
-  const { language } = useLocalization(); const text = copy[language]; const locale = language === 'ar' ? 'ar-EG' : 'en-GB'; const toast = useToast();
+  const { language } = useLocalization(); const text = copy[language]; const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB'; const toast = useToast();
   const [employee, setEmployee] = useState<EmployeePersonnelFile | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [uploading, setUploading] = useState<PersonnelDocumentChecklistItem | null>(null); const [deleting, setDeleting] = useState<PersonnelDocumentChecklistItem | null>(null);
   const load = useCallback(async () => { setLoading(true); setError(''); try { setEmployee(await hrEmployeeDocumentService.getPersonnelFile(employeeId)); } catch (requestError) { setError(getApiErrorMessage(requestError, text.fileError)); } finally { setLoading(false); } }, [employeeId, text.fileError]); useEffect(() => { void load(); }, [load]);
   async function preview(document: PersonnelDocumentChecklistItem) { if (!document.documentId) return; try { const file = await hrEmployeeDocumentService.preview(document.documentId); const url = URL.createObjectURL(file.blob); window.open(url, '_blank', 'noopener,noreferrer'); window.setTimeout(() => URL.revokeObjectURL(url), 60_000); } catch (e) { toast.error(getApiErrorMessage(e, text.previewError)); } }

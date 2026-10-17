@@ -139,7 +139,7 @@ function AuditRecord({ item, language, locale }: { item: AuditLogItem; language:
 export function HrAuditPage() {
   const { language, t } = useLocalization();
   const text = copy[language];
-  const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB';
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const initialEmployeeId = searchParams.get('employeeId') ?? '';

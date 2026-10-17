@@ -133,7 +133,7 @@ export function CollectionsSettingsPage() {
   const ptpLabel = (graceDays?: number, tolerance?: number) => {
     if (graceDays == null && tolerance == null) return ct('ptpNotSet');
     const days = `${graceDays ?? 0} ${ct('daysUnit')}`;
-    const amount = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG').format(tolerance ?? 0);
+    const amount = new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG').format(tolerance ?? 0);
     return `${days} · ${amount} ${ct('currency')}`;
   };
 
@@ -314,7 +314,7 @@ export function CollectionsSettingsPage() {
                             {desk ? (
                               <dl className="mt-3 space-y-1 text-xs text-slate-600">
                                 <div className="flex justify-between gap-2"><dt>{ct('casesOnDesk')}</dt><dd className="tabular-nums">{desk.caseCount ?? 0}</dd></div>
-                                <div className="flex justify-between gap-2"><dt>{ct('target')}</dt><dd className="tabular-nums">{desk.targetAmount != null ? `${new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG').format(desk.targetAmount)} ${desk.currencyCode}` : desk.currencyCode}</dd></div>
+                                <div className="flex justify-between gap-2"><dt>{ct('target')}</dt><dd className="tabular-nums">{desk.targetAmount != null ? `${new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG').format(desk.targetAmount)} ${desk.currencyCode}` : desk.currencyCode}</dd></div>
                                 <div className="flex justify-between gap-2"><dt>{ct('ptpPolicy')}</dt><dd>{ptpLabel(desk.ptpGraceDays, desk.ptpToleranceAmount)}</dd></div>
                               </dl>
                             ) : null}

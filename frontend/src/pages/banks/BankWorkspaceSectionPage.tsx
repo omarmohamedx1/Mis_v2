@@ -23,7 +23,7 @@ export function BankWorkspaceSectionPage() {
   const [data, setData] = useState<DeskSnapshot>();
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
-  const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB';
   const number = (value: number) => new Intl.NumberFormat(locale).format(value);
 
   useEffect(() => {

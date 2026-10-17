@@ -32,8 +32,8 @@ export function BankPortfolioUploadModal({ bankId, bankName, open, onClose, onIm
   const [uploading, setUploading] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const number = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-GB').format(value);
-  const date = (value: string) => new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value));
+  const number = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB').format(value);
+  const date = (value: string) => new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value));
 
   useEffect(() => {
     if (!open) {

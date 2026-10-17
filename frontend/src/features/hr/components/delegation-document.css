@@ -1,4 +1,4 @@
-.delegation-paper { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 7mm; background: #fff; color: #050505; font-family: "Traditional Arabic", "Noto Naskh Arabic", Tahoma, Arial, sans-serif; }
+.delegation-paper { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 7mm; background: #fff; color: #050505; font-family: var(--font-interface); }
 .delegation-border { position: relative; min-height: 283mm; border: 2.2mm solid #174f86; padding: 11mm 14mm 9mm; overflow: hidden; }
 .delegation-logo { display: block; width: 38mm; height: 36mm; object-fit: contain; object-position: center; margin-inline-end: auto; margin-inline-start: 0; }
 .delegation-date { margin: 2mm 0 8mm; text-align: right; font-size: 15pt; font-weight: 700; }

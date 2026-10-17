@@ -39,7 +39,7 @@ const categoryLabels: Record<AttendanceImportCategory, TranslationKey> = { Dupli
 
 function formatDateTime(value: string | null, language: string): string {
   if (!value) return '—';
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
 function formatDate(value: string | null, language: string): string {
@@ -47,7 +47,7 @@ function formatDate(value: string | null, language: string): string {
   const parsed = new Date(`${value.slice(0, 10)}T12:00:00`);
   return Number.isNaN(parsed.getTime())
     ? value
-    : new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(parsed);
+    : new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(parsed);
 }
 
 function bytes(value: number, language: 'en' | 'ar'): string {

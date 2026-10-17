@@ -93,7 +93,7 @@ export function FinanceJournalDetailsPage() {
           <div key={label} className="rounded-2xl border border-mis-border bg-white p-5">
             <p className="text-xs font-bold text-mis-muted">{label}</p>
             <p className="mt-2 font-semibold text-mis-navy">{user}</p>
-            <p className="mt-1 text-xs text-mis-muted">{at ? new Date(at).toLocaleString(f.ar ? 'ar-EG' : 'en-GB') : '—'}</p>
+            <p className="mt-1 text-xs text-mis-muted">{at ? new Date(at).toLocaleString(f.ar ? 'ar-EG-u-nu-latn' : 'en-GB') : '—'}</p>
           </div>
         ))}
       </section>

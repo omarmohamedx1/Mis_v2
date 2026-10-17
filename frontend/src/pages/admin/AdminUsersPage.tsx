@@ -27,7 +27,7 @@ const copy = {
     noUsers: 'لا يوجد مستخدمون مطابقون.', error: 'تعذر تحميل المستخدمين.', retry: 'إعادة المحاولة', pending: 'مقترحة',
     tempBadge: 'كلمة مرور مؤقتة', noAccess: 'بدون صلاحيات بعد',
     accessTitle: 'تخصيص الوصول', accessDesc: 'ابدأ بالدور الوظيفي، ثم أضف فقط ما يحتاجه العمل فوق الدور.',
-    roleStep: '١. الدور الوظيفي', extraStep: '٢. صلاحيات إضافية حسب الحاجة',
+    roleStep: '1. الدور الوظيفي', extraStep: '2. صلاحيات إضافية حسب الحاجة',
     roleHint: 'الدور يعطي حزمة جاهزة. الصلاحيات الإضافية للتخصيص الدقيق.',
     extraHint: 'لن تحتاج تكرار ما هو مضمّن في الدور. أضف هنا ما يزيد عن الحزمة.',
     included: 'مضمّنة في الدور', searchPermissions: 'ابحث داخل الصلاحيات', allModules: 'كل الموديولات',
@@ -215,7 +215,7 @@ export function AdminUsersPage() {
                         {user.accessGrants.some((grant) => grant.status === 'PENDING') && <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700">{t.pending}</span>}
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-slate-600">{user.lastLoginAt ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(user.lastLoginAt)) : t.never}</td>
+                    <td className="px-5 py-4 text-slate-600">{user.lastLoginAt ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(new Date(user.lastLoginAt)) : t.never}</td>
                     <td className="px-5 py-4">
                       <ActionMenu>
                         <button className="inline-flex items-center gap-1.5 rounded-lg bg-[#09263d] px-3 py-2 text-xs font-bold text-white hover:bg-[#164867]" onClick={() => { setSelected(user); setMode('access'); }} type="button">

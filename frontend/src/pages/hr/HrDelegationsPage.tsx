@@ -29,7 +29,7 @@ const initialQuery: DelegationQuery = { page: 1, pageSize: 20, search: '', emplo
 const fieldClass = 'h-11 w-full rounded-xl border border-mis-border bg-white px-3 text-sm outline-none focus:border-mis-primary focus:ring-2 focus:ring-mis-primary/10';
 
 function statusTone(value: string): 'success' | 'warning' | 'danger' | 'neutral' { return value === 'Active' ? 'success' : value === 'Cancelled' ? 'danger' : value === 'Draft' ? 'warning' : 'neutral'; }
-function displayDate(value: string, language: 'ar' | 'en') { return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`)); }
+function displayDate(value: string, language: 'ar' | 'en') { return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`)); }
 interface FormState extends SaveDelegationRequest { employeeId: string; }
 const blankForm = (): FormState => ({ employeeId: '', delegatingEntityId: null, authorizedEntity: '', companyRepresentative: '', powerOfAttorneyNumber: '', powerOfAttorneyYear: new Date().getFullYear(), startDate: '', endDate: '', purpose: officialAuthorization, notes: '', status: 'Active' });
 

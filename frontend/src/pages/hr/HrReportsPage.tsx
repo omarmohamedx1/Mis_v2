@@ -110,7 +110,7 @@ export function HrReportsPage() {
   const { language, t } = useLocalization();
   const toast = useToast();
   const copy = copyByLanguage[language];
-  const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB';
   const [catalog, setCatalog] = useState<HrReportCatalogItem[]>([]);
   const [selectedCode, setSelectedCode] = useState('');
   const [filter, setFilter] = useState<HrReportFilter>(emptyHrReportFilter);

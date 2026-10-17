@@ -17,8 +17,8 @@ export function BankCustomerDetailsPage() {
   const [data, setData] = useState<BankCustomerDetails>();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const money = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 }).format(value);
-  const date = (value?: string | null) => value ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium' }).format(new Date(value)) : '—';
+  const money = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 }).format(value);
+  const date = (value?: string | null) => value ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { dateStyle: 'medium' }).format(new Date(value)) : '—';
 
   useEffect(() => {
     if (!customerId) return;

@@ -7,15 +7,15 @@ export function useLegalText() {
   const ar = language === 'ar';
   const text = (arabic: string, english: string) => (ar ? arabic : english);
   const money = (value: number) =>
-    new Intl.NumberFormat(ar ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
-  const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG' : 'en-EG').format(value);
+    new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+  const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG').format(value);
   const date = (value?: string | null) => {
     if (!value) return '—';
     const parsed = value.length <= 10 ? new Date(`${value}T00:00:00`) : new Date(value);
-    return new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
+    return new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
   };
   const dateTime = (value: string) =>
-    new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+    new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 
   const stage = (value: string) =>
     ({

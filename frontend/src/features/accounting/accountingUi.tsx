@@ -6,11 +6,11 @@ export function useAccountingText() {
   const { language } = useLocalization();
   const ar = language === 'ar';
   const text = (arabic: string, english: string) => (ar ? arabic : english);
-  const money = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 2 }).format(value);
-  const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG' : 'en-EG').format(value);
-  const monthName = (month: number) => new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { month: 'long' }).format(new Date(2000, month - 1, 1));
-  const monthLabel = (year: number, month: number) => new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
-  const date = (value: string) => new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value.slice(0, 10)}T00:00:00`));
+  const money = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 2 }).format(value);
+  const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG-u-nu-latn' : 'en-EG').format(value);
+  const monthName = (month: number) => new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { month: 'long' }).format(new Date(2000, month - 1, 1));
+  const monthLabel = (year: number, month: number) => new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
+  const date = (value: string) => new Intl.DateTimeFormat(ar ? 'ar-EG-u-nu-latn' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value.slice(0, 10)}T00:00:00`));
   const status = (value: string) =>
     ({
       POSTED: text('مسجل', 'Recorded'),

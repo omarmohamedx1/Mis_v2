@@ -125,7 +125,7 @@ try:
     ''',os.environ.get('MIS_QA_USERNAME','admin'),os.environ['MIS_QA_PASSWORD'])
     if not auth['ok']:raise RuntimeError('Login failed: '+str(auth.get('status')))
     driver.get(base+'?mode=app&route=/modules');wait.until(lambda d:d.execute_script('return window.__qa?.ready'))
-    driver.execute_async_script("const done=arguments[0];Promise.all([document.fonts.load('14px \"IBM Plex Sans Arabic\"'),document.fonts.load('14px \"IBM Plex Sans\"')]).then(()=>document.fonts.ready).then(()=>done());")
+    driver.execute_async_script("const done=arguments[0];Promise.all([document.fonts.load('14px \"Noto Sans Arabic\"'),document.fonts.load('14px \"Inter\"')]).then(()=>document.fonts.ready).then(()=>done());")
     fixtures=json.loads(Path('frontend/qa/detail-fixtures.json').read_text(encoding='utf-8'))
     fid=fixtures['id'];arname=fixtures['longArabic'];enname=fixtures['longEnglish'];token=fixtures['unbroken']
     journal=fixtures['journal'];journal.update(description=token,createdBy=enname,postedBy=arname)

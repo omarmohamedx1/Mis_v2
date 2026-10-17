@@ -150,7 +150,7 @@ export function FileCollectorLinkBanner({ organizationId, refreshKey, onApplied 
 }
 
 export function useCollectionFormat() {
-  const { language, ct } = useCollectionsLocalization(); const locale = language === 'ar' ? 'ar-EG' : 'en-EG';
+  const { language, ct } = useCollectionsLocalization(); const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG';
   return {
     money: (value: number) => new Intl.NumberFormat(locale, { notation: Math.abs(value) >= 1_000_000 ? 'compact' : 'standard', maximumFractionDigits: Math.abs(value) >= 1_000_000 ? 1 : 0 }).format(value) + ` ${ct('currency')}`,
     number: (value: number) => new Intl.NumberFormat(locale).format(value),

@@ -126,7 +126,7 @@ export function ProfessionalDateInput({
     return () => form.removeEventListener('reset', reset);
   }, [controlled, defaultValue, mode]);
 
-  const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB';
   const labels = language === 'ar'
     ? { choose: mode === 'date' ? 'اختر أو اكتب التاريخ' : 'اختر أو اكتب التاريخ والوقت', today: 'اليوم', clear: 'مسح', done: 'تم', previous: 'الشهر السابق', next: 'الشهر التالي', time: 'الوقت', month: 'الشهر', year: 'السنة', open: 'فتح التقويم' }
     : { choose: mode === 'date' ? 'Type or choose a date' : 'Type or choose date & time', today: 'Today', clear: 'Clear', done: 'Done', previous: 'Previous month', next: 'Next month', time: 'Time', month: 'Month', year: 'Year', open: 'Open calendar' };
