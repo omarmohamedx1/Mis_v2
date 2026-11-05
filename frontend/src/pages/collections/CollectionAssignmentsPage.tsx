@@ -274,7 +274,7 @@ function OrganizationAssignmentWorkspace({ organization, collectors, refreshing,
         </div>
       ) : null}
 
-      {error ? <ErrorState title={ct('loadError')} onRetry={() => setReload((value) => value + 1)} /> : !ready ? (
+      {error ? <ErrorState title={ct('loadError')} onRetry={onChanged} /> : !ready ? (
         <div className="flex min-h-64 items-center justify-center"><LoadingSpinner /></div>
       ) : cases && cases.items.length === 0 ? (
         <EmptyState
