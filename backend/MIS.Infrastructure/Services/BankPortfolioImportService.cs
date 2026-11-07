@@ -40,28 +40,33 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         if (length <= 0 || length > MaximumBytes) throw new HrValidationException("Portfolio files must be between 1 byte and 50 MB.");
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (extension is not (".xlsx" or ".xls" or ".csv")) throw new HrValidationException("Only XLSX, XLS, and CSV portfolio files are supported.");
+        var portfolio = await ResolvePortfolioAsync(bankId, token);
 
         var stored = await _files.SaveAsync($"bank-portfolio-imports/{bank.Id:N}", fileName, contentType, content, MaximumBytes, token);
         try
         {
             await using var storedStream = await _files.OpenReadAsync(stored.StorageKey, token);
-            int rowCount;
-            try { rowCount = await BankPortfolioFileInspector.CountRowsAsync(storedStream, extension, token); }
+            IReadOnlyCollection<ParsedCollectionRow> parsed;
+            try { parsed = await CollectionImportParser.ParseAsync(storedStream, extension, token); }
             catch (Exception exception) when (exception is not HrException and not OperationCanceledException)
             { throw new HrValidationException("The portfolio file is invalid or unreadable."); }
-            var duplicate = await _db.BankPortfolioImports.AnyAsync(item => item.BankId == bankId && item.FileHash == stored.Sha256Hash && item.Status != "FAILED", token);
+            var missingColumns = CollectionFileRowMapper.MissingRequiredImportColumns(parsed.First().OriginalValues.Keys);
+            if (missingColumns.Count > 0)
+                throw new HrValidationException($"Required columns are missing: {string.Join(", ", missingColumns)}.");
+            var duplicate = await _db.BankPortfolioImports.AnyAsync(item => item.BankId == bankId && item.PortfolioId == portfolio.Id
+                && item.FileHash == stored.Sha256Hash && item.Status != "FAILED", token);
             if (duplicate) throw new HrConflictException("This exact file is already awaiting confirmation or has been imported for this bank.");
             var uploadedAt = DateTimeOffset.UtcNow;
             var bankName = ApiTextLocalizer.IsArabic ? bank.NameArabic : bank.NameEnglish;
-            var portfolioName = $"{bankName} - {uploadedAt:dd/MM/yyyy}";
-            var entity = new BankPortfolioImport(bankId, portfolioName, stored.OriginalFileName, ResolveContentType(extension), stored.Length,
-                stored.Sha256Hash, stored.StorageKey, rowCount, _user.UserId, uploadedAt);
+            var portfolioName = ApiTextLocalizer.IsArabic ? portfolio.NameArabic : portfolio.NameEnglish;
+            var entity = new BankPortfolioImport(bankId, portfolio.Id, portfolioName, stored.OriginalFileName, ResolveContentType(extension), stored.Length,
+                stored.Sha256Hash, stored.StorageKey, parsed.Count, _user.UserId, uploadedAt);
             _db.BankPortfolioImports.Add(entity);
             try { await _db.SaveChangesAsync(token); }
             catch (DbUpdateException)
             {
                 _db.Entry(entity).State = EntityState.Detached;
-                if (await _db.BankPortfolioImports.AsNoTracking().AnyAsync(item => item.BankId == bankId && item.FileHash == stored.Sha256Hash, token))
+                if (await _db.BankPortfolioImports.AsNoTracking().AnyAsync(item => item.BankId == bankId && item.PortfolioId == portfolio.Id && item.FileHash == stored.Sha256Hash, token))
                     throw new HrConflictException("This exact file is already awaiting confirmation or has been imported for this bank.");
                 throw;
             }
@@ -82,18 +87,21 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
             ?? throw new HrNotFoundException("Portfolio import was not found for this bank.");
         if (entity.Status != "READY") throw new HrConflictException("Only a ready portfolio import can be previewed.");
 
-        var portfolio = await ResolvePortfolioAsync(bankId, token);
+        var portfolio = await RequireImportPortfolioAsync(entity, bankId, token);
         await using var stream = await _files.OpenReadAsync(entity.StorageKey, token);
         var extension = Path.GetExtension(entity.OriginalFileName).ToLowerInvariant();
         var parsed = await CollectionImportParser.ParseAsync(stream, extension, token);
         var rows = await BuildPreviewRowsAsync(bankId, portfolio.Id, parsed, token);
+        var mappings = CollectionFileRowMapper.DetectImportColumns(parsed.First().OriginalValues.Keys);
         return new BankPortfolioImportDataPreviewDto(
             entity.Id,
             rows.Count,
             rows.Count(x => x.Status == "Ready"),
             rows.Count(x => x.Status == "Existing"),
             rows.Count(x => x.Status == "Error"),
-            rows.Take(200).ToArray());
+            rows,
+            rows.Count(x => x.Status == "Duplicate"),
+            mappings);
     }
 
     public async Task<BankPortfolioImportConfirmResultDto> ConfirmAsync(Guid bankId, Guid importId, string? notes, CancellationToken token)
@@ -107,11 +115,13 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         if (entity.Status == "COMPLETED") throw new HrConflictException("This portfolio import is already complete.");
         if (entity.Status != "READY") throw new HrConflictException("Only a ready portfolio import can be confirmed.");
 
-        var portfolio = await ResolvePortfolioAsync(bankId, token);
+        var portfolio = await RequireImportPortfolioAsync(entity, bankId, token);
         await using var stream = await _files.OpenReadAsync(entity.StorageKey, token);
         var extension = Path.GetExtension(entity.OriginalFileName).ToLowerInvariant();
         var parsed = await CollectionImportParser.ParseAsync(stream, extension, token);
         var previewRows = await BuildPreviewRowsAsync(bankId, portfolio.Id, parsed, token);
+        if (!previewRows.Any(row => row.Status is "Ready" or "Existing"))
+            throw new HrValidationException("The file contains no valid, importable rows.");
 
         var buckets = await _db.CollectionBucketDefinitions
             .Where(x => x.OrganizationId == bankId && x.IsActive && (x.PortfolioId == null || x.PortfolioId == portfolio.Id))
@@ -123,7 +133,7 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         var cases = await _db.CollectionCases.Where(x => x.PortfolioId == portfolio.Id)
             .ToDictionaryAsync(x => x.AccountReference, StringComparer.OrdinalIgnoreCase, token);
 
-        var imported = 0; var skipped = 0; var invalid = 0; var now = DateTimeOffset.UtcNow;
+        var imported = 0; var updated = 0; var duplicates = 0; var invalid = 0; var now = DateTimeOffset.UtcNow;
         var org = portfolio.Organization ?? await _db.CollectionClientOrganizations.SingleAsync(x => x.Id == bankId, token);
         var collectorDirectory = await _db.Users.AsNoTracking().CollectorIdentities().SelectIdentityCandidates().ToArrayAsync(token);
         var collectorTeams = await CollectionImportAssignment.ActiveTeamIdsAsync(_db, token);
@@ -131,6 +141,7 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         foreach (var row in previewRows)
         {
             if (row.Status == "Error") { invalid++; continue; }
+            if (row.Status == "Duplicate") { duplicates++; continue; }
 
             var source = parsed.First(x => x.RowNumber == row.RowNumber);
             var file = CollectionFileRowMapper.Read(source);
@@ -171,7 +182,7 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
                 collectionCase.ApplyImportedReferences(file.Contract, ClassifiedPortfolio.ProductTypeOrDefault(portfolio, file.Product), now);
                 if (previousBucket != bucket.Id)
                     _db.CollectionCaseBucketHistory.Add(new CaseBucketHistory(collectionCase.Id, previousBucket, bucket.Id, "Authoritative portfolio import", CollectionsValues.AssignmentSources.Import, _user.UserId, now));
-                skipped++;
+                updated++;
             }
             collectionCase.ApplyImportedProfile(file.CardNumber, file.StatusText, file.Stage, file.CreditLimit, file.PurchaseLimit, file.ActivationDate, file.LastPaymentAmount, CollectionFileRowMapper.ToTimestamp(file.LastPaymentDate), file.LastTransactionDate, file.LastTransactionAmount, CollectionFileRowMapper.Serialize(source.Values), now);
             collectionCase.ApplyImportedDeskFields(file.PreviousCollector, file.FileCollector, file.BucketText,
@@ -182,12 +193,12 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
             collectionCase.SetPriority(priority.Score, string.Join(" + ", priority.Reasons), now);
         }
 
-        entity.Confirm(now);
+        entity.Complete(now, imported, updated, duplicates, invalid);
         entity.UpdateNotes(notes, now);
         await _db.SaveChangesAsync(token);
         await transaction.CommitAsync(token);
         var dto = await GetAsync(bankId, importId, token);
-        return new BankPortfolioImportConfirmResultDto(dto, imported, skipped, invalid);
+        return new BankPortfolioImportConfirmResultDto(dto, imported + updated, duplicates, invalid, updated, duplicates);
     }
 
     public async Task<BankPortfolioImportDto> UpdateNotesAsync(Guid bankId, Guid importId, string? notes, CancellationToken token)
@@ -204,7 +215,7 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         string contentType, long length, Stream content, CancellationToken token)
     {
         EnsureImportPermission(); var bank = await RequireAccessibleBankAsync(bankId, token);
-        _ = await _db.BankPortfolioImports.AsNoTracking().SingleOrDefaultAsync(item => item.Id == importId && item.BankId == bankId, token)
+        var existingImport = await _db.BankPortfolioImports.AsNoTracking().SingleOrDefaultAsync(item => item.Id == importId && item.BankId == bankId, token)
             ?? throw new HrNotFoundException("Portfolio import was not found for this bank.");
         if (length <= 0 || length > MaximumBytes) throw new HrValidationException("Portfolio files must be between 1 byte and 50 MB.");
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -217,7 +228,8 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
             try { rowCount = await BankPortfolioFileInspector.CountRowsAsync(storedStream, extension, token); }
             catch (Exception exception) when (exception is not HrException and not OperationCanceledException)
             { throw new HrValidationException("The portfolio file is invalid or unreadable."); }
-            if (await _db.BankPortfolioImports.AsNoTracking().AnyAsync(item => item.BankId == bankId && item.Id != importId && item.FileHash == stored.Sha256Hash, token))
+            if (await _db.BankPortfolioImports.AsNoTracking().AnyAsync(item => item.BankId == bankId && item.Id != importId
+                && item.PortfolioId == existingImport.PortfolioId && item.FileHash == stored.Sha256Hash, token))
                 throw new HrConflictException("This exact file is already used by another import for this bank.");
             var id = Guid.NewGuid();
             Replacements[id] = new(bankId, importId, _user.UserId, stored.OriginalFileName, ResolveContentType(extension), stored.Length,
@@ -239,7 +251,8 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
             await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token);
             var entity = await _db.BankPortfolioImports.SingleOrDefaultAsync(item => item.Id == importId && item.BankId == bankId, token)
                 ?? throw new HrNotFoundException("Portfolio import was not found for this bank.");
-            if (await _db.BankPortfolioImports.AnyAsync(item => item.BankId == bankId && item.Id != importId && item.FileHash == replacement.FileHash, token))
+            if (await _db.BankPortfolioImports.AnyAsync(item => item.BankId == bankId && item.Id != importId
+                && item.PortfolioId == entity.PortfolioId && item.FileHash == replacement.FileHash, token))
                 throw new HrConflictException("This exact file is already used by another import for this bank.");
             var oldStorageKey = entity.StorageKey;
             entity.ReplaceFile(replacement.OriginalFileName, replacement.ContentType, replacement.FileSize, replacement.FileHash,
@@ -337,8 +350,11 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         if (_classification.HasValue)
         {
             var classified = _db.CollectionCases.AsNoTracking().Apply(_classification);
-            query = query.Where(item => classified.Any(x => x.SourceImportId == item.Id));
+            var portfolio = await ResolvePortfolioAsync(bankId, token);
+            query = query.Where(item => item.PortfolioId == portfolio.Id
+                || (item.PortfolioId == null && classified.Any(x => x.SourceImportId == item.Id)));
         }
+        else throw new HrValidationException("A portfolio classification is required to view import history.");
         if (!string.IsNullOrWhiteSpace(search)) { var term = search.Trim().ToLower(); query = query.Where(item => item.OriginalFileName.ToLower().Contains(term) || item.PortfolioName.ToLower().Contains(term)); }
         var total = await query.CountAsync(token);
         var items = await Project(query.OrderByDescending(item => item.UploadedAt).Skip((page - 1) * pageSize).Take(pageSize)).ToArrayAsync(token);
@@ -358,7 +374,8 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         item.Id, item.BankId, item.Bank.NameArabic, item.Bank.NameEnglish, item.PortfolioName, item.OriginalFileName,
         item.ContentType == "text/csv" ? "CSV" : item.ContentType == "application/vnd.ms-excel" ? "XLS" : "XLSX",
         item.FileSize, item.RowCount, item.Status,
-        item.UploadedById, item.UploadedBy.FullName, item.UploadedAt, item.ConfirmedAt, item.Notes, item.UpdatedAt));
+        item.UploadedById, item.UploadedBy.FullName, item.UploadedAt, item.ConfirmedAt, item.Notes, item.UpdatedAt,
+        item.PortfolioId, item.ImportedRows, item.UpdatedRows, item.DuplicateRows, item.InvalidRows));
 
     private void EnsureImportPermission()
     {
@@ -379,18 +396,29 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
 
     private async Task<CollectionPortfolio> ResolvePortfolioAsync(Guid organizationId, CancellationToken token)
     {
+        if (!_classification.HasValue)
+            throw new HrValidationException("A portfolio classification is required to import a portfolio file.");
+        var (primary, sub) = PortfolioClassification.Require(_classification.Primary!, _classification.Sub!);
+        return await _db.CollectionPortfolios.Include(x => x.Organization)
+            .SingleOrDefaultAsync(x => x.OrganizationId == organizationId && x.IsActive
+                && x.PrimaryClassification == primary && x.SubClassification == sub, token)
+            ?? throw new HrNotFoundException("The selected classified portfolio does not exist or is inactive.");
+    }
+
+    private async Task<CollectionPortfolio> RequireImportPortfolioAsync(BankPortfolioImport entity, Guid organizationId, CancellationToken token)
+    {
+        if (entity.PortfolioId is not Guid portfolioId)
+            throw new HrConflictException("This legacy import is not linked to a portfolio and cannot be previewed or confirmed. Upload the file again from the selected portfolio.");
+        var portfolio = await _db.CollectionPortfolios.Include(x => x.Organization)
+            .SingleOrDefaultAsync(x => x.Id == portfolioId && x.OrganizationId == organizationId && x.IsActive, token)
+            ?? throw new HrConflictException("The import's selected portfolio is no longer available.");
         if (_classification.HasValue)
-            return await ClassifiedPortfolio.ResolveAsync(_db, organizationId, _classification.Primary!, _classification.Sub!, token);
-
-        var existing = await _db.CollectionPortfolios.Include(x => x.Organization)
-            .Where(x => x.OrganizationId == organizationId && x.IsActive)
-            .OrderBy(x => x.CreatedAt).FirstOrDefaultAsync(token);
-        if (existing is not null) return existing;
-
-        var portfolio = new CollectionPortfolio(organizationId, "DEFAULT", "المحفظة الافتراضية", "Default Portfolio", "EGP", DateTimeOffset.UtcNow);
-        _db.CollectionPortfolios.Add(portfolio);
-        await _db.SaveChangesAsync(token);
-        return await _db.CollectionPortfolios.Include(x => x.Organization).SingleAsync(x => x.Id == portfolio.Id, token);
+        {
+            var (primary, sub) = PortfolioClassification.Require(_classification.Primary!, _classification.Sub!);
+            if (portfolio.PrimaryClassification != primary || portfolio.SubClassification != sub)
+                throw new HrConflictException("This import belongs to a different portfolio classification.");
+        }
+        return portfolio;
     }
 
     private async Task<List<BankPortfolioImportPreviewRowDto>> BuildPreviewRowsAsync(
@@ -423,8 +451,9 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
             var overdue = file.Overdue ?? outstanding;
             var dpd = file.DaysPastDue;
 
+            var duplicateInFile = false;
             if (string.IsNullOrWhiteSpace(account)) errors.Add("A case, card, or account number is required.");
-            else if (!batchAccounts.Add(account)) errors.Add("Duplicate account reference in this file.");
+            else if (!batchAccounts.Add(account)) { errors.Add("Duplicate account reference in this file."); duplicateInFile = true; }
             if (string.IsNullOrWhiteSpace(customerCode))
                 customerCode = BuildCustomerCode(national, phone, file.NameArabic ?? file.NameEnglish ?? string.Empty, account);
             if (string.IsNullOrWhiteSpace(file.NameArabic) && string.IsNullOrWhiteSpace(file.NameEnglish)) errors.Add("At least one customer name is required.");
@@ -441,7 +470,8 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
                 errors.Add("National ID is already linked to another customer code.");
 
             var existing = !string.IsNullOrWhiteSpace(account) && existingAccounts.Contains(account);
-            var status = errors.Count > 0 ? "Error" : existing ? "Existing" : "Ready";
+            var status = errors.Count == 0 ? (existing ? "Existing" : "Ready")
+                : duplicateInFile && errors.Count == 1 ? "Duplicate" : "Error";
             var name = ApiTextLocalizer.IsArabic
                 ? (string.IsNullOrWhiteSpace(file.NameArabic) ? file.NameEnglish : file.NameArabic)
                 : (string.IsNullOrWhiteSpace(file.NameEnglish) ? file.NameArabic : file.NameEnglish);

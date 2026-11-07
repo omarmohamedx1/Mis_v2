@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using MIS.Application.DTOs.Collections;
 using MIS.Domain.Services;
 
 namespace MIS.Infrastructure.Services;
@@ -147,6 +148,28 @@ internal static class CollectionFileRowMapper
         return KnownHeaders.Contains(key);
     }
 
+    public static IReadOnlyCollection<BankPortfolioImportColumnMappingDto> DetectImportColumns(IEnumerable<string> headers)
+    {
+        var sourceHeaders = headers.ToArray();
+        return ImportColumnMappings.Select(mapping =>
+        {
+            var source = sourceHeaders.FirstOrDefault(header =>
+                mapping.Aliases.Contains(CollectionImportParser.NormalizeHeader(header), StringComparer.OrdinalIgnoreCase));
+            return source is null ? null : new BankPortfolioImportColumnMappingDto(mapping.Field, source);
+        }).Where(mapping => mapping is not null).Cast<BankPortfolioImportColumnMappingDto>().ToArray();
+    }
+
+    public static IReadOnlyCollection<string> MissingRequiredImportColumns(IEnumerable<string> headers)
+    {
+        var normalized = headers.Select(CollectionImportParser.NormalizeHeader).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missing = new List<string>();
+        if (!Columns.Account.Concat(Columns.Card).Any(normalized.Contains)) missing.Add("account or card number");
+        if (!Columns.NameGeneric.Concat(Columns.NameAr).Concat(Columns.NameEn).Any(normalized.Contains)) missing.Add("customer name");
+        if (!Columns.Outstanding.Any(normalized.Contains)) missing.Add("current balance");
+        if (!Columns.Dpd.Concat(Columns.Bucket).Any(normalized.Contains)) missing.Add("days past due or bucket");
+        return missing;
+    }
+
     public static IReadOnlyDictionary<string, string> ExtraFields(IReadOnlyDictionary<string, string>? values)
     {
         if (values is null || values.Count == 0) return new Dictionary<string, string>();
@@ -216,22 +239,22 @@ internal static class CollectionFileRowMapper
 
     public static class Columns
     {
-        public static readonly string[] Account = { "case", "casenumber", "accountreference", "accountnumber", "رقمالحالة", "رقمالحساب", "مرجعالحساب" };
-        public static readonly string[] Card = { "cardnumber", "card", "رقمالكارت", "رقمالبطاقة" };
+        public static readonly string[] Account = { "case", "casenumber", "accountreference", "accountnumber", "accountno", "acctnumber", "acctno", "loanaccount", "رقمالحالة", "رقمالحساب", "مرجعالحساب", "رقمالقرض" };
+        public static readonly string[] Card = { "cardnumber", "cardno", "card", "رقمالكارت", "رقمالبطاقة" };
         public static readonly string[] CustomerCode = { "customercode", "customerid", "كودالعميل" };
-        public static readonly string[] NameGeneric = { "customername", "name", "اسمالعميل", "الاسم" };
-        public static readonly string[] NameAr = { "namearabic", "customernamearabic", "اسمالعميلبالعربية" };
-        public static readonly string[] NameEn = { "nameenglish", "customernameenglish" };
-        public static readonly string[] National = { "nid", "nationalid", "الرقمالقومي", "الرقمالمدني" };
+        public static readonly string[] NameGeneric = { "customername", "customerfullname", "clientname", "fullname", "name", "اسمالعميل", "اسمالزبون", "الاسم" };
+        public static readonly string[] NameAr = { "namearabic", "customernamearabic", "اسمالعميلبالعربية", "اسمالعميلعربي" };
+        public static readonly string[] NameEn = { "nameenglish", "customernameenglish", "اسمالعميلبالانجليزية" };
+        public static readonly string[] National = { "nid", "nationalid", "nationalnumber", "nationalidnumber", "idnumber", "الرقمالقومي", "الرقمالمدني" };
         public static readonly string[] Mobile1 = { "mobile1", "phones", "phone", "mobile", "primaryphone", "phonenumber", "رقمالهاتف", "الموبايل", "موبايل1", "تليفون1", "تليفون" };
         public static readonly string[] Mobile2 = { "mobile2", "alternatephone", "موبايل2", "تليفون2" };
         public static readonly string[] Mobile3 = { "mobile3", "tertiaryphone", "موبايل3", "تليفون3" };
         public static readonly string[] Contract = { "contractreference", "contractnumber", "رقمالعقد" };
         public static readonly string[] Product = { "producttype", "loantype", "نوعالمنتج" };
-        public static readonly string[] Outstanding = { "currentbalance", "outstandingbalance", "outstanding", "الرصيدالقائم", "المديونية", "الرصيدالحالي" };
-        public static readonly string[] Overdue = { "totaldues", "totaldue", "overduebalance", "overdue", "isdu", "isdue", "المتأخر", "الرصيدالمتأخر", "اجماليالمستحق", "إجماليالمستحق" };
-        public static readonly string[] Dpd = { "dayspastdue", "dpd", "أيامالتأخر", "ايامالتأخر" };
-        public static readonly string[] Bucket = { "currentbkt", "upbkt", "bkt", "bucket", "currentbucket", "الشريحة", "شريحةالتأخر" };
+        public static readonly string[] Outstanding = { "currentbalance", "outstandingbalance", "outstandingamount", "remainingbalance", "balance", "الرصيدالقائم", "المديونية", "الرصيدالحالي", "رصيدالحساب" };
+        public static readonly string[] Overdue = { "totaldues", "totaldue", "overduebalance", "overdueamount", "overdue", "isdu", "isdue", "المتأخر", "الرصيدالمتأخر", "اجماليالمستحق", "إجماليالمستحق" };
+        public static readonly string[] Dpd = { "dayspastdue", "daysdelinquent", "dpd", "أيامالتأخر", "ايامالتأخر", "عددأيامالتأخير" };
+        public static readonly string[] Bucket = { "currentbkt", "upbkt", "bkt", "bucket", "bucketname", "currentbucket", "الشريحة", "شريحةالتأخر", "الفئة" };
         public static readonly string[] Status = { "statue", "status", "الحالة", "حالة" };
         public static readonly string[] Feedback = { "feedback", "الملاحظات", "ملاحظات", "التغذيةالراجعة" };
         public static readonly string[] Region = { "region", "governorate", "المحافظة", "المنطقة" };
@@ -267,6 +290,19 @@ internal static class CollectionFileRowMapper
             ..Collector, ..Action, ..PtpDate, ..PtpAmount, ..Payment, ..Update, ..Keep
         ];
     }
+
+    private sealed record ImportColumnMapping(string Field, string[] Aliases);
+    private static readonly ImportColumnMapping[] ImportColumnMappings =
+    [
+        new("Account number", Columns.Account.Concat(Columns.Card).ToArray()),
+        new("Customer name", Columns.NameGeneric.Concat(Columns.NameAr).Concat(Columns.NameEn).ToArray()),
+        new("National ID", Columns.National),
+        new("Phone", Columns.Mobile1),
+        new("Current balance", Columns.Outstanding),
+        new("Total dues", Columns.Overdue),
+        new("Days past due", Columns.Dpd),
+        new("Bucket", Columns.Bucket)
+    ];
 
     private static string First(IReadOnlyDictionary<string, string> values, string[] aliases) => Get(values, aliases);
 

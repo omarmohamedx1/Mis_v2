@@ -35,6 +35,10 @@ const HrMasterPage = lazy(() => import('../pages/hr/HrMasterPage').then((module)
 const HrAuditPage = lazy(() => import('../pages/hr/HrAuditPage').then((module) => ({ default: module.HrAuditPage })));
 const CollectionsDashboardPage = lazy(() => import('../pages/collections/CollectionsDashboardPage').then((module) => ({ default: module.CollectionsDashboardPage })));
 const CollectionsCreditorsDashboardPage = lazy(() => import('../pages/collections/CollectionsCreditorsDashboardPage').then((module) => ({ default: module.CollectionsCreditorsDashboardPage })));
+const CollectionsScorePage = lazy(() => import('../pages/collections/CollectionsScorePage').then((module) => ({ default: module.CollectionsScorePage })));
+const CollectionsScoreOrganizationPage = lazy(() => import('../pages/collections/CollectionsScoreOrganizationPage').then((module) => ({ default: module.CollectionsScoreOrganizationPage })));
+const CollectionsScorePortfolioPage = lazy(() => import('../pages/collections/CollectionsScorePortfolioPage').then((module) => ({ default: module.CollectionsScorePortfolioPage })));
+const CollectionsScoreDashboardPage = lazy(() => import('../pages/collections/CollectionsScoreDashboardPage').then((module) => ({ default: module.CollectionsScoreDashboardPage })));
 const CollectionsCollectorsDashboardPage = lazy(() => import('../pages/collections/CollectionsCollectorsDashboardPage').then((module) => ({ default: module.CollectionsCollectorsDashboardPage })));
 const CollectionCasesPage = lazy(() => import('../pages/collections/CollectionCasesPage').then((module) => ({ default: module.CollectionCasesPage })));
 const CollectionCaseDetailsPage = lazy(() => import('../pages/collections/CollectionCaseDetailsPage').then((module) => ({ default: module.CollectionCaseDetailsPage })));
@@ -285,6 +289,10 @@ export function AppRoutes() {
         <Route path="/collections" element={<CollectionsRouteBoundary />}>
           <Route path="dashboard" element={<CollectionsDashboardPage />} />
           <Route path="creditors" element={<CollectionsCreditorsDashboardPage />} />
+          <Route path="score" element={<CollectionsScorePage />} />
+          <Route path="score/:organizationId/:portfolioType" element={<CollectionsScorePortfolioPage />} />
+          <Route path="score/:organizationId/:portfolioType/portfolios/:portfolioId" element={<CollectionsScoreDashboardPage />} />
+          <Route path="score/:organizationId" element={<CollectionsScoreOrganizationPage />} />
           <Route path="collectors" element={<CollectionsCollectorsDashboardPage />} />
           <Route path="installment-companies" element={<Navigate to="/installment-companies" replace />} />
           <Route path="clients" element={<Navigate to="/banks" replace />} />

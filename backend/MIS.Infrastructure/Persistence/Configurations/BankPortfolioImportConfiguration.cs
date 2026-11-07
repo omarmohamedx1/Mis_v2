@@ -21,10 +21,15 @@ public sealed class BankPortfolioImportConfiguration : IEntityTypeConfiguration<
         builder.Property(import => import.ArchiveNotes).HasMaxLength(1000);
         builder.Property(import => import.RestoreReason).HasMaxLength(500);
         builder.HasIndex(import => new { import.BankId, import.UploadedAt });
+        builder.HasIndex(import => new { import.BankId, import.PortfolioId, import.UploadedAt });
         builder.HasIndex(import => new { import.BankId, import.IsArchived });
         builder.HasIndex(import => import.ArchivedAt);
-        builder.HasIndex(import => new { import.BankId, import.FileHash }).IsUnique();
+        builder.HasIndex(import => new { import.BankId, import.PortfolioId, import.FileHash }).IsUnique();
         builder.HasOne(import => import.Bank).WithMany().HasForeignKey(import => import.BankId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(import => import.Portfolio).WithMany()
+            .HasForeignKey(import => new { import.PortfolioId, import.BankId })
+            .HasPrincipalKey(portfolio => new { portfolio.Id, portfolio.OrganizationId })
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(import => import.UploadedBy).WithMany().HasForeignKey(import => import.UploadedById).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(import => import.ArchivedBy).WithMany().HasForeignKey(import => import.ArchivedById).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(import => import.RestoredBy).WithMany().HasForeignKey(import => import.RestoredById).OnDelete(DeleteBehavior.Restrict);

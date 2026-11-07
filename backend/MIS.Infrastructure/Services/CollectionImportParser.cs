@@ -119,7 +119,17 @@ internal static class CollectionImportParser
                 && number >= 0 && number <= long.MaxValue && number == Math.Truncate(number))
                 return Limit(Convert.ToInt64(number, CultureInfo.InvariantCulture).ToString($"D{format.Length}", CultureInfo.InvariantCulture));
 
-            if (normalizedHeader is "idnumber" or "installmentuniqueid" or "serial" or "رقمالمحضر")
+            var identifierColumns = CollectionFileRowMapper.Columns.Account
+                .Concat(CollectionFileRowMapper.Columns.Card)
+                .Concat(CollectionFileRowMapper.Columns.CustomerCode)
+                .Concat(CollectionFileRowMapper.Columns.National)
+                .Concat(CollectionFileRowMapper.Columns.Mobile1)
+                .Concat(CollectionFileRowMapper.Columns.Mobile2)
+                .Concat(CollectionFileRowMapper.Columns.Mobile3)
+                .Concat(CollectionFileRowMapper.Columns.Contract)
+                .Select(NormalizeHeader);
+            if (identifierColumns.Contains(normalizedHeader, StringComparer.OrdinalIgnoreCase)
+                || normalizedHeader is "installmentuniqueid" or "serial" or "رقمالمحضر")
                 return Limit(number.ToString("0", CultureInfo.InvariantCulture));
         }
 

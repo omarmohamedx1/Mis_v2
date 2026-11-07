@@ -103,7 +103,7 @@ public static class ApiServiceCollectionExtensions
                 policy => policy.RequireAuthenticatedUser().RequireAssertion(context => HasPermission(context.User, SystemPermissionCodes.CollectionsImportManage) || context.User.IsInRole(SystemRoleNames.CollectionsOperationsManager)));
             options.AddPolicy(
                 AuthorizationPolicies.CollectionsConfigurationManage,
-                policy => policy.RequireAuthenticatedUser().RequireAssertion(context => HasPermission(context.User, SystemPermissionCodes.CollectionsConfigurationManage) || context.User.IsInRole(SystemRoleNames.CollectionsOperationsManager)));
+                policy => policy.RequireAuthenticatedUser().RequireAssertion(context => HasPermission(context.User, SystemPermissionCodes.CollectionsConfigurationManage) || context.User.IsInRole(SystemRoleNames.Admin) || context.User.IsInRole(SystemRoleNames.CollectionsOperationsManager)));
             options.AddPolicy(
                 AuthorizationPolicies.CollectionsReportExport,
                 policy => policy.RequireAuthenticatedUser().RequireAssertion(context => HasPermission(context.User, SystemPermissionCodes.CollectionsReportExport) || context.User.IsInRole(SystemRoleNames.CollectionsOperationsManager) || context.User.IsInRole(SystemRoleNames.CollectionsSupervisor) || context.User.IsInRole(SystemRoleNames.CollectionsAuditor)));

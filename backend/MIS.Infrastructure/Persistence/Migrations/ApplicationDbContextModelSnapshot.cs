@@ -1210,6 +1210,9 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<int>("DuplicateRows")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FileHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -1217,6 +1220,12 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.Property<long>("FileSize")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("ImportedRows")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("InvalidRows")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
@@ -1229,6 +1238,9 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(260)
                         .HasColumnType("character varying(260)");
+
+                    b.Property<Guid?>("PortfolioId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("PortfolioName")
                         .IsRequired()
@@ -1261,6 +1273,9 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("UpdatedRows")
+                        .HasColumnType("integer");
+
                     b.Property<DateTimeOffset>("UploadedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1277,12 +1292,16 @@ namespace MIS.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UploadedById");
 
-                    b.HasIndex("BankId", "FileHash")
-                        .IsUnique();
-
                     b.HasIndex("BankId", "IsArchived");
 
                     b.HasIndex("BankId", "UploadedAt");
+
+                    b.HasIndex("PortfolioId", "BankId");
+
+                    b.HasIndex("BankId", "PortfolioId", "FileHash")
+                        .IsUnique();
+
+                    b.HasIndex("BankId", "PortfolioId", "UploadedAt");
 
                     b.ToTable("BankPortfolioImports", (string)null);
                 });
@@ -2888,6 +2907,170 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasFilter("\"PrimaryClassification\" IS NOT NULL AND \"SubClassification\" IS NOT NULL");
 
                     b.ToTable("CollectionPortfolios", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionScoreAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AfterJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("BeforeJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Bucket")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OrganizationType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("PortfolioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PortfolioType")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateOnly>("ReportingPeriod")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("ScoreValueId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModifiedByUserId");
+
+                    b.HasIndex("PortfolioId", "OrganizationId");
+
+                    b.HasIndex("OrganizationId", "PortfolioId", "PortfolioType", "ReportingPeriod", "Bucket", "Category", "ModifiedAt");
+
+                    b.ToTable("CollectionScoreAudits", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionScoreValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ActualBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("ActualVsTarget")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<string>("Bucket")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<int?>("CaseCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<decimal?>("Missing")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OrganizationType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal?>("Percent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<Guid?>("PortfolioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PortfolioType")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateOnly>("ReportingPeriod")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("Score")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("TargetBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("TargetPercent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<Guid>("Version")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Weight")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModifiedByUserId");
+
+                    b.HasIndex("PortfolioId", "OrganizationId");
+
+                    b.HasIndex("OrganizationId", "PortfolioId", "PortfolioType", "ReportingPeriod", "Bucket");
+
+                    b.HasIndex("OrganizationId", "OrganizationType", "PortfolioType", "PortfolioId", "ReportingPeriod", "Bucket", "Category")
+                        .IsUnique();
+
+                    b.ToTable("CollectionScoreValues", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CollectionScoreValues_CaseCount", "\"CaseCount\" IS NULL OR \"CaseCount\" >= 0");
+
+                            t.HasCheckConstraint("CK_CollectionScoreValues_NonNegativeAmounts", "(\"ActualBalance\" IS NULL OR \"ActualBalance\" >= 0) AND (\"TargetBalance\" IS NULL OR \"TargetBalance\" >= 0) AND (\"Missing\" IS NULL OR \"Missing\" >= 0)");
+
+                            t.HasCheckConstraint("CK_CollectionScoreValues_Percentages", "(\"TargetPercent\" IS NULL OR (\"TargetPercent\" >= 0 AND \"TargetPercent\" <= 100)) AND (\"Percent\" IS NULL OR (\"Percent\" >= 0 AND \"Percent\" <= 100))");
+
+                            t.HasCheckConstraint("CK_CollectionScoreValues_WeightScore", "(\"Weight\" IS NULL OR \"Weight\" >= 0) AND (\"Score\" IS NULL OR \"Score\" >= 0)");
+                        });
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.CollectionTeam", b =>
@@ -6947,9 +7130,17 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MIS.Domain.Entities.CollectionPortfolio", "Portfolio")
+                        .WithMany()
+                        .HasForeignKey("PortfolioId", "BankId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("ArchivedBy");
 
                     b.Navigation("Bank");
+
+                    b.Navigation("Portfolio");
 
                     b.Navigation("RestoredBy");
 
@@ -7533,6 +7724,52 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionScoreAudit", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "ModifiedByUser")
+                        .WithMany()
+                        .HasForeignKey("ModifiedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionPortfolio", "Portfolio")
+                        .WithMany()
+                        .HasForeignKey("PortfolioId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ModifiedByUser");
+
+                    b.Navigation("Portfolio");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.CollectionScoreValue", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", "ModifiedByUser")
+                        .WithMany()
+                        .HasForeignKey("ModifiedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionPortfolio", "Portfolio")
+                        .WithMany()
+                        .HasForeignKey("PortfolioId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ModifiedByUser");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Portfolio");
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.CollectionTeam", b =>

@@ -1,9 +1,10 @@
 export interface PagedResult<T> { items: T[]; totalCount: number; page: number; pageSize: number; totalPages: number }
 export interface BankDirectoryItem { id: string; code: string; nameArabic: string; nameEnglish: string; logoUrl?: string }
-export interface BankPortfolioImport { id: string; bankId: string; bankNameArabic: string; bankNameEnglish: string; portfolioName: string; originalFileName: string; fileType: string; fileSize: number; rowCount: number; status: 'READY' | 'COMPLETED'; uploadedByUserId: string; uploadedBy: string; uploadedAt: string; confirmedAt?: string; notes?: string; updatedAt?: string }
+export interface BankPortfolioImport { id: string; bankId: string; portfolioId?: string | null; bankNameArabic: string; bankNameEnglish: string; portfolioName: string; originalFileName: string; fileType: string; fileSize: number; rowCount: number; importedRows: number; updatedRows: number; duplicateRows: number; invalidRows: number; status: 'READY' | 'COMPLETED'; uploadedByUserId: string; uploadedBy: string; uploadedAt: string; confirmedAt?: string; notes?: string; updatedAt?: string }
 export interface BankPortfolioImportPreviewRow { rowNumber: number; customerName?: string | null; customerCode?: string | null; accountReference?: string | null; outstandingBalance?: number | null; status: string; errors: string[]; nationalId?: string | null; cardNumber?: string | null; bucket?: string | null; importStatus?: string | null; totalDues?: number | null }
-export interface BankPortfolioImportDataPreview { importId: string; totalRows: number; readyRows: number; existingRows: number; invalidRows: number; rows: BankPortfolioImportPreviewRow[] }
-export interface BankPortfolioImportConfirmResult { import: BankPortfolioImport; imported: number; skipped: number; invalid: number }
+export interface BankPortfolioImportColumnMapping { field: string; sourceColumn: string }
+export interface BankPortfolioImportDataPreview { importId: string; totalRows: number; readyRows: number; existingRows: number; invalidRows: number; duplicateRows: number; detectedColumns?: BankPortfolioImportColumnMapping[] | null; rows: BankPortfolioImportPreviewRow[] }
+export interface BankPortfolioImportConfirmResult { import: BankPortfolioImport; imported: number; skipped: number; invalid: number; updated: number; duplicates: number }
 export interface BankPortfolioReplacementPreview { token: string; originalFileName: string; fileType: string; fileSize: number; rowCount: number }
 export interface BankPortfolioImportPage { items: BankPortfolioImport[]; totalCount: number; page: number; pageSize: number; totalPages: number }
 export interface BankPortfolioAccess { isManager: boolean; canEdit: boolean; canAssign: boolean; canExport: boolean; statuses: string[] }

@@ -88,4 +88,29 @@ public sealed class CollectionFileRowMapperTests
         Assert.Equal("500", values["amount"]);
         Assert.Equal("", values["note"]);
     }
+
+    [Fact]
+    public void Detects_arabic_and_english_import_column_variations()
+    {
+        var headers = new[] { "Acct No", "اسم العميل", "Outstanding Amount", "BKT" };
+
+        var missing = CollectionFileRowMapper.MissingRequiredImportColumns(headers);
+        var mappings = CollectionFileRowMapper.DetectImportColumns(headers);
+
+        Assert.Empty(missing);
+        Assert.Equal("Acct No", Assert.Single(mappings, x => x.Field == "Account number").SourceColumn);
+        Assert.Equal("اسم العميل", Assert.Single(mappings, x => x.Field == "Customer name").SourceColumn);
+        Assert.Equal("Outstanding Amount", Assert.Single(mappings, x => x.Field == "Current balance").SourceColumn);
+    }
+
+    [Fact]
+    public void Reports_missing_required_import_columns()
+    {
+        var missing = CollectionFileRowMapper.MissingRequiredImportColumns(["Customer Name"]);
+
+        Assert.Contains("account or card number", missing);
+        Assert.Contains("current balance", missing);
+        Assert.Contains("days past due or bucket", missing);
+        Assert.DoesNotContain("customer name", missing);
+    }
 }

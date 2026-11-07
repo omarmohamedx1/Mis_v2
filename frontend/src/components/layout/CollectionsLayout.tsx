@@ -15,6 +15,7 @@ const links = [
   { to: '/collections/visits', label: 'sidebarVisits', icon: MapPinned, group: 'sidebarGroupOperations' },
   { to: '/banks', label: 'sidebarBanks', icon: Landmark, group: 'sidebarGroupOrganizations' },
   { to: '/installment-companies', label: 'sidebarFinanceCompanies', icon: BadgeDollarSign, group: 'sidebarGroupOrganizations' },
+  { to: '/collections/score', label: 'sidebarScore', icon: Gauge, group: 'sidebarGroupOrganizations' },
   { to: '/collections/reports', label: 'sidebarReports', icon: BarChart3, group: 'sidebarGroupGovernance' },
   { to: '/collections/data-batches', label: 'sidebarDataImports', icon: ClipboardList, supervisorOnly: true, group: 'sidebarGroupGovernance' },
   { to: '/collections/audit', label: 'sidebarAudit', icon: Activity, auditOnly: true, group: 'sidebarGroupGovernance' },

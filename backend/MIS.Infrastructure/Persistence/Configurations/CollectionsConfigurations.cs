@@ -10,6 +10,62 @@ internal static class CollectionsConfigurationExtensions
     public static PropertyBuilder<decimal?> Money(this PropertyBuilder<decimal?> property) => property.HasPrecision(18, 2);
 }
 
+public sealed class CollectionScoreValueConfiguration : IEntityTypeConfiguration<CollectionScoreValue>
+{
+    public void Configure(EntityTypeBuilder<CollectionScoreValue> b)
+    {
+        b.ToTable("CollectionScoreValues", table =>
+        {
+            table.HasCheckConstraint("CK_CollectionScoreValues_CaseCount", "\"CaseCount\" IS NULL OR \"CaseCount\" >= 0");
+            table.HasCheckConstraint("CK_CollectionScoreValues_NonNegativeAmounts", "(\"ActualBalance\" IS NULL OR \"ActualBalance\" >= 0) AND (\"TargetBalance\" IS NULL OR \"TargetBalance\" >= 0) AND (\"Missing\" IS NULL OR \"Missing\" >= 0)");
+            table.HasCheckConstraint("CK_CollectionScoreValues_Percentages", "(\"TargetPercent\" IS NULL OR (\"TargetPercent\" >= 0 AND \"TargetPercent\" <= 100)) AND (\"Percent\" IS NULL OR (\"Percent\" >= 0 AND \"Percent\" <= 100))");
+            table.HasCheckConstraint("CK_CollectionScoreValues_WeightScore", "(\"Weight\" IS NULL OR \"Weight\" >= 0) AND (\"Score\" IS NULL OR \"Score\" >= 0)");
+        });
+        b.HasKey(x => x.Id);
+        b.Property(x => x.OrganizationType).HasMaxLength(40).IsRequired();
+        b.Property(x => x.PortfolioType).HasMaxLength(8).IsRequired();
+        b.Property(x => x.Bucket).HasMaxLength(8).IsRequired();
+        b.Property(x => x.Category).HasMaxLength(16).IsRequired();
+        b.Property(x => x.ActualBalance).HasPrecision(18, 2);
+        b.Property(x => x.TargetPercent).HasPrecision(9, 4);
+        b.Property(x => x.TargetBalance).HasPrecision(18, 2);
+        b.Property(x => x.Missing).HasPrecision(18, 2);
+        b.Property(x => x.Percent).HasPrecision(9, 4);
+        b.Property(x => x.Weight).HasPrecision(18, 6);
+        b.Property(x => x.ActualVsTarget).HasPrecision(18, 6);
+        b.Property(x => x.Score).HasPrecision(18, 6);
+        b.HasIndex(x => new { x.OrganizationId, x.OrganizationType, x.PortfolioType, x.PortfolioId, x.ReportingPeriod, x.Bucket, x.Category }).IsUnique();
+        b.HasIndex(x => new { x.OrganizationId, x.PortfolioId, x.PortfolioType, x.ReportingPeriod, x.Bucket });
+        b.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.Portfolio).WithMany()
+            .HasForeignKey(x => new { x.PortfolioId, x.OrganizationId })
+            .HasPrincipalKey(x => new { x.Id, x.OrganizationId })
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.ModifiedByUser).WithMany().HasForeignKey(x => x.ModifiedByUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class CollectionScoreAuditConfiguration : IEntityTypeConfiguration<CollectionScoreAudit>
+{
+    public void Configure(EntityTypeBuilder<CollectionScoreAudit> b)
+    {
+        b.ToTable("CollectionScoreAudits");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.OrganizationType).HasMaxLength(40).IsRequired();
+        b.Property(x => x.PortfolioType).HasMaxLength(8).IsRequired();
+        b.Property(x => x.Bucket).HasMaxLength(8).IsRequired();
+        b.Property(x => x.Category).HasMaxLength(16).IsRequired();
+        b.Property(x => x.BeforeJson).HasColumnType("jsonb");
+        b.Property(x => x.AfterJson).HasColumnType("jsonb").IsRequired();
+        b.HasIndex(x => new { x.OrganizationId, x.PortfolioId, x.PortfolioType, x.ReportingPeriod, x.Bucket, x.Category, x.ModifiedAt });
+        b.HasOne(x => x.ModifiedByUser).WithMany().HasForeignKey(x => x.ModifiedByUserId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.Portfolio).WithMany()
+            .HasForeignKey(x => new { x.PortfolioId, x.OrganizationId })
+            .HasPrincipalKey(x => new { x.Id, x.OrganizationId })
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public sealed class ClientOrganizationConfiguration : IEntityTypeConfiguration<ClientOrganization>
 {
     public void Configure(EntityTypeBuilder<ClientOrganization> b)
@@ -33,6 +89,7 @@ public sealed class CollectionPortfolioConfiguration : IEntityTypeConfiguration<
         b.Property(x => x.PrimaryClassification).HasMaxLength(20); b.Property(x => x.SubClassification).HasMaxLength(20);
         b.HasIndex(x => new { x.OrganizationId, x.PrimaryClassification, x.SubClassification }).IsUnique()
             .HasFilter("\"PrimaryClassification\" IS NOT NULL AND \"SubClassification\" IS NOT NULL");
+        b.HasAlternateKey(x => new { x.Id, x.OrganizationId });
         b.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
     }
 }

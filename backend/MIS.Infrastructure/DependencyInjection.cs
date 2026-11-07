@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<IFinancePostingService>(serviceProvider => serviceProvider.GetRequiredService<FinanceService>());
         services.AddScoped<ICollectionsClassificationContext, CollectionsClassificationContext>();
         services.AddScoped<ICollectionsService, CollectionsService>();
+        services.AddScoped<ICollectionScoreService, CollectionScoreService>();
         services.AddScoped<IBanksService, BanksService>();
         services.AddScoped<IBankPortfolioImportService, BankPortfolioImportService>();
         services.AddScoped<IBankPortfolioCaseService, BankPortfolioCaseService>();
