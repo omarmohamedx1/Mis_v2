@@ -5215,6 +5215,12 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly?>("DateInBank")
                         .HasColumnType("date");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedById")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ImportBatchId")
                         .HasColumnType("uuid");
 
@@ -5280,6 +5286,8 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.HasIndex("CancelledById");
 
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("DeletedById");
 
                     b.HasIndex("ImportBatchId");
 
@@ -8301,6 +8309,11 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.HasOne("MIS.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("CancelledById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("DeletedById")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MIS.Domain.Entities.User", "CreatedBy")

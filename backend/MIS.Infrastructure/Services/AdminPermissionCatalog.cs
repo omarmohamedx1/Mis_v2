@@ -54,6 +54,7 @@ internal static class AdminPermissionCatalog
         P("finance.claims.receipt.confirm","FINANCE","تأكيد تحصيل مطالبة","Confirm claim receipt","تأكيد التحصيل وترحيل صافي المبلغ مرة واحدة.","Confirm bank receipt and post the net amount once.","CRITICAL",DepartmentScopes),
         P("finance.claims.receipt.reverse","FINANCE","عكس تحصيل مطالبة","Reverse claim receipt","عكس قيد التحصيل مع الاحتفاظ بسجل التدقيق.","Reverse a claim receipt while preserving the audit trail.","CRITICAL",DepartmentScopes),
         P("finance.claims.cancel","FINANCE","إلغاء مطالبة","Cancel claim","إلغاء المطالبة وعكس تحصيلها إن وجد.","Cancel a claim and reverse any posted receipt.","HIGH",DepartmentScopes),
+        P("finance.claims.delete","FINANCE","حذف مطالبة","Delete claim","إخفاء المطالبة من القائمة النشطة مع الاحتفاظ بها وسجلها المالي للتدقيق.","Soft delete a claim while retaining its financial history and audit trail.","HIGH",DepartmentScopes),
         P("finance.claims.export","FINANCE","تصدير المطالبات","Export claims","تصدير سجل المطالبات إلى Excel.","Export the claims register to Excel.","HIGH",DepartmentScopes),
         P("finance.audit.view","FINANCE","سجل تدقيق المالية","Finance audit","قراءة أثر إنشاء واعتماد وترحيل وعكس القيود.","View journal creation, approval, posting, and reversal audit.","HIGH",DepartmentScopes),
         P("legal.access","LEGAL","دخول الشؤون القانونية","Legal access","عرض العملاء والملفات القانونية المصرح بها.","View authorized legal clients and client files.","LOW",DepartmentScopes),

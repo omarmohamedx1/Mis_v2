@@ -36,6 +36,7 @@ public static class SystemPermissionCodes
     public const string FinanceClaimsConfirmReceipt = "finance.claims.receipt.confirm";
     public const string FinanceClaimsReverseReceipt = "finance.claims.receipt.reverse";
     public const string FinanceClaimsCancel = "finance.claims.cancel";
+    public const string FinanceClaimsDelete = "finance.claims.delete";
     public const string FinanceClaimsExport = "finance.claims.export";
     public const string AccountingAccess = "accounting.access";
     public const string AccountingPayrollManage = "accounting.payroll.manage";

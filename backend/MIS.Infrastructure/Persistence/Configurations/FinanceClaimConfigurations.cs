@@ -34,6 +34,7 @@ public sealed class FinanceClaimConfiguration : IEntityTypeConfiguration<Finance
         b.HasOne(x => x.UpdatedBy).WithMany().HasForeignKey(x => x.UpdatedById).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.ReceiptConfirmedBy).WithMany().HasForeignKey(x => x.ReceiptConfirmedById).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<User>().WithMany().HasForeignKey(x => x.CancelledById).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.DeletedById).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

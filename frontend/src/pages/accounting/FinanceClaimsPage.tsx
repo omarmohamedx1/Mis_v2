@@ -1,8 +1,9 @@
-import { Download, FileUp, Plus } from 'lucide-react';
+import { Download, FileUp, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Button } from '../../components/common/Button';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
+import { ActionMenu } from '../../components/common/ActionMenu';
 import { DateControl } from '../../components/forms/DateControl';
 import { useAuth } from '../../context/AuthContext';
 import { useAccountingText } from '../../features/accounting/accountingUi';
@@ -44,12 +45,15 @@ export function FinanceClaimsPage() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [editing, setEditing] = useState<Claim>();
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<ClaimInput>(emptyInput);
   const [details, setDetails] = useState<ClaimDetails>();
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptDate, setReceiptDate] = useState('');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Claim>();
   const [preview, setPreview] = useState<ClaimImportPreview>();
   const [importResult, setImportResult] = useState<ClaimImportResult>();
   const [exporting, setExporting] = useState(false);
@@ -190,6 +194,24 @@ export function FinanceClaimsPage() {
     }
   };
 
+  const deleteClaim = async () => {
+    if (!deleteTarget) return;
+    setBusy(true);
+    setError('');
+    try {
+      await financeClaimsService.delete(deleteTarget.id);
+      setDeleteConfirmOpen(false);
+      setDeleteTarget(undefined);
+      setDetails(undefined);
+      reload();
+      setStatusMessage(a.text('تم حذف المطالبة من القائمة النشطة مع الاحتفاظ بسجلها المالي.', 'Claim removed from the active list; its financial history was retained.'));
+    } catch (exception) {
+      setError(errorMessage(exception, 'تعذر حذف المطالبة. إذا كان لها تحصيل مرحل، اعكس التحصيل أولاً.', 'Could not delete the claim. Reverse any posted receipt first.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const chooseFile = async (file?: File) => {
     if (!file) return;
     setBusy(true);
@@ -309,6 +331,7 @@ export function FinanceClaimsPage() {
       <input ref={fileInput} className="hidden" type="file" accept=".xlsx,.xls" onChange={event => void chooseFile(event.target.files?.[0])} />
     </BookHeader>
     <BookError error={error} />
+    {statusMessage && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{statusMessage}</p>}
 
     <div className="max-w-md">
       <BookField label={a.text('البنك / شركة التقسيط', 'Bank / Installment Company')}>
@@ -326,7 +349,7 @@ export function FinanceClaimsPage() {
 
     <section className="overflow-hidden rounded-2xl border border-mis-border bg-white">
       {loading && claims.length === 0 ? <div className="grid min-h-48 place-items-center"><LoadingSpinner /></div> : <div className="overflow-x-auto">
-        <table className={`${table} min-w-[1800px]`}>
+        <table className={`${table} min-w-[1880px]`}>
           <thead><tr>{columns.map(([arabic, english]) => <th className={cell} key={english}>{a.text(arabic, english)}</th>)}</tr></thead>
           <tbody>
             {claims.map(claim => <tr key={claim.id} tabIndex={0} className="cursor-pointer hover:bg-slate-50" onClick={() => void showDetails(claim)} onKeyDown={event => {
@@ -336,8 +359,14 @@ export function FinanceClaimsPage() {
               }
             }}>
               {claimValues(claim).map((value, index) => <td className={`${cell} whitespace-nowrap ${index >= 5 && index <= 12 ? 'tabular-nums' : ''}`} data-bidi={index >= 5 && index <= 12 ? 'ltr' : undefined} key={index}>{value}</td>)}
+              <td className={cell} onClick={event => event.stopPropagation()}>
+                <ActionMenu label={a.text('إجراءات المطالبة', 'Claim actions')}>
+                  <button type="button" onClick={() => void showDetails(claim)}>{a.text('عرض التفاصيل', 'View details')}</button>
+                  {can('finance.claims.delete') && <button type="button" className="text-rose-700" onClick={() => { setDeleteTarget(claim); setDeleteConfirmOpen(true); }}>{a.text('حذف المطالبة', 'Delete Claim')}</button>}
+                </ActionMenu>
+              </td>
             </tr>)}
-            {!loading && claims.length === 0 && <tr><td className={`${cell} py-12 text-center text-slate-500`} colSpan={14}>{a.text('لا توجد مطالبات', 'No claims')}</td></tr>}
+            {!loading && claims.length === 0 && <tr><td className={`${cell} py-12 text-center text-slate-500`} colSpan={15}>{a.text('لا توجد مطالبات', 'No claims')}</td></tr>}
           </tbody>
         </table>
       </div>}
@@ -423,6 +452,7 @@ export function FinanceClaimsPage() {
     <Modal open={!!details} onClose={() => setDetails(undefined)} title={a.text('المطالبة', 'Claim')} size="xl"
       footer={<div className="flex flex-wrap justify-end gap-2">
         {can('finance.claims.edit') && selectedClaim?.status !== 'CANCELLED' && <Button fullWidth={false} variant="outline" onClick={() => selectedClaim && startEdit(selectedClaim)}>{a.text('تعديل', 'Edit')}</Button>}
+        {can('finance.claims.delete') && selectedClaim && <Button fullWidth={false} variant="danger" leftIcon={<Trash2 size={16} />} onClick={() => { setDeleteTarget(selectedClaim); setDeleteConfirmOpen(true); }}>{a.text('حذف المطالبة', 'Delete Claim')}</Button>}
         {canConfirmReceipt && <Button fullWidth={false} onClick={() => {
           if (!selectedClaim) return;
           setReceiptDate(selectedClaim.dateInBank ?? today());
@@ -445,6 +475,17 @@ export function FinanceClaimsPage() {
         })}
         </div>
       </div>}
+    </Modal>
+
+    <Modal open={deleteConfirmOpen} onClose={() => !busy && setDeleteConfirmOpen(false)} title={a.text('تأكيد حذف المطالبة', 'Confirm Delete Claim')} size="sm"
+      footer={<div className="flex justify-end gap-2">
+        <Button fullWidth={false} variant="outline" disabled={busy} onClick={() => setDeleteConfirmOpen(false)}>{a.text('إلغاء', 'Cancel')}</Button>
+        <Button fullWidth={false} variant="danger" leftIcon={<Trash2 size={16} />} isLoading={busy} onClick={() => void deleteClaim()}>{a.text('حذف المطالبة', 'Delete Claim')}</Button>
+      </div>}>
+      <p className="text-sm text-slate-600">{a.text(
+        'ستختفي المطالبة من القائمة النشطة والتقارير، مع الاحتفاظ ببياناتها وسجلها المالي للتدقيق. لا يمكن حذف مطالبة لها تحصيل مرحل قبل عكسه.',
+        'This claim will leave the active list and reports while its data and financial history remain available for audit. Reverse any posted receipt before deleting.',
+      )}</p>
     </Modal>
 
     <Modal open={receiptOpen} onClose={() => setReceiptOpen(false)} title={a.text('تأكيد التحصيل', 'Confirm Receipt')} size="md"

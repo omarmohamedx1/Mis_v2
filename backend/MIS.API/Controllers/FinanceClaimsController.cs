@@ -61,6 +61,14 @@ public sealed class FinanceClaimsController(IFinanceClaimsService service) : Con
     public Task<FinanceClaimDetails> Cancel(Guid id, [FromBody] CancelFinanceClaimRequest request, CancellationToken token)
         => service.CancelAsync(id, request.Reason, token);
 
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.FinanceClaimsDelete)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken token)
+    {
+        await service.DeleteAsync(id, token);
+        return NoContent();
+    }
+
     [HttpPost("import/preview")]
     [Authorize(Policy = AuthorizationPolicies.FinanceClaimsImport)]
     [RequestSizeLimit(52 * 1024 * 1024)]

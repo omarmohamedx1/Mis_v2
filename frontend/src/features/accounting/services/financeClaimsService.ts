@@ -13,6 +13,7 @@ export const financeClaimsService = {
   postHistoricalReceipt: (id: string) => apiClient.post<ClaimDetails>(`${root}/${id}/post-historical-receipt`).then(response => response.data),
   reverseReceipt: (id: string, reason: string) => apiClient.post<ClaimDetails>(`${root}/${id}/reverse-receipt`, { reason }).then(response => response.data),
   cancel: (id: string, reason?: string) => apiClient.post<ClaimDetails>(`${root}/${id}/cancel`, { reason }).then(response => response.data),
+  delete: (id: string) => apiClient.delete<void>(`${root}/${id}`),
   previewImport: (file: File) => {
     const data = new FormData();
     data.append('file', file);

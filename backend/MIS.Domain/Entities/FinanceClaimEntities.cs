@@ -50,7 +50,16 @@ public sealed class FinanceClaim
     public DateTimeOffset? ReceiptConfirmedAt { get; private set; }
     public Guid? CancelledById { get; private set; }
     public DateTimeOffset? CancelledAt { get; private set; }
+    public Guid? DeletedById { get; private set; }
+    public DateTimeOffset? DeletedAt { get; private set; }
     public ICollection<FinanceClaimReceiptPosting> ReceiptPostings { get; private set; } = new List<FinanceClaimReceiptPosting>();
+
+    public void SoftDelete(Guid actorId, DateTimeOffset now)
+    {
+        if (DeletedAt.HasValue) return;
+        DeletedById = actorId;
+        DeletedAt = now;
+    }
 
     public void ApplyDetails(string? serial, Guid? bankOrganizationId, string bankName, string claimType, string month,
         DateOnly claimDate, decimal amountWithoutVat, decimal vatPercent, decimal taxAtSourcePercent)

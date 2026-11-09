@@ -47,7 +47,8 @@ public sealed class FinanceClaimsService(
     {
         claim.Serial, claim.BankOrganizationId, claim.BankName, claim.ClaimType, claim.Month, claim.ClaimDate,
         claim.AmountWithoutVat, claim.VatPercent, claim.Vat, claim.TotalWithVat, claim.TaxAtSourcePercent,
-        claim.TaxAtSource, claim.Total, claim.TotalInBank, claim.DateInBank, claim.Status, claim.IsHistoricalImport
+        claim.TaxAtSource, claim.Total, claim.TotalInBank, claim.DateInBank, claim.Status, claim.IsHistoricalImport,
+        claim.DeletedById, claim.DeletedAt
     };
 
     private static FinanceClaimListItem Map(FinanceClaim claim, string createdBy, string? updatedBy, bool posted)
@@ -58,7 +59,7 @@ public sealed class FinanceClaimsService(
 
     private IQueryable<FinanceClaim> Filter(FinanceClaimFilter filter)
     {
-        var query = db.FinanceClaims.AsNoTracking().AsQueryable();
+        var query = db.FinanceClaims.AsNoTracking().Where(x => x.DeletedAt == null);
         if (filter.BankOrganizationId.HasValue) query = query.Where(x => x.BankOrganizationId == filter.BankOrganizationId);
         if (!string.IsNullOrWhiteSpace(filter.ClaimType))
         {
@@ -127,7 +128,7 @@ public sealed class FinanceClaimsService(
     private async Task<FinanceClaim> ClaimAsync(Guid id, bool tracking, CancellationToken token)
     {
         var query = tracking ? db.FinanceClaims.AsQueryable() : db.FinanceClaims.AsNoTracking();
-        return await query.Include(x => x.CreatedBy).Include(x => x.UpdatedBy).SingleOrDefaultAsync(x => x.Id == id, token)
+        return await query.Include(x => x.CreatedBy).Include(x => x.UpdatedBy).SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token)
             ?? throw new HrNotFoundException("Claim was not found.");
     }
 
@@ -259,7 +260,7 @@ public sealed class FinanceClaimsService(
         EnsurePermission(SystemPermissionCodes.FinanceClaimsConfirmReceipt);
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var claim = await db.FinanceClaims.Include(x => x.CreatedBy).Include(x => x.UpdatedBy)
-            .SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Claim was not found.");
+            .SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token) ?? throw new HrNotFoundException("Claim was not found.");
         var active = await db.FinanceClaimReceiptPostings.Include(x => x.AccountingBookEntry).ThenInclude(x => x.JournalEntry)
             .Where(x => x.ClaimId == id && x.ReversedAt == null).OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync(token);
         if (claim.Status == "RECEIVED" && active is not null)
@@ -290,7 +291,7 @@ public sealed class FinanceClaimsService(
     {
         EnsurePermission(SystemPermissionCodes.FinanceClaimsConfirmReceipt);
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
-        var claim = await db.FinanceClaims.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Claim was not found.");
+        var claim = await db.FinanceClaims.SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token) ?? throw new HrNotFoundException("Claim was not found.");
         if (claim.Status != "RECEIVED" || !claim.IsHistoricalImport || !claim.DateInBank.HasValue)
             throw new HrConflictException("Only an imported historical claim with a bank receipt date can be posted this way.");
         var active = await db.FinanceClaimReceiptPostings.AnyAsync(x => x.ClaimId == id && x.ReversedAt == null, token);
@@ -315,7 +316,7 @@ public sealed class FinanceClaimsService(
         EnsurePermission(SystemPermissionCodes.FinanceClaimsReverseReceipt);
         if (string.IsNullOrWhiteSpace(request.Reason)) throw new HrValidationException("A reversal reason is required.");
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
-        var claim = await db.FinanceClaims.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Claim was not found.");
+        var claim = await db.FinanceClaims.SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token) ?? throw new HrNotFoundException("Claim was not found.");
         if (claim.Status != "RECEIVED") throw new HrConflictException("Only a received claim can be reversed.");
         var before = Snapshot(claim);
         var active = await db.FinanceClaimReceiptPostings.Include(x => x.AccountingBookEntry)
@@ -339,7 +340,7 @@ public sealed class FinanceClaimsService(
     {
         EnsurePermission(SystemPermissionCodes.FinanceClaimsCancel);
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
-        var claim = await db.FinanceClaims.SingleOrDefaultAsync(x => x.Id == id, token) ?? throw new HrNotFoundException("Claim was not found.");
+        var claim = await db.FinanceClaims.SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token) ?? throw new HrNotFoundException("Claim was not found.");
         if (claim.Status == "CANCELLED")
         {
             if (tx is not null) await tx.CommitAsync(token);
@@ -363,6 +364,24 @@ public sealed class FinanceClaimsService(
         await db.SaveChangesAsync(token);
         if (tx is not null) await tx.CommitAsync(token);
         return await DetailsCoreAsync(id, token);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken token)
+    {
+        EnsurePermission(SystemPermissionCodes.FinanceClaimsDelete);
+        await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
+        var claim = await db.FinanceClaims.Include(x => x.ReceiptPostings)
+            .SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token)
+            ?? throw new HrNotFoundException("Claim was not found.");
+        if (claim.ReceiptPostings.Any(posting => posting.ReversedAt == null))
+            throw new HrConflictException("Reverse the claim receipt before deleting this claim.");
+
+        var now = DateTimeOffset.UtcNow;
+        var before = Snapshot(claim);
+        claim.SoftDelete(user.UserId, now);
+        Audit("FinanceClaimDeleted", id, before, new { claim.Id, DeletedById = user.UserId, DeletedAt = now });
+        await db.SaveChangesAsync(token);
+        if (tx is not null) await tx.CommitAsync(token);
     }
 
     private sealed record ParsedClaimRow(
@@ -399,7 +418,7 @@ public sealed class FinanceClaimsService(
         if (parsed.Count > MaximumImportRows) throw new HrValidationException("Claims workbooks may contain at most 20000 data rows.");
         var rows = new List<FinanceClaimImportRow>(parsed.Count);
         var inFileKeys = new HashSet<string>(StringComparer.Ordinal);
-        var existingClaims = await db.FinanceClaims.AsNoTracking()
+        var existingClaims = await db.FinanceClaims.AsNoTracking().Where(x => x.DeletedAt == null)
             .Select(x => new { x.BankName, x.ClaimType, x.Month, x.ClaimDate, x.AmountWithoutVat }).ToArrayAsync(token);
         var existingKeys = existingClaims.Select(x => DuplicateKey(x.BankName, x.ClaimType, x.Month, x.ClaimDate, x.AmountWithoutVat))
             .Where(x => x.Length > 0).ToHashSet(StringComparer.Ordinal);
@@ -472,7 +491,7 @@ public sealed class FinanceClaimsService(
         var imported = 0;
         var skipped = 0;
         var failed = 0;
-        var existingClaims = await db.FinanceClaims.AsNoTracking()
+        var existingClaims = await db.FinanceClaims.AsNoTracking().Where(x => x.DeletedAt == null)
             .Select(x => new { x.BankName, x.ClaimType, x.Month, x.ClaimDate, x.AmountWithoutVat }).ToArrayAsync(token);
         var seen = existingClaims.Select(x => DuplicateKey(x.BankName, x.ClaimType, x.Month, x.ClaimDate, x.AmountWithoutVat))
             .Where(x => x.Length > 0).ToHashSet(StringComparer.Ordinal);

@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Reflection;
 using ClosedXML.Excel;
+using Microsoft.AspNetCore.Authorization;
+using MIS.API.Authorization;
+using MIS.API.Controllers;
 using MIS.Application.DTOs.Accounting;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
@@ -158,6 +161,34 @@ public sealed class AccountingBookTests
             100000m, 14m, 3m, new(2026, 10, 15), true, Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow);
         Assert.Equal("RECEIVED", historical.Status);
         Assert.True(historical.IsHistoricalImport);
+    }
+
+    [Fact]
+    public void FinanceClaim_SoftDeleteRecordsActorAndTimeWithoutChangingFinancialValues()
+    {
+        var actorId = Guid.NewGuid();
+        var createdById = Guid.NewGuid();
+        var deletedAt = DateTimeOffset.UtcNow;
+        var claim = new FinanceClaim("C-2", null, "Example Bank", "Monthly", "2026-11",
+            new(2026, 11, 1), 100m, 14m, 2m, null, false, null, createdById, deletedAt.AddMinutes(-1));
+
+        claim.SoftDelete(actorId, deletedAt);
+        claim.SoftDelete(Guid.NewGuid(), deletedAt.AddDays(1));
+
+        Assert.Equal(actorId, claim.DeletedById);
+        Assert.Equal(deletedAt, claim.DeletedAt);
+        Assert.Equal(createdById, claim.CreatedById);
+        Assert.Equal(114m, claim.TotalWithVat);
+        Assert.Equal(112m, claim.TotalInBank);
+        Assert.Equal("PENDING", claim.Status);
+    }
+
+    [Fact]
+    public void FinanceClaimDeleteEndpointRequiresDedicatedPermission()
+    {
+        var endpoint = typeof(FinanceClaimsController).GetMethod(nameof(FinanceClaimsController.Delete))!;
+        var authorization = endpoint.GetCustomAttribute<AuthorizeAttribute>();
+        Assert.Equal(AuthorizationPolicies.FinanceClaimsDelete, authorization?.Policy);
     }
     [Theory]
     [InlineData("ar-EG")]

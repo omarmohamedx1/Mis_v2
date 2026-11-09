@@ -31,6 +31,7 @@ public static class AuthorizationPolicies
     public const string FinanceClaimsConfirmReceipt = "FinanceClaimsConfirmReceipt";
     public const string FinanceClaimsReverseReceipt = "FinanceClaimsReverseReceipt";
     public const string FinanceClaimsCancel = "FinanceClaimsCancel";
+    public const string FinanceClaimsDelete = "FinanceClaimsDelete";
     public const string FinanceClaimsExport = "FinanceClaimsExport";
     public const string AccountingAccess = "AccountingAccess";
     public const string AccountingPayrollManage = "AccountingPayrollManage";
