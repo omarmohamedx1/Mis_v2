@@ -61,6 +61,11 @@ public sealed class FinanceClaimsController(IFinanceClaimsService service) : Con
     public Task<FinanceClaimDetails> Cancel(Guid id, [FromBody] CancelFinanceClaimRequest request, CancellationToken token)
         => service.CancelAsync(id, request.Reason, token);
 
+    [HttpPost("{id:guid}/reactivate")]
+    [Authorize(Policy = AuthorizationPolicies.FinanceClaimsCancel)]
+    public Task<FinanceClaimDetails> Reactivate(Guid id, CancellationToken token)
+        => service.ReactivateAsync(id, token);
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = AuthorizationPolicies.FinanceClaimsDelete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken token)

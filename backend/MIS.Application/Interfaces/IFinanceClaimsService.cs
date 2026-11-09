@@ -13,6 +13,7 @@ public interface IFinanceClaimsService
     Task<FinanceClaimDetails> PostHistoricalReceiptAsync(Guid id, CancellationToken token);
     Task<FinanceClaimDetails> ReverseReceiptAsync(Guid id, ReverseFinanceClaimReceiptRequest request, CancellationToken token);
     Task<FinanceClaimDetails> CancelAsync(Guid id, string? reason, CancellationToken token);
+    Task<FinanceClaimDetails> ReactivateAsync(Guid id, CancellationToken token);
     Task DeleteAsync(Guid id, CancellationToken token);
     Task<FinanceClaimImportPreview> PreviewImportAsync(string fileName, Stream stream, CancellationToken token);
     Task<FinanceClaimImportResult> ConfirmImportAsync(FinanceClaimImportConfirmRequest request, CancellationToken token);

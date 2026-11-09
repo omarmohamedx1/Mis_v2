@@ -3,12 +3,15 @@ using System.Globalization;
 using System.Reflection;
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using MIS.API.Authorization;
 using MIS.API.Controllers;
+using MIS.Application.Common;
 using MIS.Application.DTOs.Accounting;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
 using MIS.Infrastructure.Services;
+using MIS.Infrastructure.Persistence;
 using Xunit;
 
 namespace MIS.Domain.Tests;
@@ -39,6 +42,7 @@ public sealed class AccountingBookTests
         Assert.Equal(114m, claim.TotalWithVat);
         Assert.Equal(2m, claim.TaxAtSource);
         Assert.Equal(112m, claim.TotalInBank);
+
     }
 
     [Fact]
@@ -180,6 +184,7 @@ public sealed class AccountingBookTests
         Assert.Equal(createdById, claim.CreatedById);
         Assert.Equal(114m, claim.TotalWithVat);
         Assert.Equal(112m, claim.TotalInBank);
+
         Assert.Equal("PENDING", claim.Status);
     }
 
@@ -189,6 +194,49 @@ public sealed class AccountingBookTests
         var endpoint = typeof(FinanceClaimsController).GetMethod(nameof(FinanceClaimsController.Delete))!;
         var authorization = endpoint.GetCustomAttribute<AuthorizeAttribute>();
         Assert.Equal(AuthorizationPolicies.FinanceClaimsDelete, authorization?.Policy);
+        var cancel = typeof(FinanceClaimsController).GetMethod(nameof(FinanceClaimsController.Cancel))!;
+        var reactivate = typeof(FinanceClaimsController).GetMethod(nameof(FinanceClaimsController.Reactivate))!;
+        Assert.Equal(AuthorizationPolicies.FinanceClaimsCancel, cancel.GetCustomAttribute<AuthorizeAttribute>()?.Policy);
+        Assert.Equal(AuthorizationPolicies.FinanceClaimsCancel, reactivate.GetCustomAttribute<AuthorizeAttribute>()?.Policy);
+    }
+
+    [Fact]
+    public void FinanceClaimCancellationAndReactivationValidateTransitionsAndPreserveValues()
+    {
+        var actorId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+        var claim = new FinanceClaim("C-3", Guid.NewGuid(), "Example Bank", "Monthly", "2026-11",
+            new(2026, 11, 1), 100m, 14m, 2m, null, false, null, Guid.NewGuid(), now.AddMinutes(-1));
+
+        claim.Cancel(actorId, now);
+        Assert.Equal("CANCELLED", claim.Status);
+        Assert.Throws<InvalidOperationException>(() => claim.Cancel(actorId, now));
+        claim.Reactivate(actorId, now.AddMinutes(1), restoreHistoricalReceipt: false);
+
+        Assert.Equal("PENDING", claim.Status);
+        Assert.Throws<InvalidOperationException>(() => claim.Reactivate(actorId, now.AddMinutes(2), restoreHistoricalReceipt: false));
+        Assert.Equal(114m, claim.TotalWithVat);
+        Assert.Equal(112m, claim.TotalInBank);
+
+        var historical = new FinanceClaim("H-1", null, "Example Bank", "Historical", "2026-10",
+            new(2026, 10, 1), 100m, 14m, 2m, new(2026, 10, 12), true, Guid.NewGuid(), Guid.NewGuid(), now);
+        historical.Cancel(actorId, now);
+        historical.Reactivate(actorId, now.AddMinutes(1), restoreHistoricalReceipt: true);
+        Assert.Equal("RECEIVED", historical.Status);
+        Assert.Equal(new DateOnly(2026, 10, 12), historical.DateInBank);
+    }
+
+    [Fact]
+    public async Task FinanceClaimCancelAndReactivateRequireAuthorizationInService()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=not-used;Username=not-used;Password=not-used")
+            .Options;
+        await using var db = new ApplicationDbContext(options);
+        var service = new FinanceClaimsService(db, new LimitedBookTestPrincipal(Guid.NewGuid(), []), null!, null!);
+
+        await Assert.ThrowsAsync<HrForbiddenException>(() => service.CancelAsync(Guid.NewGuid(), null, default));
+        await Assert.ThrowsAsync<HrForbiddenException>(() => service.ReactivateAsync(Guid.NewGuid(), default));
     }
     [Theory]
     [InlineData("ar-EG")]

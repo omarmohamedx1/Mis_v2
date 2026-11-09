@@ -74,9 +74,11 @@ public sealed class FinanceClaimsService(
         if (!string.IsNullOrWhiteSpace(filter.Status))
         {
             var status = filter.Status.Trim().ToUpperInvariant();
-            if (status is not ("PENDING" or "RECEIVED" or "CANCELLED")) throw new HrValidationException("Invalid claim status.");
-            query = query.Where(x => x.Status == status);
+            if (status is not ("ACTIVE" or "ALL" or "PENDING" or "RECEIVED" or "CANCELLED")) throw new HrValidationException("Invalid claim status.");
+            if (status == "ACTIVE") query = query.Where(x => x.Status != "CANCELLED");
+            else if (status != "ALL") query = query.Where(x => x.Status == status);
         }
+        else query = query.Where(x => x.Status != "CANCELLED");
         if (filter.ClaimDateFrom.HasValue) query = query.Where(x => x.ClaimDate >= filter.ClaimDateFrom.Value);
         if (filter.ClaimDateTo.HasValue) query = query.Where(x => x.ClaimDate <= filter.ClaimDateTo.Value);
         if (filter.BankDateFrom.HasValue) query = query.Where(x => x.DateInBank >= filter.BankDateFrom.Value);
@@ -341,26 +343,36 @@ public sealed class FinanceClaimsService(
         EnsurePermission(SystemPermissionCodes.FinanceClaimsCancel);
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var claim = await db.FinanceClaims.SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token) ?? throw new HrNotFoundException("Claim was not found.");
-        if (claim.Status == "CANCELLED")
-        {
-            if (tx is not null) await tx.CommitAsync(token);
-            return await DetailsCoreAsync(id, token);
-        }
+        if (claim.Status == "CANCELLED") throw new HrConflictException("This claim is already cancelled.");
+        var activePosting = await db.FinanceClaimReceiptPostings.AnyAsync(x => x.ClaimId == id && x.ReversedAt == null, token);
+        if (activePosting)
+            throw new HrConflictException("This claim has a posted receipt. Reverse the receipt through the authorized receipt workflow before cancelling the claim.");
         var before = Snapshot(claim);
-        if (claim.Status == "RECEIVED")
-        {
-            var active = await db.FinanceClaimReceiptPostings.Include(x => x.AccountingBookEntry)
-                .Where(x => x.ClaimId == id && x.ReversedAt == null).OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync(token);
-            if (active is not null)
-            {
-                var reversal = await finance.ReverseClaimReceiptAsync(active.AccountingBookEntry.JournalEntryId,
-                    new PeriodActionRequest(string.IsNullOrWhiteSpace(reason) ? "Claim cancelled" : reason), token);
-                active.MarkReversed(user.UserId, DateTimeOffset.UtcNow, reversal.Id);
-            }
-        }
         try { claim.Cancel(user.UserId, DateTimeOffset.UtcNow); }
         catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
         Audit("FinanceClaimCancelled", id, before, Snapshot(claim), reason);
+        await db.SaveChangesAsync(token);
+        if (tx is not null) await tx.CommitAsync(token);
+        return await DetailsCoreAsync(id, token);
+    }
+
+    public async Task<FinanceClaimDetails> ReactivateAsync(Guid id, CancellationToken token)
+    {
+        EnsurePermission(SystemPermissionCodes.FinanceClaimsCancel);
+        await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
+        var claim = await db.FinanceClaims.Include(x => x.ReceiptPostings)
+            .SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token)
+            ?? throw new HrNotFoundException("Claim was not found.");
+        if (claim.Status != "CANCELLED") throw new HrConflictException("Only a cancelled claim can be reactivated.");
+        if (claim.ReceiptPostings.Any(x => x.ReversedAt == null))
+            throw new HrConflictException("This claim has an active receipt posting. Resolve the receipt before reactivating it.");
+
+        var before = Snapshot(claim);
+        var restoreHistoricalReceipt = claim.IsHistoricalImport && claim.DateInBank.HasValue && claim.ReceiptPostings.Count == 0;
+        var now = DateTimeOffset.UtcNow;
+        try { claim.Reactivate(user.UserId, now, restoreHistoricalReceipt); }
+        catch (InvalidOperationException ex) { throw new HrConflictException(ex.Message); }
+        Audit("FinanceClaimReactivated", id, before, new { Claim = Snapshot(claim), ReactivatedById = user.UserId, ReactivatedAt = now });
         await db.SaveChangesAsync(token);
         if (tx is not null) await tx.CommitAsync(token);
         return await DetailsCoreAsync(id, token);

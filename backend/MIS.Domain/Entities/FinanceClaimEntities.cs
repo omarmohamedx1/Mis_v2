@@ -128,11 +128,19 @@ public sealed class FinanceClaim
 
     public void Cancel(Guid actorId, DateTimeOffset now)
     {
-        if (Status == "CANCELLED") return;
+        if (Status == "CANCELLED") throw new InvalidOperationException("This claim is already cancelled.");
         if (Status is not ("PENDING" or "RECEIVED")) throw new InvalidOperationException("This claim cannot be cancelled.");
         Status = "CANCELLED";
         CancelledById = actorId;
         CancelledAt = now;
+        UpdatedById = actorId;
+        UpdatedAt = now;
+    }
+
+    public void Reactivate(Guid actorId, DateTimeOffset now, bool restoreHistoricalReceipt)
+    {
+        if (Status != "CANCELLED") throw new InvalidOperationException("Only a cancelled claim can be reactivated.");
+        Status = restoreHistoricalReceipt ? "RECEIVED" : "PENDING";
         UpdatedById = actorId;
         UpdatedAt = now;
     }

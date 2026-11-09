@@ -39,6 +39,8 @@ export function FinanceClaimsPage() {
   const [organizationsError, setOrganizationsError] = useState('');
   const [organizationCategory, setOrganizationCategory] = useState<ClaimOrganizationCategory>('BANK');
   const [filterOrganizationId, setFilterOrganizationId] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'CANCELLED' | 'ALL'>('ACTIVE');
+  const [search, setSearch] = useState('');
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [refresh, setRefresh] = useState(0);
@@ -53,6 +55,8 @@ export function FinanceClaimsPage() {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptDate, setReceiptDate] = useState('');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Claim>();
   const [preview, setPreview] = useState<ClaimImportPreview>();
   const [importResult, setImportResult] = useState<ClaimImportResult>();
@@ -76,7 +80,7 @@ export function FinanceClaimsPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    financeClaimsService.list({ page, pageSize: 200, bankOrganizationId: filterOrganizationId || undefined })
+    financeClaimsService.list({ page, pageSize: 200, bankOrganizationId: filterOrganizationId || undefined, status: statusFilter, search: search.trim() || undefined })
       .then(result => {
         if (!active) return;
         setClaims(result.items);
@@ -90,7 +94,7 @@ export function FinanceClaimsPage() {
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [a.ar, filterOrganizationId, page, refresh]);
+  }, [a.ar, filterOrganizationId, page, refresh, search, statusFilter]);
 
   useEffect(() => {
     let active = true;
@@ -212,6 +216,42 @@ export function FinanceClaimsPage() {
     }
   };
 
+  const cancelClaim = async () => {
+    if (!selectedClaim) return;
+    setBusy(true);
+    setError('');
+    try {
+      await financeClaimsService.cancel(selectedClaim.id);
+      setCancelConfirmOpen(false);
+      setDetails(undefined);
+      setPage(1);
+      setStatusMessage(a.text('تم إلغاء المطالبة دون تعديل أي قيود مالية.', 'Claim cancelled without changing any financial entries.'));
+      reload();
+    } catch (exception) {
+      setError(errorMessage(exception, 'تعذر إلغاء المطالبة. إذا كان لها تحصيل مرحل، اعكسه من إجراء التحصيل أولاً.', 'Could not cancel the claim. Reverse any posted receipt through the receipt workflow first.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reactivateClaim = async () => {
+    if (!selectedClaim) return;
+    setBusy(true);
+    setError('');
+    try {
+      await financeClaimsService.reactivate(selectedClaim.id);
+      setReactivateConfirmOpen(false);
+      setDetails(undefined);
+      setPage(1);
+      setStatusMessage(a.text('تمت إعادة تفعيل المطالبة.', 'Claim reactivated.'));
+      reload();
+    } catch (exception) {
+      setError(errorMessage(exception, 'تعذر إعادة تفعيل المطالبة. راجع القيود المالية المرتبطة بها.', 'Could not reactivate the claim. Review its related financial entries.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const chooseFile = async (file?: File) => {
     if (!file) return;
     setBusy(true);
@@ -247,7 +287,7 @@ export function FinanceClaimsPage() {
     setExporting(true);
     setError('');
     try {
-      await financeClaimsService.export({ bankOrganizationId: filterOrganizationId || undefined });
+      await financeClaimsService.export({ bankOrganizationId: filterOrganizationId || undefined, status: statusFilter, search: search.trim() || undefined });
     } catch (exception) {
       setError(errorMessage(exception, 'تعذر تصدير المطالبات', 'Could not export claims'));
     } finally {
@@ -333,7 +373,17 @@ export function FinanceClaimsPage() {
     <BookError error={error} />
     {statusMessage && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{statusMessage}</p>}
 
-    <div className="max-w-md">
+    <div className="grid max-w-5xl gap-4 md:grid-cols-3">
+      <BookField label={a.text('حالة المطالبات', 'Claim status')}>
+        <select className="field" value={statusFilter} onChange={event => { setStatusFilter(event.target.value as 'ACTIVE' | 'CANCELLED' | 'ALL'); setPage(1); }}>
+          <option value="ACTIVE">{a.text('المطالبات النشطة', 'Active Claims')}</option>
+          <option value="CANCELLED">{a.text('المطالبات الملغاة', 'Cancelled Claims')}</option>
+          <option value="ALL">{a.text('كل المطالبات', 'All Claims')}</option>
+        </select>
+      </BookField>
+      <BookField label={a.text('بحث', 'Search claims')}>
+        <FieldInput value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder={a.text('البنك أو نوع المطالبة أو الشهر أو المسلسل', 'Bank, type, month, or serial')} />
+      </BookField>
       <BookField label={a.text('البنك / شركة التقسيط', 'Bank / Installment Company')}>
         <select className="field" onChange={event => { setFilterOrganizationId(event.target.value); setPage(1); }} value={filterOrganizationId}>
           <option value="">{a.text('كل الجهات', 'All organizations')}</option>
@@ -350,7 +400,7 @@ export function FinanceClaimsPage() {
     <section className="overflow-hidden rounded-2xl border border-mis-border bg-white">
       {loading && claims.length === 0 ? <div className="grid min-h-48 place-items-center"><LoadingSpinner /></div> : <div className="overflow-x-auto">
         <table className={`${table} min-w-[1880px]`}>
-          <thead><tr>{columns.map(([arabic, english]) => <th className={cell} key={english}>{a.text(arabic, english)}</th>)}</tr></thead>
+          <thead><tr>{columns.map(([arabic, english]) => <th className={cell} key={english}>{a.text(arabic, english)}</th>)}<th className={cell}>{a.text('الحالة', 'Status')}</th><th className={cell}>{a.text('الإجراءات', 'Actions')}</th></tr></thead>
           <tbody>
             {claims.map(claim => <tr key={claim.id} tabIndex={0} className="cursor-pointer hover:bg-slate-50" onClick={() => void showDetails(claim)} onKeyDown={event => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -359,14 +409,15 @@ export function FinanceClaimsPage() {
               }
             }}>
               {claimValues(claim).map((value, index) => <td className={`${cell} whitespace-nowrap ${index >= 5 && index <= 12 ? 'tabular-nums' : ''}`} data-bidi={index >= 5 && index <= 12 ? 'ltr' : undefined} key={index}>{value}</td>)}
+              <td className={cell}><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${claim.status === 'CANCELLED' ? 'bg-slate-100 text-slate-700' : claim.status === 'RECEIVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{claim.status === 'CANCELLED' ? a.text('ملغاة', 'Cancelled') : claim.status === 'RECEIVED' ? a.text('تم التحصيل', 'Received') : a.text('نشطة', 'Active')}</span></td>
               <td className={cell} onClick={event => event.stopPropagation()}>
                 <ActionMenu label={a.text('إجراءات المطالبة', 'Claim actions')}>
                   <button type="button" onClick={() => void showDetails(claim)}>{a.text('عرض التفاصيل', 'View details')}</button>
-                  {can('finance.claims.delete') && <button type="button" className="text-rose-700" onClick={() => { setDeleteTarget(claim); setDeleteConfirmOpen(true); }}>{a.text('حذف المطالبة', 'Delete Claim')}</button>}
+                  {can('finance.claims.delete') && !claim.hasAccountingPosting && <button type="button" className="text-rose-700" onClick={() => { setDeleteTarget(claim); setDeleteConfirmOpen(true); }}>{a.text('حذف المطالبة', 'Delete Claim')}</button>}
                 </ActionMenu>
               </td>
             </tr>)}
-            {!loading && claims.length === 0 && <tr><td className={`${cell} py-12 text-center text-slate-500`} colSpan={15}>{a.text('لا توجد مطالبات', 'No claims')}</td></tr>}
+            {!loading && claims.length === 0 && <tr><td className={`${cell} py-12 text-center text-slate-500`} colSpan={16}>{a.text('لا توجد مطالبات', 'No claims')}</td></tr>}
           </tbody>
         </table>
       </div>}
@@ -451,8 +502,10 @@ export function FinanceClaimsPage() {
 
     <Modal open={!!details} onClose={() => setDetails(undefined)} title={a.text('المطالبة', 'Claim')} size="xl"
       footer={<div className="flex flex-wrap justify-end gap-2">
-        {can('finance.claims.edit') && selectedClaim?.status !== 'CANCELLED' && <Button fullWidth={false} variant="outline" onClick={() => selectedClaim && startEdit(selectedClaim)}>{a.text('تعديل', 'Edit')}</Button>}
-        {can('finance.claims.delete') && selectedClaim && <Button fullWidth={false} variant="danger" leftIcon={<Trash2 size={16} />} onClick={() => { setDeleteTarget(selectedClaim); setDeleteConfirmOpen(true); }}>{a.text('حذف المطالبة', 'Delete Claim')}</Button>}
+        {can('finance.claims.edit') && selectedClaim?.status !== 'CANCELLED' && <Button fullWidth={false} variant="outline" disabled={busy} onClick={() => selectedClaim && startEdit(selectedClaim)}>{a.text('تعديل', 'Edit')}</Button>}
+        {can('finance.claims.cancel') && selectedClaim?.status !== 'CANCELLED' && <Button fullWidth={false} variant="danger" disabled={busy} onClick={() => setCancelConfirmOpen(true)}>{a.text('إلغاء المطالبة', 'Cancel Claim')}</Button>}
+        {can('finance.claims.cancel') && selectedClaim?.status === 'CANCELLED' && <Button fullWidth={false} disabled={busy} onClick={() => setReactivateConfirmOpen(true)}>{a.text('إعادة تفعيل المطالبة', 'Reactivate Claim')}</Button>}
+        {can('finance.claims.delete') && selectedClaim && !selectedClaim.hasAccountingPosting && <Button fullWidth={false} variant="danger" leftIcon={<Trash2 size={16} />} disabled={busy} onClick={() => { setDeleteTarget(selectedClaim); setDeleteConfirmOpen(true); }}>{a.text('حذف المطالبة', 'Delete Claim')}</Button>}
         {canConfirmReceipt && <Button fullWidth={false} onClick={() => {
           if (!selectedClaim) return;
           setReceiptDate(selectedClaim.dateInBank ?? today());
@@ -475,6 +528,30 @@ export function FinanceClaimsPage() {
         })}
         </div>
       </div>}
+    </Modal>
+
+    <Modal open={cancelConfirmOpen} onClose={() => !busy && setCancelConfirmOpen(false)} title={a.text('تأكيد إلغاء المطالبة', 'Confirm Cancel Claim')} size="sm"
+      footer={<div className="flex justify-end gap-2">
+        <Button fullWidth={false} variant="outline" disabled={busy} onClick={() => setCancelConfirmOpen(false)}>{a.text('رجوع', 'Keep Claim')}</Button>
+        <Button fullWidth={false} variant="danger" isLoading={busy} onClick={() => void cancelClaim()}>{a.text('إلغاء المطالبة', 'Cancel Claim')}</Button>
+      </div>}>
+      <BookError error={error} />
+      <p className="text-sm text-slate-600">{a.text(
+        'سيتم إخفاء المطالبة من القائمة النشطة مع الاحتفاظ بسجلها. لن يتم تعديل أي قيد مالي. لا يمكن الإلغاء ما دام هناك تحصيل مرحل غير معكوس.',
+        'The claim will leave the active list while its history is retained. No financial entries will be changed. Cancellation is blocked while a receipt posting remains active.',
+      )}</p>
+    </Modal>
+
+    <Modal open={reactivateConfirmOpen} onClose={() => !busy && setReactivateConfirmOpen(false)} title={a.text('تأكيد إعادة التفعيل', 'Confirm Reactivation')} size="sm"
+      footer={<div className="flex justify-end gap-2">
+        <Button fullWidth={false} variant="outline" disabled={busy} onClick={() => setReactivateConfirmOpen(false)}>{a.text('رجوع', 'Cancel')}</Button>
+        <Button fullWidth={false} isLoading={busy} onClick={() => void reactivateClaim()}>{a.text('إعادة تفعيل المطالبة', 'Reactivate Claim')}</Button>
+      </div>}>
+      <BookError error={error} />
+      <p className="text-sm text-slate-600">{a.text(
+        'ستعود المطالبة إلى قائمة المطالبات النشطة. سيبقى سجل الإلغاء والتدقيق محفوظًا، ولن يتم تعديل أي قيد مالي.',
+        'This claim will return to the active list. Cancellation and audit history remain intact, and no financial entries will be changed.',
+      )}</p>
     </Modal>
 
     <Modal open={deleteConfirmOpen} onClose={() => !busy && setDeleteConfirmOpen(false)} title={a.text('تأكيد حذف المطالبة', 'Confirm Delete Claim')} size="sm"

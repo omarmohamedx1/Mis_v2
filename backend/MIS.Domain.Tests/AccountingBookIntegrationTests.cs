@@ -439,6 +439,17 @@ public sealed class AccountingBookIntegrationTests
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome &&
                   (await claimService.DetailsAsync(pendingCancellation.Id, default)).Claim.Status == "CANCELLED",
                 "cancelling a pending claim does not change Company Income");
+            var cancelledSearch = await claimService.ListAsync(new FinanceClaimFilter(Search: "CLAIM-CANCEL", Status: "CANCELLED", PageSize: 1), default);
+            var activeSearch = await claimService.ListAsync(new FinanceClaimFilter(Search: "CLAIM-CANCEL", Status: "ACTIVE", PageSize: 1), default);
+            var allSearch = await claimService.ListAsync(new FinanceClaimFilter(Search: "CLAIM-CANCEL", Status: "ALL", PageSize: 1), default);
+            Check(cancelledSearch.TotalCount == 1 && cancelledSearch.Items.Single().Status == "CANCELLED" && activeSearch.TotalCount == 0 && allSearch.TotalCount == 1,
+                "active, cancelled, and all claim filters apply search before pagination");
+            await claimService.ReactivateAsync(pendingCancellation.Id, default);
+            Check((await claimService.ListAsync(new FinanceClaimFilter(Search: "CLAIM-CANCEL", Status: "ACTIVE"), default)).TotalCount == 1 &&
+                  (await claimService.ListAsync(new FinanceClaimFilter(Search: "CLAIM-CANCEL", Status: "CANCELLED"), default)).TotalCount == 0,
+                "reactivating a claim returns it to Active Claims");
+            await Conflict(() => claimService.ReactivateAsync(pendingCancellation.Id, default), "duplicate claim reactivation is rejected");
+            await Conflict(() => claimService.CancelAsync(pendingCancellation.Id, "repeat", default), "duplicate claim cancellation is rejected");
             var financialClaim = await claimService.CreateAsync(claimInput, default);
             Check(financialClaim.Vat == 14000m && financialClaim.TotalWithVat == 114000m && financialClaim.TaxAtSource == 3000m && financialClaim.TotalInBank == 111000m,
                 "claim amounts are calculated from the pre-VAT base");
@@ -453,6 +464,11 @@ public sealed class AccountingBookIntegrationTests
                 "repeated claim receipt confirmation creates one accounting entry");
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome + 111000m,
                 "confirmed claim posts only net Total In Bank to Company Income");
+            var postedEntryBeforeCancel = await db.AccountingBookEntries.SingleAsync(x => x.SourceKey != null && x.SourceKey.StartsWith($"CLAIM:{financialClaim.Id}:") && x.DeletedAt == null);
+            await Conflict(() => claimService.CancelAsync(financialClaim.Id, "Unsafe cancellation test", default), "claim with active posted receipt cannot be cancelled");
+            Check((await db.AccountingBookEntries.SingleAsync(x => x.Id == postedEntryBeforeCancel.Id)).DeletedAt == null &&
+                  (await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome + 111000m,
+                "rejected claim cancellation leaves posted accounting entry and Company Income unchanged");
             var profitLossAfterClaimReceipt = await bm.ProfitLossAsync(claimRangeFrom, today, default);
             Check(profitLossAfterClaimReceipt.TotalRevenue == profitLossBeforeClaim.TotalRevenue &&
                   profitLossAfterClaimReceipt.TotalExpenses == profitLossBeforeClaim.TotalExpenses,
