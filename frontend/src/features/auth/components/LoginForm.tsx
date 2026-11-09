@@ -6,7 +6,7 @@ import { Checkbox } from '../../../components/forms/Checkbox';
 import { PasswordInput } from '../../../components/forms/PasswordInput';
 import { TextInput } from '../../../components/forms/TextInput';
 import { useAuth } from '../../../context/AuthContext';
-import { getApiErrorMessage } from '../../../services/apiClient';
+import { getApiErrorMessage, getApiErrorStatus, isNetworkApiError } from '../../../services/apiClient';
 import type { LoginFormValues } from '../types/auth';
 import { validateLogin, type LoginValidationErrors } from '../validation/loginValidation';
 import { useLocalization } from '../../../context/LocalizationContext';
@@ -58,7 +58,13 @@ export function LoginForm() {
       const blockedReturn = redirectTo === '/login' || redirectTo === '/change-password' || redirectTo === '/unauthorized';
       navigate(signedIn.mustChangePassword ? '/change-password' : blockedReturn ? '/' : redirectTo, { replace: true });
     } catch (error) {
-      setFormError(getApiErrorMessage(error, t('invalidCredentials')));
+      if (isNetworkApiError(error)) {
+        setFormError(t('loginNetworkError'));
+      } else if (getApiErrorStatus(error) === 401) {
+        setFormError(getApiErrorMessage(error, t('invalidCredentials')));
+      } else {
+        setFormError(getApiErrorMessage(error, t('loginError')));
+      }
     } finally {
       setIsSubmitting(false);
     }

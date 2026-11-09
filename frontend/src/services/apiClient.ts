@@ -139,6 +139,10 @@ export function getApiErrorStatus(error: unknown): number | null {
   return axios.isAxiosError(error) ? error.response?.status ?? null : null;
 }
 
+export function isNetworkApiError(error: unknown): boolean {
+  return axios.isAxiosError(error) && !error.response;
+}
+
 export function isForbiddenApiError(error: unknown): boolean {
   return getApiErrorStatus(error) === 403;
 }

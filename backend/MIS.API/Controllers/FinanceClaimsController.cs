@@ -21,10 +21,15 @@ public sealed class FinanceClaimsController(IFinanceClaimsService service) : Con
     public Task<FinanceClaimDetails> Details(Guid id, CancellationToken token)
         => service.DetailsAsync(id, token);
 
+    [HttpGet("organizations")]
+    [Authorize(Policy = AuthorizationPolicies.FinanceClaimsView)]
+    public Task<IReadOnlyList<FinanceClaimOrganization>> Organizations(CancellationToken token)
+        => service.OrganizationsAsync(token);
+
     [HttpGet("banks")]
     [Authorize(Policy = AuthorizationPolicies.FinanceClaimsView)]
-    public Task<IReadOnlyList<FinanceClaimBank>> Banks(CancellationToken token)
-        => service.BanksAsync(token);
+    public Task<IReadOnlyList<FinanceClaimOrganization>> Banks(CancellationToken token)
+        => service.OrganizationsAsync(token);
 
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.FinanceClaimsCreate)]

@@ -6,7 +6,7 @@ public interface IFinanceClaimsService
 {
     Task<FinanceClaimPage> ListAsync(FinanceClaimFilter filter, CancellationToken token);
     Task<FinanceClaimDetails> DetailsAsync(Guid id, CancellationToken token);
-    Task<IReadOnlyList<FinanceClaimBank>> BanksAsync(CancellationToken token);
+    Task<IReadOnlyList<FinanceClaimOrganization>> OrganizationsAsync(CancellationToken token);
     Task<FinanceClaimListItem> CreateAsync(SaveFinanceClaimRequest request, CancellationToken token);
     Task<FinanceClaimListItem> UpdateAsync(Guid id, SaveFinanceClaimRequest request, CancellationToken token);
     Task<FinanceClaimDetails> ConfirmReceiptAsync(Guid id, ConfirmFinanceClaimReceiptRequest request, CancellationToken token);

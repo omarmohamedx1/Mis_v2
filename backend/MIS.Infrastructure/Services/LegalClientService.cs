@@ -149,11 +149,12 @@ public sealed class LegalClientService(
         var previewRows = evaluated.Select(row => new LegalClientImportPreviewRowDto(
             row.Source, row.Status, LocalizedCustomerName(row.Customer), row.Errors)).ToArray();
         var valid = previewRows.Count(row => row.Status is "VALID" or "EXISTING");
+        var invalid = previewRows.Count(row => row.Status == "INVALID");
         return new LegalClientImportPreviewDto(
             SafeFileName(fileName),
             previewRows.Length,
             valid,
-            previewRows.Length - valid,
+            invalid,
             evaluated.Where(row => row.Customer is not null).Select(row => row.Customer!.Id).Distinct().Count(),
             previewRows.Count(row => row.Status == "DUPLICATE"),
             previewRows);
@@ -412,7 +413,8 @@ public sealed class LegalClientService(
             if (Normalize(source.ExternalIdentifier) is { } externalIdentifier)
             {
                 var matchingAssignments = await db.LegalClientAssignments
-                    .Where(assignment => assignment.ExternalIdentifier == externalIdentifier)
+                    .Where(assignment => assignment.ExternalIdentifier == externalIdentifier
+                        && assignment.Customer.OrganizationId == organization.Id)
                     .Take(2)
                     .Select(assignment => assignment.Customer)
                     .ToArrayAsync(token);
@@ -430,7 +432,7 @@ public sealed class LegalClientService(
             if (Normalize(source.NationalId) is { } nationalId && errors.Count == 0)
             {
                 var matchingCustomers = await db.CollectionCustomers
-                    .Where(customer => customer.NationalId == nationalId)
+                    .Where(customer => customer.OrganizationId == organization.Id && customer.NationalId == nationalId)
                     .Take(2)
                     .ToArrayAsync(token);
                 if (matchingCustomers.Length > 1)
@@ -580,17 +582,10 @@ public sealed class LegalClientService(
             : null;
     }
 
-    private static IEnumerable<string> ImportDuplicateKeys(LegalClientImportSourceRow row, Guid? organizationId)
+    internal static IEnumerable<string> ImportDuplicateKeys(LegalClientImportSourceRow row, Guid organizationId)
     {
-        if (!organizationId.HasValue) yield break;
         var nationalId = Normalize(row.NationalId);
         var externalIdentifier = Normalize(row.ExternalIdentifier);
-        if (row.OriginalFields is not null)
-        {
-            if (externalIdentifier is not null) yield return $"{organizationId}:E:{externalIdentifier}";
-            else if (nationalId is not null) yield return $"{organizationId}:N:{nationalId}";
-            yield break;
-        }
 
         if (nationalId is not null) yield return $"{organizationId}:N:{nationalId}";
         if (externalIdentifier is not null) yield return $"{organizationId}:E:{externalIdentifier}";

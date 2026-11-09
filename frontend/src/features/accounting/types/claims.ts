@@ -72,7 +72,13 @@ export interface ClaimPage {
   summary: ClaimSummary;
 }
 
-export interface ClaimBank { id: string; code: string; nameArabic: string; nameEnglish: string }
+export interface ClaimOrganization {
+  id: string;
+  code: string;
+  nameArabic: string;
+  nameEnglish: string;
+  organizationType: 'BANK' | 'CONSUMER_FINANCE' | 'FINANCIAL_INSTITUTION';
+}
 export interface ClaimReceipt {
   id: string;
   amount: number;

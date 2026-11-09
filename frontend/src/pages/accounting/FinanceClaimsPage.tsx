@@ -8,12 +8,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useAccountingText } from '../../features/accounting/accountingUi';
 import { BookError, BookField, BookHeader, cell, table } from '../../features/accounting/bookUi';
 import { financeClaimsService } from '../../features/accounting/services/financeClaimsService';
-import type { Claim, ClaimBank, ClaimDetails, ClaimImportPreview, ClaimImportResult, ClaimInput } from '../../features/accounting/types/claims';
+import type { Claim, ClaimDetails, ClaimImportPreview, ClaimImportResult, ClaimInput, ClaimOrganization } from '../../features/accounting/types/claims';
 import { getApiErrorMessage } from '../../services/apiClient';
 
 const today = () => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(new Date());
+
+type ClaimOrganizationCategory = 'BANK' | 'INSTALLMENT';
 
 const emptyInput = (): ClaimInput => ({
   bankName: '', claimType: '', month: today().slice(0, 7), claimDate: today(),
@@ -31,7 +33,11 @@ export function FinanceClaimsPage() {
     user?.roles.includes('Admin') || user?.permissions.includes('*') || user?.permissions.includes(permission),
   );
   const [claims, setClaims] = useState<Claim[]>([]);
-  const [banks, setBanks] = useState<ClaimBank[]>([]);
+  const [organizations, setOrganizations] = useState<ClaimOrganization[]>([]);
+  const [organizationsLoading, setOrganizationsLoading] = useState(false);
+  const [organizationsError, setOrganizationsError] = useState('');
+  const [organizationCategory, setOrganizationCategory] = useState<ClaimOrganizationCategory>('BANK');
+  const [filterOrganizationId, setFilterOrganizationId] = useState('');
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [refresh, setRefresh] = useState(0);
@@ -66,7 +72,7 @@ export function FinanceClaimsPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    financeClaimsService.list({ page, pageSize: 200 })
+    financeClaimsService.list({ page, pageSize: 200, bankOrganizationId: filterOrganizationId || undefined })
       .then(result => {
         if (!active) return;
         setClaims(result.items);
@@ -80,27 +86,48 @@ export function FinanceClaimsPage() {
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [a.ar, page, refresh]);
+  }, [a.ar, filterOrganizationId, page, refresh]);
 
   useEffect(() => {
     let active = true;
-    financeClaimsService.banks()
-      .then(result => { if (active) setBanks(result); })
+    setOrganizationsLoading(true);
+    setOrganizationsError('');
+    financeClaimsService.organizations()
+      .then(result => {
+        if (!active) return;
+        if (!Array.isArray(result)) throw new Error('The organization directory response is invalid.');
+        const valid = result.filter(organization =>
+          typeof organization.id === 'string'
+          && typeof organization.nameArabic === 'string'
+          && typeof organization.nameEnglish === 'string'
+          && typeof organization.organizationType === 'string'
+          && claimOrganizationCategory(organization.organizationType) !== null);
+        if (valid.length !== result.length) throw new Error('The organization directory response contains unsupported organization types.');
+        setOrganizations(valid);
+      })
       .catch(exception => {
-        if (active) setError(errorMessage(exception, 'تعذر تحميل دليل البنوك', 'Could not load banks'));
-      });
+        if (!active) return;
+        setOrganizations([]);
+        setOrganizationsError(exception instanceof Error && exception.message.startsWith('The organization directory')
+          ? a.text('استجابة دليل الجهات غير صالحة. أعد تحميل الصفحة أو تواصل مع الدعم.', 'The organization directory response is invalid. Reload the page or contact support.')
+          : errorMessage(exception, 'تعذر تحميل دليل البنوك وشركات التقسيط', 'Could not load banks and installment companies'));
+      })
+      .finally(() => { if (active) setOrganizationsLoading(false); });
     return () => { active = false; };
   }, [a.ar]);
 
   const reload = () => setRefresh(value => value + 1);
   const startCreate = () => {
     setEditing(undefined);
+    setOrganizationCategory('BANK');
     setForm(emptyInput());
     setError('');
     setFormOpen(true);
   };
   const startEdit = (claim: Claim) => {
     setEditing(claim);
+    const organization = organizations.find(item => item.id === claim.bankOrganizationId);
+    setOrganizationCategory(organization && claimOrganizationCategory(organization.organizationType) === 'INSTALLMENT' ? 'INSTALLMENT' : 'BANK');
     setForm({
       serial: claim.serial, bankOrganizationId: claim.bankOrganizationId, bankName: claim.bankName,
       claimType: claim.claimType, month: claim.month, claimDate: claim.claimDate,
@@ -111,6 +138,12 @@ export function FinanceClaimsPage() {
     setError('');
     setFormOpen(true);
   };
+
+  useEffect(() => {
+    if (!formOpen || !editing?.bankOrganizationId) return;
+    const organization = organizations.find(item => item.id === editing.bankOrganizationId);
+    if (organization) setOrganizationCategory(claimOrganizationCategory(organization.organizationType) ?? 'BANK');
+  }, [editing, formOpen, organizations]);
 
   const submitForm = async (event: FormEvent) => {
     event.preventDefault();
@@ -192,7 +225,7 @@ export function FinanceClaimsPage() {
     setExporting(true);
     setError('');
     try {
-      await financeClaimsService.export({});
+      await financeClaimsService.export({ bankOrganizationId: filterOrganizationId || undefined });
     } catch (exception) {
       setError(errorMessage(exception, 'تعذر تصدير المطالبات', 'Could not export claims'));
     } finally {
@@ -201,13 +234,17 @@ export function FinanceClaimsPage() {
   };
 
   const formatDate = (value?: string) => value ? a.date(value) : '—';
-  const bankLabel = (bank: ClaimBank) => a.ar ? bank.nameArabic : bank.nameEnglish;
+  const organizationLabel = (organization: ClaimOrganization) => a.ar ? organization.nameArabic : organization.nameEnglish;
+  const banks = organizations.filter(organization => claimOrganizationCategory(organization.organizationType) === 'BANK');
+  const installmentCompanies = organizations.filter(organization => claimOrganizationCategory(organization.organizationType) === 'INSTALLMENT');
+  const formOrganizations = organizationCategory === 'BANK' ? banks : installmentCompanies;
   const localizedImportMessage = (message: string) => {
     if (!a.ar) return message;
     if (message.includes('Possible duplicate claim')) return 'قد تكون المطالبة مكررة؛ ستُتخطى للمراجعة.';
     if (message.includes('differs from the recalculated amount')) return 'تختلف قيمة Excel عن المبلغ المعاد حسابه؛ ستُستخدم القيمة المعاد حسابها.';
     const translations: Record<string, string> = {
-      'Bank Name is required.': 'اسم البنك مطلوب.',
+      'Bank Name is required.': 'اسم البنك / شركة التقسيط مطلوب.',
+      'Bank / Installment Company is required.': 'اسم البنك / شركة التقسيط مطلوب.',
       'The type of Claim is required.': 'نوع المطالبة مطلوب.',
       'Month is required.': 'الشهر مطلوب.',
       'Date of claim is missing or invalid.': 'تاريخ المطالبة مفقود أو غير صالح.',
@@ -225,7 +262,7 @@ export function FinanceClaimsPage() {
 
   const columns = [
     ['مسلسل', 'S / Serial'],
-    ['اسم البنك', 'Bank Name'],
+    ['البنك / شركة التقسيط', 'Bank / Installment Company'],
     ['نوع المطالبة', 'Claim Type'],
     ['الشهر', 'Month'],
     ['تاريخ المطالبة', 'Claim Date'],
@@ -273,6 +310,20 @@ export function FinanceClaimsPage() {
     </BookHeader>
     <BookError error={error} />
 
+    <div className="max-w-md">
+      <BookField label={a.text('البنك / شركة التقسيط', 'Bank / Installment Company')}>
+        <select className="field" onChange={event => { setFilterOrganizationId(event.target.value); setPage(1); }} value={filterOrganizationId}>
+          <option value="">{a.text('كل الجهات', 'All organizations')}</option>
+          <optgroup label={a.text('البنوك', 'Banks')}>
+            {banks.map(organization => <option key={organization.id} value={organization.id}>{organizationLabel(organization)}</option>)}
+          </optgroup>
+          <optgroup label={a.text('شركات التقسيط', 'Installment Companies')}>
+            {installmentCompanies.map(organization => <option key={organization.id} value={organization.id}>{organizationLabel(organization)}</option>)}
+          </optgroup>
+        </select>
+      </BookField>
+    </div>
+
     <section className="overflow-hidden rounded-2xl border border-mis-border bg-white">
       {loading && claims.length === 0 ? <div className="grid min-h-48 place-items-center"><LoadingSpinner /></div> : <div className="overflow-x-auto">
         <table className={`${table} min-w-[1800px]`}>
@@ -310,13 +361,49 @@ export function FinanceClaimsPage() {
       footer={<><Button fullWidth={false} variant="outline" onClick={() => setFormOpen(false)}>{a.text('إغلاق', 'Close')}</Button><Button fullWidth={false} isLoading={busy} form="claim-form" type="submit">{a.text('حفظ', 'Save')}</Button></>}>
       <form id="claim-form" className="grid gap-4 sm:grid-cols-2" onSubmit={event => void submitForm(event)}>
         <BookField label={a.text('مسلسل', 'S / Serial')}><FieldInput maxLength={40} value={form.serial ?? ''} onChange={event => setForm(value => ({ ...value, serial: event.target.value || undefined }))} /></BookField>
-        <BookField label={a.text('اسم البنك', 'Bank Name')}>
-          <FieldInput list="claims-bank-directory" value={form.bankName} onChange={event => {
-            const name = event.target.value;
-            const bank = banks.find(item => bankLabel(item) === name);
-            setForm(value => ({ ...value, bankName: name, bankOrganizationId: bank?.id }));
-          }} required />
-          <datalist id="claims-bank-directory">{banks.map(bank => <option key={bank.id} value={bankLabel(bank)} />)}</datalist>
+        <BookField label={a.text('نوع الجهة', 'Organization Type')}>
+          <select
+            className="field"
+            disabled={organizationsLoading || Boolean(organizationsError)}
+            value={organizationCategory}
+            onChange={event => {
+              const category: ClaimOrganizationCategory = event.target.value === 'INSTALLMENT' ? 'INSTALLMENT' : 'BANK';
+              setOrganizationCategory(category);
+              setForm(value => ({ ...value, bankOrganizationId: undefined, bankName: '' }));
+            }}
+          >
+            <option value="BANK">{a.text('البنوك', 'Banks')}</option>
+            <option value="INSTALLMENT">{a.text('شركات التقسيط', 'Installment Companies')}</option>
+          </select>
+        </BookField>
+        <BookField label={a.text('البنك / شركة التقسيط', 'Bank / Installment Company')}>
+          <select
+            className="field"
+            disabled={organizationsLoading || Boolean(organizationsError) || formOrganizations.length === 0}
+            value={form.bankOrganizationId ?? ''}
+            onChange={event => {
+              const organization = formOrganizations.find(item => item.id === event.target.value);
+              setForm(value => ({
+                ...value,
+                bankOrganizationId: organization?.id,
+                bankName: organization ? organizationLabel(organization) : '',
+              }));
+            }}
+            required
+          >
+            <option value="">{a.text('اختر البنك / شركة التقسيط', 'Select a bank / installment company')}</option>
+            {editing?.bankOrganizationId && !organizations.some(item => item.id === editing.bankOrganizationId) && (
+              <option value={editing.bankOrganizationId}>{editing.bankName}</option>
+            )}
+            {formOrganizations.map(organization => (
+              <option key={organization.id} value={organization.id}>{organizationLabel(organization)}</option>
+            ))}
+          </select>
+          {organizationsLoading ? <p role="status" className="mt-1 text-xs text-slate-500">{a.text('جارٍ تحميل الجهات...', 'Loading organizations...')}</p> : null}
+          {!organizationsLoading && !organizationsError && formOrganizations.length === 0
+            ? <p role="status" className="mt-1 text-xs text-amber-700">{a.text('لا توجد جهات نشطة من هذا النوع في دليل التحصيل.', 'No active organizations of this type were found in Collections.')}</p>
+            : null}
+          {organizationsError ? <p role="alert" className="mt-1 text-xs text-rose-700">{organizationsError}</p> : null}
         </BookField>
         <BookField label={a.text('نوع المطالبة', 'Claim Type')}><FieldInput value={form.claimType} onChange={event => setForm(value => ({ ...value, claimType: event.target.value }))} required /></BookField>
         <BookField label={a.text('الشهر', 'Month')}><FieldInput value={form.month} onChange={event => setForm(value => ({ ...value, month: event.target.value }))} required /></BookField>
@@ -398,4 +485,13 @@ export function FinanceClaimsPage() {
       </div>}
     </Modal>
   </div>;
+}
+
+function claimOrganizationCategory(value: string): ClaimOrganizationCategory | null {
+  const normalized = value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (normalized === 'BANK') return 'BANK';
+  if (['CONSUMER_FINANCE', 'FINANCIAL_INSTITUTION', 'INSTALLMENT_COMPANY', 'FINANCE_COMPANY'].includes(normalized)) {
+    return 'INSTALLMENT';
+  }
+  return null;
 }

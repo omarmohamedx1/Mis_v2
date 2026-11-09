@@ -7,6 +7,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { useAuth } from '../../context/AuthContext';
 import { useLegalText } from '../../features/legal/legalUi';
 import { legalService } from '../../features/legal/services/legalService';
+import { getApiErrorMessage } from '../../services/apiClient';
 import type { LegalClientImportPreview, LegalClientImportResult, LegalOrganization } from '../../features/legal/types/legal';
 
 export function LegalUploadClientsPage() {
@@ -53,8 +54,11 @@ export function LegalUploadClientsPage() {
     setLoading(true);
     try {
       setPreview(await legalService.previewClientImport(nextFile, organizationId));
-    } catch {
-      toast.error(l.text('تعذر قراءة الملف. تحقق من نوع الملف وعناوين الأعمدة.', 'Could not read the file. Check its format and column headers.'));
+    } catch (error) {
+      toast.error(getApiErrorMessage(
+        error,
+        l.text('تعذر قراءة الملف. تحقق من نوع الملف وعناوين الأعمدة.', 'Could not read the file. Check its format and column headers.'),
+      ));
     } finally {
       setLoading(false);
     }
@@ -66,7 +70,11 @@ export function LegalUploadClientsPage() {
     try {
       const imported = await legalService.importClients(preview.fileName, organizationId, preview.rows.map((row) => row.source));
       setResult(imported);
-      toast.success(l.text('اكتمل استيراد العملاء.', 'Client import completed.'));
+      if (imported.successfulRows > 0) {
+        toast.success(l.text('تم حفظ العملاء المستوردين بنجاح.', 'Imported clients were saved successfully.'));
+      } else {
+        toast.error(l.text('لم يتم حفظ أي صف في قاعدة البيانات.', 'No rows were saved to the database.'));
+      }
     } catch {
       toast.error(l.text('تعذر استيراد العملاء. أعد معاينة الملف وحاول مرة أخرى.', 'Could not import clients. Preview the file again and retry.'));
     } finally {
@@ -127,9 +135,10 @@ export function LegalUploadClientsPage() {
 
           {preview ? (
             <section className="space-y-4 rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <Summary label={l.text('إجمالي الصفوف', 'Total rows')} value={l.number(preview.totalRows)} />
                 <Summary label={l.text('صالحة للاستيراد', 'Ready to import')} value={l.number(preview.validRows)} tone="success" />
+                <Summary label={l.text('صفوف غير صالحة', 'Invalid rows')} value={l.number(preview.invalidRows)} tone="warning" />
                 <Summary label={l.text('عملاء مطابقون', 'Existing customer matches')} value={l.number(preview.existingCustomersMatched)} />
                 <Summary label={l.text('صفوف مكررة', 'Duplicate rows')} value={l.number(preview.duplicateRows)} tone="warning" />
               </div>
@@ -184,8 +193,8 @@ export function LegalUploadClientsPage() {
               </div>
               {result ? (
                 <div className="space-y-3">
-                  <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                    {l.text('تم استيراد {success} صفًا، وتعذر استيراد {failed} صف.', 'Imported {success} rows; {failed} rows could not be imported.')
+                  <p className={`rounded-xl px-4 py-3 text-sm font-semibold ${result.successfulRows > 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
+                    {l.text('تم حفظ {success} صفًا في قاعدة البيانات، وتعذر حفظ {failed} صف.', 'Saved {success} rows to the database; {failed} rows could not be saved.')
                     .replace('{success}', l.number(result.successfulRows))
                     .replace('{failed}', l.number(result.failedRows))}
                   </p>

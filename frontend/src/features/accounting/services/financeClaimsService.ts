@@ -1,12 +1,12 @@
 import { apiClient, downloadApiFile, requestFormData } from '../../../services/apiClient';
-import type { Claim, ClaimBank, ClaimDetails, ClaimFilter, ClaimImportPreview, ClaimImportResult, ClaimInput, ClaimPage } from '../types/claims';
+import type { Claim, ClaimDetails, ClaimFilter, ClaimImportPreview, ClaimImportResult, ClaimInput, ClaimOrganization, ClaimPage } from '../types/claims';
 
 const root = '/finance/claims';
 
 export const financeClaimsService = {
   list: (params: ClaimFilter) => apiClient.get<ClaimPage>(root, { params }).then(response => response.data),
   details: (id: string) => apiClient.get<ClaimDetails>(`${root}/${id}`).then(response => response.data),
-  banks: () => apiClient.get<ClaimBank[]>(`${root}/banks`).then(response => response.data),
+  organizations: () => apiClient.get<ClaimOrganization[]>(`${root}/banks`).then(response => response.data),
   create: (input: ClaimInput) => apiClient.post<Claim>(root, input).then(response => response.data),
   update: (id: string, input: ClaimInput) => apiClient.put<Claim>(`${root}/${id}`, input).then(response => response.data),
   confirmReceipt: (id: string, dateInBank?: string) => apiClient.post<ClaimDetails>(`${root}/${id}/confirm-receipt`, { dateInBank }).then(response => response.data),

@@ -12,6 +12,32 @@ namespace MIS.Domain.Tests;
 
 public sealed class AccountingBookTests
 {
+    [Theory]
+    [InlineData(CollectionsValues.OrganizationTypes.Bank, true)]
+    [InlineData(CollectionsValues.OrganizationTypes.ConsumerFinance, true)]
+    [InlineData(CollectionsValues.OrganizationTypes.FinancialInstitution, true)]
+    [InlineData(CollectionsValues.OrganizationTypes.Other, false)]
+    public void Finance_claim_organizations_are_limited_to_banks_and_finance_companies(string organizationType, bool expected)
+    {
+        Assert.Equal(expected, FinanceClaimsService.IsClaimOrganizationType(organizationType));
+    }
+
+    [Fact]
+    public void Finance_claim_keeps_the_selected_collections_organization_link_and_existing_calculations()
+    {
+        var organizationId = Guid.NewGuid();
+        var claim = new FinanceClaim(
+            "C-1", organizationId, "Installment Company", "Monthly", "2026-11",
+            new DateOnly(2026, 11, 1), 100m, 14m, 2m, null, false, null, Guid.NewGuid(), DateTimeOffset.UtcNow);
+
+        Assert.Equal(organizationId, claim.BankOrganizationId);
+        Assert.Equal(100m, claim.AmountWithoutVat);
+        Assert.Equal(14m, claim.Vat);
+        Assert.Equal(114m, claim.TotalWithVat);
+        Assert.Equal(2m, claim.TaxAtSource);
+        Assert.Equal(112m, claim.TotalInBank);
+    }
+
     [Fact]
     public void ConfirmedAccountingRecordsByMakerWhileAdvancedManualReviewRemainsProtected()
     {

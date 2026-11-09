@@ -23,7 +23,8 @@ public static class ApiServiceCollectionExtensions
 
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
         services
             .AddControllers()
@@ -59,7 +60,9 @@ public static class ApiServiceCollectionExtensions
                 var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
                 policy
-                    .WithOrigins(allowedOrigins)
+                    .SetIsOriginAllowed(origin =>
+                        allowedOrigins.Contains(origin, StringComparer.Ordinal)
+                        || (environment.IsDevelopment() && IsLocalViteDevelopmentOrigin(origin)))
                     .AllowAnyHeader()
                     .AllowAnyMethod();
             });
@@ -259,4 +262,15 @@ public static class ApiServiceCollectionExtensions
 
     private static bool IsAnonymousAuthPath(PathString path) =>
         path.StartsWithSegments("/api/auth/login");
+
+    private static bool IsLocalViteDevelopmentOrigin(string origin) =>
+        Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttp
+        && (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(uri.Host, "127.0.0.1", StringComparison.Ordinal))
+        && uri.Port is >= 5173 and <= 5190
+        && uri.AbsolutePath == "/"
+        && string.IsNullOrEmpty(uri.UserInfo)
+        && string.IsNullOrEmpty(uri.Query)
+        && string.IsNullOrEmpty(uri.Fragment);
 }

@@ -159,27 +159,38 @@ public sealed class FinanceClaimsService(
         return await DetailsCoreAsync(id, token);
     }
 
-    public async Task<IReadOnlyList<FinanceClaimBank>> BanksAsync(CancellationToken token)
+    public async Task<IReadOnlyList<FinanceClaimOrganization>> OrganizationsAsync(CancellationToken token)
     {
         EnsurePermission(SystemPermissionCodes.FinanceClaimsView);
         return await db.CollectionClientOrganizations.AsNoTracking()
-            .Where(x => x.OrganizationType == "BANK" && x.IsActive)
+            .Where(x => x.IsActive && (x.OrganizationType == CollectionsValues.OrganizationTypes.Bank
+                || x.OrganizationType == CollectionsValues.OrganizationTypes.ConsumerFinance
+                || x.OrganizationType == CollectionsValues.OrganizationTypes.FinancialInstitution))
             .OrderBy(x => x.NameEnglish)
-            .Select(x => new FinanceClaimBank(x.Id, x.Code, x.NameArabic, x.NameEnglish)).ToArrayAsync(token);
+            .Select(x => new FinanceClaimOrganization(x.Id, x.Code, x.NameArabic, x.NameEnglish, x.OrganizationType)).ToArrayAsync(token);
     }
 
-    private async Task ValidateBankAsync(Guid? bankId, string bankName, CancellationToken token)
+    private async Task ValidateOrganizationAsync(Guid? organizationId, string organizationName, CancellationToken token)
     {
-        if (string.IsNullOrWhiteSpace(bankName) || bankName.Trim().Length > 200) throw new HrValidationException("Enter a valid bank name.");
-        if (!bankId.HasValue) return;
-        if (!await db.CollectionClientOrganizations.AnyAsync(x => x.Id == bankId && x.OrganizationType == "BANK" && x.IsActive, token))
-            throw new HrValidationException("Choose an active bank from the bank directory.");
+        if (string.IsNullOrWhiteSpace(organizationName) || organizationName.Trim().Length > 200)
+            throw new HrValidationException("Enter a valid bank or installment company name.");
+        if (!organizationId.HasValue) return;
+        if (!await db.CollectionClientOrganizations.AnyAsync(x => x.Id == organizationId && x.IsActive
+            && (x.OrganizationType == CollectionsValues.OrganizationTypes.Bank
+                || x.OrganizationType == CollectionsValues.OrganizationTypes.ConsumerFinance
+                || x.OrganizationType == CollectionsValues.OrganizationTypes.FinancialInstitution), token))
+            throw new HrValidationException("Choose an active bank or installment company from the Collections directory.");
     }
+
+    internal static bool IsClaimOrganizationType(string organizationType) =>
+        organizationType is CollectionsValues.OrganizationTypes.Bank
+            or CollectionsValues.OrganizationTypes.ConsumerFinance
+            or CollectionsValues.OrganizationTypes.FinancialInstitution;
 
     private static void ValidateRequest(SaveFinanceClaimRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.BankName) || string.IsNullOrWhiteSpace(request.ClaimType) || string.IsNullOrWhiteSpace(request.Month))
-            throw new HrValidationException("Bank, claim type, and month are required.");
+            throw new HrValidationException("Bank / installment company, claim type, and month are required.");
         if (request.BankName.Trim().Length > 200 || request.ClaimType.Trim().Length > 200 || request.Month.Trim().Length > 80)
             throw new HrValidationException("One or more claim fields exceed their maximum length.");
         if (request.AmountWithoutVat <= 0 || decimal.Round(request.AmountWithoutVat, 2) != request.AmountWithoutVat)
@@ -195,7 +206,7 @@ public sealed class FinanceClaimsService(
     {
         EnsurePermission(SystemPermissionCodes.FinanceClaimsCreate);
         ValidateRequest(request);
-        await ValidateBankAsync(request.BankOrganizationId, request.BankName, token);
+        await ValidateOrganizationAsync(request.BankOrganizationId, request.BankName, token);
         var now = DateTimeOffset.UtcNow;
         var claim = new FinanceClaim(request.Serial, request.BankOrganizationId, request.BankName, request.ClaimType, request.Month,
             request.ClaimDate, request.AmountWithoutVat, request.VatPercent, request.TaxAtSourcePercent,
@@ -210,7 +221,7 @@ public sealed class FinanceClaimsService(
     {
         EnsurePermission(SystemPermissionCodes.FinanceClaimsEdit);
         ValidateRequest(request);
-        await ValidateBankAsync(request.BankOrganizationId, request.BankName, token);
+        await ValidateOrganizationAsync(request.BankOrganizationId, request.BankName, token);
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var claim = await ClaimAsync(id, true, token);
         var before = Snapshot(claim);
@@ -396,7 +407,7 @@ public sealed class FinanceClaimsService(
         {
             var errors = new List<string>();
             var warnings = new List<string>();
-            if (string.IsNullOrWhiteSpace(row.BankName)) errors.Add("Bank Name is required.");
+            if (string.IsNullOrWhiteSpace(row.BankName)) errors.Add("Bank / Installment Company is required.");
             if (string.IsNullOrWhiteSpace(row.ClaimType)) errors.Add("The type of Claim is required.");
             if (string.IsNullOrWhiteSpace(row.Month)) errors.Add("Month is required.");
             if (!row.ClaimDate.HasValue) errors.Add("Date of claim is missing or invalid.");
@@ -474,7 +485,7 @@ public sealed class FinanceClaimsService(
                 skipped++;
                 continue;
             }
-            var bank = await FindBankAsync(row.BankName!, token);
+            var bank = await FindOrganizationAsync(row.BankName!, token);
             try
             {
                 var claim = new FinanceClaim(row.Serial, bank?.Id, row.BankName!, row.ClaimType!, row.Month!, row.ClaimDate!.Value,
@@ -495,10 +506,13 @@ public sealed class FinanceClaimsService(
         return new(batch.TotalRows, imported, skipped, failed);
     }
 
-    private async Task<ClientOrganization?> FindBankAsync(string name, CancellationToken token)
+    private async Task<ClientOrganization?> FindOrganizationAsync(string name, CancellationToken token)
     {
         var normalized = name.Trim().ToLowerInvariant();
-        var matches = await db.CollectionClientOrganizations.Where(x => x.OrganizationType == "BANK" && x.IsActive &&
+        var matches = await db.CollectionClientOrganizations.Where(x => x.IsActive
+            && (x.OrganizationType == CollectionsValues.OrganizationTypes.Bank
+                || x.OrganizationType == CollectionsValues.OrganizationTypes.ConsumerFinance
+                || x.OrganizationType == CollectionsValues.OrganizationTypes.FinancialInstitution) &&
             (x.NameEnglish.ToLower() == normalized || x.NameArabic.ToLower() == normalized || x.Code.ToLower() == normalized))
             .Take(2).ToArrayAsync(token);
         return matches.Length == 1 ? matches[0] : null;
@@ -533,7 +547,11 @@ public sealed class FinanceClaimsService(
                     var index = names.Select(NormalizeHeader).Select(name => columns.GetValueOrDefault(name, -1)).FirstOrDefault(x => x >= 0);
                     return index >= 0 && index < reader.FieldCount ? Value(reader.GetValue(index)) : null;
                 }
-                parsed.Add(new ParsedClaimRow(rowNumber, Text("S", "Serial"), Text("Bank Name"), Text("The type of Claim", "Type of Claim", "Claim Type"),
+                parsed.Add(new ParsedClaimRow(rowNumber, Text("S", "Serial"),
+                    Text("Bank Name", "Bank / Installment Company", "Bank/Installment Company", "Bank / Finance Company",
+                        "Installment Company", "Finance Company", "Organization", "Organization Name", "Company", "Company Name",
+                        "البنك / شركة التقسيط", "البنك", "شركة التقسيط"),
+                    Text("The type of Claim", "Type of Claim", "Claim Type"),
                     Text("Month"), ParseDate(Text("Date of claim", "Claim Date")), ParseMoney(Text("total claim without vat", "Amount without VAT")),
                     ParseMoney(Text("Vat%", "VAT %", "VAT Percent")), ParseMoney(Text("Vat", "VAT")),
                     ParseMoney(Text("total claim with vat", "Total claim with VAT")), ParseMoney(Text("Tax at source %", "Tax at source percent")),
@@ -602,7 +620,7 @@ public sealed class FinanceClaimsService(
         string T(string arabic, string english) => ar ? arabic : english;
         var headers = new[]
         {
-            T("مسلسل", "S"), T("اسم البنك", "Bank Name"), T("نوع المطالبة", "The type of Claim"), T("الشهر", "Month"),
+            T("مسلسل", "S"), T("البنك / شركة التقسيط", "Bank / Installment Company"), T("نوع المطالبة", "The type of Claim"), T("الشهر", "Month"),
             T("تاريخ المطالبة", "Date of claim"), T("إجمالي المطالبة بدون ضريبة القيمة المضافة", "total claim without vat"),
             T("نسبة ضريبة القيمة المضافة", "Vat%"), T("قيمة ضريبة القيمة المضافة", "Vat"),
             T("إجمالي المطالبة شامل ضريبة القيمة المضافة", "total claim with vat"), T("نسبة ضريبة المنبع", "Tax at source %"),

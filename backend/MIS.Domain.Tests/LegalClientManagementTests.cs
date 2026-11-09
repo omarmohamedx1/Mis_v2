@@ -1,4 +1,6 @@
+using MIS.Application.DTOs.Legal;
 using MIS.Domain.Entities;
+using MIS.Infrastructure.Services;
 using Xunit;
 
 namespace MIS.Domain.Tests;
@@ -43,6 +45,23 @@ public sealed class LegalClientManagementTests
 
         Assert.Equal("0001", assignment.ExternalIdentifier);
         Assert.Equal(importedRecords, assignment.ImportedFieldsJson);
+    }
+
+    [Fact]
+    public void Legal_import_duplicate_detection_uses_both_identifiers_and_the_selected_organization()
+    {
+        var source = new LegalClientImportSourceRow(
+            2, "Customer", null, null, " national-1 ", null, null, null, null, null, null,
+            " installment-1 ",
+            new Dictionary<string, string> { ["Installment Unique ID"] = "installment-1" });
+        var organizationId = Guid.NewGuid();
+
+        var keys = LegalClientService.ImportDuplicateKeys(source, organizationId).ToArray();
+        var otherOrganizationKeys = LegalClientService.ImportDuplicateKeys(source, Guid.NewGuid()).ToArray();
+
+        Assert.Contains($"{organizationId}:N:national-1", keys);
+        Assert.Contains($"{organizationId}:E:installment-1", keys);
+        Assert.DoesNotContain(keys, key => otherOrganizationKeys.Contains(key));
     }
 
     [Fact]

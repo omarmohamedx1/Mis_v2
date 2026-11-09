@@ -49,7 +49,7 @@ public sealed record FinanceClaimDetails(
     FinanceClaimListItem Claim, IReadOnlyList<FinanceClaimReceiptDto> ReceiptPostings, IReadOnlyList<FinanceClaimAuditDto> AuditHistory,
     string? ImportFileName = null, string? ImportedBy = null, DateTimeOffset? ImportedAt = null,
     string? ReceiptConfirmedBy = null, DateTimeOffset? ReceiptConfirmedAt = null);
-public sealed record FinanceClaimBank(Guid Id, string Code, string NameArabic, string NameEnglish);
+public sealed record FinanceClaimOrganization(Guid Id, string Code, string NameArabic, string NameEnglish, string OrganizationType);
 public sealed record FinanceClaimImportRow(
     int RowNumber, string? Serial, string? BankName, string? ClaimType, string? Month, DateOnly? ClaimDate,
     decimal? AmountWithoutVat, decimal? VatPercent, decimal? ExcelVat, decimal? ExcelTotalWithVat,
