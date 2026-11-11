@@ -1,5 +1,5 @@
 # MIS
-
+ssss
 MIS Collection Firm is the foundation for an internal collection management system. The repository is organized as a production-oriented full-stack application with a React/TypeScript frontend and a Clean Architecture ASP.NET Core backend.
 
 ## One-step Development Start
