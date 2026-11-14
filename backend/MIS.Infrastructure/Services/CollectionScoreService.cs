@@ -73,7 +73,12 @@ public sealed partial class CollectionScoreService : ICollectionScoreService
             var cells = BucketCategories[code].Select(category =>
             {
                 var existing = rows.SingleOrDefault(item => item.Category == category);
-                return existing is null ? DefaultCell(code, category) : MapCell(existing);
+                var defaults = DefaultCell(code, category);
+                return existing is null ? defaults : MapCell(existing) with
+                {
+                    TargetPercent = existing.TargetPercent ?? defaults.TargetPercent,
+                    Weight = existing.Weight ?? defaults.Weight,
+                };
             }).ToArray();
             return CollectionScoreCalculator.Calculate(code, BucketVersion(rows), cells, source.Cases, source.Available)
                 with { SystemCaseCount = source.SystemBuckets.GetValueOrDefault(int.Parse(code[3..], CultureInfo.InvariantCulture)) };
@@ -422,8 +427,8 @@ public sealed partial class CollectionScoreService : ICollectionScoreService
 
     private static CollectionScoreCellDto DefaultCell(string bucket, string category)
     {
-        // User-approved screenshot defaults apply only to categories without a saved row.
-        // Saved zeroes and intentionally cleared values must survive future reloads.
+        // User-approved screenshot defaults also fill blank fields in legacy saved rows.
+        // An explicit zero is a saved override, not a missing value.
         (decimal? Target, decimal? Weight) defaults = (bucket, category) switch
         {
             ("BKT1", "NORM") => (10m, null),

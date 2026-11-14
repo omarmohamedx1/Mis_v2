@@ -50,7 +50,7 @@ Cached workbook values: BKT1 opening balance 6,908,831.115; FWD balance −3,912
 
 ## Implemented BKT table
 
-The user explicitly approved the screenshot target percentages and weights as editable defaults. When a category has no saved row, BKT1–5 use the following values. Existing saved rows, including zeroes and intentionally cleared values, take precedence; reading defaults does not insert or overwrite database records. Edits use the existing **Edit Numbers → Save** flow and apply only to the selected bank, classification, specific portfolio and reporting month. A new month starts with these defaults rather than copying another month's overrides.
+The user explicitly approved the screenshot target percentages and weights as editable defaults. Missing or blank target/weight fields in BKT1–5 use the following values, including blank fields in legacy saved rows. Saved numbers, including explicit zeroes, take precedence; clearing a field restores its screenshot default. Reading defaults does not insert or overwrite database records. Edits use the existing **Edit Numbers → Save** flow and apply only to the selected bank, classification, specific portfolio and reporting month. A new month starts with these defaults rather than copying another month's overrides.
 
 | BKT | STAB target (derived) | BWD target | NORM target | FWD target | BWD weight | NORM weight | FWD weight |
 |---|---:|---:|---:|---:|---:|---:|---:|

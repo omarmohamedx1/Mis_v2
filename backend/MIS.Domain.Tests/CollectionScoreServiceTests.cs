@@ -86,7 +86,7 @@ public sealed class CollectionScoreServiceTests
     }
 
     [Fact]
-    public async Task Explicitly_cleared_saved_settings_are_not_silently_replaced_with_defaults()
+    public async Task Empty_saved_settings_use_screenshot_defaults_instead_of_hiding_them()
     {
         await using var fixture = new Fixture();
         await fixture.Db.SaveChangesAsync();
@@ -97,9 +97,54 @@ public sealed class CollectionScoreServiceTests
         fixture.Db.ChangeTracker.Clear();
         var saved = (await fixture.Service.GetDashboardAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-11", default))
             .Buckets.Single(item => item.Code == "BKT5");
-        Assert.All(saved.Categories, cell => { Assert.Null(cell.TargetPercent); Assert.Null(cell.Weight); });
-        Assert.Contains("MISSING_TARGETS", saved.Issues!);
-        Assert.Contains("MISSING_WEIGHTS", saved.Issues!);
+        var cells = saved.Categories.ToDictionary(item => item.Category);
+        Assert.Equal(-5m, cells["STAB"].TargetPercent);
+        Assert.Equal(10m, cells["BWD"].TargetPercent); Assert.Equal(7m, cells["BWD"].Weight);
+        Assert.Equal(5m, cells["NORM"].TargetPercent); Assert.Equal(3m, cells["NORM"].Weight);
+        Assert.Equal(90m, cells["FWD"].TargetPercent); Assert.Equal(6m, cells["FWD"].Weight);
+        Assert.DoesNotContain("MISSING_TARGETS", saved.Issues!);
+        Assert.DoesNotContain("MISSING_WEIGHTS", saved.Issues!);
+    }
+
+    [Fact]
+    public async Task Legacy_blank_bkt1_rows_show_targets_and_weight_even_without_period_data()
+    {
+        await using var fixture = new Fixture();
+        foreach (var category in new[] { "STAB", "NORM", "FWD" })
+            fixture.Db.CollectionScoreValues.Add(new CollectionScoreValue(fixture.Bank.Id, fixture.Main.Id, "BANK", "ACT",
+                new DateOnly(2026, 11, 1), "BKT1", category, fixture.Now, fixture.Actor));
+        await fixture.Db.SaveChangesAsync();
+        var bucket = (await fixture.Service.GetDashboardAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-11", default))
+            .Buckets.Single(item => item.Code == "BKT1");
+        var cells = bucket.Categories.ToDictionary(item => item.Category);
+        Assert.Equal(45m, cells["STAB"].TargetPercent);
+        Assert.Equal(10m, cells["NORM"].TargetPercent);
+        Assert.Equal(45m, cells["FWD"].TargetPercent);
+        Assert.Equal(10m, cells["FWD"].Weight);
+        Assert.DoesNotContain("MISSING_TARGETS", bucket.Issues!);
+        Assert.DoesNotContain("MISSING_WEIGHTS", bucket.Issues!);
+        Assert.Contains("MISSING_PERIOD_SOURCE", bucket.Issues!);
+        Assert.Null(bucket.Score);
+        Assert.All(await fixture.Db.CollectionScoreValues.ToArrayAsync(), row => { Assert.Null(row.TargetPercent); Assert.Null(row.Weight); });
+    }
+
+    [Fact]
+    public async Task Partially_blank_saved_settings_fill_only_missing_fields_and_keep_explicit_zeroes()
+    {
+        await using var fixture = new Fixture();
+        foreach (var item in new (string Category, decimal? Target, decimal? Weight)[] { ("BWD", null, 12), ("NORM", 0, 0), ("FWD", 55, null) })
+        {
+            var row = new CollectionScoreValue(fixture.Bank.Id, fixture.Main.Id, "BANK", "ACT", new DateOnly(2026, 11, 1), "BKT2", item.Category, fixture.Now, fixture.Actor);
+            row.Update(null, null, item.Target, null, null, null, item.Weight, null, null, fixture.Now, fixture.Actor);
+            fixture.Db.Add(row);
+        }
+        await fixture.Db.SaveChangesAsync();
+        var cells = (await fixture.Service.GetDashboardAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-11", default))
+            .Buckets.Single(item => item.Code == "BKT2").Categories.ToDictionary(item => item.Category);
+        Assert.Equal(20m, cells["BWD"].TargetPercent); Assert.Equal(12m, cells["BWD"].Weight);
+        Assert.Equal(0m, cells["NORM"].TargetPercent); Assert.Equal(0m, cells["NORM"].Weight);
+        Assert.Equal(55m, cells["FWD"].TargetPercent); Assert.Equal(17m, cells["FWD"].Weight);
+        Assert.Equal(25m, cells["STAB"].TargetPercent);
     }
 
     [Fact]
