@@ -346,18 +346,22 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
     {
         EnsureImportPermission(); _ = await RequireAccessibleBankAsync(bankId, token);
         if (page < 1 || pageSize is < 1 or > 100) throw new HrValidationException("Page must be at least 1 and page size must be between 1 and 100.");
+        _classification.RequireValid();
         var query = _db.BankPortfolioImports.AsNoTracking().Where(item => item.BankId == bankId && item.Status == "COMPLETED" && !item.IsArchived);
         if (_classification.HasValue)
         {
-            var classified = _db.CollectionCases.AsNoTracking().Apply(_classification);
-            var portfolio = await ResolvePortfolioAsync(bankId, token);
-            query = query.Where(item => item.PortfolioId == portfolio.Id
+            // Reading an empty desk must not require (or create) a portfolio row.
+            var portfolioIds = _db.CollectionPortfolios.AsNoTracking()
+                .Where(portfolio => portfolio.OrganizationId == bankId && portfolio.IsActive)
+                .Apply(_classification).Select(portfolio => portfolio.Id);
+            var classified = _db.CollectionCases.AsNoTracking().Where(item => portfolioIds.Contains(item.PortfolioId));
+            query = query.Where(item => (item.PortfolioId.HasValue && portfolioIds.Contains(item.PortfolioId.Value))
                 || (item.PortfolioId == null && classified.Any(x => x.SourceImportId == item.Id)));
         }
         else throw new HrValidationException("A portfolio classification is required to view import history.");
         if (!string.IsNullOrWhiteSpace(search)) { var term = search.Trim().ToLower(); query = query.Where(item => item.OriginalFileName.ToLower().Contains(term) || item.PortfolioName.ToLower().Contains(term)); }
         var total = await query.CountAsync(token);
-        var items = await Project(query.OrderByDescending(item => item.UploadedAt).Skip((page - 1) * pageSize).Take(pageSize)).ToArrayAsync(token);
+        var items = await Project(query.OrderByDescending(item => item.UploadedAt).ThenByDescending(item => item.Id).Skip((page - 1) * pageSize).Take(pageSize)).ToArrayAsync(token);
         return new BankPortfolioImportPageDto(items, total, page, pageSize, total == 0 ? 0 : (int)Math.Ceiling(total / (double)pageSize));
     }
 
@@ -399,10 +403,10 @@ public sealed class BankPortfolioImportService : IBankPortfolioImportService
         if (!_classification.HasValue)
             throw new HrValidationException("A portfolio classification is required to import a portfolio file.");
         var (primary, sub) = PortfolioClassification.Require(_classification.Primary!, _classification.Sub!);
-        return await _db.CollectionPortfolios.Include(x => x.Organization)
-            .SingleOrDefaultAsync(x => x.OrganizationId == organizationId && x.IsActive
-                && x.PrimaryClassification == primary && x.SubClassification == sub, token)
-            ?? throw new HrNotFoundException("The selected classified portfolio does not exist or is inactive.");
+        var portfolio = await ClassifiedPortfolio.ResolveAsync(_db, organizationId, primary, sub, token);
+        if (!portfolio.IsActive)
+            throw new HrValidationException("The selected classified portfolio is inactive. Activate it before importing.");
+        return portfolio;
     }
 
     private async Task<CollectionPortfolio> RequireImportPortfolioAsync(BankPortfolioImport entity, Guid organizationId, CancellationToken token)
