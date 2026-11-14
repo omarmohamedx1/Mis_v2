@@ -15,6 +15,10 @@ public static partial class ApiTextLocalizer
     private static readonly IReadOnlyDictionary<string, string> Arabic =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["Claim was not found."] = "لم يتم العثور على المطالبة. حدّث القائمة وحاول مرة أخرى.",
+            ["This claim is already cancelled."] = "تم إلغاء هذه المطالبة بالفعل. حدّث القائمة لعرض حالتها الحالية.",
+            ["This claim cannot be cancelled."] = "لا يمكن إلغاء المطالبة بحالتها الحالية.",
+            ["This claim has a posted receipt. Reverse the receipt through the authorized receipt workflow before cancelling the claim."] = "لا يمكن إلغاء المطالبة لوجود تحصيل مرحّل لم يتم عكسه. يجب على مستخدم مخوّل عكس التحصيل من إجراء عكس التحصيل أولاً، ثم إعادة محاولة الإلغاء.",
             ["Provide a reversal reason of at most 1000 characters."] = "أدخل سببًا واضحًا للعكس لا يتجاوز ألف حرف.",
             ["System accounting account codes and classification cannot be changed. Create a new account instead."] = "أكواد وتصنيفات حسابات التشغيل الأساسية مرتبطة بالنظام. أضف حسابًا جديدًا بدل تغييرها.",
             ["Use a valid currency amount with at most two decimal places."] = "أدخل مبلغًا صحيحًا وبحد أقصى منزلتين عشريتين، دون قيم سالبة في بنود الصرف.",

@@ -37,9 +37,20 @@ public static class ApiServiceCollectionExtensions
                         .SelectMany(modelState => modelState.Value!.Errors)
                         .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Invalid request value." : error.ErrorMessage)
                         .ToArray();
-                    var message = errors.Length == 1 ? errors[0] : "Validation failed.";
+                    var message = errors.Length switch
+                    {
+                        0 => "The request could not be bound to the expected parameters.",
+                        1 => errors[0],
+                        _ => "Validation failed."
+                    };
+                    var traceId = context.HttpContext.TraceIdentifier;
+                    context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("ApiModelBinding")
+                        .LogWarning("Request model binding failed. TraceId: {TraceId}; Request: {Method} {Path}; Errors: {Errors}",
+                            traceId, context.HttpContext.Request.Method, context.HttpContext.Request.Path, errors);
 
-                    return new BadRequestObjectResult(ApiErrorResponse.Failure(message, errors));
+                    var error = ApiErrorResponse.Failure(message, errors);
+                    return new BadRequestObjectResult(new { error.Success, error.Message, error.Errors, traceId });
                 };
             });
 

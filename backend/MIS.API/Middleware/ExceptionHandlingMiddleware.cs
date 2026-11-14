@@ -28,6 +28,9 @@ public sealed class ExceptionHandlingMiddleware
         }
         catch (HrValidationException exception)
         {
+            _logger.LogWarning(exception,
+                "Request validation failed. TraceId: {TraceId}; Request: {Method} {Path}",
+                context.TraceIdentifier, context.Request.Method, context.Request.Path);
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             await context.Response.WriteAsJsonAsync(ApiErrorResponse.Failure(exception.Message, exception.Errors));
         }

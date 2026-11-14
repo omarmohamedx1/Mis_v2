@@ -428,6 +428,15 @@ public sealed class AccountingBookIntegrationTests
             await bm.DeleteAsync(detailedAdvance.Id, new(true, "Test cleanup"), default);
             await bm.DeleteAsync(secondAdvance.Id, new(true, "Test cleanup"), default);
             var claimService = new FinanceClaimsService(db, new BookTestPrincipal(maker.Id), bm, fm);
+            var claimBank = new ClientOrganization("CLAIM-FILTER", "بنك اختبار المطالبات", "Claims Filter Bank", "BANK", DateTimeOffset.UtcNow);
+            db.CollectionClientOrganizations.Add(claimBank);
+            await db.SaveChangesAsync();
+            var organizationClaim = await claimService.CreateAsync(
+                new SaveFinanceClaimRequest("CLAIM-ORG", claimBank.Id, claimBank.NameEnglish, "Monthly", today.ToString("yyyy-MM"), today, 100m, 14m, 2m), default);
+            var organizationFilteredClaims = await claimService.ListAsync(new FinanceClaimFilter(
+                Search: "CLAIM-ORG", BankOrganizationId: claimBank.Id, Status: "ACTIVE", PageSize: 1), default);
+            Check(organizationFilteredClaims.TotalCount == 1 && organizationFilteredClaims.Items.Single().Id == organizationClaim.Id,
+                "organization, search, and active status filters compose before pagination");
             var claimRangeFrom = new DateOnly(today.Year, today.Month, 1);
             var incomeBeforeClaim = await bm.SummaryAsync(claimRangeFrom, today, default);
             var profitLossBeforeClaim = await bm.ProfitLossAsync(claimRangeFrom, today, default);
@@ -451,6 +460,12 @@ public sealed class AccountingBookIntegrationTests
             await Conflict(() => claimService.ReactivateAsync(pendingCancellation.Id, default), "duplicate claim reactivation is rejected");
             await Conflict(() => claimService.CancelAsync(pendingCancellation.Id, "repeat", default), "duplicate claim cancellation is rejected");
             var financialClaim = await claimService.CreateAsync(claimInput, default);
+            var pendingClaims = await claimService.ListAsync(new FinanceClaimFilter(Search: "CLAIM-1", Status: "ACTIVE", Page: 1, PageSize: 1), default);
+            var allClaimsPage1 = await claimService.ListAsync(new FinanceClaimFilter(Search: "Example Bank", Status: "ALL", Page: 1, PageSize: 1), default);
+            var allClaimsPage2 = await claimService.ListAsync(new FinanceClaimFilter(Search: "Example Bank", Status: "ALL", Page: 2, PageSize: 1), default);
+            Check(pendingClaims.TotalCount == 1 && pendingClaims.Items.Single().Id == financialClaim.Id && pendingClaims.Items.Single().Status == "PENDING" &&
+                  allClaimsPage1.TotalCount > 1 && allClaimsPage1.Items.Count == 1 && allClaimsPage2.Items.Count == 1 && allClaimsPage1.Items[0].Id != allClaimsPage2.Items[0].Id,
+                "legacy pending claims remain visible and ALL status search paginates consistently");
             Check(financialClaim.Vat == 14000m && financialClaim.TotalWithVat == 114000m && financialClaim.TaxAtSource == 3000m && financialClaim.TotalInBank == 111000m,
                 "claim amounts are calculated from the pre-VAT base");
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
@@ -508,6 +523,9 @@ public sealed class AccountingBookIntegrationTests
             var historicalClaim = await db.FinanceClaims.SingleAsync(x => x.Serial == "HIST-1");
             Check(historicalClaim.Status == "RECEIVED" && !await db.AccountingBookEntries.AnyAsync(x => x.SourceKey != null && x.SourceKey.StartsWith($"CLAIM:{historicalClaim.Id}:")),
                 "historical imported bank receipt is not silently posted");
+            Check((await claimService.ListAsync(new FinanceClaimFilter(Search: "HIST-1", Status: "ACTIVE"), default)).Items.Single().Status == "RECEIVED" &&
+                  (await claimService.ListAsync(new FinanceClaimFilter(Search: "HIST-1", Status: "ALL"), default)).Items.Single().Status == "RECEIVED",
+                "legacy received claims remain visible in ACTIVE and ALL filters");
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
                 "historical imported receipt leaves Company Income unchanged");
             var profitLossBeforeHistoricalClaim = await bm.ProfitLossAsync(claimRangeFrom, today, default);

@@ -5,6 +5,7 @@ using MIS.Infrastructure.Persistence.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+var skipStartupDatabaseChanges = builder.Configuration.GetValue<bool>("MIS:SkipStartupDatabaseChanges");
 
 // The Windows EventLog provider can be registered by the default host even when the
 // process identity cannot write to the Event Log. A logging failure must never mask
@@ -16,7 +17,8 @@ builder.Logging.AddDebug();
 
 builder.Services.AddApiServices(builder.Configuration, builder.Environment);
 
-builder.Services.AddHostedService<MIS.API.Configuration.HrMissionNotificationWorker>();
+if (!skipStartupDatabaseChanges)
+    builder.Services.AddHostedService<MIS.API.Configuration.HrMissionNotificationWorker>();
 
 var app = builder.Build();
 
@@ -51,12 +53,24 @@ if (app.Environment.IsDevelopment())
 
 using (var scope = app.Services.CreateScope())
 {
-    await JwtSigningKeyAccessor.InitializeAsync(scope.ServiceProvider);
+    if (skipStartupDatabaseChanges)
+    {
+        app.Logger.LogWarning("Safe restart mode enabled: loading the existing JWT signing key without migration or database writes.");
+        await JwtSigningKeyAccessor.InitializeReadOnlyAsync(scope.ServiceProvider);
+    }
+    else
+    {
+        await JwtSigningKeyAccessor.InitializeAsync(scope.ServiceProvider);
+    }
 }
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() && !skipStartupDatabaseChanges)
 {
     await ApplicationDbSeeder.SeedDevelopmentDataAsync(app.Services);
+}
+else if (skipStartupDatabaseChanges)
+{
+    app.Logger.LogWarning("Safe restart mode enabled: development seeding and the database-writing HR synchronization worker are disabled.");
 }
 
 app.Run();

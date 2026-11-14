@@ -48,6 +48,17 @@ public sealed class ApiTextLocalizerTests
         Assert.Equal("تعذر إكمال الطلب. يُرجى مراجعة البيانات والمحاولة مرة أخرى.", localized);
     }
 
+    [Theory]
+    [InlineData("Claim was not found.", "لم يتم العثور على المطالبة. حدّث القائمة وحاول مرة أخرى.")]
+    [InlineData("This claim is already cancelled.", "تم إلغاء هذه المطالبة بالفعل. حدّث القائمة لعرض حالتها الحالية.")]
+    [InlineData("This claim cannot be cancelled.", "لا يمكن إلغاء المطالبة بحالتها الحالية.")]
+    [InlineData("This claim has a posted receipt. Reverse the receipt through the authorized receipt workflow before cancelling the claim.", "لا يمكن إلغاء المطالبة لوجود تحصيل مرحّل لم يتم عكسه. يجب على مستخدم مخوّل عكس التحصيل من إجراء عكس التحصيل أولاً، ثم إعادة محاولة الإلغاء.")]
+    public void Claim_cancellation_errors_preserve_actionable_arabic_reason(string message, string expected)
+    {
+        using var culture = new CultureScope("ar");
+        Assert.Equal(expected, ApiErrorResponse.Failure(message).Message);
+    }
+
     private sealed class CultureScope : IDisposable
     {
         private readonly CultureInfo _previousCulture = CultureInfo.CurrentCulture;

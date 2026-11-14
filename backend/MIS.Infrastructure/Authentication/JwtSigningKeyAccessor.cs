@@ -41,4 +41,20 @@ public sealed class JwtSigningKeyAccessor
 
         accessor.Set(setting.Value);
     }
+
+    public static async Task InitializeReadOnlyAsync(IServiceProvider services, CancellationToken token = default)
+    {
+        var accessor = services.GetRequiredService<JwtSigningKeyAccessor>();
+        var db = services.GetRequiredService<ApplicationDbContext>();
+        var secret = await db.RuntimeSettings.AsNoTracking()
+            .Where(x => x.Key == SettingKey)
+            .Select(x => x.Value)
+            .SingleOrDefaultAsync(token);
+
+        if (string.IsNullOrWhiteSpace(secret))
+            throw new InvalidOperationException(
+                "Safe startup requires an existing JWT signing key. No migration or database write was attempted.");
+
+        accessor.Set(secret);
+    }
 }
