@@ -47,3 +47,23 @@ The implementation must expose missing source/target reasons, retain expandable 
 ## Numerical reference
 
 Cached workbook values: BKT1 opening balance 6,908,831.115; FWD balance −3,912,993.935; FWD ratio 0.7945256377582397; score 7.945256377582397. Final lower balance score 67.59992770007159. BKT6 starting dues 7,703,950.2564 and payments 67,257 yield MORE score 21.825491391292005 at the sample 4% target. Overall D64=63.02248406919363; total active/MORE payments=1,664,966.0308; WO payments=27,405; commission total including WO=111,535.991778. These are test fixtures only, never production targets.
+
+## Implemented BKT table
+
+The Score dashboard calculates the upper BKT1–5 table and the separate BKT6/MORE dues ratio. BKT1 NORM and all STAB rows have no weight or score. Target percentages and applicable weights are the only editable score cells; server saves discard client-supplied counts, balances, variances and scores. STAB target is the residual and may be negative (e.g. −5%). All calculations retain decimal precision; rounding occurs only for display, so totals can differ by a cent from the sum of displayed scores.
+
+The summary `upperTableScore` is explicitly labelled as the BKT1–5 upper-table sum. `scoreAll` remains unavailable: it is **not** replaced with that sum or with the uncapped final balance score. Overall/commission/ranking rules are outside this table change. BKT6 target is configured independently; the screenshot does not supply a BKT6 target or a sixth movement weight matrix.
+
+### Binding actual MIS data to a month
+
+Use **Configure month data** inside each bank → classification → specific portfolio → reporting month. Choose a completed import in that exact scope, declare that it contains the complete opening population, select either approved system payments or reconciled imported month payments, and explicitly confirm reconciliation. Configure column names when they differ from the defaults. The source is saved under portfolio `SettingsJson.scorePeriods[yyyy-MM]`; unrelated portfolio settings are preserved. Source edits use a serializable transaction and an expected settings hash.
+
+Default columns: `Current BKT` (opening ordinal 1–6 or BKT More), `Current Balance` (opening balance), `StartingTotal Dues`, `Payment`, and `BKT0` through `BKT5` (dues bands). Missing/invalid money is never converted to zero. Imported payment must represent the selected month's payment, rather than an all-time or last-payment value. SYSTEM payments are restricted to approved, non-reversed payments in `[month start, next month start)` and are never added to imported payments.
+
+Opening cases are actual non-archived MIS cases matched by account against the **stored original opening file** in the same bank and portfolio. `SourceImportId` is not used as a cohort filter: existing cases retain their first import link when later imports update them. Original opening balances/dues/payment values are read from the selected stored file, never from mutable case balances or `ImportRawJson`. Duplicate account rows count once if identical; conflicting duplicates, missing accounts and ambiguous system matches make the source unavailable.
+
+There is no customer import, financial mutation, seeding or schema migration. A fingerprint of matched case IDs and the original opening rows detects changes to the file or cohort. Archived/deleted cases, renamed accounts or a replaced opening file require source review and rebinding. Ordinary later case-balance/raw-profile updates preserve the original opening values. The file and its system account matches must remain available; the implementation does not create a separate immutable snapshot or restore deleted source files.
+
+Current system counts are displayed separately from period counts. Current BKT subtotals use explicit ordinal BKT labels/codes; day-range codes are not guessed into ordinal buckets. Cases without explicit mapping are reported separately. Period category counts come from the selected opening cohort and payment/dues movement rules, never from editable stored `CaseCount` values. Missing sources, unknown buckets, incomplete movements, missing targets/weights and zero ratio denominators have visible reasons and unavailable values.
+
+API: `GET .../portfolios/{portfolioId}/source?reportingPeriod=yyyy-MM` returns eligible files, configured fields and the settings version; `PUT .../portfolios/{portfolioId}/source` binds the selected source. Access checks match the existing Score organization/portfolio checks and source updates require configuration permission. Reporting month defaults use Cairo time.

@@ -15,9 +15,18 @@ public sealed record CollectionScoreCellDto(
 public sealed record CollectionScoreBucketDto(
     string Code,
     string Version,
-    IReadOnlyCollection<CollectionScoreCellDto> Categories);
+    IReadOnlyCollection<CollectionScoreCellDto> Categories,
+    int? CaseCount = null,
+    decimal? ActualBalance = null,
+    decimal? TargetBalance = null,
+    decimal? Weight = null,
+    decimal? Score = null,
+    IReadOnlyCollection<string>? Issues = null,
+    int SystemCaseCount = 0);
 
-public sealed record CollectionScoreSummaryDto(decimal? TotalDueAmount, decimal? Paid, decimal? ScoreAll);
+public sealed record CollectionScoreSummaryDto(decimal? TotalDueAmount, decimal? Paid, decimal? ScoreAll,
+    int SystemCaseCount = 0, int PeriodCaseCount = 0, int UnclassifiedCaseCount = 0, decimal? UpperTableScore = null,
+    int UnmappedSystemCaseCount = 0);
 
 public sealed record CollectionScoreOrganizationDto(
     Guid Id,
@@ -45,6 +54,12 @@ public sealed record CollectionScoreDashboardDto(
     IReadOnlyCollection<CollectionScoreBucketDto> Buckets);
 
 public sealed record CollectionScorePeriodsDto(string CurrentPeriod, IReadOnlyCollection<string> Periods);
+
+public sealed record CollectionScoreSourceImportDto(Guid Id, string FileName, int CaseCount);
+public sealed record CollectionScoreSourceDto(string Version, IReadOnlyCollection<CollectionScoreSourceImportDto> Imports,
+    Guid? OpeningImportId, string PaymentSource, IReadOnlyDictionary<string, string> Fields);
+public sealed record SaveCollectionScoreSourceRequest(string ReportingPeriod, string ExpectedVersion, Guid OpeningImportId,
+    bool CompleteOpeningPopulation, bool PaymentsReconciled, string PaymentSource, IReadOnlyDictionary<string, string> Fields);
 
 public sealed record SaveCollectionScoreBucketRequest(
     string ReportingPeriod,

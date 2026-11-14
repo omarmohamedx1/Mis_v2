@@ -7,6 +7,7 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { PageHeader } from '../../components/common/PageHeader';
 import { BankLogo } from '../../features/collections/components/BankLogo';
+import { CollectionScoreSourceEditor } from '../../features/collections/components/CollectionScoreSourceEditor';
 import { useCollectionsLocalization } from '../../features/collections/localization/collectionsTranslations';
 import { displayPrimary, isUuid, normalizePrimary, type PrimaryClassification } from '../../features/collections/organizationClassification';
 import { collectionsService } from '../../features/collections/services/collectionsService';
@@ -71,6 +72,7 @@ function validateDraft(drafts: DraftCell[], ct: (key: string) => string) {
   const errors: string[] = [];
   for (const draft of drafts) {
     for (const field of numericFields) {
+      if (!isEditable(draft.category, field)) continue;
       const raw = draft[field].trim();
       if (!raw) continue;
       const value = Number(raw);
@@ -92,11 +94,18 @@ function validateDraft(drafts: DraftCell[], ct: (key: string) => string) {
 
 function formatCell(value: number | null, field: CollectionScoreField, locale: string) {
   if (value === null || value === undefined) return '—';
-  return new Intl.NumberFormat(locale, {
+  const formatted = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: ['targetPercent', 'percent', 'actualVsTarget', 'score', 'weight'].includes(field) ? 2 : 0,
     maximumFractionDigits: field === 'caseCount' ? 0
       : ['actualBalance', 'targetBalance', 'missing'].includes(field) ? 2
-        : field === 'targetPercent' || field === 'percent' ? 4 : 6,
-  }).format(value);
+        : 2,
+  }).format(Math.abs(value));
+  const percentage = ['targetPercent', 'percent', 'actualVsTarget'].includes(field);
+  return `${value < 0 ? percentage ? `-${formatted}` : `(${formatted})` : formatted}${percentage ? '%' : ''}`;
+}
+
+function isEditable(category: string, field: CollectionScoreField, bucket?: string) {
+  return category !== 'STAB' && (field === 'targetPercent' || (field === 'weight' && category !== 'MORE' && !(bucket === 'BKT1' && category === 'NORM')));
 }
 
 function useScoreDashboard(organizationId: string, portfolio: PrimaryClassification, portfolioId: string) {
@@ -155,7 +164,7 @@ export function CollectionsScoreDashboardPage() {
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
   const [savingBucket, setSavingBucket] = useState('');
-  const locale = language === 'ar' ? 'ar' : 'en';
+  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en';
   const dirty = Object.keys(editing).length > 0;
 
   useEffect(() => {
@@ -252,10 +261,11 @@ export function CollectionsScoreDashboardPage() {
     : dashboard.organization.nameEnglish || dashboard.organization.nameArabic;
   const portfolioLabel = ct(`scorePortfolio${portfolio}`);
   const numberFormat = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
+  const periodAvailable = !dashboard.buckets.some(bucket => bucket.issues?.includes('MISSING_PERIOD_SOURCE'));
   const summary = [
     { label: ct('scoreTotalDue'), value: dashboard.summary.totalDueAmount },
     { label: ct('scorePaid'), value: dashboard.summary.paid },
-    { label: ct('scoreAll'), value: dashboard.summary.scoreAll },
+    { label: ct('scoreUpperTable'), value: dashboard.summary.upperTableScore },
   ];
 
   return (
@@ -322,10 +332,19 @@ export function CollectionsScoreDashboardPage() {
         ))}
       </section>
 
+      <div className="mb-5 flex flex-wrap gap-4 text-sm text-slate-600">
+        <span>{ct('scoreSystemCases')}: <b>{numberFormat.format(dashboard.summary.systemCaseCount)}</b></span>
+        <span>{ct('scorePeriodCases')}: <b>{periodAvailable ? numberFormat.format(dashboard.summary.periodCaseCount) : '—'}</b></span>
+        {dashboard.summary.unclassifiedCaseCount > 0 ? <span className="text-amber-800">{ct('scoreUnclassified')}: <b>{numberFormat.format(dashboard.summary.unclassifiedCaseCount)}</b></span> : null}
+        {dashboard.summary.unmappedSystemCaseCount > 0 ? <span className="text-amber-800">{ct('scoreUnmappedSystemCases')}: <b>{numberFormat.format(dashboard.summary.unmappedSystemCaseCount)}</b></span> : null}
+      </div>
+      {!periodAvailable ? <p className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">{ct('scoreIssueMISSING_PERIOD_SOURCE')}</p> : null}
+      {dashboard.canEdit && !dirty ? <CollectionScoreSourceEditor organizationId={organizationId} portfolioType={portfolio} portfolioId={portfolioId} reportingPeriod={reportingPeriod} onSaved={reload} /> : null}
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-mis-navy">{ct('scoreDashboard')}</h2>
-          <p className="mt-1 text-sm text-slate-500">{ct('scoreNoCalculations')}</p>
+          <p className="mt-1 text-sm text-slate-500">{ct('scoreCalculatedHelp')}</p>
         </div>
         {saveSuccess ? <p className="text-sm font-semibold text-emerald-700" role="status">{saveSuccess}</p> : null}
         {saveError ? <p className="text-sm font-semibold text-red-700" role="alert">{saveError}</p> : null}
@@ -349,8 +368,9 @@ export function CollectionsScoreDashboardPage() {
                   {isExpanded ? <ChevronUp className="h-5 w-5 shrink-0 text-mis-primary" /> : <ChevronDown className="h-5 w-5 shrink-0 text-mis-primary" />}
                   <span className="text-lg font-bold text-mis-navy" dir="ltr">{bucket.code.replace('BKT', 'BKT ')}</span>
                   <span className="rounded-full bg-mis-pale px-2.5 py-1 text-xs font-semibold text-mis-primary">
-                    {numberFormat.format(bucket.categories.length)} {ct('scoreCategories')}
+                    {ct('scoreSystemCases')}: {numberFormat.format(bucket.systemCaseCount)}
                   </span>
+                  <span className="text-sm font-semibold text-mis-navy">{ct('scoreBucketScore')}: {formatCell(bucket.score, 'score', locale)}</span>
                 </button>
                 {dashboard.canEdit && !drafts ? (
                   <button
@@ -366,28 +386,38 @@ export function CollectionsScoreDashboardPage() {
 
               {isExpanded ? (
                 <div className="p-3 sm:p-5" id={`${bucket.code}-table`}>
+                  {bucket.issues?.length ? <ul className="mb-3 space-y-1 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{bucket.issues.map(issue => <li key={issue}>{ct(`scoreIssue${issue}`)}</li>)}</ul> : null}
                   <div className="overflow-x-auto rounded-xl border border-slate-200">
                     <table className="min-w-[1180px] w-full border-collapse text-sm">
                       <thead className="bg-slate-100 text-start text-xs font-bold uppercase text-slate-600">
                         <tr>
                           {columns.map(column => (
-                            <th className="whitespace-nowrap border-b border-slate-200 px-3 py-3 text-start" key={column.labelKey}>
+                            <th className={`whitespace-nowrap border-b border-slate-200 px-3 py-3 ${column.field ? 'text-end' : 'text-start'}`} key={column.labelKey}>
                               {ct(column.labelKey)}
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
+                        <tr className="bg-slate-900 font-bold text-white">
+                          <th className="px-3 py-3 text-start" scope="row">{ct('scoreBucketTotal')}</th>
+                          {numericFields.map(field => {
+                            const value = field === 'caseCount' ? bucket.caseCount : field === 'actualBalance' ? bucket.actualBalance
+                              : field === 'targetPercent' ? 100 : field === 'targetBalance' ? bucket.targetBalance
+                                : field === 'weight' ? bucket.weight : field === 'score' ? bucket.score : null;
+                            return <td className="whitespace-nowrap px-3 py-3 text-end tabular-nums" key={field}><bdi dir="ltr">{formatCell(value, field, locale)}</bdi></td>;
+                          })}
+                        </tr>
                         {bucket.categories.map((cell, rowIndex) => {
                           const draft = drafts?.[rowIndex];
                           return (
-                            <tr className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70" key={cell.category}>
+                            <tr className={`border-b border-slate-200 last:border-b-0 ${cell.category === 'STAB' ? 'bg-lime-100' : cell.category === 'BWD' ? 'bg-sky-100' : cell.category === 'FWD' ? 'bg-red-100' : 'bg-white'}`} key={cell.category}>
                               <th className="whitespace-nowrap px-3 py-3 text-start font-semibold text-mis-navy" scope="row">
                                 {ct(`scoreCategory${cell.category}`)}
                               </th>
                               {numericFields.map(field => (
                                 <td className="min-w-28 px-3 py-2 text-end tabular-nums text-slate-700" key={field}>
-                                  {draft ? (
+                                  {draft && isEditable(cell.category, field, bucket.code) ? (
                                     <input
                                       aria-label={`${ct(`scoreCategory${cell.category}`)} · ${ct(columns.find(column => column.field === field)?.labelKey ?? field)}`}
                                       className="h-10 w-28 rounded-lg border border-mis-control bg-white px-2 text-end text-sm outline-none focus:border-mis-primary focus:ring-2 focus:ring-mis-primary/10"
@@ -397,7 +427,7 @@ export function CollectionsScoreDashboardPage() {
                                       type="text"
                                       value={draft[field]}
                                     />
-                                  ) : formatCell(cell[field], field, locale)}
+                                  ) : <bdi dir="ltr">{formatCell(cell[field], field, locale)}</bdi>}
                                 </td>
                               ))}
                             </tr>

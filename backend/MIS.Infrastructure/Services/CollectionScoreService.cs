@@ -12,7 +12,7 @@ using MIS.Infrastructure.Persistence;
 
 namespace MIS.Infrastructure.Services;
 
-public sealed class CollectionScoreService : ICollectionScoreService
+public sealed partial class CollectionScoreService : ICollectionScoreService
 {
     private static readonly string[] BucketCodes = ["BKT1", "BKT2", "BKT3", "BKT4", "BKT5", "BKT6"];
     private static readonly IReadOnlyDictionary<string, string[]> BucketCategories = new Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -22,17 +22,19 @@ public sealed class CollectionScoreService : ICollectionScoreService
         ["BKT3"] = ["STAB", "BWD", "NORM", "FWD"],
         ["BKT4"] = ["STAB", "BWD", "NORM", "FWD"],
         ["BKT5"] = ["STAB", "BWD", "NORM", "FWD"],
-        ["BKT6"] = ["STAB", "BWD", "NORM", "FWD"],
+        ["BKT6"] = ["MORE"],
     };
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserContext _user;
+    private readonly IHrFileStorage _files;
 
-    public CollectionScoreService(ApplicationDbContext db, ICurrentUserContext user)
+    public CollectionScoreService(ApplicationDbContext db, ICurrentUserContext user, IHrFileStorage files)
     {
         _db = db;
         _user = user;
+        _files = files;
     }
 
     public async Task<IReadOnlyCollection<CollectionScorePortfolioDto>> GetPortfoliosAsync(Guid organizationId, string portfolioType, CancellationToken token)
@@ -64,6 +66,7 @@ public sealed class CollectionScoreService : ICollectionScoreService
                            item.PortfolioId == portfolioId &&
                            item.ReportingPeriod == period)
             .ToArrayAsync(token);
+        var source = await LoadSourceAsync(organizationId, portfolioId, portfolio.SettingsJson, period, token);
         var buckets = BucketCodes.Select(code =>
         {
             var rows = storedValues.Where(item => item.Bucket == code).ToArray();
@@ -72,7 +75,8 @@ public sealed class CollectionScoreService : ICollectionScoreService
                 var existing = rows.SingleOrDefault(item => item.Category == category);
                 return existing is null ? EmptyCell(category) : MapCell(existing);
             }).ToArray();
-            return new CollectionScoreBucketDto(code, BucketVersion(rows), cells);
+            return CollectionScoreCalculator.Calculate(code, BucketVersion(rows), cells, source.Cases, source.Available)
+                with { SystemCaseCount = source.SystemBuckets.GetValueOrDefault(int.Parse(code[3..], CultureInfo.InvariantCulture)) };
         }).ToArray();
 
         return new CollectionScoreDashboardDto(
@@ -87,7 +91,14 @@ public sealed class CollectionScoreService : ICollectionScoreService
             new CollectionScorePortfolioDto(portfolio.Id, portfolio.OrganizationId, portfolio.Code, portfolio.NameArabic, portfolio.NameEnglish, portfolio.CurrencyCode),
             FormatPeriod(period),
             CanEdit(),
-            new CollectionScoreSummaryDto(null, null, null),
+            new CollectionScoreSummaryDto(
+                source.Available && source.Cases.All(item => item.Dues.HasValue) ? source.Cases.Sum(item => item.Dues!.Value) : null,
+                source.Available && source.Cases.All(item => item.Paid.HasValue) ? source.Cases.Sum(item => item.Paid!.Value) : null,
+                null, source.SystemCount, source.Cases.Length,
+                source.Cases.Count(item => item.Bucket is null || item.Movement is null && item.Bucket != 6),
+                buckets.Where(item => item.Code != "BKT6").All(item => item.Score.HasValue)
+                    ? buckets.Where(item => item.Code != "BKT6").Sum(item => item.Score!.Value) : null,
+                source.SystemCount - source.SystemBuckets.Values.Sum()),
             buckets);
     }
 
@@ -95,7 +106,7 @@ public sealed class CollectionScoreService : ICollectionScoreService
     {
         _ = await RequireOrganizationAsync(organizationId, token);
         var normalizedPortfolio = NormalizePortfolio(portfolioType);
-        _ = await RequirePortfolioAsync(organizationId, normalizedPortfolio, portfolioId, token);
+        var portfolio = await RequirePortfolioAsync(organizationId, normalizedPortfolio, portfolioId, token);
         var periods = await _db.CollectionScoreValues.AsNoTracking()
             .Where(item => item.OrganizationId == organizationId &&
                            item.PortfolioType == normalizedPortfolio &&
@@ -103,19 +114,20 @@ public sealed class CollectionScoreService : ICollectionScoreService
             .Select(item => item.ReportingPeriod)
             .Distinct()
             .ToArrayAsync(token);
-        var current = new DateOnly(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var current = CairoPeriod();
+        using var document = JsonDocument.Parse(portfolio.SettingsJson);
+        var sourcePeriods = document.RootElement.TryGetProperty("scorePeriods", out var configured)
+            ? configured.EnumerateObject().Select(item => item.Name)
+                .Where(value => DateOnly.TryParseExact(value, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+                .Select(ParsePeriod).ToArray() : [];
         return new CollectionScorePeriodsDto(
             FormatPeriod(current),
-            periods.Append(current).Distinct().OrderByDescending(period => period).Select(FormatPeriod).ToArray());
+            periods.Concat(sourcePeriods).Append(current).Distinct().OrderByDescending(period => period).Select(FormatPeriod).ToArray());
     }
 
     public async Task<CollectionScoreSummaryDto> GetSummaryAsync(Guid organizationId, string portfolioType, Guid portfolioId, string? reportingPeriod, CancellationToken token)
     {
-        _ = await RequireOrganizationAsync(organizationId, token);
-        var normalizedPortfolio = NormalizePortfolio(portfolioType);
-        _ = await RequirePortfolioAsync(organizationId, normalizedPortfolio, portfolioId, token);
-        _ = ParsePeriod(reportingPeriod);
-        return new CollectionScoreSummaryDto(null, null, null);
+        return (await GetDashboardAsync(organizationId, portfolioType, portfolioId, reportingPeriod, token)).Summary;
     }
 
     public async Task<IReadOnlyCollection<CollectionScoreAuditDto>> GetHistoryAsync(
@@ -214,15 +226,15 @@ public sealed class CollectionScoreService : ICollectionScoreService
             }
 
             row.Update(
-                requested.CaseCount,
-                requested.ActualBalance,
-                requested.TargetPercent,
-                requested.TargetBalance,
-                requested.Missing,
-                requested.Percent,
-                requested.Weight,
-                requested.ActualVsTarget,
-                requested.Score,
+                null,
+                null,
+                category == "STAB" ? null : requested.TargetPercent,
+                null,
+                null,
+                null,
+                category is "STAB" or "MORE" ? null : requested.Weight,
+                null,
+                null,
                 modifiedAt,
                 actorId);
             var after = JsonSerializer.Serialize(MapCell(row), JsonOptions);
@@ -243,20 +255,8 @@ public sealed class CollectionScoreService : ICollectionScoreService
 
         await _db.SaveChangesAsync(token);
         await transaction.CommitAsync(token);
-        var savedRows = await _db.CollectionScoreValues.AsNoTracking()
-            .Where(item => item.OrganizationId == organizationId &&
-                           item.PortfolioType == normalizedPortfolio &&
-                           item.PortfolioId == portfolioId &&
-                           item.ReportingPeriod == period &&
-                           item.Bucket == normalizedBucket)
-            .ToArrayAsync(token);
-        var savedByCategory = savedRows.ToDictionary(item => item.Category, StringComparer.Ordinal);
-        return new CollectionScoreBucketDto(
-            normalizedBucket,
-            BucketVersion(savedRows),
-            BucketCategories[normalizedBucket]
-                .Select(category => savedByCategory.TryGetValue(category, out var item) ? MapCell(item) : EmptyCell(category))
-                .ToArray());
+        return (await GetDashboardAsync(organizationId, normalizedPortfolio, portfolioId, FormatPeriod(period), token))
+            .Buckets.Single(item => item.Code == normalizedBucket);
     }
 
     private async Task<ClientOrganization> RequireOrganizationAsync(Guid organizationId, CancellationToken token)
@@ -348,38 +348,13 @@ public sealed class CollectionScoreService : ICollectionScoreService
 
         foreach (var cell in request.Categories)
         {
-            if (cell.CaseCount < 0)
-                throw new HrValidationException("Case counts cannot be negative.");
-            if (cell.Score < 0)
-                throw new HrValidationException("Score cannot be negative.");
-            ValidateAmount(cell.ActualBalance, "Actual Balance");
-            ValidateAmount(cell.TargetBalance, "Target Balance");
-            ValidateAmount(cell.Missing, "Missing");
-            ValidatePercentage(cell.TargetPercent, "% Target");
-            ValidatePercentage(cell.Percent, "%");
+            if (NormalizeCategory(cell.Category) != "STAB") ValidatePercentage(cell.TargetPercent, "% Target");
             if (cell.Weight < 0)
                 throw new HrValidationException("Weight cannot be negative.");
-            ValidatePrecision(cell.ActualBalance, 2, "Actual Balance");
-            ValidatePrecision(cell.TargetBalance, 2, "Target Balance");
-            ValidatePrecision(cell.Missing, 2, "Missing");
             ValidatePrecision(cell.TargetPercent, 4, "% Target");
-            ValidatePrecision(cell.Percent, 4, "%");
             ValidatePrecision(cell.Weight, 6, "Weight");
-            ValidatePrecision(cell.ActualVsTarget, 6, "Actual Vs. Target");
-            ValidatePrecision(cell.Score, 6, "Score");
-            EnsureDatabaseRange(cell.ActualBalance, 16, "Actual Balance");
-            EnsureDatabaseRange(cell.TargetBalance, 16, "Target Balance");
-            EnsureDatabaseRange(cell.Missing, 16, "Missing");
             EnsureDatabaseRange(cell.Weight, 12, "Weight");
-            EnsureDatabaseRange(cell.ActualVsTarget, 12, "Actual Vs. Target");
-            EnsureDatabaseRange(cell.Score, 12, "Score");
         }
-    }
-
-    private static void ValidateAmount(decimal? value, string label)
-    {
-        if (value < 0)
-            throw new HrValidationException($"{label} cannot be negative.");
     }
 
     private static void ValidatePercentage(decimal? value, string label)
@@ -421,7 +396,7 @@ public sealed class CollectionScoreService : ICollectionScoreService
         var normalized = value.Trim().ToUpperInvariant();
         return normalized switch
         {
-            "STAB" or "NORM" or "FWD" or "BWD" => normalized,
+            "STAB" or "NORM" or "FWD" or "BWD" or "MORE" => normalized,
             _ => throw new HrValidationException("The category is not supported."),
         };
     }
@@ -430,8 +405,7 @@ public sealed class CollectionScoreService : ICollectionScoreService
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            var today = DateTime.UtcNow;
-            return new DateOnly(today.Year, today.Month, 1);
+            return CairoPeriod();
         }
         if (!DateOnly.TryParseExact(value, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var period))
             throw new HrValidationException("Reporting period must use the yyyy-MM format.");
@@ -439,6 +413,12 @@ public sealed class CollectionScoreService : ICollectionScoreService
     }
 
     private static string FormatPeriod(DateOnly period) => period.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+
+    private static DateOnly CairoPeriod()
+    {
+        var today = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Egypt Standard Time");
+        return new DateOnly(today.Year, today.Month, 1);
+    }
 
     private static CollectionScoreCellDto EmptyCell(string category) =>
         new(category, null, null, null, null, null, null, null, null, null);

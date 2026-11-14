@@ -15,6 +15,13 @@ export interface CollectionScoreBucket {
   code: string;
   version: string;
   categories: CollectionScoreCell[];
+  caseCount: number | null;
+  actualBalance: number | null;
+  targetBalance: number | null;
+  weight: number | null;
+  score: number | null;
+  issues: string[];
+  systemCaseCount: number;
 }
 
 export interface CollectionScoreOrganization {
@@ -45,6 +52,11 @@ export interface CollectionScoreDashboard {
     totalDueAmount: number | null;
     paid: number | null;
     scoreAll: number | null;
+    systemCaseCount: number;
+    periodCaseCount: number;
+    unclassifiedCaseCount: number;
+    upperTableScore: number | null;
+    unmappedSystemCaseCount: number;
   };
   buckets: CollectionScoreBucket[];
 }
@@ -82,4 +94,22 @@ export interface SaveCollectionScoreBucket {
   reportingPeriod: string;
   expectedVersion: string;
   categories: CollectionScoreCell[];
+}
+
+export interface CollectionScoreSource {
+  version: string;
+  imports: { id: string; fileName: string; caseCount: number }[];
+  openingImportId: string | null;
+  paymentSource: string;
+  fields: Record<string, string>;
+}
+
+export interface SaveCollectionScoreSource {
+  reportingPeriod: string;
+  expectedVersion: string;
+  openingImportId: string;
+  completeOpeningPopulation: boolean;
+  paymentsReconciled: boolean;
+  paymentSource: string;
+  fields: Record<string, string>;
 }
