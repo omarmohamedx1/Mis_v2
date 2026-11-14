@@ -312,7 +312,7 @@ export function HrEmployeeDocumentBulkUploadModal({ onClose, onCompleted }: { on
                 {batch.items.map((item) => (
                   <tr key={item.fileId}>
                     <td className="max-w-48 px-3 py-3 align-top">
-                      <p className="truncate font-medium text-mis-navy" dir="auto" title={item.fileName}>{item.fileName}</p>
+                      <p className="truncate font-medium text-mis-navy" dir="auto" data-tooltip={item.fileName}>{item.fileName}</p>
                       {item.errors.length ? <p className="mt-1 text-xs text-amber-700" dir="auto">{item.errors[0]}</p> : null}
                     </td>
                     <td className="min-w-52 px-3 py-3 align-top">

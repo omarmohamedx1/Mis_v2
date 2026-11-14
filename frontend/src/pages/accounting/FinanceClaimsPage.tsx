@@ -1,3 +1,4 @@
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { Download, FileUp, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Button } from '../../components/common/Button';
@@ -375,17 +376,17 @@ export function FinanceClaimsPage() {
 
     <div className="grid max-w-5xl gap-4 md:grid-cols-3">
       <BookField label={a.text('حالة المطالبات', 'Claim status')}>
-        <select className="field" value={statusFilter} onChange={event => { setStatusFilter(event.target.value as 'ACTIVE' | 'CANCELLED' | 'ALL'); setPage(1); }}>
+        <ProfessionalSelect className="field" value={statusFilter} onChange={event => { setStatusFilter(event.target.value as 'ACTIVE' | 'CANCELLED' | 'ALL'); setPage(1); }}>
           <option value="ACTIVE">{a.text('المطالبات النشطة', 'Active Claims')}</option>
           <option value="CANCELLED">{a.text('المطالبات الملغاة', 'Cancelled Claims')}</option>
           <option value="ALL">{a.text('كل المطالبات', 'All Claims')}</option>
-        </select>
+        </ProfessionalSelect>
       </BookField>
       <BookField label={a.text('بحث', 'Search claims')}>
         <FieldInput value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder={a.text('البنك أو نوع المطالبة أو الشهر أو المسلسل', 'Bank, type, month, or serial')} />
       </BookField>
       <BookField label={a.text('البنك / شركة التقسيط', 'Bank / Installment Company')}>
-        <select className="field" onChange={event => { setFilterOrganizationId(event.target.value); setPage(1); }} value={filterOrganizationId}>
+        <ProfessionalSelect className="field" onChange={event => { setFilterOrganizationId(event.target.value); setPage(1); }} value={filterOrganizationId}>
           <option value="">{a.text('كل الجهات', 'All organizations')}</option>
           <optgroup label={a.text('البنوك', 'Banks')}>
             {banks.map(organization => <option key={organization.id} value={organization.id}>{organizationLabel(organization)}</option>)}
@@ -393,7 +394,7 @@ export function FinanceClaimsPage() {
           <optgroup label={a.text('شركات التقسيط', 'Installment Companies')}>
             {installmentCompanies.map(organization => <option key={organization.id} value={organization.id}>{organizationLabel(organization)}</option>)}
           </optgroup>
-        </select>
+        </ProfessionalSelect>
       </BookField>
     </div>
 
@@ -442,7 +443,7 @@ export function FinanceClaimsPage() {
       <form id="claim-form" className="grid gap-4 sm:grid-cols-2" onSubmit={event => void submitForm(event)}>
         <BookField label={a.text('مسلسل', 'S / Serial')}><FieldInput maxLength={40} value={form.serial ?? ''} onChange={event => setForm(value => ({ ...value, serial: event.target.value || undefined }))} /></BookField>
         <BookField label={a.text('نوع الجهة', 'Organization Type')}>
-          <select
+          <ProfessionalSelect
             className="field"
             disabled={organizationsLoading || Boolean(organizationsError)}
             value={organizationCategory}
@@ -454,10 +455,10 @@ export function FinanceClaimsPage() {
           >
             <option value="BANK">{a.text('البنوك', 'Banks')}</option>
             <option value="INSTALLMENT">{a.text('شركات التقسيط', 'Installment Companies')}</option>
-          </select>
+          </ProfessionalSelect>
         </BookField>
         <BookField label={a.text('البنك / شركة التقسيط', 'Bank / Installment Company')}>
-          <select
+          <ProfessionalSelect
             className="field"
             disabled={organizationsLoading || Boolean(organizationsError) || formOrganizations.length === 0}
             value={form.bankOrganizationId ?? ''}
@@ -478,7 +479,7 @@ export function FinanceClaimsPage() {
             {formOrganizations.map(organization => (
               <option key={organization.id} value={organization.id}>{organizationLabel(organization)}</option>
             ))}
-          </select>
+          </ProfessionalSelect>
           {organizationsLoading ? <p role="status" className="mt-1 text-xs text-slate-500">{a.text('جارٍ تحميل الجهات...', 'Loading organizations...')}</p> : null}
           {!organizationsLoading && !organizationsError && formOrganizations.length === 0
             ? <p role="status" className="mt-1 text-xs text-amber-700">{a.text('لا توجد جهات نشطة من هذا النوع في دليل التحصيل.', 'No active organizations of this type were found in Collections.')}</p>

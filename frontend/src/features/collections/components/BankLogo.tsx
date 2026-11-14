@@ -40,7 +40,7 @@ export function BankLogo({ code, name, logoUrl, className = 'h-16 w-16' }: BankL
   const palette = brandPalettes[key] ?? palettes[Array.from(code).reduce((sum, char) => sum + char.charCodeAt(0), 0) % palettes.length];
   const initials = code.replace(/[^A-Z0-9]/gi, '').slice(0, 3).toUpperCase();
   return (
-    <span title={name} className={`relative grid shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br text-white shadow-sm ${palette} ${className}`}>
+    <span data-tooltip={name} className={`relative grid shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br text-white shadow-sm ${palette} ${className}`}>
       <Building2 className="absolute h-10 w-10 opacity-15" />
       <strong className="relative text-sm tracking-wider">{initials || 'BANK'}</strong>
     </span>

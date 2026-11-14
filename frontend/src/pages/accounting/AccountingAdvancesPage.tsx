@@ -322,7 +322,7 @@ export function AccountingAdvancesPage() {
             <td className={cell} data-bidi="ltr">{a.money(row.amount)}</td>
             <td className={cell} data-bidi="ltr">{a.money(row.repaid)}</td>
             <td className={`${cell} font-bold text-mis-primary`} data-bidi="ltr">{a.money(row.remaining)}</td>
-            <td className={`${cell} max-w-64 truncate`} title={row.reason}>{row.reason}</td>
+            <td className={`${cell} max-w-64 truncate`} data-tooltip={row.reason}>{row.reason}</td>
             <td className={cell}>{statusBadge(row.status)}</td>
             <td className={cell}><Button fullWidth={false} variant="outline" size="sm" leftIcon={<Eye className="h-4 w-4" />} onClick={e => { e.stopPropagation(); setSelectedAdvance(row); void loadDetails(row.id); }}>{tx('advancesViewDetails')}</Button></td>
           </tr>)}</tbody>

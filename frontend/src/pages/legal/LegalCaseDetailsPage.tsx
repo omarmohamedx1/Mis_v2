@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { TextAreaInput } from '../../components/forms/TextAreaInput';
 import { TextInput } from '../../components/forms/TextInput';
+import { DateInput } from '../../components/forms/DateInput';
 import { useAuth } from '../../context/AuthContext';
 import { LegalPipeline, LegalStageBadge, useLegalText } from '../../features/legal/legalUi';
 import { legalService } from '../../features/legal/services/legalService';
@@ -176,7 +177,7 @@ export function LegalCaseDetailsPage() {
             <TextInput defaultValue={data.courtName ?? ''} disabled={!canManage} label={l.text('المحكمة', 'Court')} name="courtName" maxLength={160} />
             <TextInput defaultValue={data.courtCaseNumber ?? ''} disabled={!canManage} label={l.text('رقم الدعوى', 'Court case number')} name="courtCaseNumber" maxLength={80} />
             <TextInput defaultValue={data.lawyerName ?? ''} disabled={!canManage} label={l.text('المحامي', 'Lawyer')} name="lawyerName" maxLength={160} />
-            <TextInput defaultValue={data.nextHearingOn ?? ''} disabled={!canManage} label={l.text('الجلسة القادمة', 'Next hearing')} name="nextHearingOn" type="date" />
+            <DateInput defaultValue={data.nextHearingOn ?? ''} disabled={!canManage} label={l.text('الجلسة القادمة', 'Next hearing')} name="nextHearingOn" />
             <TextAreaInput containerClassName="sm:col-span-2" defaultValue={data.notes ?? ''} disabled={!canManage} label={l.text('ملاحظات الملف', 'File notes')} name="notes" maxLength={2000} />
             {canManage ? (
               <div className="sm:col-span-2">
@@ -222,7 +223,7 @@ export function LegalCaseDetailsPage() {
                 </ProfessionalSelect>
               </label>
               <TextInput label={l.text('النتيجة', 'Result')} name="result" maxLength={120} />
-              <TextInput label={l.text('تاريخ الواقعة', 'Event date')} name="happenedOn" type="date" />
+              <DateInput label={l.text('تاريخ الواقعة', 'Event date')} name="happenedOn" />
               <TextAreaInput label={l.text('الملاحظات', 'Notes')} name="notes" maxLength={2000} required />
               <p className="text-xs leading-5 text-slate-500">
                 {l.text('الحكم يغلق الحالة، التسوية تسويها، والإعادة ترجعها للتحصيل نشطة.', 'Judgment closes the case, settlement marks it settled, and return sends it back to collections as active.')}

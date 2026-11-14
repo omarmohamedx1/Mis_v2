@@ -109,7 +109,7 @@ export function ActionMenu({ children, label, className = '' }: { children: Reac
 
   if (!hasActions(children)) return null;
   return <>
-    <button ref={trigger} type="button" aria-label={title} title={title} aria-haspopup="menu" aria-expanded={open} aria-controls={mounted ? menuId : undefined}
+    <button ref={trigger} type="button" aria-label={title} data-tooltip={title} aria-haspopup="menu" aria-expanded={open} aria-controls={mounted ? menuId : undefined}
       className={twMerge('inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-mis-border bg-white text-slate-600 transition hover:border-mis-primary hover:bg-mis-pale hover:text-mis-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mis-primary aria-expanded:border-mis-primary aria-expanded:bg-mis-pale aria-expanded:text-mis-primary', className)}
       onClick={event => { event.stopPropagation(); if (open) close(); else show(); }}
       onKeyDown={event => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); event.stopPropagation(); show(event.key === 'ArrowUp' ? 'last' : 'first'); } }}>

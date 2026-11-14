@@ -109,7 +109,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
           aria-label={collapsed ? props.expandLabel : props.collapseLabel}
           className="module-sidebar-collapse"
           onClick={toggleCollapsed}
-          title={collapsed ? props.expandLabel : props.collapseLabel}
+          data-tooltip={collapsed ? props.expandLabel : props.collapseLabel}
           type="button"
         >
           <CollapseIcon className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
                 <span>{group.label}</span><ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? '' : '-rotate-90 rtl:rotate-90'}`} />
               </button> : null}
               <div className="space-y-0.5" hidden={!expanded} id={groupId}>
-                {group.items.map(({ to, label, icon: Icon }) => <NavLink aria-label={label} to={to} title={label} onClick={() => setOpen(false)} className={({ isActive }) => linkClass(isActive)} key={to}>
+                {group.items.map(({ to, label, icon: Icon }) => <NavLink aria-label={label} to={to} data-tooltip={label} onClick={() => setOpen(false)} className={({ isActive }) => linkClass(isActive)} key={to}>
                   {({ isActive }) => <>
                     {isActive ? <span aria-hidden="true" className={`absolute inset-y-2 start-0 w-[3px] rounded-full ${chrome.accent}`} /> : null}
                     <Icon aria-hidden="true" className={`h-[18px] w-[18px] shrink-0 ${isActive ? chrome.icon : 'text-mis-muted group-hover:text-slate-600'}`} />
@@ -154,7 +154,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
             <NavLink
               to={props.profilePath}
               aria-label={props.profileLabel}
-              title={props.profileLabel}
+              data-tooltip={props.profileLabel}
               className={({ isActive }) => `module-sidebar-link mb-1 flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 ${isActive ? chrome.active : 'text-slate-600 hover:bg-white'}`}
             >
               <UserCircle className="h-7 w-7 shrink-0 text-mis-muted" />
@@ -170,7 +170,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
               className="module-sidebar-link flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white hover:text-mis-primary"
               onClick={props.onLanguageToggle}
               aria-label={props.languageLabel}
-              title={props.languageLabel}
+              data-tooltip={props.languageLabel}
               type="button"
             >
               <Languages className="h-5 w-5 shrink-0" />
@@ -180,7 +180,7 @@ export function ModuleLayoutShell(props: ModuleLayoutShellProps) {
               className="module-sidebar-link flex min-h-10 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-700"
               onClick={props.onSignOut}
               aria-label={props.signOutLabel}
-              title={props.signOutLabel}
+              data-tooltip={props.signOutLabel}
               type="button"
             >
               <LogOut className="h-5 w-5 shrink-0" />

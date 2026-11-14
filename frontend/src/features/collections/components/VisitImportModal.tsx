@@ -1,3 +1,4 @@
+import { ProfessionalSelect } from '../../../components/forms/ProfessionalSelect';
 import { useState } from 'react';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
@@ -136,7 +137,7 @@ export function VisitImportModal({ bankId, open, onClose, onCompleted }: Props) 
         {upload && upload.sheets.length > 1 ? (
           <label className="block text-sm font-semibold text-slate-700">
             {text('Sheet', 'الورقة')}
-            <select className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2" value={sheetIndex} disabled={busy} onChange={(event) => {
+            <ProfessionalSelect className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2" value={sheetIndex} disabled={busy} onChange={(event) => {
               const index = Number(event.target.value);
               const nextMapping = mappingFor(upload, index);
               setSheetIndex(index);
@@ -147,7 +148,7 @@ export function VisitImportModal({ bankId, open, onClose, onCompleted }: Props) 
               if (mapped(nextMapping)) void previewUpload(upload, nextMapping);
             }}>
               {upload.sheets.map((sheet, index) => <option key={`${sheet.sheetName}-${index}`} value={index}>{sheet.sheetName || index + 1}</option>)}
-            </select>
+            </ProfessionalSelect>
           </label>
         ) : null}
         {mapping && (showMapping || !mapped(mapping)) ? (
@@ -156,10 +157,10 @@ export function VisitImportModal({ bankId, open, onClose, onCompleted }: Props) 
               <label key={field.key} className="block text-sm font-semibold text-slate-700">
                 <span>{arabic ? field.ar : field.en}{field.required ? ' *' : ''}</span>
                 <span className="mt-0.5 block text-xs font-medium text-slate-500">{arabic ? field.en : field.ar}</span>
-                <select className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-normal" value={mapping.columns[field.key] ?? ''} disabled={busy} onChange={(event) => setMapping({ ...mapping, columns: { ...mapping.columns, [field.key]: event.target.value } })}>
+                <ProfessionalSelect className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-normal" value={mapping.columns[field.key] ?? ''} disabled={busy} onChange={(event) => setMapping({ ...mapping, columns: { ...mapping.columns, [field.key]: event.target.value } })}>
                   <option value="">{text('Not mapped', 'غير مربوط')}</option>
                   {columns.map((column) => <option key={column} value={column}>{column}</option>)}
-                </select>
+                </ProfessionalSelect>
               </label>
             ))}
             <div className="sm:col-span-2">
