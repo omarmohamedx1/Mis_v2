@@ -59,6 +59,18 @@ export interface LegalClientDetails {
   importedRecords?: Array<Record<string, string>> | null;
 }
 
+export interface LegalClientWorkbook {
+  fileName: string;
+  sheets: Array<{ name: string | null; rows: string[][] }>;
+}
+
+export interface LegalClientColumnMapping {
+  sheetName: string | null;
+  headerRow: number;
+  columns: Record<string, string>;
+  extraColumns?: string[] | null;
+}
+
 export interface LegalClientImportSourceRow {
   rowNumber: number;
   name?: string | null;

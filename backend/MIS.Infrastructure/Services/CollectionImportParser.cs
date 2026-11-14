@@ -60,10 +60,17 @@ internal static class CollectionImportParser
                 : !IsInstructionSheet(sheetName);
             if (!selected) continue;
             anySheet = true;
-            if (!reader.Read()) continue;
-            if (reader.FieldCount > MaximumColumns) throw new HrValidationException($"Collection imports cannot exceed {MaximumColumns} columns.");
-            var rawHeaders = Enumerable.Range(0, reader.FieldCount).Select(i => Limit(Convert.ToString(reader.GetValue(i), CultureInfo.InvariantCulture))).ToArray();
+            // Workbooks can contain empty rows before the table, and formatting can
+            // extend FieldCount beyond the last column with an actual header.
+            string[] rawHeaders = [];
+            while (reader.Read())
+            {
+                token.ThrowIfCancellationRequested();
+                rawHeaders = Enumerable.Range(0, reader.FieldCount).Select(i => Limit(Convert.ToString(reader.GetValue(i), CultureInfo.InvariantCulture))).ToArray();
+                if (rawHeaders.Any(header => !string.IsNullOrWhiteSpace(header))) break;
+            }
             if (rawHeaders.All(string.IsNullOrWhiteSpace)) continue;
+            rawHeaders = rawHeaders.Take(Array.FindLastIndex(rawHeaders, header => !string.IsNullOrWhiteSpace(header)) + 1).ToArray();
             var headers = ValidateHeaders(rawHeaders);
             var rowNumber = 1;
             while (reader.Read())
@@ -71,7 +78,10 @@ internal static class CollectionImportParser
                 token.ThrowIfCancellationRequested();
                 rowNumber++;
                 if (rows.Count >= MaximumRows) throw new HrValidationException($"Collection imports cannot exceed {MaximumRows:N0} rows.");
-                var cellValues = Enumerable.Range(0, reader.FieldCount)
+                if (Enumerable.Range(rawHeaders.Length, reader.FieldCount - rawHeaders.Length)
+                    .Any(index => !string.IsNullOrWhiteSpace(Convert.ToString(reader.GetValue(index), CultureInfo.InvariantCulture))))
+                    throw new HrValidationException("Every import column containing data must have a header.");
+                var cellValues = Enumerable.Range(0, rawHeaders.Length)
                     .Select(index => FormatCellValue(reader.GetValue(index), rawHeaders[index], reader.GetNumberFormatString(index)))
                     .ToArray();
                 var originalValues = rawHeaders.Select((header, index) => (header, value: cellValues[index]))
@@ -102,7 +112,7 @@ internal static class CollectionImportParser
 
     internal static string NormalizeHeader(string? value) => new((value ?? string.Empty).Trim().ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 
-    private static string FormatCellValue(object? value, string? header, string? numberFormat)
+    internal static string FormatCellValue(object? value, string? header, string? numberFormat)
     {
         if (value is null) return string.Empty;
         if (value is DateTime dateTime) return Limit(dateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));

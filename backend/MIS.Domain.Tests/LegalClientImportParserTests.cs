@@ -100,6 +100,43 @@ public sealed class LegalClientImportParserTests
         Assert.Null(sources[0].BankName);
     }
 
+    [Fact]
+    public async Task Parses_workbook_with_leading_empty_rows_and_trailing_formatted_columns()
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.AddWorksheet("Clients");
+        for (var index = 0; index < Headers.Length; index++)
+            sheet.Cell(3, index + 1).Value = Headers[index];
+        WriteLegalRow(sheet, 4, 0);
+        sheet.Cell(4, 15).Style.Fill.BackgroundColor = XLColor.White;
+        using var content = new MemoryStream();
+        workbook.SaveAs(content);
+        content.Position = 0;
+
+        var source = LegalClientService.MapImportRow(
+            Assert.Single(await CollectionImportParser.ParseAsync(content, ".xlsx", default)), 1);
+
+        Assert.Equal("Customer 1", source.Name);
+        Assert.Equal("00000001", source.ExternalIdentifier);
+        Assert.Equal(Headers.Length, source.OriginalFields!.Count);
+    }
+
+    [Fact]
+    public async Task Rejects_data_in_a_trailing_column_without_a_header()
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.AddWorksheet("Clients");
+        WriteHeaders(sheet);
+        WriteLegalRow(sheet, 2, 0);
+        sheet.Cell(2, 13).Value = "Must not be silently discarded";
+        using var content = new MemoryStream();
+        workbook.SaveAs(content);
+        content.Position = 0;
+
+        await Assert.ThrowsAsync<MIS.Application.Common.HrValidationException>(
+            () => CollectionImportParser.ParseAsync(content, ".xlsx", default));
+    }
+
     private static void WriteHeaders(IXLWorksheet sheet)
     {
         for (var index = 0; index < Headers.Length; index++)

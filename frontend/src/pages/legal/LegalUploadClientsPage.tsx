@@ -1,14 +1,17 @@
 import { AlertCircle, FileUp, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../../components/common/Button';
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { EmptyState } from '../../components/common/EmptyState';
 import { useToast } from '../../components/common/Toast';
 import { PageHeader } from '../../components/common/PageHeader';
 import { useAuth } from '../../context/AuthContext';
 import { useLegalText } from '../../features/legal/legalUi';
 import { legalService } from '../../features/legal/services/legalService';
+import { LegalClientWorkbookReview } from '../../features/legal/components/LegalClientWorkbookReview';
+import { hasClientIdentityMapping, suggestWorkbookMapping } from '../../features/legal/legalClientWorkbook';
 import { getApiErrorMessage } from '../../services/apiClient';
-import type { LegalClientImportPreview, LegalClientImportResult, LegalOrganization } from '../../features/legal/types/legal';
+import type { LegalClientColumnMapping, LegalClientWorkbook, LegalClientImportPreview, LegalClientImportResult, LegalOrganization } from '../../features/legal/types/legal';
 
 export function LegalUploadClientsPage() {
   const l = useLegalText();
@@ -16,6 +19,9 @@ export function LegalUploadClientsPage() {
   const { user } = useAuth();
   const [preview, setPreview] = useState<LegalClientImportPreview>();
   const [file, setFile] = useState<File>();
+  const [workbook, setWorkbook] = useState<LegalClientWorkbook>();
+  const [mapping, setMapping] = useState<LegalClientColumnMapping>();
+  const [fileError, setFileError] = useState('');
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<LegalClientImportResult>();
@@ -25,7 +31,7 @@ export function LegalUploadClientsPage() {
   const [organizationsError, setOrganizationsError] = useState(false);
   const canManage = Boolean(user?.roles.some((role) => ['Admin', 'LegalOfficer'].includes(role))
     || user?.permissions.includes('legal.case.manage') || user?.permissions.includes('*'));
-  const originalHeaders = Object.keys(preview?.rows.find((row) => row.source.originalFields)?.source.originalFields ?? {});
+  const originalHeaders = Array.from(new Set(preview?.rows.flatMap(row => Object.keys(row.source.originalFields ?? {})) ?? []));
 
   useEffect(() => {
     let active = true;
@@ -46,19 +52,44 @@ export function LegalUploadClientsPage() {
     setFile(nextFile);
     setPreview(undefined);
     setResult(undefined);
+    setWorkbook(undefined);
+    setMapping(undefined);
+    setFileError('');
     if (!nextFile) return;
-    if (!organizationId) {
-      toast.error(l.text('اختر جهة النظام المرتبط بها سجل العميل قبل معاينة الملف.', 'Select the MIS organization for the customer record before previewing.'));
+    if (!/\.(xlsx|xls|csv)$/i.test(nextFile.name) || nextFile.size === 0 || nextFile.size > 50 * 1024 * 1024) {
+      setFileError(l.text('اختر ملف XLSX أو XLS أو CSV غير فارغ، وحجمه لا يتجاوز ٥٠ ميجابايت.', 'Choose a non-empty XLSX, XLS, or CSV file no larger than 50 MB.'));
       return;
     }
     setLoading(true);
     try {
-      setPreview(await legalService.previewClientImport(nextFile, organizationId));
+      const opened = await legalService.inspectClientImport(nextFile);
+      setWorkbook(opened);
+      const firstSheet = Math.max(0, opened.sheets.findIndex(sheet => sheet.rows.some(row => row.some(cell => cell.trim())) && !/instruction|تعليمات|reference data|مرجع/i.test(sheet.name || '')));
+      setMapping(suggestWorkbookMapping(opened, firstSheet));
     } catch (error) {
-      toast.error(getApiErrorMessage(
+      const message = localizedError(getApiErrorMessage(
         error,
-        l.text('تعذر قراءة الملف. تحقق من نوع الملف وعناوين الأعمدة.', 'Could not read the file. Check its format and column headers.'),
-      ));
+        l.text('تعذر فتح الملف. تأكد أنه ملف Excel سليم وغير محمي بكلمة مرور، ثم أعد اختياره.', 'Could not open the workbook. Check that it is a valid file without password protection, then choose it again.'),
+      ), l.text);
+      setFileError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function validateWorkbook() {
+    if (!file || !mapping || !organizationId || !hasClientIdentityMapping(mapping)) return;
+    setLoading(true);
+    setPreview(undefined);
+    setResult(undefined);
+    setFileError('');
+    try {
+      setPreview(await legalService.previewClientImport(file, organizationId, mapping));
+    } catch (error) {
+      const message = localizedError(getApiErrorMessage(error, l.text('تعذر التحقق من البيانات. راجع الشيت وصف العناوين وربط الأعمدة ثم حاول مرة أخرى.', 'Could not validate the data. Review the worksheet, header row, and column mapping, then retry.')), l.text);
+      setFileError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -68,15 +99,17 @@ export function LegalUploadClientsPage() {
     if (!file || !preview) return;
     setImporting(true);
     try {
-      const imported = await legalService.importClients(preview.fileName, organizationId, preview.rows.map((row) => row.source));
+      const imported = await legalService.importClients(preview.fileName, organizationId, preview.rows.filter(row => row.status === 'VALID' || row.status === 'EXISTING').map((row) => row.source));
       setResult(imported);
       if (imported.successfulRows > 0) {
         toast.success(l.text('تم حفظ العملاء المستوردين بنجاح.', 'Imported clients were saved successfully.'));
       } else {
         toast.error(l.text('لم يتم حفظ أي صف في قاعدة البيانات.', 'No rows were saved to the database.'));
       }
-    } catch {
-      toast.error(l.text('تعذر استيراد العملاء. أعد معاينة الملف وحاول مرة أخرى.', 'Could not import clients. Preview the file again and retry.'));
+    } catch (error) {
+      const message = localizedError(getApiErrorMessage(error, l.text('تعذر استيراد العملاء. أعد معاينة الملف وحاول مرة أخرى.', 'Could not import clients. Preview the file again and retry.')), l.text);
+      setFileError(message);
+      toast.error(message);
     } finally {
       setImporting(false);
     }
@@ -99,9 +132,10 @@ export function LegalUploadClientsPage() {
           <section className="rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
             <label className="mb-4 block max-w-xl text-sm font-semibold text-slate-700">
               <span className="mb-1.5 block">{l.text('جهة سجل العميل في النظام', 'MIS organization for the customer record')}</span>
-              <select
+              <ProfessionalSelect
                 className="h-11 w-full rounded-xl border border-mis-control bg-white px-3"
-                disabled={organizationsLoading || organizationsError}
+                aria-label={l.text('جهة سجل العميل في النظام', 'MIS organization for the customer record')}
+                disabled={organizationsLoading || organizationsError || loading || importing}
                 onChange={(event) => {
                   setOrganizationId(event.target.value);
                   setPreview(undefined);
@@ -113,7 +147,7 @@ export function LegalUploadClientsPage() {
                 {organizations.map((organization) => (
                   <option key={organization.id} value={organization.id}>{organization.name} ({organization.code})</option>
                 ))}
-              </select>
+              </ProfessionalSelect>
               <span className="mt-1.5 block font-normal text-slate-500">
                 {l.text(
                   'هذا الاختيار مطلوب لربط سجل العميل الأصلي. لن تُستخدم الفروع أو الوكالة لتحديد البنك أو الجهة.',
@@ -124,14 +158,27 @@ export function LegalUploadClientsPage() {
             <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 text-center hover:border-mis-primary hover:bg-mis-pale/30">
               <FileUp className="h-8 w-8 text-mis-primary" />
               <span className="font-semibold text-mis-navy">{l.text('اختر ملف العملاء', 'Choose a client workbook')}</span>
-              <span className="text-sm text-slate-500">{l.text('الصيغ المدعومة: XLSX و XLS و CSV', 'Supported formats: XLSX, XLS, and CSV')}</span>
-              <input accept=".xlsx,.xls,.csv" className="sr-only" disabled={!organizationId || organizationsLoading || organizationsError} onChange={(event) => { void selectFile(event.target.files?.[0]); }} type="file" />
+              <span className="text-sm text-slate-500">{l.text('XLSX أو XLS أو CSV — حتى ٥٠ ميجابايت و١٠٠ عمود', 'XLSX, XLS, or CSV — up to 50 MB and 100 columns')}</span>
+              <input accept=".xlsx,.xls,.csv" className="sr-only" disabled={loading || importing} onChange={(event) => { const nextFile = event.target.files?.[0]; event.target.value = ''; if (nextFile) void selectFile(nextFile); }} type="file" />
             </label>
             {organizationsError ? <p className="mt-3 text-sm text-rose-700">{l.text('تعذر تحميل جهات النظام. أعد تحميل الصفحة للمحاولة مجددًا.', 'MIS organizations could not be loaded. Reload the page to retry.')}</p> : null}
             {!organizationsLoading && !organizationsError && organizations.length === 0 ? <p className="mt-3 text-sm text-rose-700">{l.text('لا توجد جهة نشطة في النظام لربط سجل العميل بها.', 'No active MIS organization is available to link the customer record.')}</p> : null}
             {file ? <p className="mt-3 text-sm text-slate-600">{file.name}</p> : null}
+            {fileError ? <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{fileError}</p> : null}
             {loading ? <p className="mt-4 text-sm text-slate-500">{l.text('جارٍ تحليل الملف...', 'Reading workbook...')}</p> : null}
           </section>
+
+          {workbook && mapping ? <>
+            <LegalClientWorkbookReview workbook={workbook} mapping={mapping} disabled={loading || importing} onChange={next => { setMapping(next); setPreview(undefined); setResult(undefined); setFileError(''); }} />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-slate-600">{!organizationId
+                ? l.text('اختَر جهة سجل العميل بالأعلى قبل التحقق والحفظ.', 'Select the MIS organization above before validating and saving.')
+                : !hasClientIdentityMapping(mapping)
+                  ? l.text('حدد عمود اسم العميل ومعرّف واحد على الأقل للمتابعة.', 'Map the client name and at least one identifier to continue.')
+                  : l.text('راجع الربط ثم تحقق من كل الصفوف قبل الحفظ.', 'Review the mapping, then validate all rows before saving.')}</p>
+              <Button fullWidth={false} disabled={!organizationId || organizationsLoading || organizationsError || !hasClientIdentityMapping(mapping) || importing} isLoading={loading} onClick={validateWorkbook} type="button">{l.text('٢. تحقق من بيانات العملاء', '2. Validate client data')}</Button>
+            </div>
+          </> : null}
 
           {preview ? (
             <section className="space-y-4 rounded-2xl border border-mis-border bg-white p-5 shadow-sm">
@@ -217,7 +264,7 @@ export function LegalUploadClientsPage() {
                 </div>
               ) : null}
               <div className="flex justify-end">
-                <Button disabled={!preview.validRows} fullWidth={false} isLoading={importing} leftIcon={<Upload />} onClick={importClients} type="button">
+                <Button disabled={!preview.validRows || loading || Boolean(result?.successfulRows)} fullWidth={false} isLoading={importing} leftIcon={<Upload />} onClick={importClients} type="button">
                   {l.text('استيراد الصفوف الصالحة', 'Import Valid Clients')}
                 </Button>
               </div>
@@ -269,13 +316,21 @@ function statusLabel(status: string, text: (arabic: string, english: string) => 
 }
 
 function localizedError(error: string, text: (arabic: string, english: string) => string) {
+  if (error === 'The workbook could not be read. Use a valid Excel or UTF-8 CSV file without password protection.') return text('تعذر قراءة الملف. استخدم ملف Excel سليمًا وغير محمي بكلمة مرور، أو احفظ CSV بترميز UTF-8.', error);
+  if (error === 'The workbook does not contain data rows.' || error === 'The selected worksheet does not contain data rows after the header.') return text('لا توجد بيانات بعد صف العناوين. راجع الشيت وصف العناوين المختارين.', error);
+  if (error === 'Select a header row from the workbook preview.') return text('اختَر صف عناوين الأعمدة من معاينة الملف.', error);
+  if (error === 'The selected worksheet was not found.') return text('الشيت المختار غير موجود. افتح الملف مرة أخرى.', error);
+  if (error === 'A selected column was not found. Read the workbook again.') return text('أحد الأعمدة المختارة غير موجود. افتح الملف وراجع ربط الأعمدة.', error);
+  if (error === 'Select a different workbook column for each client field.') return text('اربط كل بيان بعمود مختلف من الملف.', error);
+  if (error === 'Client imports cannot exceed 5,000 rows.') return text('الحد الأقصى للاستيراد ٥٠٠٠ صف في المرة الواحدة. قسّم الملف إلى أجزاء أصغر.', error);
+  if (error === 'Client imports cannot exceed 100 columns.') return text('الحد الأقصى ١٠٠ عمود. احذف الأعمدة والتنسيقات الزائدة من الملف.', error);
   if (error === 'Select the MIS organization for the imported clients.') return text('اختر جهة النظام المرتبط بها سجل العميل.', 'Select the MIS organization for the customer record.');
   if (error === 'The selected MIS organization is not active.') return text('جهة النظام المختارة غير نشطة.', 'The selected MIS organization is not active.');
   if (error === 'National ID matches more than one customer.') return text('الرقم القومي مرتبط بأكثر من سجل عميل؛ يلزم التحقق يدويًا.', 'National ID matches multiple customer records; manual review is required.');
   if (error === 'National ID does not match the customer name.') return text('الرقم القومي مطابق لسجل باسم مختلف؛ لم يتم ربط العميل.', 'The National ID matches a different customer name; the record was not linked.');
   if (error === 'National ID and installment ID refer to different customers.') return text('الرقم القومي ورقم القسط يشيران إلى عميلين مختلفين.', 'National ID and installment ID point to different customers.');
   if (error === 'Client name is required.') return text('اسم العميل مطلوب.', 'Client name is required.');
-  if (error === 'National ID or mobile number is required.' || error === 'National ID, mobile number, or installment unique ID is required.') return text('الرقم القومي أو الهاتف أو الرقم الفريد للقسط مطلوب.', 'National ID, mobile number, or installment unique ID is required.');
+  if (error === 'National ID or mobile number is required.' || error === 'National ID, mobile number, or installment unique ID is required.') return text('مطلوب رقم قومي أو موبايل أو معرّف عميل مثل رقم الحساب أو القسط.', 'National ID, mobile number, or a customer identifier such as an account or installment number is required.');
   if (error === 'This client appears more than once in the uploaded file.') return text('هذا العميل مكرر داخل الملف.', 'This client appears more than once in the file.');
   if (error === 'This customer is already assigned to Legal.') return text('هذا العميل مسجل بالفعل لدى الشؤون القانونية.', 'This client is already assigned to Legal.');
   if (error === 'Installment Unique ID matches more than one customer.') return text('الرقم الفريد للقسط مرتبط بأكثر من عميل.', 'Installment Unique ID matches more than one customer.');

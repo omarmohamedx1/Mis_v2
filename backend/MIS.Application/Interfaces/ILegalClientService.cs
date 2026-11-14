@@ -8,7 +8,8 @@ public interface ILegalClientService
     Task<LegalClientPageDto> ListAsync(string? search, int page, int pageSize, CancellationToken token);
     Task<LegalClientDetailsDto> GetAsync(Guid customerId, CancellationToken token);
     Task<LegalClientDetailsDto> UpdateAsync(Guid customerId, UpdateLegalClientRequest request, CancellationToken token);
-    Task<LegalClientImportPreviewDto> PreviewImportAsync(string fileName, long length, Stream content, Guid organizationId, CancellationToken token);
+    Task<LegalClientWorkbookDto> InspectImportAsync(string fileName, long length, Stream content, CancellationToken token);
+    Task<LegalClientImportPreviewDto> PreviewImportAsync(string fileName, long length, Stream content, Guid organizationId, CancellationToken token, LegalClientColumnMapping? mapping = null);
     Task<LegalClientImportResultDto> ImportAsync(LegalClientImportRequest request, CancellationToken token);
     Task<LegalClientDocumentDto> UploadDocumentAsync(Guid customerId, string fileName, string contentType, long length, Stream content, CancellationToken token);
     Task<LegalClientDocumentDownloadDto> DownloadDocumentAsync(Guid documentId, CancellationToken token);

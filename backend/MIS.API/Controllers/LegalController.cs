@@ -68,6 +68,17 @@ public sealed class LegalController(
         return NoContent();
     }
 
+    [HttpPost("client-imports/inspect")]
+    [Authorize(Policy = AuthorizationPolicies.LegalCaseManage)]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(ExcelImportLimits.RequestBytes)]
+    public async Task<LegalClientWorkbookDto> InspectClientImport([FromForm] IFormFile file, CancellationToken token)
+    {
+        if (file is null) throw new HrValidationException("Select a client import file.");
+        await using var stream = file.OpenReadStream();
+        return await clients.InspectImportAsync(file.FileName, file.Length, stream, token);
+    }
+
     [HttpPost("client-imports/preview")]
     [Authorize(Policy = AuthorizationPolicies.LegalCaseManage)]
     [Consumes("multipart/form-data")]
@@ -75,11 +86,26 @@ public sealed class LegalController(
     public async Task<LegalClientImportPreviewDto> PreviewClientImport(
         [FromForm] IFormFile file,
         [FromForm] Guid organizationId,
-        CancellationToken token)
+        CancellationToken token,
+        [FromForm] string? mapping = null)
     {
         if (file is null) throw new HrValidationException("Select a client import file.");
         await using var stream = file.OpenReadStream();
-        return await clients.PreviewImportAsync(file.FileName, file.Length, stream, organizationId, token);
+        LegalClientColumnMapping? columns = null;
+        if (!string.IsNullOrWhiteSpace(mapping))
+        {
+            try
+            {
+                columns = System.Text.Json.JsonSerializer.Deserialize<LegalClientColumnMapping>(mapping,
+                    new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))
+                    ?? throw new HrValidationException("Select the workbook columns before previewing.");
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                throw new HrValidationException("The workbook column mapping is invalid.");
+            }
+        }
+        return await clients.PreviewImportAsync(file.FileName, file.Length, stream, organizationId, token, columns);
     }
 
     [HttpPost("client-imports")]
