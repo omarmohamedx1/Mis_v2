@@ -73,7 +73,7 @@ public sealed partial class CollectionScoreService : ICollectionScoreService
             var cells = BucketCategories[code].Select(category =>
             {
                 var existing = rows.SingleOrDefault(item => item.Category == category);
-                return existing is null ? EmptyCell(category) : MapCell(existing);
+                return existing is null ? DefaultCell(code, category) : MapCell(existing);
             }).ToArray();
             return CollectionScoreCalculator.Calculate(code, BucketVersion(rows), cells, source.Cases, source.Available)
                 with { SystemCaseCount = source.SystemBuckets.GetValueOrDefault(int.Parse(code[3..], CultureInfo.InvariantCulture)) };
@@ -420,8 +420,31 @@ public sealed partial class CollectionScoreService : ICollectionScoreService
         return new DateOnly(today.Year, today.Month, 1);
     }
 
-    private static CollectionScoreCellDto EmptyCell(string category) =>
-        new(category, null, null, null, null, null, null, null, null, null);
+    private static CollectionScoreCellDto DefaultCell(string bucket, string category)
+    {
+        // User-approved screenshot defaults apply only to categories without a saved row.
+        // Saved zeroes and intentionally cleared values must survive future reloads.
+        (decimal? Target, decimal? Weight) defaults = (bucket, category) switch
+        {
+            ("BKT1", "NORM") => (10m, null),
+            ("BKT1", "FWD") => (45m, 10m),
+            ("BKT2", "BWD") => (20m, 9m),
+            ("BKT2", "NORM") => (10m, 4m),
+            ("BKT2", "FWD") => (40m, 17m),
+            ("BKT3", "BWD") => (15m, 9m),
+            ("BKT3", "NORM") => (10m, 3m),
+            ("BKT3", "FWD") => (55m, 16m),
+            ("BKT4", "BWD") => (10m, 7m),
+            ("BKT4", "NORM") => (5m, 3m),
+            ("BKT4", "FWD") => (80m, 6m),
+            ("BKT5", "BWD") => (10m, 7m),
+            ("BKT5", "NORM") => (5m, 3m),
+            ("BKT5", "FWD") => (90m, 6m),
+            _ => (null, null),
+        };
+        // STAB remains the calculated residual; no BKT6 values were supplied in the image.
+        return new(category, null, null, defaults.Target, null, null, null, defaults.Weight, null, null);
+    }
 
     private static CollectionScoreCellDto MapCell(CollectionScoreValue item) =>
         new(item.Category, item.CaseCount, item.ActualBalance, item.TargetPercent, item.TargetBalance, item.Missing, item.Percent, item.Weight, item.ActualVsTarget, item.Score);

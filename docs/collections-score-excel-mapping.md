@@ -12,7 +12,7 @@ Reference: `Premium Score And Rank - Oct'2026 -Nada.xlsx`. Workbook data is refe
 | Movement | Domain O derives ending BKT from AH payments and BG:BL dues bands; P maps 0→NORM, equal opening→STAB, lower→BWD, higher→FWD | Opening BKT, BKT0–5 dues, complete reconciled period payments. CaseBucketHistory exists but does not contain opening balances or dues bands. CurrentBucketId is never used as historical BKT. |
 | Case count | COUNTIF on FX K or L | Count opening-cohort cases, not payment rows. Portfolio/bank IDs exist; historical collector/supervisor ownership must be explicit snapshot fields, not current assignments. |
 | Actual balance | SUMIF on FX M by movement; FWD is multiplied by −1 | Opening balances of cases classified by payment/dues rules. |
-| Target % | Score D refers to Drop K4:K17; STAB = 1−sum(other targets) | Existing CollectionScoreValues.TargetPercent, scoped by organization/portfolio/month. October values are examples, never runtime defaults. |
+| Target % | Score D refers to Drop K4:K17; STAB = 1−sum(other targets) | Saved CollectionScoreValues.TargetPercent, scoped by organization/portfolio/month, overrides the user-approved editable BKT1–5 screenshot defaults documented below. |
 | Target balance | Opening bucket balance × target; FWD negative | Calculated. STAB is residual after FWD/BWD/NORM. |
 | Missing / variance | Actual balance − target balance, including signed FWD | Calculated; negative variance is valid. It must not be rejected as an invalid negative monetary amount. |
 | Actual % | Positive classified opening balance / total opening bucket balance | Calculated; empty/zero denominators explicitly reported. |
@@ -49,6 +49,18 @@ The implementation must expose missing source/target reasons, retain expandable 
 Cached workbook values: BKT1 opening balance 6,908,831.115; FWD balance −3,912,993.935; FWD ratio 0.7945256377582397; score 7.945256377582397. Final lower balance score 67.59992770007159. BKT6 starting dues 7,703,950.2564 and payments 67,257 yield MORE score 21.825491391292005 at the sample 4% target. Overall D64=63.02248406919363; total active/MORE payments=1,664,966.0308; WO payments=27,405; commission total including WO=111,535.991778. These are test fixtures only, never production targets.
 
 ## Implemented BKT table
+
+The user explicitly approved the screenshot target percentages and weights as editable defaults. When a category has no saved row, BKT1–5 use the following values. Existing saved rows, including zeroes and intentionally cleared values, take precedence; reading defaults does not insert or overwrite database records. Edits use the existing **Edit Numbers → Save** flow and apply only to the selected bank, classification, specific portfolio and reporting month. A new month starts with these defaults rather than copying another month's overrides.
+
+| BKT | STAB target (derived) | BWD target | NORM target | FWD target | BWD weight | NORM weight | FWD weight |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 45% | — | 10% | 45% | — | — | 10 |
+| 2 | 30% | 20% | 10% | 40% | 9 | 4 | 17 |
+| 3 | 20% | 15% | 10% | 55% | 9 | 3 | 16 |
+| 4 | 5% | 10% | 5% | 80% | 7 | 3 | 6 |
+| 5 | −5% | 10% | 5% | 90% | 7 | 3 | 6 |
+
+This approval applies to these target percentages and weights only. Case counts, balances, payments and calculated scores still come from the selected MIS data source. BKT6 has no screenshot default and remains independently configurable.
 
 The Score dashboard calculates the upper BKT1–5 table and the separate BKT6/MORE dues ratio. BKT1 NORM and all STAB rows have no weight or score. Target percentages and applicable weights are the only editable score cells; server saves discard client-supplied counts, balances, variances and scores. STAB target is the residual and may be negative (e.g. −5%). All calculations retain decimal precision; rounding occurs only for display, so totals can differ by a cent from the sum of displayed scores.
 

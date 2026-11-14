@@ -345,6 +345,7 @@ export function CollectionsScoreDashboardPage() {
         <div>
           <h2 className="text-xl font-bold text-mis-navy">{ct('scoreDashboard')}</h2>
           <p className="mt-1 text-sm text-slate-500">{ct('scoreCalculatedHelp')}</p>
+          <p className="mt-1 text-sm text-slate-500">{ct('scoreDefaultsHelp')}</p>
         </div>
         {saveSuccess ? <p className="text-sm font-semibold text-emerald-700" role="status">{saveSuccess}</p> : null}
         {saveError ? <p className="text-sm font-semibold text-red-700" role="alert">{saveError}</p> : null}

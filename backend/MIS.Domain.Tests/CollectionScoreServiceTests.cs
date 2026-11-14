@@ -16,6 +16,93 @@ namespace MIS.Domain.Tests;
 public sealed class CollectionScoreServiceTests
 {
     [Fact]
+    public async Task Unsaved_settings_use_all_screenshot_targets_and_weights_without_creating_database_rows()
+    {
+        await using var fixture = new Fixture();
+        await fixture.Db.SaveChangesAsync();
+        var dashboard = await fixture.Service.GetDashboardAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-11", default);
+        var expected = new (string Bucket, decimal Stab, decimal? BwdTarget, decimal NormTarget, decimal FwdTarget, decimal? BwdWeight, decimal? NormWeight, decimal FwdWeight)[]
+        {
+            ("BKT1", 45, null, 10, 45, null, null, 10),
+            ("BKT2", 30, 20, 10, 40, 9, 4, 17),
+            ("BKT3", 20, 15, 10, 55, 9, 3, 16),
+            ("BKT4", 5, 10, 5, 80, 7, 3, 6),
+            ("BKT5", -5, 10, 5, 90, 7, 3, 6),
+        };
+        foreach (var row in expected)
+        {
+            var bucket = dashboard.Buckets.Single(item => item.Code == row.Bucket);
+            var cells = bucket.Categories.ToDictionary(item => item.Category);
+            Assert.Equal(row.Stab, cells["STAB"].TargetPercent);
+            Assert.Null(cells["STAB"].Weight);
+            Assert.Equal(row.NormTarget, cells["NORM"].TargetPercent);
+            Assert.Equal(row.NormWeight, cells["NORM"].Weight);
+            Assert.Equal(row.FwdTarget, cells["FWD"].TargetPercent);
+            Assert.Equal(row.FwdWeight, cells["FWD"].Weight);
+            if (row.BwdTarget.HasValue)
+            {
+                Assert.Equal(row.BwdTarget, cells["BWD"].TargetPercent);
+                Assert.Equal(row.BwdWeight, cells["BWD"].Weight);
+            }
+            Assert.DoesNotContain("MISSING_TARGETS", bucket.Issues!);
+            Assert.DoesNotContain("MISSING_WEIGHTS", bucket.Issues!);
+            Assert.All(cells.Values, cell => { Assert.Null(cell.CaseCount); Assert.Null(cell.ActualBalance); Assert.Null(cell.Score); });
+        }
+        Assert.Null(dashboard.Buckets.Single(item => item.Code == "BKT6").Categories.Single().TargetPercent);
+        Assert.Empty(await fixture.Db.CollectionScoreValues.ToArrayAsync());
+    }
+
+    [Fact]
+    public async Task Edited_targets_and_zero_weights_survive_reload_and_only_override_the_selected_scope()
+    {
+        await using var fixture = new Fixture();
+        var otherPortfolio = fixture.Portfolio(fixture.Bank.Id, "WO");
+        var otherBank = new ClientOrganization("OTHER", "Other", "Other", "BANK", fixture.Now);
+        fixture.Db.Add(otherBank);
+        var otherBankPortfolio = fixture.Portfolio(otherBank.Id, "ACT");
+        await fixture.Db.SaveChangesAsync();
+        var original = (await fixture.Service.GetDashboardAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-11", default))
+            .Buckets.Single(item => item.Code == "BKT2");
+        SaveCollectionScoreCellRequest Cell(string category, decimal? target, decimal? weight) =>
+            new(category, null, null, target, null, null, null, weight, null, null);
+        await fixture.Service.SaveBucketAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "BKT2", new("2026-11", original.Version,
+            [Cell("STAB", null, null), Cell("BWD", 25, 0), Cell("NORM", 15, 8), Cell("FWD", 50, 19)]), default);
+        fixture.Db.ChangeTracker.Clear();
+        var saved = (await fixture.Service.GetDashboardAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-11", default))
+            .Buckets.Single(item => item.Code == "BKT2");
+        Assert.Equal(10m, saved.Categories.Single(item => item.Category == "STAB").TargetPercent);
+        Assert.Equal(25m, saved.Categories.Single(item => item.Category == "BWD").TargetPercent);
+        Assert.Equal(0m, saved.Categories.Single(item => item.Category == "BWD").Weight);
+        Assert.Equal(8m, saved.Categories.Single(item => item.Category == "NORM").Weight);
+        Assert.Equal(50m, saved.Categories.Single(item => item.Category == "FWD").TargetPercent);
+        Assert.Equal(19m, saved.Categories.Single(item => item.Category == "FWD").Weight);
+        foreach (var scope in new[] { (fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-12"),
+                     (fixture.Bank.Id, "WO", otherPortfolio.Id, "2026-11"), (otherBank.Id, "ACT", otherBankPortfolio.Id, "2026-11") })
+        {
+            var dashboard = await fixture.Service.GetDashboardAsync(scope.Item1, scope.Item2, scope.Item3, scope.Item4, default);
+            var bwd = dashboard.Buckets.Single(item => item.Code == "BKT2").Categories.Single(item => item.Category == "BWD");
+            Assert.Equal(20m, bwd.TargetPercent); Assert.Equal(9m, bwd.Weight);
+        }
+    }
+
+    [Fact]
+    public async Task Explicitly_cleared_saved_settings_are_not_silently_replaced_with_defaults()
+    {
+        await using var fixture = new Fixture();
+        await fixture.Db.SaveChangesAsync();
+        var bucket = (await fixture.Service.GetDashboardAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-11", default))
+            .Buckets.Single(item => item.Code == "BKT5");
+        await fixture.Service.SaveBucketAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "BKT5", new("2026-11", bucket.Version,
+            bucket.Categories.Select(item => new SaveCollectionScoreCellRequest(item.Category, null, null, null, null, null, null, null, null, null)).ToArray()), default);
+        fixture.Db.ChangeTracker.Clear();
+        var saved = (await fixture.Service.GetDashboardAsync(fixture.Bank.Id, "ACT", fixture.Main.Id, "2026-11", default))
+            .Buckets.Single(item => item.Code == "BKT5");
+        Assert.All(saved.Categories, cell => { Assert.Null(cell.TargetPercent); Assert.Null(cell.Weight); });
+        Assert.Contains("MISSING_TARGETS", saved.Issues!);
+        Assert.Contains("MISSING_WEIGHTS", saved.Issues!);
+    }
+
+    [Fact]
     public async Task System_payments_are_month_scoped_approved_non_reversed_and_never_added_to_imported_payments()
     {
         await using var fixture = new Fixture();
