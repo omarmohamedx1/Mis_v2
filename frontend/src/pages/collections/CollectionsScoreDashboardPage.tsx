@@ -1,6 +1,8 @@
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { ArrowLeft, ChevronDown, ChevronUp, Pencil, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useActionDialog } from '../../components/common/useActionDialog';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -140,6 +142,8 @@ function useScoreDashboard(organizationId: string, portfolio: PrimaryClassificat
 }
 
 export function CollectionsScoreDashboardPage() {
+  const navigate = useNavigate();
+  const actionDialog = useActionDialog();
   const { ct, language, isRtl } = useCollectionsLocalization();
   const { organizationId = '', portfolioType = '', portfolioId = '' } = useParams();
   const portfolio = normalizePrimary(portfolioType);
@@ -165,8 +169,13 @@ export function CollectionsScoreDashboardPage() {
   }, [dirty]);
 
   const confirmNavigation = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
-    if (dirty && !window.confirm(ct('scoreUnsavedConfirm'))) event.preventDefault();
-  }, [ct, dirty]);
+    if (!dirty || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const destination = event.currentTarget.getAttribute('href');
+    void actionDialog.confirm(ct('scoreUnsavedConfirm')).then(confirmed => {
+      if (confirmed && destination) navigate(destination);
+    });
+  }, [ct, dirty, actionDialog.confirm, navigate]);
 
   const toggleBucket = (code: string) => setExpanded(current => {
     const next = new Set(current);
@@ -251,6 +260,7 @@ export function CollectionsScoreDashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1480px]" dir={isRtl ? 'rtl' : 'ltr'}>
+      {actionDialog.dialog}
       <Link
         className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-mis-primary hover:text-mis-deep"
         onClick={confirmNavigation}
@@ -278,23 +288,25 @@ export function CollectionsScoreDashboardPage() {
           </span>
         )}
         actions={(
-          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-mis-control bg-white px-3 text-sm text-slate-600">
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600">
             <span className="shrink-0">{ct('scoreReportingPeriod')}</span>
-            <select
-              className="min-w-0 bg-transparent py-2 font-semibold text-mis-navy outline-none"
-              onChange={event => {
+            <ProfessionalSelect
+              aria-label={ct('scoreReportingPeriod')}
+              className="w-40 font-semibold"
+              onChange={async event => {
+                const nextPeriod = event.target.value;
                 if (!dirty) {
-                  changePeriod(event.target.value);
-                } else if (window.confirm(ct('scoreUnsavedConfirm'))) {
+                  changePeriod(nextPeriod);
+                } else if (await actionDialog.confirm(ct('scoreUnsavedConfirm'))) {
                   setEditing({});
                   setBucketErrors({});
-                  changePeriod(event.target.value);
+                  changePeriod(nextPeriod);
                 }
               }}
               value={reportingPeriod}
             >
               {periods.periods.map(period => <option key={period} value={period}>{period}</option>)}
-            </select>
+            </ProfessionalSelect>
           </label>
         )}
       />
@@ -414,8 +426,8 @@ export function CollectionsScoreDashboardPage() {
                       </button>
                       <button
                         className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-mis-control bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        onClick={() => {
-                          if (window.confirm(ct('scoreCancelConfirm'))) cancelEditing(bucket.code);
+                        onClick={async () => {
+                          if (await actionDialog.confirm(ct('scoreCancelConfirm'))) cancelEditing(bucket.code);
                         }}
                         type="button"
                       >

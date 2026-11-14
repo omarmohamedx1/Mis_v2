@@ -58,6 +58,11 @@ public sealed record LegalClientDetailsDto(
 
 public sealed record UpdateLegalClientRequest(string? Status, string? Notes);
 
+public sealed record LegalClientWorkbookSheetDto(string? Name, IReadOnlyList<string[]> Rows);
+public sealed record LegalClientWorkbookDto(string FileName, IReadOnlyList<LegalClientWorkbookSheetDto> Sheets);
+public sealed record LegalClientColumnMapping(string? SheetName, int HeaderRow, IReadOnlyDictionary<string, string> Columns,
+    IReadOnlyCollection<string>? ExtraColumns = null);
+
 public sealed record LegalClientImportSourceRow(
     int RowNumber,
     string? Name,

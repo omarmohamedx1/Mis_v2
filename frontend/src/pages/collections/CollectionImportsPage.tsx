@@ -196,7 +196,7 @@ export function CollectionImportsPage() {
                 </button>
                 <div className="flex gap-4 text-xs text-slate-500"><span>{ct('validRows')}: <b>{x.validRows}</b></span><span>{ct('invalidRows')}: <b>{x.invalidRows}</b></span></div>
                 <CollectionStatus value={x.status} />
-                <button type="button" onClick={() => setRemoval(x)} aria-label={ct('deleteImportBatch')} title={ct('deleteImportBatch')} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setRemoval(x)} aria-label={ct('deleteImportBatch')} data-tooltip={ct('deleteImportBatch')} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
           </div>

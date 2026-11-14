@@ -6,6 +6,8 @@ import type {
   LegalClientDetails,
   LegalClientDocument,
   LegalClientImportPreview,
+  LegalClientWorkbook,
+  LegalClientColumnMapping,
   LegalClientImportResult,
   LegalClientImportSourceRow,
   LegalClientPage,
@@ -77,10 +79,17 @@ export const legalService = {
     await apiClient.delete(`/legal/client-documents/${documentId}`);
   },
 
-  async previewClientImport(file: File, organizationId: string) {
+  async inspectClientImport(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return requestFormData<LegalClientWorkbook>('/legal/client-imports/inspect', formData);
+  },
+
+  async previewClientImport(file: File, organizationId: string, mapping?: LegalClientColumnMapping) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('organizationId', organizationId);
+    if (mapping) formData.append('mapping', JSON.stringify(mapping));
     return requestFormData<LegalClientImportPreview>('/legal/client-imports/preview', formData);
   },
 

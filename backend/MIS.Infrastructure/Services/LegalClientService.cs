@@ -126,25 +126,48 @@ public sealed class LegalClientService(
         return await MapDetailsAsync(customer, token);
     }
 
+    public async Task<LegalClientWorkbookDto> InspectImportAsync(string fileName, long length, Stream content, CancellationToken token)
+    {
+        RequireManage();
+        var extension = ValidateImportFile(fileName, length);
+        using var buffered = new MemoryStream();
+        await content.CopyToAsync(buffered, token);
+        var sheets = await LegalClientWorkbookReader.InspectAsync(buffered, extension, token);
+        return new LegalClientWorkbookDto(SafeFileName(fileName), sheets);
+    }
+
+    private static string ValidateImportFile(string fileName, long length)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (length is <= 0 or > ExcelImportLimits.MaximumBytes) throw new HrValidationException(ExcelImportLimits.SizeMessage);
+        if (extension is not (".xlsx" or ".xls" or ".csv"))
+            throw new HrValidationException("Only XLSX, XLS, and CSV client files are supported.");
+        return extension;
+    }
+
     public async Task<LegalClientImportPreviewDto> PreviewImportAsync(
         string fileName,
         long length,
         Stream content,
         Guid organizationId,
-        CancellationToken token)
+        CancellationToken token,
+        LegalClientColumnMapping? mapping = null)
     {
         RequireManage();
-        var extension = Path.GetExtension(fileName).ToLowerInvariant();
-        if (length is <= 0 or > ExcelImportLimits.MaximumBytes) throw new HrValidationException(ExcelImportLimits.SizeMessage);
-        if (extension is not (".xlsx" or ".xls" or ".csv"))
-            throw new HrValidationException("Only XLSX, XLS, and CSV client files are supported.");
+        var extension = ValidateImportFile(fileName, length);
 
-        var parsed = await CollectionImportParser.ParseAsync(content, extension, token);
+        // Uploaded request streams are not guaranteed to support seeking, which the
+        // workbook reader needs for signature checks and reading the ZIP directory.
+        using var bufferedContent = new MemoryStream();
+        await content.CopyToAsync(bufferedContent, token);
+        var parsed = mapping is null
+            ? await CollectionImportParser.ParseAsync(bufferedContent, extension, token)
+            : await LegalClientWorkbookReader.ParseAsync(bufferedContent, extension, mapping, token);
         if (parsed.Count > MaximumImportRows)
             throw new HrValidationException($"Client imports cannot exceed {MaximumImportRows:N0} rows.");
 
         var rowOffset = extension == ".csv" ? 0 : 1;
-        var sources = parsed.Select(row => MapImportRow(row, rowOffset)).ToArray();
+        var sources = parsed.Select(row => mapping is null ? MapImportRow(row, rowOffset) : MapSelectedColumns(row, mapping)).ToArray();
         var evaluated = await EvaluateRowsAsync(sources, organizationId, token);
         var previewRows = evaluated.Select(row => new LegalClientImportPreviewRowDto(
             row.Source, row.Status, LocalizedCustomerName(row.Customer), row.Errors)).ToArray();
@@ -538,6 +561,22 @@ public sealed class LegalClientService(
         query.Select(document => new LegalClientDocumentDto(
             document.Id, document.OriginalFileName, document.ContentType, document.FileSize,
             document.UploadedByUser.FullName, document.UploadedAt));
+
+    internal static LegalClientImportSourceRow MapSelectedColumns(ParsedCollectionRow row, LegalClientColumnMapping mapping)
+    {
+        var retainedColumns = mapping.ExtraColumns is null ? null : mapping.ExtraColumns
+            .Concat(mapping.Columns.Values.Where(column => !string.IsNullOrWhiteSpace(column)))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var retainedFields = retainedColumns is null ? row.OriginalValues : row.OriginalValues
+            .Where(field => retainedColumns.Contains(field.Key))
+            .ToDictionary(field => field.Key, field => field.Value, StringComparer.OrdinalIgnoreCase);
+        string? Value(string field) => mapping.Columns.TryGetValue(field, out var column)
+            && !string.IsNullOrWhiteSpace(column) && row.OriginalValues.TryGetValue(column, out var value)
+            && !string.IsNullOrWhiteSpace(value) ? value.Trim() : null;
+        return new LegalClientImportSourceRow(row.RowNumber, Value("name"), null, null,
+            Value("nationalId"), Value("mobileNumber"), null, Value("address"), null, null,
+            Value("notes"), Value("externalIdentifier"), retainedFields);
+    }
 
     internal static LegalClientImportSourceRow MapImportRow(ParsedCollectionRow row, int rowOffset)
     {

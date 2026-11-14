@@ -176,7 +176,7 @@ function CollectionTrend({ points, format, language }: { points: CollectionDashb
   const date = new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short' });
   return <div className="overview-trend">{points.slice(-7).map(point => <div className="flex min-w-0 flex-col items-center gap-2" key={point.date}>
     <span className="sr-only">{date.format(new Date(`${point.date}T12:00:00`))}: {format.money(point.collected)}</span>
-    <div className="flex h-32 w-full items-end justify-center rounded-md bg-slate-50" title={format.money(point.collected)}><div className="w-7 max-w-full rounded-t bg-mis-primary" style={{ height: `${point.collected ? Math.max(point.collected / maximum * 100, 3) : 0}%` }} /></div>
+    <div className="flex h-32 w-full items-end justify-center rounded-md bg-slate-50" data-tooltip={format.money(point.collected)}><div className="w-7 max-w-full rounded-t bg-mis-primary" style={{ height: `${point.collected ? Math.max(point.collected / maximum * 100, 3) : 0}%` }} /></div>
     <span className="whitespace-nowrap text-[10px] text-slate-500">{date.format(new Date(`${point.date}T12:00:00`))}</span>
   </div>)}</div>;
 }

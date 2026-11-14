@@ -1,3 +1,4 @@
+import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { ArrowLeft, Download, FileText, Search, Trash2, Upload, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -196,12 +197,12 @@ export function LegalClientFilesPage() {
           <>
             <label className="block max-w-sm text-sm font-semibold text-slate-700">
               <span className="mb-1.5 block">{l.text('حالة العميل', 'Client Status')}</span>
-              <select className="h-11 w-full rounded-xl border border-mis-control bg-white px-3" onChange={(event) => setStatus(event.target.value)} value={status}>
+              <ProfessionalSelect className="h-11 w-full rounded-xl border border-mis-control bg-white px-3" onChange={(event) => setStatus(event.target.value)} value={status}>
                 <option value="ACTIVE">{l.clientStatus('ACTIVE')}</option>
                 <option value="LEGAL">{l.clientStatus('LEGAL')}</option>
                 <option value="ON_HOLD">{l.clientStatus('ON_HOLD')}</option>
                 <option value="CLOSED">{l.clientStatus('CLOSED')}</option>
-              </select>
+              </ProfessionalSelect>
             </label>
             <TextAreaInput label={l.text('ملاحظات الشؤون القانونية', 'Legal Notes')} onChange={(event) => setNotes(event.target.value)} value={notes} />
             <div className="flex justify-end"><Button fullWidth={false} isLoading={saving} onClick={saveClient} type="button">{l.text('حفظ الملف', 'Save Client File')}</Button></div>

@@ -354,7 +354,7 @@ export function HrAbsencesPage({ embedded = false }: { embedded?: boolean }) {
                       <td className="px-5 py-4"><ActionMenu>
                         <button aria-label={t('view')} className="rounded-lg p-2 text-mis-primary hover:bg-mis-pale" onClick={() => void openRecord(item, 'view')} type="button"><Eye className="h-4 w-4" /></button>
                         <button aria-label={t('edit')} className="rounded-lg p-2 text-mis-primary hover:bg-mis-pale" onClick={() => void openRecord(item, 'edit')} type="button"><Pencil className="h-4 w-4" /></button>
-                        {canReviewPayroll && item.status === 'Unexcused' ? <button aria-label={payrollCopy[language].review} className="rounded-lg p-2 text-emerald-700 hover:bg-emerald-50" onClick={() => void openRecord(item, 'payroll')} title={payrollCopy[language].review} type="button"><BadgeDollarSign className="h-4 w-4" /></button> : null}
+                        {canReviewPayroll && item.status === 'Unexcused' ? <button aria-label={payrollCopy[language].review} className="rounded-lg p-2 text-emerald-700 hover:bg-emerald-50" onClick={() => void openRecord(item, 'payroll')} data-tooltip={payrollCopy[language].review} type="button"><BadgeDollarSign className="h-4 w-4" /></button> : null}
                         <button aria-label={t('delete')} className="rounded-lg p-2 text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(item)} type="button"><Trash2 className="h-4 w-4" /></button>
                       </ActionMenu></td>
                     </tr>

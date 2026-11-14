@@ -37,7 +37,7 @@ export function PasswordInput({ id, label, error, className = '', ...props }: Pa
           className="absolute end-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:bg-mis-pale hover:text-mis-primary disabled:cursor-not-allowed disabled:opacity-50"
           disabled={props.disabled}
           onClick={() => setIsVisible((current) => !current)}
-          title={isVisible ? t('hidePassword') : t('showPassword')}
+          data-tooltip={isVisible ? t('hidePassword') : t('showPassword')}
           type="button"
         >
           <Icon className="h-4 w-4" aria-hidden="true" />

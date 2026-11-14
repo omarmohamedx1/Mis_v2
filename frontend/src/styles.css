@@ -25,6 +25,7 @@
   --z-popover: 100;
   --z-select: 110;
   --z-toast: 120;
+  --z-tooltip: 130;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -264,15 +265,6 @@ tbody tr { transition: background-color 150ms ease; }
   -webkit-overflow-scrolling: touch;
 }
 
-:where(select:not(.sr-only)) {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.8rem center;
-  padding-inline-end: 2.5rem;
-}
-:where(select:not(.sr-only):dir(rtl)) { background-position: left 0.8rem center; }
-
 @media (max-width: 639px) {
   h1 { line-height: 1.25; }
   .field { font-size: 16px; }
@@ -405,7 +397,72 @@ summary:focus-visible,
   outline-offset: 2px;
   box-shadow: 0 0 0 2px white;
 }
-input[type='checkbox'], input[type='radio'] { accent-color: var(--color-focus); }
+/* Native semantics and keyboard behavior, with every visible part drawn by MIS. */
+:where(input[type='checkbox'], input[type='radio']) {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-block;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  flex-shrink: 0;
+  vertical-align: middle;
+  border: 1.5px solid var(--color-control-border);
+  border-radius: 0.375rem;
+  background-color: white;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 150ms, background-color 150ms, box-shadow 150ms;
+}
+:where(input[type='radio']) { border-radius: 50%; }
+:where(input[type='checkbox'], input[type='radio']):is(:checked, :indeterminate) {
+  border-color: var(--color-focus);
+  background-color: var(--color-focus);
+}
+:where(input[type='checkbox']:checked) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 8 3.25 3.25L13 4.5'/%3E%3C/svg%3E");
+}
+:where(input[type='checkbox']:indeterminate) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M3.5 8h9'/%3E%3C/svg%3E");
+}
+:where(input[type='radio']:checked) { background-image: radial-gradient(circle, white 0 3px, transparent 3.5px); }
+:where(input[type='checkbox'], input[type='radio']):where(:hover:not(:disabled)) {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px #e5f1f8;
+}
+:where(input[type='checkbox']:disabled, input[type='radio']:disabled) { cursor: not-allowed; opacity: 0.5; }
+:where(input[type='number']) { -moz-appearance: textfield; appearance: textfield; }
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  cursor: pointer;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23596b82' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='m4 4 8 8M12 4l-8 8'/%3E%3C/svg%3E");
+}
+input::-ms-reveal, input::-ms-clear { display: none; }
+summary { position: relative; list-style: none; padding-inline-end: 2rem; }
+summary::-webkit-details-marker { display: none; }
+summary::marker { content: ''; }
+summary::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 0.75rem;
+  inset-block-start: calc(50% - 0.375rem);
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-inline-end: 2px solid var(--color-muted);
+  border-block-end: 2px solid var(--color-muted);
+  transform: rotate(45deg);
+  transition: transform 150ms;
+}
+[dir='rtl'] summary::after { transform: rotate(-45deg); }
+details[open] > summary::after { transform: rotate(225deg); }
+[dir='rtl'] details[open] > summary::after { transform: rotate(-225deg); }
+summary:has(.lucide-chevron-down, .lucide-chevron-right)::after { content: none; }
+[data-system-invalid='true'] { border-color: var(--color-danger); }
 
 /* Shared containment: content may shrink without shrinking its explicit icons. */
 :where(.grid, .flex, .inline-flex) > :where(div, section, article, header, footer, form, label) {

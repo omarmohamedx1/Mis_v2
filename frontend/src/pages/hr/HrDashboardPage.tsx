@@ -105,7 +105,7 @@ function AttendanceTrend({ copy, locale, points }: { copy: typeof dashboardCopy.
     <div>
       <div className="flex h-48 items-end gap-1.5 border-b border-slate-200 pb-1" aria-label={copy.attendanceTrend} role="img">
         {visible.map((point) => (
-          <div className="group flex h-full min-w-0 flex-1 items-end justify-center gap-px" key={point.date} title={`${new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(`${point.date}T00:00:00`))}: ${copy.present} ${point.present}, ${copy.late} ${point.late}, ${copy.absent} ${point.absent}, ${copy.onLeave} ${point.onLeave}`}>
+          <div className="group flex h-full min-w-0 flex-1 items-end justify-center gap-px" key={point.date} data-tooltip={`${new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(`${point.date}T00:00:00`))}: ${copy.present} ${point.present}, ${copy.late} ${point.late}, ${copy.absent} ${point.absent}, ${copy.onLeave} ${point.onLeave}`}>
             {legend.map(([key]) => <div className={`min-h-px w-1/4 max-w-2.5 rounded-t ${trendColors[key]}`} key={key} style={{ height: `${Math.max((point[key] / maximum) * 100, point[key] ? 3 : 0)}%` }} />)}
           </div>
         ))}
@@ -122,7 +122,7 @@ function AbsenceTrend({ copy, locale, points }: { copy: typeof dashboardCopy.en 
   if (!visible.some((point) => point.absences)) return <EmptyState compact description={copy.lastThirtyDays} title={copy.noTrend} />;
   return (
     <div className="flex h-48 items-end gap-1.5 border-b border-slate-200 pb-1" aria-label={copy.absenceTrend} role="img">
-      {visible.map((point) => <div className="min-w-0 flex-1 rounded-t bg-red-400" key={point.date} style={{ height: `${Math.max((point.absences / maximum) * 100, 3)}%` }} title={`${new Intl.DateTimeFormat(locale).format(new Date(`${point.date}T00:00:00`))}: ${point.absences}`} />)}
+      {visible.map((point) => <div className="min-w-0 flex-1 rounded-t bg-red-400" key={point.date} style={{ height: `${Math.max((point.absences / maximum) * 100, 3)}%` }} data-tooltip={`${new Intl.DateTimeFormat(locale).format(new Date(`${point.date}T00:00:00`))}: ${point.absences}`} />)}
     </div>
   );
 }

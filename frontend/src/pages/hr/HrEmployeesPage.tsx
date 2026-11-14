@@ -75,7 +75,7 @@ function OrganizationCell({ employee, language, notAssigned }: { employee: Emplo
   const orgs = employee.organizations ?? [];
   if (!orgs.length) return <span className="text-mis-muted">{notAssigned}</span>;
   const names = orgs.map((org) => organizationLabel(org, language)).join(' · ');
-  return <div className="flex flex-wrap gap-1.5" title={names}>{orgs.map((org) => <span className="inline-flex max-w-full rounded-lg bg-mis-pale px-2 py-1 text-xs font-bold leading-5 text-mis-primary" key={org.id}>{organizationLabel(org, language)}</span>)}</div>;
+  return <div className="flex flex-wrap gap-1.5" data-tooltip={names}>{orgs.map((org) => <span className="inline-flex max-w-full rounded-lg bg-mis-pale px-2 py-1 text-xs font-bold leading-5 text-mis-primary" key={org.id}>{organizationLabel(org, language)}</span>)}</div>;
 }
 
 type EmployeeFormField = 'employeeNumber' | 'fullName' | 'fullNameArabic' | 'fullNameEnglish' | 'nationalId' | 'mobileNumber' | 'departmentId' | 'positionId' | 'workStartDate' | 'dateOfBirth' | 'workEndDate' | 'basicSalary' | 'allowances';
@@ -492,12 +492,12 @@ export function HrEmployeesPage() {
   ];
   const employeeActions = (employee: EmployeeListItem) => (
     <ActionMenu>
-      <Link aria-label={`${t('view')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-mis-primary hover:bg-mis-pale" title={t('view')} to={`/hr/employees/${employee.id}`}><Eye className="h-4 w-4" /></Link>
-      <button aria-label={`${t('edit')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-mis-primary hover:bg-mis-pale" onClick={() => void edit(employee)} title={t('edit')} type="button"><Pencil className="h-4 w-4" /></button>
+      <Link aria-label={`${t('view')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-mis-primary hover:bg-mis-pale" data-tooltip={t('view')} to={`/hr/employees/${employee.id}`}><Eye className="h-4 w-4" /></Link>
+      <button aria-label={`${t('edit')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-mis-primary hover:bg-mis-pale" onClick={() => void edit(employee)} data-tooltip={t('edit')} type="button"><Pencil className="h-4 w-4" /></button>
       {employee.isArchived
-        ? <button aria-label={`${t('restoreEmployee')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50" onClick={() => setRestoreTarget(employee)} title={t('restoreEmployee')} type="button"><RotateCcw className="h-4 w-4" /></button>
-        : <button aria-label={`${t('archiveEmployee')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-50" onClick={() => setArchiveTarget(employee)} title={t('archiveEmployee')} type="button"><Archive className="h-4 w-4" /></button>}
-      {!employee.isArchived || canDelete ? <button aria-label={`${t('delete')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-600 hover:bg-red-50" onClick={() => setRemoveIds([employee.id])} title={t('delete')} type="button"><Trash2 className="h-4 w-4" /></button> : null}
+        ? <button aria-label={`${t('restoreEmployee')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50" onClick={() => setRestoreTarget(employee)} data-tooltip={t('restoreEmployee')} type="button"><RotateCcw className="h-4 w-4" /></button>
+        : <button aria-label={`${t('archiveEmployee')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-50" onClick={() => setArchiveTarget(employee)} data-tooltip={t('archiveEmployee')} type="button"><Archive className="h-4 w-4" /></button>}
+      {!employee.isArchived || canDelete ? <button aria-label={`${t('delete')} ${employeeNameForLanguage(employee, language)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-600 hover:bg-red-50" onClick={() => setRemoveIds([employee.id])} data-tooltip={t('delete')} type="button"><Trash2 className="h-4 w-4" /></button> : null}
     </ActionMenu>
   );
 

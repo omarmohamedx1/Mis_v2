@@ -354,7 +354,7 @@ export const ProfessionalSelect = forwardRef<HTMLSelectElement, ProfessionalSele
         onKeyDown={handleTriggerKeyDown}
         ref={triggerRef}
         tabIndex={tabIndex}
-        title={title ?? nodeText(selectedOption?.label)}
+        data-tooltip={title ?? nodeText(selectedOption?.label)}
         type="button"
       >
         <span className={`select-value min-w-0 flex-1 truncate ${selectedValue === '' ? 'text-slate-500' : ''}`}>{selectedOption?.label ?? '—'}</span>

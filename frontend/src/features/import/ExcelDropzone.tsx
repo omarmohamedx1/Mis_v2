@@ -82,7 +82,7 @@ export function ExcelDropzone({ arabic, busy, disabled, file, hint, label, onFil
             <FileSpreadsheet className="h-6 w-6" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-bold text-mis-navy" dir="ltr" title={file.name}>{file.name}</p>
+            <p className="truncate font-bold text-mis-navy" dir="ltr" data-tooltip={file.name}>{file.name}</p>
             <p className="mt-1 text-xs text-slate-500" dir="ltr">{formatExcelBytes(file.size, arabic)}</p>
           </div>
           <button

@@ -1,4 +1,5 @@
 import { ActionMenu } from '../../components/common/ActionMenu';
+import { isAxiosError } from 'axios';
 import { CheckCircle2, FileSpreadsheet, Pencil, RefreshCw, Search, Trash2, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
@@ -23,7 +24,11 @@ const supportedExtensions = ['.xlsx', '.xls', '.csv'];
 const extension = (name: string) => name.slice(name.lastIndexOf('.')).toLowerCase();
 
 export function BankPortfolioImportPage() {
-  const { bank, workspaceBase } = useOutletContext<BankWorkspaceContext>();
+  const context = useOutletContext<BankWorkspaceContext>();
+  return <BankPortfolioImportWorkspace key={context.workspaceBase} bank={context.bank} workspaceBase={context.workspaceBase} />;
+}
+
+function BankPortfolioImportWorkspace({ bank, workspaceBase }: Pick<BankWorkspaceContext, 'bank' | 'workspaceBase'>) {
   const { language, ct } = useCollectionsLocalization();
   const toast = useToast();
   const uploadRef = useRef<HTMLInputElement>(null), replaceRef = useRef<HTMLInputElement>(null);
@@ -35,7 +40,7 @@ export function BankPortfolioImportPage() {
   const [previewPage, setPreviewPage] = useState(1);
   const [reviewNotes, setReviewNotes] = useState('');
   const [uploading, setUploading] = useState(false), [confirming, setConfirming] = useState(false);
-  const [history, setHistory] = useState<BankPortfolioImportPage>(), [historyError, setHistoryError] = useState(false);
+  const [history, setHistory] = useState<BankPortfolioImportPage>(), [historyError, setHistoryError] = useState('');
   const [page, setPage] = useState(1), [searchInput, setSearchInput] = useState(''), [search, setSearch] = useState(''), [refresh, setRefresh] = useState(0);
   const [editing, setEditing] = useState<BankPortfolioImport>(), [editNotes, setEditNotes] = useState(''), [saving, setSaving] = useState(false);
   const [replacement, setReplacement] = useState<BankPortfolioReplacementPreview>(), [replacing, setReplacing] = useState(false);
@@ -45,7 +50,26 @@ export function BankPortfolioImportPage() {
   const number = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB').format(value);
 
   useEffect(() => { const timer = window.setTimeout(() => { setSearch(searchInput.trim()); setPage(1); }, 300); return () => clearTimeout(timer); }, [searchInput]);
-  useEffect(() => { let active = true; setHistoryError(false); void collectionsService.bankPortfolioImports(bank.id, { page, pageSize: 10, search }).then(v => { if (active) setHistory(v); }).catch(() => { if (active) setHistoryError(true); }); return () => { active = false; }; }, [bank.id, page, refresh, search]);
+  useEffect(() => {
+    let active = true;
+    setHistoryError(''); setHistory(undefined);
+    void collectionsService.bankPortfolioImports(bank.id, { page, pageSize: 10, search })
+      .then(value => { if (active) setHistory(value); })
+      .catch(error => {
+        if (!active) return;
+        const responseMessage = isAxiosError<{ message?: unknown }>(error) ? error.response?.data?.message : undefined;
+        const message = getApiErrorMessage(error, '') || (typeof responseMessage === 'string' ? responseMessage.trim() : '');
+        if (language !== 'ar' || /[\u0600-\u06ff]/.test(message)) setHistoryError(message || ct('loadError'));
+        else if (message === 'The selected classified portfolio does not exist or is inactive.')
+          setHistoryError('المحفظة المختارة غير مجهزة أو غير مفعّلة. راجع إعداداتها مع مسؤول النظام.');
+        else if (message === 'Bank was not found or is outside your authorized scope.')
+          setHistoryError('البنك غير موجود أو ليس ضمن الجهات المسموح لك بالوصول إليها.');
+        else if (getApiErrorStatus(error) === 404)
+          setHistoryError('خدمة سجل الاستيراد غير متاحة حاليًا. أعد المحاولة أو تواصل مع مسؤول النظام.');
+        else setHistoryError(ct('loadError'));
+      });
+    return () => { active = false; };
+  }, [bank.id, page, refresh, search, language, ct]);
 
   const validateFile = useCallback((file: File) => {
     if (!supportedExtensions.includes(extension(file.name))) { toast.error(ct('unsupportedPortfolioFile')); return false; }
@@ -136,7 +160,7 @@ export function BankPortfolioImportPage() {
     {stage !== 'upload' && candidate ? <ImportSummary candidate={candidate} bankName={bankName} confirming={confirming} ct={ct} date={date} number={number} notes={reviewNotes} setNotes={setReviewNotes} stage={stage} preview={preview} previewLoading={previewLoading} previewError={previewError} previewPage={previewPage} setPreviewPage={setPreviewPage} onRetryPreview={() => void loadPreview(candidate.id)} onBack={() => void leaveImportReview()} onConfirm={() => void confirm()} /> : null}
     <section className={`${stage === 'upload' ? '' : 'mt-8 '}overflow-hidden rounded-2xl border border-mis-border bg-white shadow-sm`}>
       <div className="flex flex-col gap-4 border-b border-mis-border p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-bold text-mis-navy">{ct('bankImportHistory')}</h2><p className="mt-1 text-sm text-slate-500">{ct('importHistoryDescription')}</p></div><label className="relative block sm:w-80"><span className="sr-only">{ct('searchPortfolioImports')}</span><Search className="absolute top-3 h-4 w-4 text-mis-muted" style={{ insetInlineStart: '0.8rem' }} /><input className="field h-10 py-2 pe-3 ps-10 text-sm" value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={ct('searchPortfolioImports')} /></label></div>
-      {historyError ? <ErrorState compact title={ct('loadError')} onRetry={() => setRefresh(v => v + 1)} /> : !history ? <div className="flex min-h-48 items-center justify-center"><LoadingSpinner /></div> : history.items.length === 0 ? <EmptyState compact icon={<FileSpreadsheet />} title={ct('noPortfolioImports')} /> : <><div className="overflow-x-auto"><table className="w-full min-w-[68rem]"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-6 py-4 text-start">{ct('fileName')}</th><th className="px-6 py-4 text-start">{ct('importDate')}</th><th className="px-6 py-4 text-start">{ct('records')}</th><th className="px-6 py-4 text-start">{ct('importedCount')}</th><th className="px-6 py-4 text-start">{ct('updatedCount')}</th><th className="px-6 py-4 text-start">{ct('duplicateCount')}</th><th className="px-6 py-4 text-start">{ct('invalidCount')}</th><th className="px-6 py-4 text-start">{ct('uploadedBy')}</th><th className="px-6 py-4 text-start">{ct('status')}</th><th className="px-6 py-4 text-end">{ct('actions')}</th></tr></thead><tbody className="divide-y divide-mis-border">{history.items.map(item => <tr key={item.id}><td className="px-6 py-4"><p className="font-semibold text-mis-navy">{item.originalFileName}</p><p className="mt-1 text-xs text-mis-muted">{item.portfolioName}</p></td><td className="px-6 py-4 text-sm text-slate-600">{date(item.uploadedAt)}</td><td className="px-6 py-4 text-sm font-semibold">{number(item.rowCount)}</td><td className="px-6 py-4 text-sm">{number(item.importedRows)}</td><td className="px-6 py-4 text-sm">{number(item.updatedRows)}</td><td className="px-6 py-4 text-sm">{number(item.duplicateRows)}</td><td className="px-6 py-4 text-sm">{number(item.invalidRows)}</td><td className="px-6 py-4 text-sm text-slate-600">{item.uploadedBy}</td><td className="px-6 py-4"><StatusBadge dot tone="success">{ct('completed')}</StatusBadge></td><td className="px-6 py-4"><ActionMenu><Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" />} onClick={() => openEdit(item)} size="sm" variant="ghost">{ct('edit')}</Button><Button fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteTarget(item)} size="sm" variant="danger">{ct('deleteImport')}</Button></ActionMenu></td></tr>)}</tbody></table></div><Pagination className="border-t border-mis-border" page={history.page} pageSize={history.pageSize} totalCount={history.totalCount} totalPages={history.totalPages} onPageChange={setPage} /></>}
+      {historyError ? <ErrorState compact title={language === 'ar' ? 'تعذر تحميل سجل الاستيراد' : 'Could not load import history'} description={historyError} onRetry={() => setRefresh(v => v + 1)} /> : !history ? <div className="flex min-h-48 items-center justify-center"><LoadingSpinner /></div> : history.items.length === 0 ? <EmptyState compact icon={<FileSpreadsheet />} title={ct('noPortfolioImports')} /> : <><div className="overflow-x-auto"><table className="w-full min-w-[68rem]"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-6 py-4 text-start">{ct('fileName')}</th><th className="px-6 py-4 text-start">{ct('importDate')}</th><th className="px-6 py-4 text-start">{ct('records')}</th><th className="px-6 py-4 text-start">{ct('importedCount')}</th><th className="px-6 py-4 text-start">{ct('updatedCount')}</th><th className="px-6 py-4 text-start">{ct('duplicateCount')}</th><th className="px-6 py-4 text-start">{ct('invalidCount')}</th><th className="px-6 py-4 text-start">{ct('uploadedBy')}</th><th className="px-6 py-4 text-start">{ct('status')}</th><th className="px-6 py-4 text-end">{ct('actions')}</th></tr></thead><tbody className="divide-y divide-mis-border">{history.items.map(item => <tr key={item.id}><td className="px-6 py-4"><p className="font-semibold text-mis-navy">{item.originalFileName}</p><p className="mt-1 text-xs text-mis-muted">{item.portfolioName}</p></td><td className="px-6 py-4 text-sm text-slate-600">{date(item.uploadedAt)}</td><td className="px-6 py-4 text-sm font-semibold">{number(item.rowCount)}</td><td className="px-6 py-4 text-sm">{number(item.importedRows)}</td><td className="px-6 py-4 text-sm">{number(item.updatedRows)}</td><td className="px-6 py-4 text-sm">{number(item.duplicateRows)}</td><td className="px-6 py-4 text-sm">{number(item.invalidRows)}</td><td className="px-6 py-4 text-sm text-slate-600">{item.uploadedBy}</td><td className="px-6 py-4"><StatusBadge dot tone="success">{ct('completed')}</StatusBadge></td><td className="px-6 py-4"><ActionMenu><Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" />} onClick={() => openEdit(item)} size="sm" variant="ghost">{ct('edit')}</Button><Button fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteTarget(item)} size="sm" variant="danger">{ct('deleteImport')}</Button></ActionMenu></td></tr>)}</tbody></table></div><Pagination className="border-t border-mis-border" page={history.page} pageSize={history.pageSize} totalCount={history.totalCount} totalPages={history.totalPages} onPageChange={setPage} /></>}
     </section>
     <Modal footer={editing && !replacement ? <><Button fullWidth={false} onClick={closeEdit} size="md" variant="outline">{ct('cancel')}</Button><Button fullWidth={false} isLoading={saving} onClick={() => void saveNotes()} size="md">{ct('saveChanges')}</Button></> : undefined} onClose={closeEdit} open={Boolean(editing)} size="lg" title={replacement ? ct('replacePortfolioFile') : ct('editImport')}>
       {editing && replacement ? <div><ReadOnly label={ct('currentFile')} value={editing.originalFileName} /><div className="mt-4"><ReadOnly label={ct('newFile')} value={replacement.originalFileName} /></div><div className="mt-4"><ReadOnly label={ct('records')} value={number(replacement.rowCount)} /></div><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><Button fullWidth={false} onClick={() => setReplacement(undefined)} size="md" variant="outline">{ct('cancel')}</Button><Button fullWidth={false} isLoading={replacing} onClick={() => void confirmReplacement()} size="md">{ct('confirmReplacement')}</Button></div></div> : editing ? <div>
