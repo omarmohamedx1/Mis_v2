@@ -179,7 +179,7 @@ public sealed class JournalEntry
     public void MarkReversed() { if (Status != FinanceValues.JournalStatuses.Posted) throw new InvalidOperationException("Only a posted journal can be reversed."); Status = FinanceValues.JournalStatuses.Reversed; }
     public void RecordConfirmedAccounting(string journalNumber, Guid actorId, DateTimeOffset now)
     {
-        if (EntryType is not ("MANUAL" or "ACCOUNTING_OPERATION" or "COMPANY_INCOME" or "REVENUE") || Status is not (FinanceValues.JournalStatuses.Draft or FinanceValues.JournalStatuses.PendingApproval or FinanceValues.JournalStatuses.Approved)) throw new InvalidOperationException("This accounting entry cannot be confirmed.");
+        if (EntryType is not ("MANUAL" or "ACCOUNTING_OPERATION" or "COMPANY_INCOME" or "REVENUE" or "CLAIM_RECEIPT") || Status is not (FinanceValues.JournalStatuses.Draft or FinanceValues.JournalStatuses.PendingApproval or FinanceValues.JournalStatuses.Approved)) throw new InvalidOperationException("This accounting entry cannot be confirmed.");
         EnsureBalanced(); ArgumentException.ThrowIfNullOrWhiteSpace(journalNumber);
         JournalNumber = journalNumber; Status = FinanceValues.JournalStatuses.Posted; PostedById = actorId; PostedAt = now;
     }

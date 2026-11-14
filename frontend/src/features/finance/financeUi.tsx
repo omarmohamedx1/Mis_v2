@@ -15,6 +15,7 @@ export function useFinanceText() {
     MANUAL: text('قيد يدوي', 'Manual journal'),
     ACCOUNTING_OPERATION: text('مصاريف ووارد', 'Expense / income'),
     COMPANY_INCOME: text('وارد الشركة', 'Company income'),
+    CLAIM_RECEIPT: text('تحصيل مطالبة', 'Claim receipt'),
     REVENUE: text('إيرادات', 'Revenue'),
     ACCOUNTING_PAYMENT: text('صرف مصروفات', 'Expense payment'),
     ACCOUNTING_DELETE: text('تسوية حذف', 'Deletion correction'),

@@ -517,8 +517,8 @@ export function FinanceClaimsPage() {
       </div>}>
       {details && <div className="space-y-4">
         {selectedClaim?.status === 'RECEIVED' && <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{isHistoricalUnposted
-          ? a.text('هذا سجل تاريخي؛ لم يُرحّل إلى وارد الشركة. استخدم الإجراء الصريح للترحيل عند التحقق.', 'This historical receipt has not been posted to Company Income. Use the explicit action to post it after review.')
-          : a.text('تم تأكيد التحصيل وترحيل صافي المبلغ إلى وارد الشركة.', 'Receipt confirmed; the net amount was posted to Company Income.')}</p>}
+          ? a.text('هذا تحصيل تاريخي غير مرحّل محاسبيًا. استخدم إجراء ترحيل تحصيل المطالبة بعد المراجعة؛ لا يُضاف المبلغ إلى خزينة الشركة.', 'This historical receipt has not been posted to the claims ledger. Post it after review; it does not fund the company cashbox.')
+          : a.text('تم تأكيد تحصيل المطالبة. تحصيلات المطالبات مستقلة عن وارد وخزينة الشركة.', 'Claim receipt confirmed. Claim collections are separate from Company Income and the operating cashbox.')}</p>}
         <div className="grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
         {claimValues(details.claim).map((value, index) => {
           const [arabic, english] = columns[index];
@@ -572,7 +572,7 @@ export function FinanceClaimsPage() {
         <Button fullWidth={false} isLoading={busy} onClick={() => selectedClaim && void confirmReceipt(selectedClaim, false)}>{a.text('تأكيد التحصيل', 'Confirm Receipt')}</Button>
       </div>}>
       <div className="space-y-4">
-        <p className="text-sm text-slate-600">{a.text('لن يؤثر تاريخ البنك وحده على وارد الشركة. سيُرحّل صافي المبلغ مرة واحدة بعد تأكيدك.', 'A bank date alone does not affect Company Income. The net amount posts once after you confirm.')}</p>
+        <p className="text-sm text-slate-600">{a.text('يُسجّل التأكيد تحصيل المطالبة فقط، ولا يزيد وارد الشركة أو رصيد خزينة المصروفات. أي تحويل للخزينة يتطلب إجراءً مستقلاً ومصرحًا به.', 'Confirmation records only the claim receipt. It does not increase Company Income or the operating cashbox. Any cashbox transfer requires a separate authorized transaction.')}</p>
         <BookField label={a.text('تاريخ دخول المبلغ البنك', 'Date In Bank')}><DateControl value={receiptDate} onChange={event => setReceiptDate(event.target.value)} required /></BookField>
       </div>
     </Modal>

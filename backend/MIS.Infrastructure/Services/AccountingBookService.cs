@@ -1,4 +1,5 @@
 using System.Data;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using MIS.Application.Common;
@@ -17,7 +18,8 @@ public sealed partial class AccountingBookService : IAccountingBookService
     private readonly ApplicationDbContext db;
     private readonly ICurrentUserContext user;
     private readonly IFinanceService finance;
-    public AccountingBookService(ApplicationDbContext db, ICurrentUserContext user, IFinanceService finance) { this.db = db; this.user = user; this.finance = finance; }
+    private readonly ClaimReceiptOptions claimReceiptOptions;
+    public AccountingBookService(ApplicationDbContext db, ICurrentUserContext user, IFinanceService finance, IOptions<ClaimReceiptOptions>? claimReceiptOptions = null) { this.db = db; this.user = user; this.finance = finance; this.claimReceiptOptions = claimReceiptOptions?.Value ?? new(); }
     private bool IsAdmin => user.Roles.Contains(SystemRoleNames.Admin) || user.Permissions.Contains("*");
     private void EnsureAccess()
     {
@@ -39,6 +41,13 @@ public sealed partial class AccountingBookService : IAccountingBookService
         => db.FinancialAuditLogs.Add(new FinancialAuditLog(user.UserId, action, nameof(AccountingBookEntry), id, JsonSerializer.Serialize(before ?? new { }), JsonSerializer.Serialize(after ?? new { }), reason, DateTimeOffset.UtcNow));
     private IQueryable<AccountingBookEntry> Entries(bool includeDeleted = false) => db.AccountingBookEntries.AsNoTracking().Where(x => includeDeleted || x.DeletedAt == null).Include(x => x.JournalEntry).ThenInclude(x => x.Lines).ThenInclude(x => x.Account)
         .Include(x => x.Account).Include(x => x.CounterAccount).Include(x => x.Employee).ThenInclude(x => x!.Department).Include(x => x.CreatedBy);
+    // Keep claim journals available to receipt/audit workflows, but never fund operating reports.
+    // The relationship check also protects legacy rows whose source key is missing.
+    private IQueryable<AccountingBookEntry> OperatingEntries(bool includeDeleted = false)
+        => Entries(includeDeleted).Where(x => x.Category != "CLAIM_RECEIPT"
+            && (x.SourceKey == null || !x.SourceKey.StartsWith("CLAIM:"))
+            && !db.FinanceClaimReceiptPostings.Any(p => p.AccountingBookEntryId == x.Id));
+
     private static AccountingBookEntryDto Map(AccountingBookEntry x) => new(x.Id, x.DocumentNumber, x.Category, AccountingBookValues.Direction(x.Category), x.TransactionDate, x.Amount,
         x.AccountId, x.Account.Code, ApiTextLocalizer.IsArabic ? x.Account.NameArabic : x.Account.NameEnglish, x.CounterAccountId,
         ApiTextLocalizer.IsArabic ? x.CounterAccount.NameArabic : x.CounterAccount.NameEnglish, x.Description, x.Reference, x.JournalEntryId, x.JournalEntry.JournalNumber,
@@ -57,7 +66,7 @@ public sealed partial class AccountingBookService : IAccountingBookService
     {
         EnsureAccess(); if (filter.Page < 1 || filter.PageSize is < 1 or > 200) throw new HrValidationException("Invalid page parameters.");
         if (filter.From.HasValue && filter.To.HasValue) CheckDates(filter.From.Value, filter.To.Value);
-        var q = Filter(Entries(), filter); var count = await q.CountAsync(token); var total = await q.SumAsync(x => (decimal?)x.Amount, token) ?? 0;
+        var q = Filter(OperatingEntries(), filter); var count = await q.CountAsync(token); var total = await q.SumAsync(x => (decimal?)x.Amount, token) ?? 0;
         var rows = await q.OrderByDescending(x => x.TransactionDate).ThenByDescending(x => x.CreatedAt).Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToListAsync(token);
         return new(rows.Select(Map).ToArray(), filter.Page, filter.PageSize, count, total);
     }
@@ -124,7 +133,7 @@ public sealed partial class AccountingBookService : IAccountingBookService
         var existing = await db.AccountingBookEntries.AsNoTracking().SingleOrDefaultAsync(x => x.SourceKey == source, token);
         if (existing is not null)
         {
-            if (existing.Amount != amount || existing.TransactionDate != receiptDate || existing.Category != "INCOME" || existing.DeletedAt.HasValue)
+            if (existing.Amount != amount || existing.TransactionDate != receiptDate || existing.Category is not ("INCOME" or "CLAIM_RECEIPT") || existing.DeletedAt.HasValue)
                 throw new HrConflictException("This claim receipt key already exists with different or reversed accounting data.");
             var result = await GetAsync(existing.Id, token);
             if (tx is not null) await tx.CommitAsync(token);
@@ -132,22 +141,24 @@ public sealed partial class AccountingBookService : IAccountingBookService
         }
 
         var request = new CreateAccountingBookEntryRequest(
-            "INCOME", receiptDate, amount, FinanceSeed.CompanyIncomeClearingAccountId, FinanceSeed.OperatingBankAccountId,
+            "CLAIM_RECEIPT", receiptDate, amount, claimReceiptOptions.ClearingAccountId, claimReceiptOptions.AssetAccountId,
             $"Claim bank receipt {claimId:N}", claimId.ToString("N"));
-        await ValidateAccounts(request.Category, request.AccountId, request.CounterAccountId, token);
+        var accounts = await db.FinanceAccounts.AsNoTracking().Where(x => x.Id == request.AccountId || x.Id == request.CounterAccountId).ToListAsync(token);
+        ClaimReceiptOptions.Validate(accounts, claimReceiptOptions);
         var entry = await CreateRecordedEntry(request, null, source, token);
         if (tx is not null) await tx.CommitAsync(token);
         return entry;
     }
     private async Task<AccountingBookEntryDto> CreateRecordedEntry(CreateAccountingBookEntryRequest request, Guid? recurringId, string? source, CancellationToken token)
     {
-        var incoming = AccountingBookValues.IsCashIn(request.Category);
+        var incoming = request.Category == "CLAIM_RECEIPT" || AccountingBookValues.IsCashIn(request.Category);
         var debitId = incoming ? request.CounterAccountId : request.AccountId;
         var creditId = incoming ? request.AccountId : request.CounterAccountId;
         var period = await OpenPeriod(request.TransactionDate, token);
         var now = DateTimeOffset.UtcNow;
         var entryType = request.Category switch
         {
+            "CLAIM_RECEIPT" => "CLAIM_RECEIPT",
             "INCOME" => "COMPANY_INCOME",
             "REVENUE" => "REVENUE",
             _ => "ACCOUNTING_OPERATION"

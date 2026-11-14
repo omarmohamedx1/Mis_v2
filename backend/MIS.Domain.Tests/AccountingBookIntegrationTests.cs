@@ -8,6 +8,7 @@ using MIS.Application.DTOs.Finance;
 using MIS.Application.Interfaces;
 using MIS.Domain.Entities;
 using MIS.Infrastructure.Persistence;
+using MIS.Infrastructure.Persistence.Configurations;
 using MIS.Infrastructure.Services;
 using ClosedXML.Excel;
 using Npgsql;
@@ -427,7 +428,13 @@ public sealed class AccountingBookIntegrationTests
             await bm.DeleteAsync(partialPayment.Id, new(true, "Test cleanup"), default);
             await bm.DeleteAsync(detailedAdvance.Id, new(true, "Test cleanup"), default);
             await bm.DeleteAsync(secondAdvance.Id, new(true, "Test cleanup"), default);
-            var claimService = new FinanceClaimsService(db, new BookTestPrincipal(maker.Id), bm, fm);
+            var claimsAsset = new FinanceAccount(Guid.NewGuid(), FinanceSeed.LegalEntityId, "119901", "Claims asset", "Claims asset", "ASSET", "DEBIT", true);
+            var claimsClearing = new FinanceAccount(Guid.NewGuid(), FinanceSeed.LegalEntityId, "219901", "Claims clearing", "Claims clearing", "LIABILITY", "CREDIT", true);
+            db.FinanceAccounts.AddRange(claimsAsset, claimsClearing);
+            await db.SaveChangesAsync();
+            var claimBook = new AccountingBookService(db, new BookTestPrincipal(maker.Id), fm,
+                Microsoft.Extensions.Options.Options.Create(new ClaimReceiptOptions { AssetAccountId = claimsAsset.Id, ClearingAccountId = claimsClearing.Id }));
+            var claimService = new FinanceClaimsService(db, new BookTestPrincipal(maker.Id), claimBook, fm);
             var claimBank = new ClientOrganization("CLAIM-FILTER", "بنك اختبار المطالبات", "Claims Filter Bank", "BANK", DateTimeOffset.UtcNow);
             db.CollectionClientOrganizations.Add(claimBank);
             await db.SaveChangesAsync();
@@ -477,12 +484,12 @@ public sealed class AccountingBookIntegrationTests
             await claimService.ConfirmReceiptAsync(financialClaim.Id, new(today), default);
             Check(await db.AccountingBookEntries.CountAsync(x => x.SourceKey != null && x.SourceKey.StartsWith($"CLAIM:{financialClaim.Id}:")) == 1,
                 "repeated claim receipt confirmation creates one accounting entry");
-            Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome + 111000m,
-                "confirmed claim posts only net Total In Bank to Company Income");
+            Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
+                "confirmed claim does not fund Company Income");
             var postedEntryBeforeCancel = await db.AccountingBookEntries.SingleAsync(x => x.SourceKey != null && x.SourceKey.StartsWith($"CLAIM:{financialClaim.Id}:") && x.DeletedAt == null);
             await Conflict(() => claimService.CancelAsync(financialClaim.Id, "Unsafe cancellation test", default), "claim with active posted receipt cannot be cancelled");
             Check((await db.AccountingBookEntries.SingleAsync(x => x.Id == postedEntryBeforeCancel.Id)).DeletedAt == null &&
-                  (await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome + 111000m,
+                  (await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
                 "rejected claim cancellation leaves posted accounting entry and Company Income unchanged");
             var profitLossAfterClaimReceipt = await bm.ProfitLossAsync(claimRangeFrom, today, default);
             Check(profitLossAfterClaimReceipt.TotalRevenue == profitLossBeforeClaim.TotalRevenue &&
@@ -494,12 +501,12 @@ public sealed class AccountingBookIntegrationTests
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
                 "editing a received claim reverses its prior posting before updating");
             await claimService.ConfirmReceiptAsync(financialClaim.Id, new(today), default);
-            Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome + 99900m &&
+            Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome &&
                   await db.AccountingBookEntries.CountAsync(x => x.SourceKey != null && x.SourceKey.StartsWith($"CLAIM:{financialClaim.Id}:")) == 2,
                 "reconfirming an edited claim posts the revised net amount without deleting the original posting");
             await claimService.ReverseReceiptAsync(financialClaim.Id, new("Integration test reversal"), default);
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
-                "claim receipt reversal removes its Company Income effect exactly once");
+                "claim receipt reversal leaves Company Income unchanged");
             await Conflict(() => claimService.ReverseReceiptAsync(financialClaim.Id, new("Duplicate reversal"), default),
                 "a claim receipt cannot be reversed twice");
             var profitLossAfterClaimReversal = await bm.ProfitLossAsync(claimRangeFrom, today, default);
@@ -531,7 +538,7 @@ public sealed class AccountingBookIntegrationTests
             var profitLossBeforeHistoricalClaim = await bm.ProfitLossAsync(claimRangeFrom, today, default);
             await claimService.PostHistoricalReceiptAsync(historicalClaim.Id, default);
             await claimService.PostHistoricalReceiptAsync(historicalClaim.Id, default);
-            Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome + 1110m,
+            Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
                 "explicit historical posting is idempotent and uses the recalculated net amount");
             var profitLossAfterHistoricalClaim = await bm.ProfitLossAsync(claimRangeFrom, today, default);
             Check(profitLossAfterHistoricalClaim.TotalRevenue == profitLossBeforeHistoricalClaim.TotalRevenue &&

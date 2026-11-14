@@ -65,7 +65,7 @@ public sealed partial class AccountingBookService
     public async Task<AccountingBookSummaryDto> SummaryAsync(DateOnly from, DateOnly to, CancellationToken token)
     {
         EnsureAccess(); CheckDates(from, to);
-        var totals = AccountingBookValues.Categories.ToDictionary(x => x, _ => (Amount: 0m, Count: 0));
+        var totals = AccountingBookValues.Categories.Where(x => x != "CLAIM_RECEIPT").ToDictionary(x => x, _ => (Amount: 0m, Count: 0));
         void Add(string category, decimal amount) { var old = totals[category]; totals[category] = (old.Amount + amount, old.Count + 1); }
         decimal expenses = 0, companyIncome = 0, revenue = 0, advances = 0, repayments = 0;
         void Include(AccountingBookEntry entry, int sign)
@@ -86,13 +86,13 @@ public sealed partial class AccountingBookService
                     Add(category, sign * amount); var salary = totals["SALARY"]; totals["SALARY"] = (salary.Amount - sign * amount, salary.Count);
                 }
         }
-        var financialEntries = Entries(true).Where(e => e.DeletedAt == null || !db.JournalEntries.Any(r => r.ReversalOfJournalId == e.JournalEntryId && r.EntryType == "ACCOUNTING_DELETE"));
+        var financialEntries = OperatingEntries(true).Where(e => e.DeletedAt == null || !db.JournalEntries.Any(r => r.ReversalOfJournalId == e.JournalEntryId && r.EntryType == "ACCOUNTING_DELETE"));
         var originals = await financialEntries.Where(x => (x.JournalEntry.Status == "POSTED" || x.JournalEntry.Status == "REVERSED") && x.JournalEntry.PostingDate >= from && x.JournalEntry.PostingDate <= to).ToListAsync(token);
         foreach (var entry in originals) Include(entry, 1);
         var reversedIds = await db.JournalEntries.Where(x => x.ReversalOfJournalId != null && (x.Status == "POSTED" || x.Status == "REVERSED") && x.PostingDate >= from && x.PostingDate <= to).Select(x => x.ReversalOfJournalId!.Value).ToArrayAsync(token);
         foreach (var entry in await financialEntries.Where(x => reversedIds.Contains(x.JournalEntryId)).ToListAsync(token)) Include(entry, -1);
 
-        var balanceBookEntries = db.AccountingBookEntries.AsNoTracking()
+        var balanceBookEntries = OperatingEntries(true)
             .Where(e => e.DeletedAt == null || !db.JournalEntries.Any(r => r.ReversalOfJournalId == e.JournalEntryId && r.EntryType == "ACCOUNTING_DELETE"));
         var balanceEntries = await balanceBookEntries
             .Where(x => (x.JournalEntry.Status == "POSTED" || x.JournalEntry.Status == "REVERSED") && x.JournalEntry.PostingDate <= to)
@@ -151,7 +151,7 @@ public sealed partial class AccountingBookService
         bookCashOut += reversed.Where(x => AccountingBookValues.IsCashIn(x.Category)).Sum(x => x.Amount);
         var cashIn = bookCashIn + otherCash.Where(x => x > 0).Sum();
         var cashOut = bookCashOut + legacy.Sum(x => x.Amount) - otherCash.Where(x => x < 0).Sum();
-        var pending = db.AccountingBookEntries.Where(x => x.DeletedAt == null && x.TransactionDate >= from && x.TransactionDate <= to && (x.JournalEntry.Status == "DRAFT" || x.JournalEntry.Status == "PENDING_APPROVAL" || x.JournalEntry.Status == "APPROVED"));
+        var pending = OperatingEntries().Where(x => x.DeletedAt == null && x.TransactionDate >= from && x.TransactionDate <= to && (x.JournalEntry.Status == "DRAFT" || x.JournalEntry.Status == "PENDING_APPROVAL" || x.JournalEntry.Status == "APPROVED"));
         var outstanding = await AdvancesAsync(to, null, null, token);
         return new(from, to, companyIncome, revenue, expenses, advances, repayments, cashIn, cashOut, cashIn - cashOut, await pending.SumAsync(x => (decimal?)x.Amount, token) ?? 0, await pending.CountAsync(token),
             outstanding.Sum(x => x.Remaining), outstanding.Where(x => x.Date < from || x.Carried).Sum(x => x.Remaining), legacy.Count,

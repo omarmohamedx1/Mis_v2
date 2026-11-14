@@ -142,7 +142,7 @@ public sealed class AccountingBookTests
     [Fact]
     public void CompanyIncomeIncludesNormalInflowsAndOutflowsButExcludesAdvances()
     {
-        var excluded = new[] { "ADVANCE", "CARRIED_ADVANCE", "ADVANCE_REPAYMENT" };
+        var excluded = new[] { "ADVANCE", "CARRIED_ADVANCE", "ADVANCE_REPAYMENT", "CLAIM_RECEIPT" };
         foreach (var category in AccountingBookValues.Categories)
         {
             var expected = excluded.Contains(category) ? 0 : category is "INCOME" or "REVENUE" ? 1 : -1;

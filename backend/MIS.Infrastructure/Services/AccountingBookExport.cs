@@ -93,7 +93,7 @@ public sealed partial class AccountingBookService
         }
         if (all || report == "cashbook")
         {
-            var entries = await Filter(Entries(), new(from, to, filter.Category, filter.Status, filter.Search)).OrderBy(x => x.TransactionDate).ThenBy(x => x.CreatedAt).Take(ExportLimit + 1).ToListAsync(token);
+            var entries = await Filter(OperatingEntries(), new(from, to, filter.Category, filter.Status, filter.Search)).OrderBy(x => x.TransactionDate).ThenBy(x => x.CreatedAt).Take(ExportLimit + 1).ToListAsync(token);
             Add(T("المصروفات والوارد", "Accounting register"), [T("رقم المستند", "Document"), T("التاريخ", "Date"), T("البند", "Category"), T("المبلغ", "Amount"), T("البيان", "Description"), T("المرجع", "Reference"), T("الموظف", "Employee"), T("الحساب", "Account"), T("الحساب المقابل", "Counter account"), T("الحالة", "Status"), T("رقم القيد", "Journal"), T("المصدر", "Source")], entries.Select(x => { var d = Map(x); return new object?[] { d.DocumentNumber, d.TransactionDate, CategoryName(d.Category, ar), d.Amount, d.Description, d.Reference, d.EmployeeName, d.AccountCode + " · " + d.AccountName, d.CounterAccountName, StatusName(d.Status, ar), d.JournalNumber, d.SourceKey }; }));
         }
         if (all || report == "advances")

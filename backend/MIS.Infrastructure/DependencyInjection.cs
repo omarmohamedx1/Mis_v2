@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<FinanceService>();
         services.AddScoped<IFinanceService>(serviceProvider => serviceProvider.GetRequiredService<FinanceService>());
         services.AddScoped<IAccountingService, AccountingService>();
+        services.Configure<ClaimReceiptOptions>(configuration.GetSection("Finance:ClaimReceipts"));
         services.AddScoped<IAccountingBookService, AccountingBookService>();
         services.AddScoped<IFinanceClaimsService, FinanceClaimsService>();
         services.AddScoped<IFinancePostingService>(serviceProvider => serviceProvider.GetRequiredService<FinanceService>());

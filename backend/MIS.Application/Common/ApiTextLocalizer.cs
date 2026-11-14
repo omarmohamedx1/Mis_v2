@@ -15,6 +15,7 @@ public static partial class ApiTextLocalizer
     private static readonly IReadOnlyDictionary<string, string> Arabic =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["Configure dedicated non-operating claim receipt asset and clearing accounts before confirming a receipt."] = "يجب إعداد حساب أصل وحساب تسوية مستقلين لتحصيل المطالبات، خارج خزينة الشركة التشغيلية، قبل تأكيد التحصيل. راجع مسؤول المالية.",
             ["Claim was not found."] = "لم يتم العثور على المطالبة. حدّث القائمة وحاول مرة أخرى.",
             ["This claim is already cancelled."] = "تم إلغاء هذه المطالبة بالفعل. حدّث القائمة لعرض حالتها الحالية.",
             ["This claim cannot be cancelled."] = "لا يمكن إلغاء المطالبة بحالتها الحالية.",

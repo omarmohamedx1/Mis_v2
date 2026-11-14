@@ -15,8 +15,8 @@ export function FinanceLayout() {
   const canViewClaims = user?.roles.includes('Admin') || user?.permissions.includes('*') || user?.permissions.includes('finance.claims.view');
   const navigation: ModuleNavigationItem[] = [
     { to: '/finance/dashboard', icon: LayoutDashboard, label: ar ? 'لوحة المالية' : 'Finance dashboard', group: finance },
-    { to: '/finance/expenses', icon: ReceiptText, label: ar ? 'سجل المصاريف والوارد' : 'Expenses & income register', group: ar ? 'مصروفات الشركة' : 'Company expenses' },
-    ...(['PETTY', 'FIXED', 'BONUS', 'LEGAL', 'INCOME', 'REVENUE'] as const).map((key) => ({ to: '/finance/' + ({ PETTY: 'petty-expenses', FIXED: 'fixed-expenses', BONUS: 'bonuses', LEGAL: 'judicial-expenses', INCOME: 'income', REVENUE: 'revenue' }[key]), icon: Wallet, label: categories[key][ar ? 0 : 1], group: ar ? 'مصروفات الشركة' : 'Company expenses' })),
+    { to: '/finance/expenses', icon: ReceiptText, label: ar ? 'إيرادات' : 'Revenue', group: ar ? 'مصروفات الشركة' : 'Company expenses' },
+    ...(['PETTY', 'FIXED', 'BONUS', 'LEGAL', 'INCOME', 'REVENUE'] as const).map((key) => ({ to: '/finance/' + ({ PETTY: 'petty-expenses', FIXED: 'fixed-expenses', BONUS: 'bonuses', LEGAL: 'judicial-expenses', INCOME: 'income', REVENUE: 'revenue' }[key]), icon: Wallet, label: key === 'REVENUE' ? (ar ? 'سجل المصاريف والوارد' : 'Expenses & income register') : categories[key][ar ? 0 : 1], group: ar ? 'مصروفات الشركة' : 'Company expenses' })),
     { to: '/finance/recurring', icon: CalendarRange, label: ar ? 'إعداد المصاريف الثابتة' : 'Recurring expense settings', group: ar ? 'مصروفات الشركة' : 'Company expenses' },
     ...(canViewClaims ? [{ to: '/finance/claims', icon: FileSpreadsheet, label: ar ? 'المطالبات' : 'Claims', group: finance }] : []),
     { to: '/finance/advances', icon: WalletCards, label: t('advancesTitle'), group: payroll },
