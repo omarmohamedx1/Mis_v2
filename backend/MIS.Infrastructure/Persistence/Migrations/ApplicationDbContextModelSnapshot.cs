@@ -775,6 +775,52 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("AccountingTransportationClaims", (string)null);
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.ActScorePeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("InputJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PortfolioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("PreparedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PreparedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("ReportingPeriod")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RulesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreparedBy");
+
+                    b.HasIndex("PortfolioId", "OrganizationId");
+
+                    b.HasIndex("OrganizationId", "PortfolioId", "ReportingPeriod")
+                        .IsUnique();
+
+                    b.ToTable("ActScorePeriods", (string)null);
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.AdminAuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7034,6 +7080,28 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("SubmittedByUser");
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.ActScorePeriod", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("PreparedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionPortfolio", null)
+                        .WithMany()
+                        .HasForeignKey("PortfolioId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.AttendanceImportBatch", b =>
                 {
                     b.HasOne("MIS.Domain.Entities.User", "UploadedByUser")
@@ -8311,16 +8379,16 @@ namespace MIS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CancelledById")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("MIS.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("DeletedById")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("MIS.Domain.Entities.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("DeletedById")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MIS.Domain.Entities.FinanceClaimImportBatch", "ImportBatch")
                         .WithMany()

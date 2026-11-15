@@ -26,6 +26,10 @@ jobs:
         working-directory: ./backend
         run: dotnet build MIS.sln --configuration Release --no-restore
 
+      - name: Verify database migration snapshot
+        working-directory: ./backend
+        run: dotnet test MIS.Domain.Tests/MIS.Domain.Tests.csproj --configuration Release --no-build --no-restore --filter FullyQualifiedName~DatabaseMigrationTests
+
       - name: Publish API
         working-directory: ./backend
         run: dotnet publish MIS.API/MIS.API.csproj --configuration Release --output ../publish --runtime win-x86 --self-contained false
