@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useLocalization } from '../../../context/LocalizationContext';
 
 const en = {
+  sidebarBankTargets: 'Bank Targets',
   scoreDefaultsHelp: 'Blank targets and weights use the reference image defaults, including in older saved settings. Saved numbers, including zero, override defaults for this bank, portfolio and month.',
   scoreUnmappedSystemCases: 'Current cases without an explicit BKT 1–6 label',
   scoreIssueZERO_RATIO_BASE: 'An actual percentage or target denominator is zero; the corresponding score is unavailable.',
@@ -142,6 +143,7 @@ const en = {
 };
 
 const ar: typeof en = {
+  sidebarBankTargets: 'مستهدفات البنوك',
   scoreDefaultsHelp: 'الحقول الفارغة تستخدم نسب الصورة وأوزانها، حتى في الإعدادات القديمة. أي رقم تحفظه، بما فيه الصفر، يُستخدم بدل الافتراضي لهذا البنك والمحفظة والشهر.',
   scoreUnmappedSystemCases: 'حالات حالية بدون تصنيف صريح BKT 1–6',
   scoreIssueZERO_RATIO_BASE: 'مقام نسبة التقييم صفر في إحدى الفئات؛ تقييم هذه الفئة غير متاح.',

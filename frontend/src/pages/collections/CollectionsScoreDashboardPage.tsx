@@ -1,7 +1,7 @@
 import { ProfessionalSelect } from '../../components/forms/ProfessionalSelect';
 import { ArrowLeft, ChevronDown, ChevronUp, Pencil, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useActionDialog } from '../../components/common/useActionDialog';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -13,6 +13,7 @@ import { displayPrimary, isUuid, normalizePrimary, type PrimaryClassification } 
 import { collectionsService } from '../../features/collections/services/collectionsService';
 import type { CollectionScoreBucket, CollectionScoreCell, CollectionScoreDashboard, CollectionScoreField, CollectionScorePeriods, SaveCollectionScoreBucket } from '../../features/collections/types/score';
 import { scoreCalculationText } from '../../features/collections/scoreCalculationText';
+import { validTargetPeriod } from '../../features/collections/bankTargetDraft';
 
 type DraftCell = Record<CollectionScoreField, string> & { category: string };
 type BucketDrafts = Record<string, DraftCell[]>;
@@ -111,7 +112,8 @@ function isEditable(category: string, field: CollectionScoreField, bucket?: stri
 
 function useScoreDashboard(organizationId: string, portfolio: PrimaryClassification, portfolioId: string) {
   const [periods, setPeriods] = useState<CollectionScorePeriods>();
-  const [reportingPeriod, setReportingPeriod] = useState('');
+  const [searchParams] = useSearchParams();
+  const [reportingPeriod, setReportingPeriod] = useState(() => searchParams.get('reportingPeriod') ?? '');
   const [dashboard, setDashboard] = useState<CollectionScoreDashboard>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -128,12 +130,12 @@ function useScoreDashboard(organizationId: string, portfolio: PrimaryClassificat
     void (async () => {
       try {
         const availablePeriods = await collectionsService.scorePeriods(organizationId, portfolio, portfolioId);
-        const selectedPeriod = availablePeriods.periods.includes(reportingPeriod)
+        const selectedPeriod = validTargetPeriod(reportingPeriod)
           ? reportingPeriod
           : availablePeriods.currentPeriod;
         const scoreDashboard = await collectionsService.scoreDashboard(organizationId, portfolio, portfolioId, selectedPeriod);
         if (!active) return;
-        setPeriods(availablePeriods);
+        setPeriods({ ...availablePeriods, periods: [...new Set([selectedPeriod, ...availablePeriods.periods])].sort().reverse() });
         setReportingPeriod(selectedPeriod);
         setDashboard(scoreDashboard);
       } catch {

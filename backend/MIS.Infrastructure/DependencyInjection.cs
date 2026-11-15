@@ -62,6 +62,7 @@ public static class DependencyInjection
         services.AddScoped<ICollectionsClassificationContext, CollectionsClassificationContext>();
         services.AddScoped<ICollectionsService, CollectionsService>();
         services.AddScoped<ICollectionScoreService, CollectionScoreService>();
+        services.AddScoped<IBankTargetsService, CollectionScoreService>();
         services.Configure<ActScoringOptions>(configuration.GetSection("Collections:ActScoring"));
         services.AddScoped<IBanksService, BanksService>();
         services.AddScoped<IBankPortfolioImportService, BankPortfolioImportService>();

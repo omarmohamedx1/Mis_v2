@@ -58,6 +58,7 @@ export function CollectionsScorePage() {
         description={ct('scoreDescription')}
         eyebrow={ct('collections')}
         title={ct('score')}
+        actions={<Link className="rounded-xl bg-mis-primary px-4 py-3 text-sm font-semibold text-white" to="/collections/score/targets">{ct('sidebarBankTargets')}</Link>}
       />
 
       <section aria-label={ct('score')} className="space-y-5">

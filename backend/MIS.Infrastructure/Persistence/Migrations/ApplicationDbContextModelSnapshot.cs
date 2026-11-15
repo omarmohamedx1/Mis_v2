@@ -1352,6 +1352,127 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.ToTable("BankPortfolioImports", (string)null);
                 });
 
+            modelBuilder.Entity("MIS.Domain.Entities.BankTargetAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConfigurationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ValuesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("Version")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("ConfigurationId", "OccurredAt");
+
+                    b.ToTable("BankTargetAudits", (string)null);
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.BankTargetConfiguration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CopiedFromId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PortfolioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PortfolioType")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateOnly>("ReportingPeriod")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ValuesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedBy");
+
+                    b.HasIndex("CopiedFromId");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("ReviewedBy");
+
+                    b.HasIndex("UpdatedBy");
+
+                    b.HasIndex("PortfolioId", "OrganizationId");
+
+                    b.HasIndex("OrganizationId", "PortfolioId", "PortfolioType", "ReportingPeriod")
+                        .IsUnique();
+
+                    b.ToTable("BankTargetConfigurations", (string)null);
+                });
+
             modelBuilder.Entity("MIS.Domain.Entities.Branch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7221,6 +7342,64 @@ namespace MIS.Infrastructure.Persistence.Migrations
                     b.Navigation("RestoredBy");
 
                     b.Navigation("UploadedBy");
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.BankTargetAudit", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.BankTargetConfiguration", null)
+                        .WithMany()
+                        .HasForeignKey("ConfigurationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MIS.Domain.Entities.BankTargetConfiguration", b =>
+                {
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.BankTargetConfiguration", null)
+                        .WithMany()
+                        .HasForeignKey("CopiedFromId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.ClientOrganization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MIS.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MIS.Domain.Entities.CollectionPortfolio", null)
+                        .WithMany()
+                        .HasForeignKey("PortfolioId", "OrganizationId")
+                        .HasPrincipalKey("Id", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MIS.Domain.Entities.CalendarException", b =>
