@@ -65,6 +65,7 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<CollectionComplaintNote> CollectionComplaintNotes => Set<CollectionComplaintNote>();
     public DbSet<CollectionAuditLog> CollectionAuditLogs => Set<CollectionAuditLog>();
     public DbSet<CollectionScoreValue> CollectionScoreValues => Set<CollectionScoreValue>();
+    public DbSet<ActScorePeriod> ActScorePeriods => Set<ActScorePeriod>();
     public DbSet<CollectionScoreAudit> CollectionScoreAudits => Set<CollectionScoreAudit>();
     public DbSet<CollectionImportBatch> CollectionImportBatches => Set<CollectionImportBatch>();
     public DbSet<CollectionImportRow> CollectionImportRows => Set<CollectionImportRow>();

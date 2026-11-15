@@ -11,6 +11,7 @@ import { useCollectionsLocalization } from '../../features/collections/localizat
 import { displayPrimary, isUuid, normalizePrimary, type PrimaryClassification } from '../../features/collections/organizationClassification';
 import { collectionsService } from '../../features/collections/services/collectionsService';
 import type { CollectionScoreBucket, CollectionScoreCell, CollectionScoreDashboard, CollectionScoreField, CollectionScorePeriods, SaveCollectionScoreBucket } from '../../features/collections/types/score';
+import { scoreCalculationText } from '../../features/collections/scoreCalculationText';
 
 type DraftCell = Record<CollectionScoreField, string> & { category: string };
 type BucketDrafts = Record<string, DraftCell[]>;
@@ -316,7 +317,7 @@ export function CollectionsScoreDashboardPage() {
           <article className="rounded-2xl border border-mis-border bg-white p-5 shadow-sm" key={item.label}>
             <p className="text-sm font-semibold text-slate-500">{item.label}</p>
             <p className="mt-3 text-2xl font-bold text-mis-navy" dir="ltr">
-              {item.value === null ? '—' : numberFormat.format(item.value)}
+              {item.value === null ? (language === 'ar' ? 'غير متاح' : 'Unavailable') : numberFormat.format(item.value)}
             </p>
           </article>
         ))}
@@ -325,7 +326,7 @@ export function CollectionsScoreDashboardPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-mis-navy">{ct('scoreDashboard')}</h2>
-          <p className="mt-1 text-sm text-slate-500">{ct('scoreNoCalculations')}</p>
+          <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600" role="status">{scoreCalculationText(dashboard, language === 'ar')}</p>
         </div>
         {saveSuccess ? <p className="text-sm font-semibold text-emerald-700" role="status">{saveSuccess}</p> : null}
         {saveError ? <p className="text-sm font-semibold text-red-700" role="alert">{saveError}</p> : null}
@@ -354,7 +355,9 @@ export function CollectionsScoreDashboardPage() {
                 </button>
                 {dashboard.canEdit && !drafts ? (
                   <button
-                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-mis-control bg-white px-3 py-2 text-sm font-semibold text-mis-navy hover:border-mis-primary hover:text-mis-primary"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-mis-control bg-white px-3 py-2 text-sm font-semibold text-mis-navy hover:border-mis-primary hover:text-mis-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!!dashboard.calculationStatus && dashboard.calculationStatus !== 'MANUAL'}
+                    data-tooltip={dashboard.calculationStatus !== 'MANUAL' ? (language === 'ar' ? 'النتائج المحسوبة للقراءة؛ يلزم تجهيز واعتماد مدخلات الفترة.' : 'Calculated results are read-only; prepare and approve period inputs.') : undefined}
                     onClick={() => startEditing(bucket)}
                     type="button"
                   >

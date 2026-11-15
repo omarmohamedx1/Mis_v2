@@ -36,6 +36,9 @@ export interface CollectionScorePortfolio {
 }
 
 export interface CollectionScoreDashboard {
+  calculationStatus?: 'MANUAL' | 'CALCULATED' | 'PARTIAL' | 'UNAVAILABLE';
+  calculationIssues?: string[];
+  calculationVersion?: string | null;
   organization: CollectionScoreOrganization;
   portfolioType: 'ACT' | 'WO' | 'CORP';
   portfolio: CollectionScorePortfolio;

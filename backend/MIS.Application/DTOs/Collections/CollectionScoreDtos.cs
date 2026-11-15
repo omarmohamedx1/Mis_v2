@@ -42,7 +42,10 @@ public sealed record CollectionScoreDashboardDto(
     string ReportingPeriod,
     bool CanEdit,
     CollectionScoreSummaryDto Summary,
-    IReadOnlyCollection<CollectionScoreBucketDto> Buckets);
+    IReadOnlyCollection<CollectionScoreBucketDto> Buckets,
+    string CalculationStatus = "MANUAL",
+    IReadOnlyCollection<string>? CalculationIssues = null,
+    string? CalculationVersion = null);
 
 public sealed record CollectionScorePeriodsDto(string CurrentPeriod, IReadOnlyCollection<string> Periods);
 

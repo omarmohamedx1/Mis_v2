@@ -9,6 +9,8 @@ using MIS.Application.Interfaces;
 using MIS.Domain.Constants;
 using MIS.Domain.Entities;
 using MIS.Infrastructure.Persistence;
+using Microsoft.Extensions.Options;
+using MIS.Application.Scoring;
 
 namespace MIS.Infrastructure.Services;
 
@@ -25,14 +27,21 @@ public sealed class CollectionScoreService : ICollectionScoreService
         ["BKT6"] = ["STAB", "BWD", "NORM", "FWD"],
     };
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions SourceJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        RespectRequiredConstructorParameters = true,
+        RespectNullableAnnotations = true,
+    };
 
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserContext _user;
+    private readonly bool _actEnabled;
 
-    public CollectionScoreService(ApplicationDbContext db, ICurrentUserContext user)
+    public CollectionScoreService(ApplicationDbContext db, ICurrentUserContext user, IOptions<ActScoringOptions>? options = null)
     {
         _db = db;
         _user = user;
+        _actEnabled = options?.Value.Enabled == true;
     }
 
     public async Task<IReadOnlyCollection<CollectionScorePortfolioDto>> GetPortfoliosAsync(Guid organizationId, string portfolioType, CancellationToken token)
@@ -75,6 +84,14 @@ public sealed class CollectionScoreService : ICollectionScoreService
             return new CollectionScoreBucketDto(code, BucketVersion(rows), cells);
         }).ToArray();
 
+        // A single legacy/manual row takes precedence over the whole calculated month.
+        var calculation = storedValues.Length > 0 ? null
+            : await CalculateAsync(organizationId, portfolioId, normalizedPortfolio, period, portfolio.CurrencyCode, token);
+        if (calculation is not null && calculation.Buckets.Count > 0)
+            buckets = calculation.Buckets.Select(b => new CollectionScoreBucketDto($"BKT{b.Bucket}", string.Empty,
+                b.Cells.Select(c => new CollectionScoreCellDto(c.Category, c.CaseCount, c.ActualBalance,
+                    c.TargetPercent, c.TargetBalance, c.Missing, c.Percent, c.Weight, c.ActualVsTarget, c.Score)).ToArray())).ToArray();
+
         return new CollectionScoreDashboardDto(
             new CollectionScoreOrganizationDto(
                 organization.Id,
@@ -87,8 +104,11 @@ public sealed class CollectionScoreService : ICollectionScoreService
             new CollectionScorePortfolioDto(portfolio.Id, portfolio.OrganizationId, portfolio.Code, portfolio.NameArabic, portfolio.NameEnglish, portfolio.CurrencyCode),
             FormatPeriod(period),
             CanEdit(),
-            new CollectionScoreSummaryDto(null, null, null),
-            buckets);
+            new CollectionScoreSummaryDto(calculation?.TotalDueAmount, calculation?.Paid, calculation?.ScoreAll),
+            buckets,
+            calculation?.Status ?? "MANUAL",
+            calculation?.Issues ?? ["MANUAL_PRESERVED"],
+            calculation?.Buckets.Count > 0 ? ActScoreEngine.ModelVersion : null);
     }
 
     public async Task<CollectionScorePeriodsDto> GetPeriodsAsync(Guid organizationId, string portfolioType, Guid portfolioId, CancellationToken token)
@@ -104,6 +124,13 @@ public sealed class CollectionScoreService : ICollectionScoreService
             .Distinct()
             .ToArrayAsync(token);
         var current = new DateOnly(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        if (_actEnabled && normalizedPortfolio == "ACT")
+        {
+            var sourcePeriods = await _db.ActScorePeriods.AsNoTracking()
+                .Where(x => x.OrganizationId == organizationId && x.PortfolioId == portfolioId)
+                .Select(x => x.ReportingPeriod).ToArrayAsync(token);
+            periods = periods.Concat(sourcePeriods).Distinct().ToArray();
+        }
         return new CollectionScorePeriodsDto(
             FormatPeriod(current),
             periods.Append(current).Distinct().OrderByDescending(period => period).Select(FormatPeriod).ToArray());
@@ -111,11 +138,25 @@ public sealed class CollectionScoreService : ICollectionScoreService
 
     public async Task<CollectionScoreSummaryDto> GetSummaryAsync(Guid organizationId, string portfolioType, Guid portfolioId, string? reportingPeriod, CancellationToken token)
     {
-        _ = await RequireOrganizationAsync(organizationId, token);
-        var normalizedPortfolio = NormalizePortfolio(portfolioType);
-        _ = await RequirePortfolioAsync(organizationId, normalizedPortfolio, portfolioId, token);
-        _ = ParsePeriod(reportingPeriod);
-        return new CollectionScoreSummaryDto(null, null, null);
+        return (await GetDashboardAsync(organizationId, portfolioType, portfolioId, reportingPeriod, token)).Summary;
+    }
+
+    private async Task<ActScoreResult> CalculateAsync(Guid organizationId, Guid portfolioId, string type,
+        DateOnly period, string currency, CancellationToken token)
+    {
+        if (type != "ACT") return ActScoreResult.Unavailable("MODEL_NOT_APPROVED");
+        if (!_actEnabled) return ActScoreResult.Unavailable("ACT_NOT_ENABLED");
+        var source = await _db.ActScorePeriods.AsNoTracking().SingleOrDefaultAsync(x =>
+            x.OrganizationId == organizationId && x.PortfolioId == portfolioId && x.ReportingPeriod == period, token);
+        if (source is null) return ActScoreResult.Unavailable("SOURCE_MISSING");
+        if (source.Currency != currency) return ActScoreResult.Unavailable("SCOPE_MISMATCH");
+        try
+        {
+            return ActScoreEngine.Calculate(new(organizationId, portfolioId, period, currency),
+                JsonSerializer.Deserialize<ActScoreRules>(source.RulesJson, SourceJsonOptions),
+                JsonSerializer.Deserialize<ActScoreInput>(source.InputJson, SourceJsonOptions));
+        }
+        catch (JsonException) { return ActScoreResult.Unavailable("SOURCE_INVALID"); }
     }
 
     public async Task<IReadOnlyCollection<CollectionScoreAuditDto>> GetHistoryAsync(
@@ -181,6 +222,10 @@ public sealed class CollectionScoreService : ICollectionScoreService
         ValidateRequest(normalizedBucket, request);
 
         await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, token);
+        if (_actEnabled && normalizedPortfolio == "ACT"
+            && await _db.ActScorePeriods.AnyAsync(x => x.OrganizationId == organizationId && x.PortfolioId == portfolioId && x.ReportingPeriod == period, token)
+            && !await _db.CollectionScoreValues.AnyAsync(x => x.OrganizationId == organizationId && x.PortfolioId == portfolioId && x.PortfolioType == normalizedPortfolio && x.ReportingPeriod == period, token))
+            throw new HrConflictException("Calculated evaluations are read-only. Manual historical evaluations are preserved separately.");
         var existingRows = await _db.CollectionScoreValues
             .Where(item => item.OrganizationId == organizationId &&
                            item.PortfolioType == normalizedPortfolio &&
