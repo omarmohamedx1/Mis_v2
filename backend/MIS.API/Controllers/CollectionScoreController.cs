@@ -15,6 +15,17 @@ public sealed class CollectionScoreController : ControllerBase
 
     public CollectionScoreController(ICollectionScoreService score) => _score = score;
 
+    [HttpGet("{portfolioType}/portfolios/{portfolioId:guid}/source")]
+    public Task<CollectionScoreSourceDto> Source(Guid organizationId, string portfolioType, Guid portfolioId,
+        [FromQuery] string reportingPeriod, CancellationToken token) =>
+        _score.GetSourceAsync(organizationId, portfolioType, portfolioId, reportingPeriod, token);
+
+    [HttpPut("{portfolioType}/portfolios/{portfolioId:guid}/source")]
+    [Authorize(Policy = AuthorizationPolicies.CollectionsConfigurationManage)]
+    public Task SaveSource(Guid organizationId, string portfolioType, Guid portfolioId,
+        SaveCollectionScoreSourceRequest request, CancellationToken token) =>
+        _score.SaveSourceAsync(organizationId, portfolioType, portfolioId, request, token);
+
     [HttpGet("{portfolioType}/portfolios")]
     public Task<IReadOnlyCollection<CollectionScorePortfolioDto>> Portfolios(
         Guid organizationId, string portfolioType, CancellationToken token) =>

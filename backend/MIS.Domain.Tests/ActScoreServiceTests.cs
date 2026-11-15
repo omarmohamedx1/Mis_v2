@@ -118,7 +118,7 @@ public sealed class ActScoreServiceTests
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)).Options);
         public ClientOrganization Org { get; private set; } = null!;
         public CollectionPortfolio Portfolio { get; private set; } = null!;
-        public CollectionScoreService Service() => new(Db, new Principal(), Options.Create(new ActScoringOptions { Enabled = true }));
+        public CollectionScoreService Service() => new(Db, new Principal(), options: Options.Create(new ActScoringOptions { Enabled = true }));
         public static async Task<Fixture> Create(bool addSource = true, string organizationType = "BANK")
         {
             var f = new Fixture();

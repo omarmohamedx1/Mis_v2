@@ -4,6 +4,8 @@ namespace MIS.Application.Interfaces;
 
 public interface ICollectionScoreService
 {
+    Task<CollectionScoreSourceDto> GetSourceAsync(Guid organizationId, string portfolioType, Guid portfolioId, string reportingPeriod, CancellationToken token);
+    Task SaveSourceAsync(Guid organizationId, string portfolioType, Guid portfolioId, SaveCollectionScoreSourceRequest request, CancellationToken token);
     Task<IReadOnlyCollection<CollectionScorePortfolioDto>> GetPortfoliosAsync(Guid organizationId, string portfolioType, CancellationToken token);
     Task<CollectionScoreDashboardDto> GetDashboardAsync(Guid organizationId, string portfolioType, Guid portfolioId, string? reportingPeriod, CancellationToken token);
     Task<CollectionScorePeriodsDto> GetPeriodsAsync(Guid organizationId, string portfolioType, Guid portfolioId, CancellationToken token);
