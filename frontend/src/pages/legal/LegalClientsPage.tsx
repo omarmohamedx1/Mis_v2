@@ -1,4 +1,7 @@
-import { ArrowUpRight, Search, UsersRound } from 'lucide-react';
+import { ArrowUpRight, Pencil, Search, Trash2, UsersRound } from 'lucide-react';
+import { ActionMenu } from '../../components/common/ActionMenu';
+import { Button } from '../../components/common/Button';
+import { EditLegalClientModal } from '../../features/legal/components/EditLegalClientModal';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -18,6 +21,7 @@ export function LegalClientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [editCustomerId, setEditCustomerId] = useState<string>();
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250);
@@ -87,9 +91,23 @@ export function LegalClientsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-end">
+                      <div className="flex items-center justify-end gap-2">
                       <Link className="inline-flex items-center gap-1 font-semibold text-mis-primary hover:underline" to={`/legal/client-files/${client.customerId}`}>
                         {l.text('عرض التفاصيل', 'View Details')} <ArrowUpRight className="h-4 w-4" />
                       </Link>
+                      <ActionMenu label={l.text(`إجراءات ${client.name}`, `Actions for ${client.name}`)}>
+                        <Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" />} size="sm" type="button" variant="ghost" onClick={() => setEditCustomerId(client.customerId)}>
+                          {l.text('تعديل', 'Edit')}
+                        </Button>
+                        <Link to={`/legal/client-files/${client.customerId}`}>{l.text('فتح', 'Open')}</Link>
+                        <Button disabled className="text-red-600" fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} size="sm" type="button" variant="ghost">
+                          {l.text('حذف', 'Delete')}
+                        </Button>
+                        <p className="max-w-full px-3 py-2 text-start text-xs text-slate-500">
+                          {l.text('حذف العميل غير متاح حاليًا للحفاظ على السجلات المرتبطة.', 'Client deletion is currently unavailable to protect linked records.')}
+                        </p>
+                      </ActionMenu>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -112,6 +130,15 @@ export function LegalClientsPage() {
           description={l.text('سيظهر العملاء المحولون من التحصيل هنا تلقائيًا.', 'Clients transferred from Collections will appear here automatically.')}
         />
       )}
+      {editCustomerId ? <EditLegalClientModal
+        key={editCustomerId}
+        customerId={editCustomerId}
+        onClose={() => setEditCustomerId(undefined)}
+        onSaved={() => {
+          setEditCustomerId(undefined);
+          setReloadKey((value) => value + 1);
+        }}
+      /> : null}
     </div>
   );
 }
