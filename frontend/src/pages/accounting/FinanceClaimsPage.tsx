@@ -55,6 +55,11 @@ export function FinanceClaimsPage() {
   const [details, setDetails] = useState<ClaimDetails>();
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptDate, setReceiptDate] = useState('');
+  const [receiptAmount, setReceiptAmount] = useState('');
+  const [receiptBank, setReceiptBank] = useState('');
+  const receiptAttempt = useRef<{ key: string; payload: string } | undefined>(undefined);
+  const [reversingReceipt, setReversingReceipt] = useState<string>();
+  const [reversalReason, setReversalReason] = useState('');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
@@ -188,7 +193,17 @@ export function FinanceClaimsPage() {
     setError('');
     try {
       if (historical) await financeClaimsService.postHistoricalReceipt(claim.id);
-      else await financeClaimsService.confirmReceipt(claim.id, receiptDate);
+      else {
+        const amount = Number(receiptAmount);
+        if (!receiptDate || !Number.isFinite(amount) || amount <= 0 || amount > claim.remainingAmount) {
+          setError(a.text('أدخل تاريخ التحصيل ومبلغًا موجبًا لا يتجاوز المتبقي.', 'Enter a receipt date and a positive amount no greater than the remaining balance.'));
+          return;
+        }
+        const payload = JSON.stringify([claim.id, receiptDate, amount, receiptBank]);
+        if (receiptAttempt.current?.payload !== payload) receiptAttempt.current = { key: crypto.randomUUID(), payload };
+        await financeClaimsService.confirmReceipt(claim.id, receiptDate, amount, receiptAttempt.current.key, receiptBank || undefined);
+        receiptAttempt.current = undefined;
+      }
       setReceiptOpen(false);
       setDetails(await financeClaimsService.details(claim.id));
       reload();
@@ -401,7 +416,7 @@ export function FinanceClaimsPage() {
     <section className="overflow-hidden rounded-2xl border border-mis-border bg-white">
       {loading && claims.length === 0 ? <div className="grid min-h-48 place-items-center"><LoadingSpinner /></div> : <div className="overflow-x-auto">
         <table className={`${table} min-w-[1880px]`}>
-          <thead><tr>{columns.map(([arabic, english]) => <th className={cell} key={english}>{a.text(arabic, english)}</th>)}<th className={cell}>{a.text('الحالة', 'Status')}</th><th className={cell}>{a.text('الإجراءات', 'Actions')}</th></tr></thead>
+          <thead><tr>{columns.map(([arabic, english]) => <th className={cell} key={english}>{a.text(arabic, english)}</th>)}<th className={cell}>{a.text('المحصل', 'Received')}</th><th className={cell}>{a.text('المتبقي', 'Remaining')}</th><th className={cell}>{a.text('الحالة', 'Status')}</th><th className={cell}>{a.text('الإجراءات', 'Actions')}</th></tr></thead>
           <tbody>
             {claims.map(claim => <tr key={claim.id} tabIndex={0} className="cursor-pointer hover:bg-slate-50" onClick={() => void showDetails(claim)} onKeyDown={event => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -410,7 +425,9 @@ export function FinanceClaimsPage() {
               }
             }}>
               {claimValues(claim).map((value, index) => <td className={`${cell} whitespace-nowrap ${index >= 5 && index <= 12 ? 'tabular-nums' : ''}`} data-bidi={index >= 5 && index <= 12 ? 'ltr' : undefined} key={index}>{value}</td>)}
-              <td className={cell}><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${claim.status === 'CANCELLED' ? 'bg-slate-100 text-slate-700' : claim.status === 'RECEIVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{claim.status === 'CANCELLED' ? a.text('ملغاة', 'Cancelled') : claim.status === 'RECEIVED' ? a.text('تم التحصيل', 'Received') : a.text('نشطة', 'Active')}</span></td>
+              <td className={`${cell} tabular-nums`} data-bidi="ltr">{a.money(claim.receivedAmount)}</td>
+              <td className={`${cell} tabular-nums`} data-bidi="ltr">{a.money(claim.remainingAmount)}</td>
+              <td className={cell}><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${claim.status === 'CANCELLED' ? 'bg-slate-100 text-slate-700' : claim.status === 'RECEIVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{claim.status === 'CANCELLED' ? a.text('ملغاة', 'Cancelled') : claim.status === 'RECEIVED' ? a.text('تم التحصيل', 'Received') : claim.collectionStatus === 'PARTIAL' ? a.text('محصلة جزئيًا', 'Partially received') : a.text('نشطة', 'Active')}</span></td>
               <td className={cell} onClick={event => event.stopPropagation()}>
                 <ActionMenu label={a.text('إجراءات المطالبة', 'Claim actions')}>
                   <button type="button" onClick={() => void showDetails(claim)}>{a.text('عرض التفاصيل', 'View details')}</button>
@@ -418,7 +435,7 @@ export function FinanceClaimsPage() {
                 </ActionMenu>
               </td>
             </tr>)}
-            {!loading && claims.length === 0 && <tr><td className={`${cell} py-12 text-center text-slate-500`} colSpan={16}>{a.text('لا توجد مطالبات', 'No claims')}</td></tr>}
+            {!loading && claims.length === 0 && <tr><td className={`${cell} py-12 text-center text-slate-500`} colSpan={18}>{a.text('لا توجد مطالبات', 'No claims')}</td></tr>}
           </tbody>
         </table>
       </div>}
@@ -509,13 +526,20 @@ export function FinanceClaimsPage() {
         {can('finance.claims.delete') && selectedClaim && !selectedClaim.hasAccountingPosting && <Button fullWidth={false} variant="danger" leftIcon={<Trash2 size={16} />} disabled={busy} onClick={() => { setDeleteTarget(selectedClaim); setDeleteConfirmOpen(true); }}>{a.text('حذف المطالبة', 'Delete Claim')}</Button>}
         {canConfirmReceipt && <Button fullWidth={false} onClick={() => {
           if (!selectedClaim) return;
-          setReceiptDate(selectedClaim.dateInBank ?? today());
+          setReceiptDate(today());
+          setReceiptAmount(String(selectedClaim.remainingAmount));
+          setReceiptBank(selectedClaim.bankOrganizationId ?? '');
           setReceiptOpen(true);
         }}>{a.text('تأكيد التحصيل', 'Confirm Receipt')}</Button>}
         {isHistoricalUnposted && can('finance.claims.receipt.confirm') && <Button fullWidth={false} onClick={() => selectedClaim && void confirmReceipt(selectedClaim, true)}>{a.text('ترحيل التحصيل التاريخي', 'Post Historical Receipt')}</Button>}
         <Button fullWidth={false} variant="outline" onClick={() => setDetails(undefined)}>{a.text('إغلاق', 'Close')}</Button>
       </div>}>
       {details && <div className="space-y-4">
+        <p className="rounded-xl bg-slate-50 p-3 text-sm font-semibold">{a.text('إجمالي المطالبة', 'Claim total')}: {a.money(details.claim.totalInBank)} · {a.text('المحصل', 'Received')}: {a.money(details.claim.receivedAmount)} · {a.text('المتبقي', 'Remaining')}: {a.money(details.claim.remainingAmount)}</p>
+        {details.receiptPostings.map(receipt => <div key={receipt.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-mis-border p-3 text-sm">
+          <span>{a.money(receipt.amount)} · {formatDate(receipt.receiptDate)} · {receipt.accountingDocumentNumber} · {receipt.reversedAt ? a.text('معكوس', 'Reversed') : a.text('محصل', 'Received')}</span>
+          {!receipt.reversedAt && can('finance.claims.receipt.reverse') && <Button fullWidth={false} variant="outline" disabled={busy} onClick={() => { setReversingReceipt(receipt.id); setReversalReason(''); }}>{a.text('عكس الدفعة', 'Reverse payment')}</Button>}
+        </div>)}
         {selectedClaim?.status === 'RECEIVED' && <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{isHistoricalUnposted
           ? a.text('هذا تحصيل تاريخي غير مرحّل محاسبيًا. استخدم إجراء ترحيل تحصيل المطالبة بعد المراجعة؛ لا يُضاف المبلغ إلى خزينة الشركة.', 'This historical receipt has not been posted to the claims ledger. Post it after review; it does not fund the company cashbox.')
           : a.text('تم تأكيد تحصيل المطالبة. تحصيلات المطالبات مستقلة عن وارد وخزينة الشركة.', 'Claim receipt confirmed. Claim collections are separate from Company Income and the operating cashbox.')}</p>}
@@ -566,7 +590,21 @@ export function FinanceClaimsPage() {
       )}</p>
     </Modal>
 
-    <Modal open={receiptOpen} onClose={() => setReceiptOpen(false)} title={a.text('تأكيد التحصيل', 'Confirm Receipt')} size="md"
+    <Modal open={!!reversingReceipt} onClose={() => !busy && setReversingReceipt(undefined)} title={a.text('عكس دفعة التحصيل', 'Reverse claim payment')} size="sm" footer={<Button fullWidth={false} isLoading={busy} disabled={!reversalReason.trim()} onClick={async () => {
+      if (!selectedClaim || !reversingReceipt || busy) return;
+      setBusy(true); setError('');
+      try {
+        setDetails(await financeClaimsService.reverseReceipt(selectedClaim.id, reversalReason, reversingReceipt));
+        setReversingReceipt(undefined);
+        reload();
+      } catch (reason) { setError(errorMessage(reason, 'تعذر عكس الدفعة', 'Could not reverse payment')); }
+      finally { setBusy(false); }
+    }}>{a.text('تأكيد عكس الدفعة', 'Confirm reversal')}</Button>}>
+      <BookError error={error} />
+      <BookField label={a.text('سبب العكس', 'Reversal reason')}><textarea className="w-full rounded-xl border border-mis-border p-3" maxLength={1000} value={reversalReason} onChange={event => setReversalReason(event.target.value)} /></BookField>
+    </Modal>
+
+    <Modal open={receiptOpen} onClose={() => !busy && setReceiptOpen(false)} title={a.text('تأكيد التحصيل', 'Confirm Receipt')} size="md"
       footer={<div className="flex justify-end gap-2">
         <Button fullWidth={false} variant="outline" onClick={() => setReceiptOpen(false)}>{a.text('إلغاء', 'Cancel')}</Button>
         <Button fullWidth={false} isLoading={busy} onClick={() => selectedClaim && void confirmReceipt(selectedClaim, false)}>{a.text('تأكيد التحصيل', 'Confirm Receipt')}</Button>
@@ -574,6 +612,10 @@ export function FinanceClaimsPage() {
       <div className="space-y-4">
         <p className="text-sm text-slate-600">{a.text('يُسجّل التأكيد تحصيل المطالبة فقط، ولا يزيد وارد الشركة أو رصيد خزينة المصروفات. أي تحويل للخزينة يتطلب إجراءً مستقلاً ومصرحًا به.', 'Confirmation records only the claim receipt. It does not increase Company Income or the operating cashbox. Any cashbox transfer requires a separate authorized transaction.')}</p>
         <BookField label={a.text('تاريخ دخول المبلغ البنك', 'Date In Bank')}><DateControl value={receiptDate} onChange={event => setReceiptDate(event.target.value)} required /></BookField>
+        <BookError error={error} />
+        <p className="text-sm font-semibold">{a.text('إجمالي المطالبة', 'Claim total')}: {a.money(selectedClaim?.totalInBank ?? 0)} · {a.text('المحصل', 'Received')}: {a.money(selectedClaim?.receivedAmount ?? 0)} · {a.text('المتبقي', 'Remaining')}: {a.money(selectedClaim?.remainingAmount ?? 0)}</p>
+        <BookField label={a.text('بنك المطالبة', 'Claim bank')}><ProfessionalSelect disabled={busy} value={receiptBank} onChange={event => setReceiptBank(event.target.value)}><option value={selectedClaim?.bankOrganizationId ?? ''}>{selectedClaim?.bankName}</option></ProfessionalSelect></BookField>
+        <BookField label={a.text('المبلغ المستلم', 'Received amount')}><input className="w-full rounded-xl border border-mis-border p-3" type="number" min="0.01" step="0.01" max={selectedClaim?.remainingAmount} value={receiptAmount} disabled={busy} onChange={event => setReceiptAmount(event.target.value)} /></BookField>
       </div>
     </Modal>
 

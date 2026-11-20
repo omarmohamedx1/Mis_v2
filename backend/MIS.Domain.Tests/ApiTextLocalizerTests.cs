@@ -7,6 +7,19 @@ namespace MIS.Domain.Tests;
 public sealed class ApiTextLocalizerTests
 {
     [Fact]
+    public void Claim_receipt_setup_error_is_actionable_in_both_languages()
+    {
+        const string message = "Finance:ClaimReceipts:AssetAccountId and Finance:ClaimReceipts:ClearingAccountId must reference approved dedicated accounts. Ask Finance to configure them.";
+        using (new CultureScope("en")) Assert.Equal(message, ApiErrorResponse.Failure(message).Message);
+        using (new CultureScope("ar"))
+        {
+            var translated = ApiErrorResponse.Failure(message).Message;
+            Assert.Contains("Finance:ClaimReceipts:AssetAccountId", translated);
+            Assert.Contains("Finance:ClaimReceipts:ClearingAccountId", translated);
+            Assert.Contains("مسؤول المالية", translated);
+        }
+    }
+    [Fact]
     public void English_request_preserves_canonical_message_and_codes()
     {
         using var culture = new CultureScope("en");

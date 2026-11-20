@@ -497,18 +497,24 @@ public sealed class AccountingBookIntegrationTests
                 "claim receipt is not duplicated as profit and loss revenue");
             Check((await bm.AdvancesAsync(today, null, null, default)).Sum(x => x.Remaining) == advancesBeforeClaim,
                 "claim receipt does not change employee advances");
+            await Conflict(() => claimService.UpdateAsync(financialClaim.Id, claimInput with { AmountWithoutVat = 90000m }, default),
+                "editing a received claim requires an explicit authorized reversal");
+            var firstClaimReceipt = await db.FinanceClaimReceiptPostings.SingleAsync(x => x.ClaimId == financialClaim.Id && x.ReversedAt == null);
+            await claimService.ReverseReceiptAsync(financialClaim.Id, new("Explicit reversal before edit", firstClaimReceipt.Id), default);
             await claimService.UpdateAsync(financialClaim.Id, claimInput with { Month = "Edited month", AmountWithoutVat = 90000m }, default);
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
-                "editing a received claim reverses its prior posting before updating");
+                "explicit reversal followed by editing leaves operating income unchanged");
             await claimService.ConfirmReceiptAsync(financialClaim.Id, new(today), default);
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome &&
                   await db.AccountingBookEntries.CountAsync(x => x.SourceKey != null && x.SourceKey.StartsWith($"CLAIM:{financialClaim.Id}:")) == 2,
                 "reconfirming an edited claim posts the revised net amount without deleting the original posting");
-            await claimService.ReverseReceiptAsync(financialClaim.Id, new("Integration test reversal"), default);
+            var secondClaimReceipt = await db.FinanceClaimReceiptPostings.SingleAsync(x => x.ClaimId == financialClaim.Id && x.ReversedAt == null);
+            await claimService.ReverseReceiptAsync(financialClaim.Id, new("Integration test reversal", secondClaimReceipt.Id), default);
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
                 "claim receipt reversal leaves Company Income unchanged");
-            await Conflict(() => claimService.ReverseReceiptAsync(financialClaim.Id, new("Duplicate reversal"), default),
-                "a claim receipt cannot be reversed twice");
+            await claimService.ReverseReceiptAsync(financialClaim.Id, new("Integration test reversal", secondClaimReceipt.Id), default);
+            Check(await db.JournalEntries.CountAsync(x => x.ReversalOfJournalId == secondClaimReceipt.AccountingBookEntry.JournalEntryId) == 1,
+                "retrying a specific receipt reversal does not post another reversal");
             var profitLossAfterClaimReversal = await bm.ProfitLossAsync(claimRangeFrom, today, default);
             Check(profitLossAfterClaimReversal.TotalRevenue == profitLossBeforeClaim.TotalRevenue &&
                   profitLossAfterClaimReversal.TotalExpenses == profitLossBeforeClaim.TotalExpenses,

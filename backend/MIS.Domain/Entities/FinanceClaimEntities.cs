@@ -115,6 +115,19 @@ public sealed class FinanceClaim
         UpdatedAt = now;
     }
 
+    // Partial receipts retain PENDING storage status for compatibility with historical claims.
+    public void ApplyReceiptBalance(decimal received, DateOnly? latestDate, Guid actorId, DateTimeOffset now)
+    {
+        if (Status == "CANCELLED" || received < 0 || received > TotalInBank)
+            throw new InvalidOperationException("Invalid claim receipt balance.");
+        Status = received == TotalInBank ? "RECEIVED" : "PENDING";
+        DateInBank = received > 0 ? latestDate : null;
+        ReceiptConfirmedById = received > 0 ? actorId : null;
+        ReceiptConfirmedAt = received > 0 ? now : null;
+        UpdatedById = actorId;
+        UpdatedAt = now;
+    }
+
     public void ReopenAfterReceiptReversal(Guid actorId, DateTimeOffset now)
     {
         if (Status != "RECEIVED") throw new InvalidOperationException("Only a received claim can be reopened.");

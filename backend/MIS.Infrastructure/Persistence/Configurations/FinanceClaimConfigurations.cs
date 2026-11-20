@@ -47,7 +47,7 @@ public sealed class FinanceClaimReceiptPostingConfiguration : IEntityTypeConfigu
         b.Property(x => x.Amount).HasPrecision(18, 2);
         b.Property(x => x.ReceiptDate).HasColumnType("date");
         b.HasIndex(x => x.AccountingBookEntryId).IsUnique();
-        b.HasIndex(x => x.ClaimId).IsUnique().HasFilter("\"ReversedAt\" IS NULL");
+        b.HasIndex(x => x.ClaimId);
         b.HasOne(x => x.Claim).WithMany(x => x.ReceiptPostings).HasForeignKey(x => x.ClaimId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.AccountingBookEntry).WithMany().HasForeignKey(x => x.AccountingBookEntryId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);

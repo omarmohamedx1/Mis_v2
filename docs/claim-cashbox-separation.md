@@ -1,5 +1,33 @@
 # Finance Claims and operating cashbox separation
 
+## Local partial-receipt update (20 November 2026; not deployed)
+
+This section supersedes the full-payment-only workflow and the earlier statement that no schema migration is needed.
+
+- Confirmation accepts `amount`, `dateInBank`, `requestId`, and optional `bankOrganizationId`. The selected bank must match the claim; an existing name-only claim remains supported without silently assigning a different bank.
+- Each payment uses its request UUID as the receipt posting primary key. Retries with the same amount/date return the existing receipt; conflicting or reversed requests are rejected. Serializable transactions and the receipt primary key protect concurrent writes. A concurrent conflict may require retrying the same request; do not mint a new UUID for a network retry.
+- Partial claims keep the existing stored `PENDING` status for compatibility. The additive `collectionStatus` response exposes `PARTIAL`, with `receivedAmount` and `remainingAmount` calculated from unreversed receipts. Completed historical unposted claims retain their existing displayed paid amount; reading them creates no postings.
+- Receipts cannot exceed the remaining balance or precede the claim date. A paid claim cannot be edited until its receipts are explicitly reversed. The UI records a reason and a specific receipt ID for reversal, retains the history, and recalculates only that claim's current collection state.
+- `CLAIM_RECEIPT` posting and operating-report exclusions are unchanged. No account creation, automatic historical adjustment, or cashbox transfer is introduced. Existing claim export columns and historical full-claim summary fields remain unchanged; net received now includes actual partial receipts.
+- Review-only migration `20261120130000_AllowPartialClaimReceipts` replaces the unique active-receipt-per-claim index with a nonunique claim index. It does not alter financial rows or seed accounts. Rollback refuses to proceed if multiple active receipts would violate the old index; it never deletes receipts to make rollback possible.
+
+### Activation procedure — requires separate approval
+
+1. Finance identifies two real, approved, distinct existing posting accounts in the MIS legal entity: an `ASSET` account and a `LIABILITY` clearing account. Verify both are active, allow posting, have no cash/operating/control classification, and require no client, collector, or branch dimensions. Never substitute a revenue or company cashbox account. If accounts do not exist, their creation is a separate approved finance operation.
+2. Set the actual account UUIDs under `Finance:ClaimReceipts:AssetAccountId` and `Finance:ClaimReceipts:ClearingAccountId` in backend configuration (environment variables use double underscores). No UUIDs are supplied by this patch.
+3. Review and separately approve the migration, backup/rollback plan, and PostgreSQL concurrency testing in an isolated disposable environment. Do not run database-writing integration fixtures against a real database. In-memory tests do not establish PostgreSQL locking behavior.
+4. Apply the approved migration before enabling the new frontend/backend workflow. Keep `MIS__SkipStartupDatabaseChanges=true` for any approved API startup. No migration, seeding, startup job, production restart, or deployment is performed by this change.
+
+Local verification for this update:
+
+- Frontend `npm run build`: passed (system-control check, TypeScript, Vite). Existing bundle-size/plugin timing warnings remain.
+- Backend build passed. The installed SDK emitted existing `System.Security.Cryptography.Pkcs` 8.0.1 vulnerability warnings; dependency upgrades are outside this patch.
+- Selected tests: **60 passed, 0 failed**, covering full/partial receipts, replay/conflicting requests, invalid dates/amounts/bank, missing and invalid accounts, individual reversal retries, historical reads, existing revenue/expenses/profit-loss isolation, Arabic/English setup messages, and migration operation inspection in memory.
+- Command: `dotnet test backend/MIS.Domain.Tests/MIS.Domain.Tests.csproj --no-restore -m:1 -p:UseSharedCompilation=false --filter "FullyQualifiedName~ClaimCashboxSeparationTests|FullyQualifiedName~AccountingBookTests|FullyQualifiedName~AccountingDomainTests|FullyQualifiedName~ApiTextLocalizerTests"`.
+- PostgreSQL integration expectations were updated for explicit reversal-before-edit and reversal retry behavior, but that database-writing fixture was **not run**. No browser-to-database end-to-end test or live accounting account validation was performed.
+
+The prior verification section below describes the earlier separation change, not a production validation of this update.
+
 ## Confirmed cause and traced workflow
 
 `FinanceClaimsPage` calls `financeClaimsService.confirmReceipt(id, dateInBank)` → POST `/api/finance/claims/{id}/confirm-receipt` with `{ dateInBank }`. The historical-posting endpoint calls the same posting service. Controller and service permission checks remain in place.

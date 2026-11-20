@@ -51,11 +51,14 @@ public sealed class FinanceClaimsService(
         claim.DeletedById, claim.DeletedAt
     };
 
-    private static FinanceClaimListItem Map(FinanceClaim claim, string createdBy, string? updatedBy, bool posted)
+    private static FinanceClaimListItem Map(FinanceClaim claim, string createdBy, string? updatedBy, bool posted, decimal? received = null)
         => new(claim.Id, claim.Serial, claim.BankOrganizationId, claim.BankName, claim.ClaimType, claim.Month, claim.ClaimDate,
             claim.AmountWithoutVat, claim.VatPercent, claim.Vat, claim.TotalWithVat, claim.TaxAtSourcePercent, claim.TaxAtSource,
             claim.Total, claim.TotalInBank, claim.DateInBank, claim.Status, claim.IsHistoricalImport, posted,
-            createdBy, claim.CreatedAt, updatedBy, claim.UpdatedAt);
+            createdBy, claim.CreatedAt, updatedBy, claim.UpdatedAt,
+            received ?? (claim.Status == "RECEIVED" ? claim.TotalInBank : 0),
+            claim.TotalInBank - (received ?? (claim.Status == "RECEIVED" ? claim.TotalInBank : 0)),
+            claim.Status == "CANCELLED" ? "CANCELLED" : received > 0 && received < claim.TotalInBank ? "PARTIAL" : claim.Status);
 
     private IQueryable<FinanceClaim> Filter(FinanceClaimFilter filter)
     {
@@ -117,14 +120,15 @@ public sealed class FinanceClaimsService(
                 Claim = x,
                 CreatedBy = x.CreatedBy.FullName,
                 UpdatedBy = x.UpdatedBy == null ? null : x.UpdatedBy.FullName,
+                Received = x.Status == "RECEIVED" && !x.ReceiptPostings.Any(p => p.ReversedAt == null) ? x.TotalInBank : x.ReceiptPostings.Where(p => p.ReversedAt == null).Sum(p => (decimal?)p.Amount) ?? 0,
                 Posted = db.FinanceClaimReceiptPostings.Any(p => p.ClaimId == x.Id && p.ReversedAt == null)
             }).ToArrayAsync(token);
         var summary = await query.GroupBy(_ => 1).Select(g => new FinanceClaimSummary(
             g.Count(), g.Count(x => x.Status == "PENDING"), g.Count(x => x.Status == "RECEIVED"),
             g.Sum(x => x.TotalWithVat), g.Where(x => x.Status == "RECEIVED").Sum(x => x.TotalWithVat),
-            g.Where(x => x.Status == "RECEIVED").Sum(x => x.TotalInBank), g.Sum(x => x.Vat), g.Sum(x => x.TaxAtSource)))
+            g.Sum(x => x.Status == "RECEIVED" && !x.ReceiptPostings.Any(p => p.ReversedAt == null) ? x.TotalInBank : x.ReceiptPostings.Where(p => p.ReversedAt == null).Sum(p => (decimal?)p.Amount) ?? 0), g.Sum(x => x.Vat), g.Sum(x => x.TaxAtSource)))
             .SingleOrDefaultAsync(token) ?? new FinanceClaimSummary(0, 0, 0, 0, 0, 0, 0, 0);
-        return new(data.Select(x => Map(x.Claim, x.CreatedBy, x.UpdatedBy, x.Posted)).ToArray(), filter.Page, filter.PageSize, count, summary);
+        return new(data.Select(x => Map(x.Claim, x.CreatedBy, x.UpdatedBy, x.Posted, x.Received)).ToArray(), filter.Page, filter.PageSize, count, summary);
     }
 
     private async Task<FinanceClaim> ClaimAsync(Guid id, bool tracking, CancellationToken token)
@@ -151,7 +155,8 @@ public sealed class FinanceClaimsService(
             x.Id, x.Amount, x.ReceiptDate, x.IsHistoricalPosting, x.CreatedBy.FullName, x.CreatedAt,
             x.AccountingBookEntry.DocumentNumber, x.AccountingBookEntry.JournalEntry.Status, x.ReversedAt,
             x.ReversedBy == null ? null : x.ReversedBy.FullName, x.ReversalJournalId)).ToArray();
-        var item = Map(claim, claim.CreatedBy.FullName, claim.UpdatedBy?.FullName, claim.ReceiptPostings.Any(x => x.ReversedAt == null));
+        var item = Map(claim, claim.CreatedBy.FullName, claim.UpdatedBy?.FullName, claim.ReceiptPostings.Any(x => x.ReversedAt == null),
+            claim.Status == "RECEIVED" && !claim.ReceiptPostings.Any(x => x.ReversedAt == null) ? claim.TotalInBank : claim.ReceiptPostings.Where(x => x.ReversedAt == null).Sum(x => x.Amount));
         return new(item, receipts, audit, claim.ImportBatch?.FileName, claim.ImportBatch?.CreatedBy.FullName,
             claim.ImportBatch?.CreatedAt, claim.ReceiptConfirmedBy?.FullName, claim.ReceiptConfirmedAt);
     }
@@ -228,19 +233,8 @@ public sealed class FinanceClaimsService(
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var claim = await ClaimAsync(id, true, token);
         var before = Snapshot(claim);
-        if (claim.Status == "RECEIVED")
-        {
-            var active = await db.FinanceClaimReceiptPostings.Include(x => x.AccountingBookEntry)
-                .Where(x => x.ClaimId == id && x.ReversedAt == null)
-                .OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync(token);
-            if (active is not null)
-            {
-                var reversal = await finance.ReverseClaimReceiptAsync(active.AccountingBookEntry.JournalEntryId,
-                    new PeriodActionRequest("Claim edited; receipt reversed before updating claim"), token);
-                active.MarkReversed(user.UserId, DateTimeOffset.UtcNow, reversal.Id);
-            }
-            claim.ReopenAfterReceiptReversal(user.UserId, DateTimeOffset.UtcNow);
-        }
+        if (claim.Status == "RECEIVED" || await db.FinanceClaimReceiptPostings.AnyAsync(x => x.ClaimId == id && x.ReversedAt == null, token))
+            throw new HrConflictException("Reverse active claim receipts explicitly before editing the claim.");
         try
         {
             claim.UpdateDetails(request.Serial, request.BankOrganizationId, request.BankName, request.ClaimType, request.Month,
@@ -263,27 +257,52 @@ public sealed class FinanceClaimsService(
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var claim = await db.FinanceClaims.Include(x => x.CreatedBy).Include(x => x.UpdatedBy)
             .SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token) ?? throw new HrNotFoundException("Claim was not found.");
-        var active = await db.FinanceClaimReceiptPostings.Include(x => x.AccountingBookEntry).ThenInclude(x => x.JournalEntry)
-            .Where(x => x.ClaimId == id && x.ReversedAt == null).OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync(token);
-        if (claim.Status == "RECEIVED" && active is not null)
+        if (request.BankOrganizationId.HasValue && request.BankOrganizationId != claim.BankOrganizationId)
+            throw new HrValidationException("The receipt bank must match the claim bank.");
+        if (request.RequestId == Guid.Empty || request.Amount.HasValue && !request.RequestId.HasValue)
+            throw new HrValidationException("A receipt request ID is required. Reopen the confirmation form.");
+        var date = request.DateInBank ?? claim.DateInBank ?? throw new HrValidationException("Enter the date the amount entered the bank.");
+        var amount = request.Amount ?? claim.TotalInBank;
+        if (request.RequestId.HasValue)
         {
+            var previous = await db.FinanceClaimReceiptPostings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.RequestId.Value, token);
+            if (previous is not null)
+            {
+                if (previous.ClaimId != id || previous.Amount != amount || previous.ReceiptDate != date || previous.ReversedAt != null)
+                    throw new HrConflictException("This receipt request was already used with different or reversed data.");
+                if (tx is not null) await tx.CommitAsync(token);
+                return await DetailsCoreAsync(id, token);
+            }
+        }
+        var paid = await db.FinanceClaimReceiptPostings.Where(x => x.ClaimId == id && x.ReversedAt == null).SumAsync(x => (decimal?)x.Amount, token) ?? 0;
+        // Preserve the old date-only full-confirmation API without permitting another partial payment.
+        if (!request.RequestId.HasValue && claim.Status == "RECEIVED" && paid > 0)
+        {
+            if (claim.DateInBank != date) throw new HrConflictException("This receipt request was already used with different or reversed data.");
             if (tx is not null) await tx.CommitAsync(token);
             return await DetailsCoreAsync(id, token);
         }
         if (claim.Status == "RECEIVED" && claim.IsHistoricalImport)
             throw new HrConflictException("This historical receipt must use the explicit historical posting action.");
         if (claim.Status != "PENDING") throw new HrConflictException("Only a pending claim can be received.");
-        var date = request.DateInBank ?? claim.DateInBank ?? throw new HrValidationException("Enter the date the amount entered the bank.");
+        if (amount <= 0 || decimal.Round(amount, 2) != amount)
+            throw new HrValidationException("Use a positive receipt amount with at most two decimal places.");
+        if (amount > claim.TotalInBank - paid)
+            throw new HrConflictException("The receipt amount exceeds the remaining claim balance.");
         if (date > CairoToday() || date.Year is < 2000 or > 2100)
             throw new HrValidationException("Choose a valid bank receipt date.");
+        if (date < claim.ClaimDate)
+            throw new HrValidationException("The receipt date cannot be earlier than the claim date.");
+        var latestDate = await db.FinanceClaimReceiptPostings.Where(x => x.ClaimId == id && x.ReversedAt == null)
+            .MaxAsync(x => (DateOnly?)x.ReceiptDate, token);
         var before = Snapshot(claim);
-        var postingId = Guid.NewGuid();
-        var entry = await accountingBook.RecordClaimReceiptAsync(claim.Id, postingId, date, claim.TotalInBank, token);
+        var postingId = request.RequestId ?? Guid.NewGuid();
+        var entry = await accountingBook.RecordClaimReceiptAsync(claim.Id, postingId, date, amount, token);
         var now = DateTimeOffset.UtcNow;
-        claim.ConfirmReceipt(date, user.UserId, now);
-        db.FinanceClaimReceiptPostings.Add(new FinanceClaimReceiptPosting(postingId, claim.Id, entry.Id, claim.TotalInBank,
+        claim.ApplyReceiptBalance(paid + amount, latestDate > date ? latestDate : date, user.UserId, now);
+        db.FinanceClaimReceiptPostings.Add(new FinanceClaimReceiptPosting(postingId, claim.Id, entry.Id, amount,
             date, false, user.UserId, now));
-        Audit("FinanceClaimReceiptConfirmed", id, before, new { Amount = claim.TotalInBank, DateInBank = date, entry.Id });
+        Audit("FinanceClaimReceiptConfirmed", id, before, new { Amount = amount, DateInBank = date, entry.Id });
         await db.SaveChangesAsync(token);
         if (tx is not null) await tx.CommitAsync(token);
         return await DetailsCoreAsync(id, token);
@@ -319,10 +338,23 @@ public sealed class FinanceClaimsService(
         if (string.IsNullOrWhiteSpace(request.Reason)) throw new HrValidationException("A reversal reason is required.");
         await using var tx = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, token) : null;
         var claim = await db.FinanceClaims.SingleOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, token) ?? throw new HrNotFoundException("Claim was not found.");
-        if (claim.Status != "RECEIVED") throw new HrConflictException("Only a received claim can be reversed.");
+        if (claim.Status is not ("RECEIVED" or "PENDING")) throw new HrConflictException("Only a received claim can be reversed.");
         var before = Snapshot(claim);
-        var active = await db.FinanceClaimReceiptPostings.Include(x => x.AccountingBookEntry)
-            .Where(x => x.ClaimId == id && x.ReversedAt == null).OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync(token);
+        var postings = await db.FinanceClaimReceiptPostings.Include(x => x.AccountingBookEntry)
+            .Where(x => x.ClaimId == id).ToListAsync(token);
+        if (!request.ReceiptPostingId.HasValue && postings.Count > 1)
+            throw new HrValidationException("Select the specific claim receipt to reverse.");
+        var active = request.ReceiptPostingId.HasValue
+            ? postings.SingleOrDefault(x => x.Id == request.ReceiptPostingId)
+            : postings.Where(x => x.ReversedAt == null).OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+        if (request.ReceiptPostingId.HasValue && active is null) throw new HrNotFoundException("Claim receipt was not found.");
+        if (active?.ReversedAt is not null)
+        {
+            if (tx is not null) await tx.CommitAsync(token);
+            return await DetailsCoreAsync(id, token);
+        }
+        if (active is null && !(claim.Status == "RECEIVED" && claim.IsHistoricalImport))
+            throw new HrConflictException("There is no active claim receipt to reverse.");
         Guid? reversalId = null;
         if (active is not null)
         {
@@ -330,7 +362,8 @@ public sealed class FinanceClaimsService(
             reversalId = reversal.Id;
             active.MarkReversed(user.UserId, DateTimeOffset.UtcNow, reversalId);
         }
-        claim.ReopenAfterReceiptReversal(user.UserId, DateTimeOffset.UtcNow);
+        var remaining = postings.Where(x => x.ReversedAt == null).ToArray();
+        claim.ApplyReceiptBalance(remaining.Sum(x => x.Amount), remaining.Select(x => (DateOnly?)x.ReceiptDate).Max(), user.UserId, DateTimeOffset.UtcNow);
         Audit(active is null ? "FinanceClaimHistoricalReceiptReopened" : "FinanceClaimReceiptReversed", id, before,
             new { Claim = Snapshot(claim), ReversalJournalId = reversalId }, request.Reason);
         await db.SaveChangesAsync(token);

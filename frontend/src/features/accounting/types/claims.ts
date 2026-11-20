@@ -43,6 +43,9 @@ export interface Claim {
   taxAtSource: number;
   total: number;
   totalInBank: number;
+  receivedAmount: number;
+  remainingAmount: number;
+  collectionStatus: string;
   dateInBank?: string;
   status: 'PENDING' | 'RECEIVED' | 'CANCELLED';
   isHistoricalImport: boolean;

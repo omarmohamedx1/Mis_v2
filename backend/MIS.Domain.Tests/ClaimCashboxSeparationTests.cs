@@ -15,6 +15,152 @@ namespace MIS.Domain.Tests;
 
 public sealed class ClaimCashboxSeparationTests
 {
+    [Fact]
+    public async Task Partial_receipt_does_not_change_existing_revenue_expense_or_profit_loss_reports()
+    {
+        await using var f = new Fixture(); await f.Initialize();
+        var revenue = new FinanceAccount(Guid.NewGuid(), FinanceSeed.LegalEntityId, "TEST-R", "Test", "Test", "REVENUE", "CREDIT", true);
+        var expense = new FinanceAccount(Guid.NewGuid(), FinanceSeed.LegalEntityId, "TEST-E", "Test", "Test", "EXPENSE", "DEBIT", true);
+        f.Db.AddRange(revenue, expense); await f.Db.SaveChangesAsync();
+        await f.Book.CreateAsync(new("REVENUE", f.Date, 200, revenue.Id, f.Cash.Id, "Existing revenue", null), default);
+        await f.Book.CreateAsync(new("OTHER", f.Date, 50, expense.Id, f.Cash.Id, "Existing expense", null), default);
+        var before = await f.Book.SummaryAsync(f.Date, f.Date, default);
+        var profitBefore = await f.Book.ProfitLossAsync(f.Date, f.Date, default);
+        var claim = f.Claim(false); f.Db.Add(claim); await f.Db.SaveChangesAsync();
+        await f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date, 40, Guid.NewGuid()), default);
+        var after = await f.Book.SummaryAsync(f.Date, f.Date, default);
+        var profitAfter = await f.Book.ProfitLossAsync(f.Date, f.Date, default);
+        Assert.Equal(200, before.Revenue); Assert.Equal(50, before.Expenses);
+        Assert.Equal(before.Revenue, after.Revenue); Assert.Equal(before.Expenses, after.Expenses);
+        Assert.Equal(before.CompanyIncome, after.CompanyIncome);
+        Assert.Equal(before.CashIn, after.CashIn); Assert.Equal(before.CashOut, after.CashOut);
+        Assert.Equal(before.NetCashFlow, after.NetCashFlow);
+        Assert.Equal(profitBefore.TotalRevenue, profitAfter.TotalRevenue);
+        Assert.Equal(profitBefore.TotalExpenses, profitAfter.TotalExpenses);
+        Assert.Equal(profitBefore.NetProfitLoss, profitAfter.NetProfitLoss);
+    }
+
+    [Fact]
+    public void Partial_receipt_migration_only_replaces_claim_index_without_data_operations()
+    {
+        var migration = new MIS.Infrastructure.Persistence.Migrations.AllowPartialClaimReceipts();
+        Assert.Equal(2, migration.UpOperations.Count);
+        Assert.IsType<Microsoft.EntityFrameworkCore.Migrations.Operations.DropIndexOperation>(migration.UpOperations[0]);
+        var index = Assert.IsType<Microsoft.EntityFrameworkCore.Migrations.Operations.CreateIndexOperation>(migration.UpOperations[1]);
+        Assert.Equal("claim_receipt_postings", index.Table);
+        Assert.False(index.IsUnique);
+        Assert.Equal(new[] { "ClaimId" }, index.Columns);
+    }
+    [Fact]
+    public async Task Partial_payments_retries_and_individual_reversals_preserve_balances()
+    {
+        await using var f = new Fixture(); await f.Initialize();
+        var claim = f.Claim(false); f.Db.Add(claim); await f.Db.SaveChangesAsync();
+        var first = new ConfirmFinanceClaimReceiptRequest(f.Date, 40, Guid.NewGuid());
+        var partial = await f.Claims.ConfirmReceiptAsync(claim.Id, first, default);
+        Assert.Equal("PARTIAL", partial.Claim.CollectionStatus);
+        Assert.Equal(40, partial.Claim.ReceivedAmount);
+        Assert.Equal(72, partial.Claim.RemainingAmount);
+        await f.Claims.ConfirmReceiptAsync(claim.Id, first, default);
+        Assert.Single(await f.Db.FinanceClaimReceiptPostings.ToListAsync());
+        await Assert.ThrowsAsync<HrConflictException>(() => f.Claims.ConfirmReceiptAsync(claim.Id, first with { Amount = 41 }, default));
+        await Assert.ThrowsAsync<HrConflictException>(() => f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date, 73, Guid.NewGuid()), default));
+        var second = new ConfirmFinanceClaimReceiptRequest(f.Date, 72, Guid.NewGuid());
+        var complete = await f.Claims.ConfirmReceiptAsync(claim.Id, second, default);
+        Assert.Equal("RECEIVED", complete.Claim.CollectionStatus);
+        Assert.Equal(0, complete.Claim.RemainingAmount);
+        await f.Claims.ConfirmReceiptAsync(claim.Id, second, default);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow,
+            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime);
+        if (today.Year != f.Date.Year || today.Month != f.Date.Month)
+        {
+            f.Db.Add(new AccountingPeriod(FinanceSeed.LegalEntityId, today.Year, today.Month, "Reversal",
+                new(today.Year, today.Month, 1), new(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month))));
+            await f.Db.SaveChangesAsync();
+        }
+        var reverse = new ReverseFinanceClaimReceiptRequest("Test reversal", first.RequestId);
+        var reopened = await f.Claims.ReverseReceiptAsync(claim.Id, reverse, default);
+        Assert.Equal(72, reopened.Claim.ReceivedAmount);
+        Assert.Equal(40, reopened.Claim.RemainingAmount);
+        Assert.Equal("PARTIAL", reopened.Claim.CollectionStatus);
+        await f.Claims.ReverseReceiptAsync(claim.Id, reverse, default);
+        Assert.Equal(2, await f.Db.FinanceClaimReceiptPostings.CountAsync());
+        Assert.Single(await f.Db.JournalEntries.Where(x => x.ReversalOfJournalId != null).ToListAsync());
+        await Assert.ThrowsAsync<HrConflictException>(() => f.Claims.ConfirmReceiptAsync(claim.Id, first, default));
+        var summary = await f.Book.SummaryAsync(f.Date, today, default);
+        Assert.Equal(500, summary.CompanyIncome);
+        Assert.Equal(500, summary.CashIn);
+        Assert.Equal(0, summary.CashOut);
+        Assert.Equal(0, summary.Revenue);
+        var list = await f.Claims.ListAsync(new(), default);
+        Assert.Equal(72, list.Summary.NetReceivedInBank);
+        Assert.Equal(40, Assert.Single(list.Items).RemainingAmount);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(1.001)]
+    public async Task Invalid_payment_is_rejected_without_posting(decimal amount)
+    {
+        await using var f = new Fixture(); await f.Initialize();
+        var claim = f.Claim(false); f.Db.Add(claim); await f.Db.SaveChangesAsync();
+        await Assert.ThrowsAsync<HrValidationException>(() => f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date, amount, Guid.NewGuid()), default));
+        Assert.Empty(await f.Db.FinanceClaimReceiptPostings.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Wrong_bank_missing_request_id_and_editing_paid_claim_are_rejected()
+    {
+        await using var f = new Fixture(); await f.Initialize();
+        var claim = f.Claim(false); f.Db.Add(claim); await f.Db.SaveChangesAsync();
+        await Assert.ThrowsAsync<HrValidationException>(() => f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date, 20, Guid.NewGuid(), Guid.NewGuid()), default));
+        await Assert.ThrowsAsync<HrValidationException>(() => f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date, 20), default));
+        await f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date, 20, Guid.NewGuid()), default);
+        await Assert.ThrowsAsync<HrConflictException>(() => f.Claims.UpdateAsync(claim.Id,
+            new("TEST", null, "Test bank", "Monthly", "2026-01", f.Date, 100, 14, 2), default));
+        Assert.Null(Assert.Single(await f.Db.FinanceClaimReceiptPostings.ToListAsync()).ReversedAt);
+    }
+
+    [Fact]
+    public async Task Historical_unposted_claim_is_displayed_without_creating_entries()
+    {
+        await using var f = new Fixture(); await f.Initialize();
+        var claim = f.Claim(true); f.Db.Add(claim); await f.Db.SaveChangesAsync();
+        var result = await f.Claims.DetailsAsync(claim.Id, default);
+        Assert.Equal(112, result.Claim.ReceivedAmount);
+        Assert.Equal(0, result.Claim.RemainingAmount);
+        Assert.Empty(result.ReceiptPostings);
+        Assert.Single(await f.Db.AccountingBookEntries.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Invalid_dates_and_failed_configuration_leave_existing_partial_receipts_unchanged()
+    {
+        await using var f = new Fixture(); await f.Initialize();
+        var claim = f.Claim(false); f.Db.Add(claim); await f.Db.SaveChangesAsync();
+        await Assert.ThrowsAsync<HrValidationException>(() => f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date.AddDays(-1), 20, Guid.NewGuid()), default));
+        await f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date, 20, Guid.NewGuid()), default);
+        var principal = new BookTestPrincipal(f.User.Id);
+        var unconfigured = new FinanceClaimsService(f.Db, principal, new AccountingBookService(f.Db, principal, f.Finance), f.Finance);
+        await Assert.ThrowsAsync<HrValidationException>(() => unconfigured.ConfirmReceiptAsync(claim.Id, new(f.Date, 30, Guid.NewGuid()), default));
+        Assert.Equal(20, Assert.Single(await f.Db.FinanceClaimReceiptPostings.ToListAsync()).Amount);
+        Assert.Equal(92, (await f.Claims.DetailsAsync(claim.Id, default)).Claim.RemainingAmount);
+        Assert.Equal(2, await f.Db.AccountingBookEntries.CountAsync());
+    }
+
+    [Fact]
+    public void Configuration_errors_distinguish_missing_inactive_and_incorrect_accounts()
+    {
+        var asset = new FinanceAccount(Guid.NewGuid(), FinanceSeed.LegalEntityId, "TEST-A", "Test", "Test", "ASSET", "DEBIT", true);
+        var clearing = new FinanceAccount(Guid.NewGuid(), FinanceSeed.LegalEntityId, "TEST-L", "Test", "Test", "LIABILITY", "CREDIT", true);
+        var options = new ClaimReceiptOptions { AssetAccountId = asset.Id, ClearingAccountId = clearing.Id };
+        Assert.Contains("does not exist", Assert.Throws<HrValidationException>(() => ClaimReceiptOptions.Validate([asset], options)).Message);
+        clearing.Update(clearing.Code, "Test", "Test", "LIABILITY", "CREDIT", true, false, null);
+        Assert.Contains("active", Assert.Throws<HrValidationException>(() => ClaimReceiptOptions.Validate([asset, clearing], options)).Message);
+        clearing.Update(clearing.Code, "Test", "Test", "REVENUE", "CREDIT", true, true, null);
+        Assert.Throws<HrValidationException>(() => ClaimReceiptOptions.Validate([asset, clearing], options));
+    }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

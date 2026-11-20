@@ -15,7 +15,20 @@ public static partial class ApiTextLocalizer
     private static readonly IReadOnlyDictionary<string, string> Arabic =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Configure dedicated non-operating claim receipt asset and clearing accounts before confirming a receipt."] = "يجب إعداد حساب أصل وحساب تسوية مستقلين لتحصيل المطالبات، خارج خزينة الشركة التشغيلية، قبل تأكيد التحصيل. راجع مسؤول المالية.",
+            ["Configure dedicated non-operating claim receipt asset and clearing accounts before confirming a receipt."] = "راجع مسؤول المالية: يلزم حساب أصل ASSET وحساب تسوية LIABILITY مختلفان لتحصيل المطالبات، خارج إيرادات وخزينة التشغيل، وبدون متطلبات عميل أو محصل أو فرع.",
+            ["Finance:ClaimReceipts:AssetAccountId and Finance:ClaimReceipts:ClearingAccountId must reference approved dedicated accounts. Ask Finance to configure them."] = "إعداد حسابات تحصيل المطالبات ناقص. اطلب من مسؤول المالية ضبط Finance:ClaimReceipts:AssetAccountId وFinance:ClaimReceipts:ClearingAccountId بمعرّفات حسابات مستقلة ومعتمدة؛ لا تستخدم حسابات الإيرادات أو خزينة التشغيل.",
+            ["A configured claim receipt account does not exist. Ask Finance to verify both account IDs."] = "أحد حسابات تحصيل المطالبات المحددة غير موجود. اطلب من مسؤول المالية مراجعة معرّفي الحسابين.",
+            ["Claim receipt accounts must be active and allow posting. Ask Finance to review the configured accounts."] = "حسابات تحصيل المطالبات لازم تكون نشطة وتسمح بالقيد. راجع الحسابات المحددة مع مسؤول المالية.",
+            ["The receipt bank must match the claim bank."] = "بنك التحصيل لازم يطابق البنك المسجل على المطالبة.",
+            ["The receipt date cannot be earlier than the claim date."] = "تاريخ التحصيل لا يمكن أن يسبق تاريخ المطالبة.",
+            ["A receipt request ID is required. Reopen the confirmation form."] = "معرّف طلب التحصيل مطلوب لمنع التكرار. أعد فتح نافذة تأكيد التحصيل.",
+            ["This receipt request was already used with different or reversed data."] = "طلب التحصيل ده مستخدم بالفعل ببيانات مختلفة أو لدفعة تم عكسها. راجع سجل الدفعات قبل تسجيل طلب جديد.",
+            ["Use a positive receipt amount with at most two decimal places."] = "أدخل مبلغ تحصيل أكبر من صفر وبحد أقصى منزلتين عشريتين.",
+            ["The receipt amount exceeds the remaining claim balance."] = "مبلغ التحصيل أكبر من المتبقي على المطالبة. حدّث بيانات المطالبة وراجع الدفعات المسجلة.",
+            ["Reverse active claim receipts explicitly before editing the claim."] = "لا يمكن تعديل مطالبة لها تحصيل. اعكس الدفعات من إجراء عكس التحصيل المصرح به أولًا؛ التعديل لن يعكس أي مبلغ تلقائيًا.",
+            ["Claim receipt was not found."] = "دفعة التحصيل المطلوبة غير موجودة على المطالبة.",
+            ["Select the specific claim receipt to reverse."] = "اختَر الدفعة المطلوبة من سجل التحصيل لعكسها بدون التأثير على باقي الدفعات.",
+            ["There is no active claim receipt to reverse."] = "لا توجد دفعة تحصيل نشطة يمكن عكسها.",
             ["Claim was not found."] = "لم يتم العثور على المطالبة. حدّث القائمة وحاول مرة أخرى.",
             ["This claim is already cancelled."] = "تم إلغاء هذه المطالبة بالفعل. حدّث القائمة لعرض حالتها الحالية.",
             ["This claim cannot be cancelled."] = "لا يمكن إلغاء المطالبة بحالتها الحالية.",

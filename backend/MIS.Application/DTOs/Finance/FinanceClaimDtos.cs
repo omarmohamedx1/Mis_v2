@@ -29,13 +29,14 @@ public sealed record SaveFinanceClaimRequest(
     [Range(typeof(decimal), "0", "100", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)] decimal TaxAtSourcePercent,
     DateOnly? DateInBank = null);
 
-public sealed record ConfirmFinanceClaimReceiptRequest(DateOnly? DateInBank);
-public sealed record ReverseFinanceClaimReceiptRequest([Required, MaxLength(1000)] string Reason);
+public sealed record ConfirmFinanceClaimReceiptRequest(DateOnly? DateInBank, decimal? Amount = null, Guid? RequestId = null, Guid? BankOrganizationId = null);
+public sealed record ReverseFinanceClaimReceiptRequest([Required, MaxLength(1000)] string Reason, Guid? ReceiptPostingId = null);
 public sealed record FinanceClaimListItem(
     Guid Id, string? Serial, Guid? BankOrganizationId, string BankName, string ClaimType, string Month, DateOnly ClaimDate,
     decimal AmountWithoutVat, decimal VatPercent, decimal Vat, decimal TotalWithVat, decimal TaxAtSourcePercent, decimal TaxAtSource,
     decimal Total, decimal TotalInBank, DateOnly? DateInBank, string Status, bool IsHistoricalImport, bool HasAccountingPosting,
-    string CreatedBy, DateTimeOffset CreatedAt, string? UpdatedBy, DateTimeOffset? UpdatedAt);
+    string CreatedBy, DateTimeOffset CreatedAt, string? UpdatedBy, DateTimeOffset? UpdatedAt,
+    decimal ReceivedAmount = 0, decimal RemainingAmount = 0, string CollectionStatus = "PENDING");
 public sealed record FinanceClaimSummary(
     int TotalClaims, int PendingClaims, int ReceivedClaims, decimal TotalClaimAmount, decimal TotalReceived,
     decimal NetReceivedInBank, decimal TotalVat, decimal TotalWithholdingTax);

@@ -3,6 +3,27 @@ import type { BankTargetValues, BankTargetRow } from './types/bankTargets';
 export const targetFields = ['moreTargetPercent', 'moreWeight', 'activeClassWeight', 'moreClassWeight', 'wOffBelow90', 'wOffAbove90'] as const;
 export type TargetField = typeof targetFields[number];
 export type TargetDraft = Record<TargetField, string> & { rows: { bucket: number; movement: BankTargetRow['movement']; targetPercent: string; weight: string }[] };
+// Display-only reference. Each call returns fresh values; loading a page never saves them.
+export function bankTargetsReference(): BankTargetValues {
+  return {
+    rows: [
+      { bucket: 1, movement: 'FWD', targetPercent: 45, weight: 10 },
+      { bucket: 1, movement: 'NORM', targetPercent: 10, weight: 0 },
+      { bucket: 2, movement: 'FWD', targetPercent: 40, weight: 17 },
+      { bucket: 2, movement: 'BWD', targetPercent: 20, weight: 9 },
+      { bucket: 2, movement: 'NORM', targetPercent: 10, weight: 4 },
+      { bucket: 3, movement: 'FWD', targetPercent: 55, weight: 16 },
+      { bucket: 3, movement: 'BWD', targetPercent: 15, weight: 9 },
+      { bucket: 3, movement: 'NORM', targetPercent: 10, weight: 3 },
+      { bucket: 4, movement: 'FWD', targetPercent: 80, weight: 6 },
+      { bucket: 4, movement: 'BWD', targetPercent: 10, weight: 7 },
+      { bucket: 4, movement: 'NORM', targetPercent: 5, weight: 3 },
+      { bucket: 5, movement: 'FWD', targetPercent: 90, weight: 6 },
+      { bucket: 5, movement: 'BWD', targetPercent: 10, weight: 7 },
+      { bucket: 5, movement: 'NORM', targetPercent: 5, weight: 3 },
+    ], moreTargetPercent: 4, moreWeight: 100, activeClassWeight: 90, moreClassWeight: 10, wOffBelow90: 20, wOffAbove90: 40,
+  };
+}
 export function targetDraft(values?: BankTargetValues): TargetDraft {
   const rows = values?.rows ?? [1, 2, 3, 4, 5].flatMap(bucket =>
     (bucket === 1 ? ['FWD', 'NORM'] as const : ['FWD', 'BWD', 'NORM'] as const).map(movement => ({ bucket, movement, targetPercent: '', weight: '' })));
