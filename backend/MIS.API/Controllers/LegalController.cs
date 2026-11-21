@@ -38,6 +38,14 @@ public sealed class LegalController(
         [FromBody] UpdateLegalClientRequest request,
         CancellationToken token) => clients.UpdateAsync(customerId, request, token);
 
+    [HttpPost("clients/{customerId:guid}/archive")]
+    [Authorize(Policy = AuthorizationPolicies.LegalCaseManage)]
+    public async Task<IActionResult> ArchiveClient(Guid customerId, CancellationToken token)
+    {
+        await clients.ArchiveAsync(customerId, token);
+        return NoContent();
+    }
+
     [HttpPost("clients/{customerId:guid}/documents")]
     [Authorize(Policy = AuthorizationPolicies.LegalCaseManage)]
     [Consumes("multipart/form-data")]

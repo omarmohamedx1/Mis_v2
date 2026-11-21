@@ -65,6 +65,10 @@ export const legalService = {
     return (await apiClient.put<LegalClientDetails>(`/legal/clients/${customerId}`, input)).data;
   },
 
+  async archiveClient(customerId: string) {
+    await apiClient.post(`/legal/clients/${customerId}/archive`);
+  },
+
   async uploadClientDocument(customerId: string, file: File) {
     const formData = new FormData();
     formData.append('file', file);

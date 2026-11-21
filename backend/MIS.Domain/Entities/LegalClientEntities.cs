@@ -2,6 +2,11 @@ namespace MIS.Domain.Entities;
 
 public sealed class LegalClientAssignment
 {
+    public const string ArchivedStatus = "ARCHIVED";
+
+    public void Archive(Guid updatedByUserId, DateTimeOffset updatedAt)
+        => Update(ArchivedStatus, Notes, updatedByUserId, updatedAt);
+
     private LegalClientAssignment() { }
 
     public LegalClientAssignment(Guid customerId, Guid createdByUserId, DateTimeOffset createdAt)

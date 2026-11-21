@@ -29,7 +29,7 @@ public sealed class LegalClientService(
 
     public async Task<LegalClientDashboardDto> GetDashboardAsync(CancellationToken token)
     {
-        var clients = LegalClients();
+        var clients = VisibleLegalClients();
         var since = DateTimeOffset.UtcNow.AddDays(-30);
         var total = await clients.CountAsync(token);
         var recentAdded = await clients.CountAsync(customer =>
@@ -38,9 +38,8 @@ public sealed class LegalClientService(
             || db.LegalCaseFiles.Any(x => x.CollectionCase.CustomerId == customer.Id && x.ReceivedAt >= since)
             || db.CollectionCases.Any(x => x.CustomerId == customer.Id && x.Status == CollectionsValues.CaseStatuses.Legal
                 && !x.IsArchived && x.UpdatedAt >= since), token);
-        var transferred = await db.CollectionCases.AsNoTracking()
-            .Where(x => !x.IsArchived && x.Status == CollectionsValues.CaseStatuses.Legal)
-            .Select(x => x.CustomerId).Distinct().CountAsync(token);
+        var transferred = await clients.CountAsync(customer => db.CollectionCases.Any(x =>
+            x.CustomerId == customer.Id && !x.IsArchived && x.Status == CollectionsValues.CaseStatuses.Legal), token);
         var updatedFiles = await clients.CountAsync(customer =>
             db.LegalClientAssignments.Any(x => x.CustomerId == customer.Id && x.UpdatedAt >= since)
             || db.LegalCaseFiles.Any(x => x.CollectionCase.CustomerId == customer.Id && x.UpdatedAt >= since)
@@ -68,7 +67,7 @@ public sealed class LegalClientService(
         if (page < 1) page = 1;
         if (pageSize is not (20 or 50 or 100)) pageSize = 20;
 
-        var query = LegalClients();
+        var query = VisibleLegalClients();
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLowerInvariant();
@@ -113,6 +112,8 @@ public sealed class LegalClientService(
 
         var now = DateTimeOffset.UtcNow;
         var assignment = await db.LegalClientAssignments.SingleOrDefaultAsync(x => x.CustomerId == customerId, token);
+        if (assignment?.Status == LegalClientAssignment.ArchivedStatus)
+            throw new HrValidationException("Archived legal clients cannot be edited.");
         var before = assignment is null ? null : new { assignment.Status, assignment.Notes };
         if (assignment is null)
         {
@@ -124,6 +125,26 @@ public sealed class LegalClientService(
         AddAudit("LegalClientUpdated", customerId, before, request);
         await db.SaveChangesAsync(token);
         return await MapDetailsAsync(customer, token);
+    }
+
+    public async Task ArchiveAsync(Guid customerId, CancellationToken token)
+    {
+        RequireManage();
+        await EnsureLegalClientAsync(customerId, token);
+        var assignment = await db.LegalClientAssignments.SingleOrDefaultAsync(x => x.CustomerId == customerId, token);
+        if (assignment?.Status == LegalClientAssignment.ArchivedStatus) return;
+
+        var now = DateTimeOffset.UtcNow;
+        var before = assignment is null ? null : new { assignment.Status, assignment.Notes };
+        if (assignment is null)
+        {
+            assignment = new LegalClientAssignment(customerId, user.UserId, now);
+            db.LegalClientAssignments.Add(assignment);
+        }
+        // Only the Legal assignment changes; customer, case, document and financial records stay intact.
+        assignment.Archive(user.UserId, now);
+        AddAudit("LegalClientArchived", customerId, before, new { assignment.Status });
+        await db.SaveChangesAsync(token);
     }
 
     public async Task<LegalClientWorkbookDto> InspectImportAsync(string fileName, long length, Stream content, CancellationToken token)
@@ -315,6 +336,9 @@ public sealed class LegalClientService(
         await db.SaveChangesAsync(token);
     }
 
+    private IQueryable<CollectionCustomer> VisibleLegalClients() => LegalClients().Where(customer =>
+        !db.LegalClientAssignments.Any(x => x.CustomerId == customer.Id && x.Status == LegalClientAssignment.ArchivedStatus));
+
     private IQueryable<CollectionCustomer> LegalClients() =>
         db.CollectionCustomers.Where(customer =>
             db.LegalClientAssignments.Any(assignment => assignment.CustomerId == customer.Id)
@@ -335,7 +359,9 @@ public sealed class LegalClientService(
             customer.PrimaryPhone,
             ar ? customer.Organization.NameArabic : customer.Organization.NameEnglish,
             ar ? customer.AddressArabic ?? customer.AddressEnglish : customer.AddressEnglish ?? customer.AddressArabic,
-            db.CollectionCases.Any(collectionCase => collectionCase.CustomerId == customer.Id
+            db.LegalClientAssignments.Any(x => x.CustomerId == customer.Id && x.Status == LegalClientAssignment.ArchivedStatus)
+                ? LegalClientAssignment.ArchivedStatus
+                : db.CollectionCases.Any(collectionCase => collectionCase.CustomerId == customer.Id
                 && !collectionCase.IsArchived && collectionCase.Status == CollectionsValues.CaseStatuses.Legal)
                 ? "LEGAL"
                 : db.LegalClientAssignments.Where(assignment => assignment.CustomerId == customer.Id)
@@ -383,7 +409,7 @@ public sealed class LegalClientService(
             customer.CreatedAt,
             caseNumbers,
             documents,
-            CanManage(),
+            CanManage() && assignment?.Status != LegalClientAssignment.ArchivedStatus,
             assignment?.ImportedFieldsJson is { Length: > 0 } importedFieldsJson
                 ? JsonSerializer.Deserialize<List<Dictionary<string, string>>>(importedFieldsJson)
                 : null);

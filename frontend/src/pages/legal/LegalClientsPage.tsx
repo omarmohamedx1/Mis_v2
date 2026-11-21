@@ -1,4 +1,7 @@
-import { ArrowUpRight, Pencil, Search, Trash2, UsersRound } from 'lucide-react';
+import { Pencil, Search, Trash2, UsersRound } from 'lucide-react';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { useToast } from '../../components/common/Toast';
+import { getApiErrorMessage } from '../../services/apiClient';
 import { ActionMenu } from '../../components/common/ActionMenu';
 import { Button } from '../../components/common/Button';
 import { EditLegalClientModal } from '../../features/legal/components/EditLegalClientModal';
@@ -10,10 +13,47 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { PageHeader } from '../../components/common/PageHeader';
 import { useLegalText } from '../../features/legal/legalUi';
 import { legalService } from '../../features/legal/services/legalService';
-import type { LegalClientPage } from '../../features/legal/types/legal';
+import type { LegalClientListItem, LegalClientPage } from '../../features/legal/types/legal';
 
 export function LegalClientsPage() {
   const l = useLegalText();
+  const toast = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<LegalClientListItem>();
+  const [deleting, setDeleting] = useState(false);
+  const [checkingPermission, setCheckingPermission] = useState(false);
+
+  async function requestDelete(client: LegalClientListItem) {
+    if (checkingPermission || deleting) return;
+    setCheckingPermission(true);
+    try {
+      const details = await legalService.client(client.customerId);
+      if (!details.canManage) {
+        toast.error(l.text('ليس لديك صلاحية إزالة هذا العميل.', 'You do not have permission to remove this client.'));
+        return;
+      }
+      setDeleteTarget(client);
+    } catch (reason) {
+      toast.error(getApiErrorMessage(reason, l.text('تعذر تحميل ملف العميل.', 'Could not load the client file.')));
+    } finally {
+      setCheckingPermission(false);
+    }
+  }
+
+  async function archiveClient() {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await legalService.archiveClient(deleteTarget.customerId);
+      setDeleteTarget(undefined);
+      toast.success(l.text('تمت أرشفة العميل وإزالته من قائمة Legal.', 'Client archived and removed from the Legal list.'));
+      if (result?.items.length === 1 && page > 1) setPage((value) => value - 1);
+      setReloadKey((value) => value + 1);
+    } catch (reason) {
+      toast.error(getApiErrorMessage(reason, l.text('تعذرت أرشفة العميل.', 'Could not archive the client.')));
+    } finally {
+      setDeleting(false);
+    }
+  }
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -72,7 +112,7 @@ export function LegalClientsPage() {
                   <th className="px-4 py-3 text-start">{l.text('البنك', 'Bank Name')}</th>
                   <th className="px-4 py-3 text-start">{l.text('العنوان', 'Address')}</th>
                   <th className="px-4 py-3 text-start">{l.text('حالة العميل', 'Client Status')}</th>
-                  <th className="px-4 py-3 text-end">{l.text('التفاصيل', 'Details')}</th>
+                  <th className="w-20 px-4 py-3"><span className="sr-only">{l.text('الإجراءات', 'Actions')}</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-mis-border">
@@ -91,23 +131,15 @@ export function LegalClientsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-end">
-                      <div className="flex items-center justify-end gap-2">
-                      <Link className="inline-flex items-center gap-1 font-semibold text-mis-primary hover:underline" to={`/legal/client-files/${client.customerId}`}>
-                        {l.text('عرض التفاصيل', 'View Details')} <ArrowUpRight className="h-4 w-4" />
-                      </Link>
                       <ActionMenu label={l.text(`إجراءات ${client.name}`, `Actions for ${client.name}`)}>
+                        <Link to={`/legal/client-files/${client.customerId}`}>{l.text('فتح', 'Open')}</Link>
                         <Button fullWidth={false} leftIcon={<Pencil className="h-4 w-4" />} size="sm" type="button" variant="ghost" onClick={() => setEditCustomerId(client.customerId)}>
                           {l.text('تعديل', 'Edit')}
                         </Button>
-                        <Link to={`/legal/client-files/${client.customerId}`}>{l.text('فتح', 'Open')}</Link>
-                        <Button disabled className="text-red-600" fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} size="sm" type="button" variant="ghost">
+                        <Button disabled={checkingPermission || deleting} onClick={() => void requestDelete(client)} className="text-red-600" fullWidth={false} leftIcon={<Trash2 className="h-4 w-4" />} size="sm" type="button" variant="ghost">
                           {l.text('حذف', 'Delete')}
                         </Button>
-                        <p className="max-w-full px-3 py-2 text-start text-xs text-slate-500">
-                          {l.text('حذف العميل غير متاح حاليًا للحفاظ على السجلات المرتبطة.', 'Client deletion is currently unavailable to protect linked records.')}
-                        </p>
                       </ActionMenu>
-                      </div>
                     </td>
                   </tr>
                 ))}
@@ -139,6 +171,13 @@ export function LegalClientsPage() {
           setReloadKey((value) => value + 1);
         }}
       /> : null}
+      <ConfirmDialog open={Boolean(deleteTarget)} isConfirming={deleting}
+        title={l.text('إزالة العميل من Legal', 'Remove client from Legal')}
+        confirmLabel={l.text('حذف من القائمة', 'Remove from list')}
+        message={l.text(
+          `إزالة ${deleteTarget?.name ?? ''} من قائمة Legal؟ سيتم أرشفة العميل مع الاحتفاظ بالقضايا وسجلات التحصيل والمستندات والتاريخ المالي.`,
+          `Remove ${deleteTarget?.name ?? ''} from the Legal list? The client will be archived; cases, collection records, documents and financial history will be retained.`)}
+        onCancel={() => setDeleteTarget(undefined)} onConfirm={() => void archiveClient()} />
     </div>
   );
 }

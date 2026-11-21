@@ -53,6 +53,7 @@ export function useLegalText() {
 
   const clientStatus = (value: string) =>
     ({
+      ARCHIVED: text('مؤرشف', 'Archived'),
       ACTIVE: text('نشط', 'Active'),
       LEGAL: text('قانوني', 'Legal'),
       ON_HOLD: text('معلق', 'On hold'),
