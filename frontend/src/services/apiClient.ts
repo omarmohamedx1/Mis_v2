@@ -3,6 +3,13 @@ import { env } from '../config/env';
 import type { ApiErrorResponse } from '../types/api';
 import { clearStoredAuth, getStoredAuth } from '../utils/storage';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** Let a dialog explain access failures without navigating away from unsaved input. */
+    handleAccessErrorsLocally?: boolean;
+  }
+}
+
 export const apiClient = axios.create({
   baseURL: env.apiUrl,
   headers: {
@@ -41,12 +48,12 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && getStoredAuth() && !isLoginRequest) {
       clearStoredAuth();
 
-      if (path && path !== '/login') {
+      if (!error.config?.handleAccessErrorsLocally && path && path !== '/login') {
         window.location.assign('/login');
       }
     }
 
-    if (error.response?.status === 403 && path && path !== '/unauthorized' && path !== '/login' && path !== '/change-password') {
+    if (!error.config?.handleAccessErrorsLocally && error.response?.status === 403 && path && path !== '/unauthorized' && path !== '/login' && path !== '/change-password') {
       window.location.assign('/unauthorized');
     }
 

@@ -1,4 +1,5 @@
 import { apiClient, downloadApiFile, requestFormData } from '../../../services/apiClient';
+import { requireLegalClientDetails } from '../legalClientResponse';
 import type {
   LegalCaseDetails,
   LegalCasePage,
@@ -57,12 +58,13 @@ export const legalService = {
     })).data;
   },
 
-  async client(customerId: string) {
-    return (await apiClient.get<LegalClientDetails>(`/legal/clients/${customerId}`)).data;
+  async client(customerId: string, handleAccessErrorsLocally = false) {
+    const response = await apiClient.get<unknown>(`/legal/clients/${encodeURIComponent(customerId)}`, { handleAccessErrorsLocally });
+    return requireLegalClientDetails(response.data, customerId);
   },
 
-  async updateClient(customerId: string, input: { status: string; notes: string }) {
-    return (await apiClient.put<LegalClientDetails>(`/legal/clients/${customerId}`, input)).data;
+  async updateClient(customerId: string, input: { status: string; notes: string }, handleAccessErrorsLocally = false) {
+    return (await apiClient.put<LegalClientDetails>(`/legal/clients/${encodeURIComponent(customerId)}`, input, { handleAccessErrorsLocally })).data;
   },
 
   async archiveClient(customerId: string) {

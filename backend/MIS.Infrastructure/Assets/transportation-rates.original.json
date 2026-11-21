@@ -1,0 +1,284 @@
+{
+  "sourceFile": "Form Transfer 9-2026.xlsx",
+  "sourceSha256": "4f786cce5358c15b25766b0be8d7af255136c00444d23bf5ae4553d8a86ba9a0",
+  "sheet": "Form",
+  "columns": "A:C",
+  "records": [
+    {
+      "sourceRow": 2,
+      "name": "المنصورة",
+      "basicRate": "90",
+      "hotelRate": "400"
+    },
+    {
+      "sourceRow": 3,
+      "name": "الإسكندرية",
+      "basicRate": "150",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 4,
+      "name": "الفيوم",
+      "basicRate": "75",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 5,
+      "name": "بنها",
+      "basicRate": "45",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 6,
+      "name": "المنوفية",
+      "basicRate": "50",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 7,
+      "name": "الشرقية",
+      "basicRate": "90",
+      "hotelRate": "450"
+    },
+    {
+      "sourceRow": 8,
+      "name": "البحيرة",
+      "basicRate": "150",
+      "hotelRate": "300"
+    },
+    {
+      "sourceRow": 9,
+      "name": "الاسماعيلية",
+      "basicRate": "80",
+      "hotelRate": "300"
+    },
+    {
+      "sourceRow": 10,
+      "name": "السويس",
+      "basicRate": "90",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 11,
+      "name": "طنطا",
+      "basicRate": "65",
+      "hotelRate": "300"
+    },
+    {
+      "sourceRow": 12,
+      "name": "بنى سويف",
+      "basicRate": "85",
+      "hotelRate": "350"
+    },
+    {
+      "sourceRow": 13,
+      "name": "المنيا",
+      "basicRate": "350",
+      "hotelRate": "400"
+    },
+    {
+      "sourceRow": 14,
+      "name": "اسيوط",
+      "basicRate": "400",
+      "hotelRate": "600"
+    },
+    {
+      "sourceRow": 15,
+      "name": "سوهاج",
+      "basicRate": "380",
+      "hotelRate": "400"
+    },
+    {
+      "sourceRow": 16,
+      "name": "رشيد",
+      "basicRate": "70",
+      "hotelRate": "250"
+    },
+    {
+      "sourceRow": 17,
+      "name": "كفر الزيات",
+      "basicRate": "35",
+      "hotelRate": "300"
+    },
+    {
+      "sourceRow": 18,
+      "name": "المحلة",
+      "basicRate": "75",
+      "hotelRate": "250"
+    },
+    {
+      "sourceRow": 19,
+      "name": "العياط",
+      "basicRate": "50",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 20,
+      "name": "كفر الشيخ",
+      "basicRate": "80",
+      "hotelRate": "350"
+    },
+    {
+      "sourceRow": 21,
+      "name": "قنا",
+      "basicRate": "380",
+      "hotelRate": "400"
+    },
+    {
+      "sourceRow": 22,
+      "name": "القليوبية",
+      "basicRate": "45",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 23,
+      "name": "الأقصر",
+      "basicRate": "400",
+      "hotelRate": "500"
+    },
+    {
+      "sourceRow": 24,
+      "name": "المنزله ",
+      "basicRate": "110",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 25,
+      "name": "بورسيعيد",
+      "basicRate": "140",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 26,
+      "name": "القناطر ",
+      "basicRate": "25",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 27,
+      "name": "التجمع",
+      "basicRate": "35",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 28,
+      "name": "مدنتي ",
+      "basicRate": "70",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 29,
+      "name": "اكتوبر",
+      "basicRate": "35",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 30,
+      "name": "بدر ",
+      "basicRate": "50",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 31,
+      "name": "دمياط",
+      "basicRate": "110",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 32,
+      "name": "دمياط الجديده ",
+      "basicRate": "125",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 33,
+      "name": "العاشر من رمضان ",
+      "basicRate": "50",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 34,
+      "name": "الشهدا",
+      "basicRate": "55",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 35,
+      "name": "اطفيح",
+      "basicRate": "10",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 36,
+      "name": "الصف",
+      "basicRate": "32",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 37,
+      "name": "اطفيح والصف",
+      "basicRate": "42",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 38,
+      "name": "دمنهور ",
+      "basicRate": "95",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 39,
+      "name": "اوسيم",
+      "basicRate": "50",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 40,
+      "name": "العبور",
+      "basicRate": "45",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 41,
+      "name": "الغربيه ",
+      "basicRate": "75",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 42,
+      "name": "الشيخ زايد",
+      "basicRate": "45",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 43,
+      "name": "اسوان",
+      "basicRate": "600",
+      "hotelRate": "700"
+    },
+    {
+      "sourceRow": 44,
+      "name": "الشروق ",
+      "basicRate": "70",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 45,
+      "name": "المقطم",
+      "basicRate": null,
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 46,
+      "name": "مدينة نصر",
+      "basicRate": "30",
+      "hotelRate": null
+    },
+    {
+      "sourceRow": 47,
+      "name": "داخلى",
+      "basicRate": "15",
+      "hotelRate": null
+    }
+  ]
+}

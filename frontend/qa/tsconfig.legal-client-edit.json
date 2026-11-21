@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.app.json",
+  "compilerOptions": { "tsBuildInfoFile": "../node_modules/.tmp/legal-client-edit-qa.tsbuildinfo" },
+  "include": ["../src", "./legal-client-edit.tsx"]
+}

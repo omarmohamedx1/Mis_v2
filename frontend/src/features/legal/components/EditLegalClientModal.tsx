@@ -6,7 +6,7 @@ import { Modal } from '../../../components/common/Modal';
 import { useToast } from '../../../components/common/Toast';
 import { ProfessionalSelect } from '../../../components/forms/ProfessionalSelect';
 import { TextAreaInput } from '../../../components/forms/TextAreaInput';
-import { getApiErrorMessage } from '../../../services/apiClient';
+import { legalClientError } from '../legalClientError';
 import { useLegalText } from '../legalUi';
 import { legalService } from '../services/legalService';
 import type { LegalClientDetails } from '../types/legal';
@@ -20,7 +20,7 @@ export function EditLegalClientModal({ customerId, onClose, onSaved }: {
   const [status, setStatus] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<{ reason: unknown }>();
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -28,29 +28,30 @@ export function EditLegalClientModal({ customerId, onClose, onSaved }: {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    setLoadError(false);
+    setLoadError(undefined);
+    setError('');
     setDetails(undefined);
-    legalService.client(customerId).then((client) => {
+    legalService.client(customerId, true).then((client) => {
       if (!active) return;
       setDetails(client);
       setStatus(client.client.status);
       setNotes(client.notes ?? '');
-    }).catch(() => { if (active) setLoadError(true); })
+    }).catch((reason: unknown) => { if (active) setLoadError({ reason }); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [customerId, reloadKey]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (saving || loading || !details?.canManage || details.client.customerId !== customerId) return;
+    if (saving || loading || loadError || !details?.canManage || details.client.customerId.toLowerCase() !== customerId.toLowerCase()) return;
     setSaving(true);
     setError('');
     try {
-      await legalService.updateClient(customerId, { status, notes });
+      await legalService.updateClient(customerId, { status, notes }, true);
       toast.success(l.text('تم حفظ بيانات الملف.', 'Client file saved.'));
       onSaved();
     } catch (reason) {
-      setError(getApiErrorMessage(reason, l.text('تعذر حفظ بيانات الملف.', 'Could not save the client file.')));
+      setError(legalClientError(reason, l.text, true));
     } finally {
       setSaving(false);
     }
@@ -60,10 +61,10 @@ export function EditLegalClientModal({ customerId, onClose, onSaved }: {
     closeOnBackdrop={!saving} closeOnEscape={!saving} hideCloseButton={saving}
     footer={<>
       <Button disabled={saving} fullWidth={false} variant="outline" onClick={onClose}>{l.text('إلغاء', 'Cancel')}</Button>
-      <Button disabled={loading || !details?.canManage || saving} isLoading={saving} fullWidth={false} form="edit-legal-client" type="submit">{l.text('حفظ الملف', 'Save Client File')}</Button>
+      <Button disabled={loading || Boolean(loadError) || !details?.canManage || saving} isLoading={saving} fullWidth={false} form="edit-legal-client" type="submit">{l.text('حفظ الملف', 'Save Client File')}</Button>
     </>}>
     {loading ? <LoadingSpinner /> : loadError ? (
-      <ErrorState title={l.text('تعذر تحميل ملف العميل', 'Could not load the client file')} onRetry={() => setReloadKey((value) => value + 1)} />
+      <ErrorState title={l.text('تعذر تحميل ملف العميل', 'Could not load the client file')} message={legalClientError(loadError.reason, l.text)} onRetry={() => setReloadKey((value) => value + 1)} />
     ) : details ? <form id="edit-legal-client" className="space-y-4" onSubmit={submit}>
       <p className="font-semibold text-mis-navy">{details.client.name}</p>
       <p className="text-sm text-slate-500">{l.text('الحالة وملاحظات الشؤون القانونية.', 'Legal status and notes.')}</p>
