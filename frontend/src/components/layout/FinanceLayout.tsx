@@ -1,4 +1,4 @@
-import { Banknote, BarChart3, BookOpenText, CalendarRange, Car, FileSpreadsheet, LayoutDashboard, Percent, ReceiptText, Scale, ShieldCheck, UsersRound, Wallet, WalletCards } from 'lucide-react';
+import { Banknote, BarChart3, CalendarRange, Car, FileSpreadsheet, LayoutDashboard, Percent, ReceiptText, ShieldCheck, UsersRound, Wallet, WalletCards } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -23,11 +23,6 @@ export function FinanceLayout() {
     { to: '/finance/carried-advances', icon: WalletCards, label: t('carriedAdvancesTitle'), group: payroll },
     { to: '/finance/commission-calculation', icon: Percent, label: ar ? 'حساب العمولات' : 'Commission calculator', group: payroll },
     { to: '/finance/exports', icon: BarChart3, label: ar ? 'مركز السحبات Excel' : 'Excel export center', group: finance },
-    { to: '/finance/collections', icon: ReceiptText, label: ar ? 'التحصيلات المالية' : 'Financial collections', group: finance },
-    { to: '/finance/custody', icon: WalletCards, label: ar ? 'عهد المحصلين' : 'Collector custody', group: finance },
-    { to: '/finance/journals', icon: BookOpenText, label: ar ? 'القيود اليومية' : 'Journals', group: finance },
-    { to: '/finance/accounts', icon: Scale, label: ar ? 'دليل الحسابات' : 'Chart of accounts', group: finance },
-    { to: '/finance/periods', icon: CalendarRange, label: ar ? 'الفترات والإقفال' : 'Periods & close', group: finance },
     { to: '/finance/reports', icon: BarChart3, label: ar ? 'ميزان المراجعة' : 'Trial Balance', group: ar ? 'التقارير المالية' : 'Financial Reports' },
     { to: '/finance/profit-loss', icon: BarChart3, label: ar ? 'قائمة الأرباح والخسائر' : 'Profit & Loss', group: ar ? 'التقارير المالية' : 'Financial Reports' },
     { to: '/finance/salaries', icon: Wallet, label: ar ? 'المرتبات' : 'Salaries', group: payroll },
