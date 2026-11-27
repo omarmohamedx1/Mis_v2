@@ -25,8 +25,10 @@ public sealed class ClaimCashboxSeparationTests
         await f.Book.CreateAsync(new("REVENUE", f.Date, 200, revenue.Id, f.Cash.Id, "Existing revenue", null), default);
         await f.Book.CreateAsync(new("OTHER", f.Date, 50, expense.Id, f.Cash.Id, "Existing expense", null), default);
         var before = await f.Book.SummaryAsync(f.Date, f.Date, default);
-        var profitBefore = await f.Book.ProfitLossAsync(f.Date, f.Date, default);
         var claim = f.Claim(false); f.Db.Add(claim); await f.Db.SaveChangesAsync();
+        var profitBefore = await f.Book.ProfitLossAsync(f.Date, f.Date, default);
+        Assert.Equal(112m, profitBefore.TotalClaims);
+        Assert.Equal(62m, profitBefore.NetProfitLoss);
         await f.Claims.ConfirmReceiptAsync(claim.Id, new(f.Date, 40, Guid.NewGuid()), default);
         var after = await f.Book.SummaryAsync(f.Date, f.Date, default);
         var profitAfter = await f.Book.ProfitLossAsync(f.Date, f.Date, default);
@@ -35,7 +37,7 @@ public sealed class ClaimCashboxSeparationTests
         Assert.Equal(before.CompanyIncome, after.CompanyIncome);
         Assert.Equal(before.CashIn, after.CashIn); Assert.Equal(before.CashOut, after.CashOut);
         Assert.Equal(before.NetCashFlow, after.NetCashFlow);
-        Assert.Equal(profitBefore.TotalRevenue, profitAfter.TotalRevenue);
+        Assert.Equal(profitBefore.TotalClaims, profitAfter.TotalClaims);
         Assert.Equal(profitBefore.TotalExpenses, profitAfter.TotalExpenses);
         Assert.Equal(profitBefore.NetProfitLoss, profitAfter.NetProfitLoss);
     }
@@ -69,6 +71,7 @@ public sealed class ClaimCashboxSeparationTests
         var complete = await f.Claims.ConfirmReceiptAsync(claim.Id, second, default);
         Assert.Equal("RECEIVED", complete.Claim.CollectionStatus);
         Assert.Equal(0, complete.Claim.RemainingAmount);
+        Assert.Equal(112m, (await f.Book.ProfitLossAsync(f.Date, f.Date, default)).TotalClaims);
         await f.Claims.ConfirmReceiptAsync(claim.Id, second, default);
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow,
             OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo").DateTime);
@@ -83,6 +86,7 @@ public sealed class ClaimCashboxSeparationTests
         Assert.Equal(72, reopened.Claim.ReceivedAmount);
         Assert.Equal(40, reopened.Claim.RemainingAmount);
         Assert.Equal("PARTIAL", reopened.Claim.CollectionStatus);
+        Assert.Equal(112m, (await f.Book.ProfitLossAsync(f.Date, f.Date, default)).TotalClaims);
         await f.Claims.ReverseReceiptAsync(claim.Id, reverse, default);
         Assert.Equal(2, await f.Db.FinanceClaimReceiptPostings.CountAsync());
         Assert.Single(await f.Db.JournalEntries.Where(x => x.ReversalOfJournalId != null).ToListAsync());
@@ -276,6 +280,55 @@ public sealed class ClaimCashboxSeparationTests
         Assert.Throws<HrValidationException>(() => ClaimReceiptOptions.Validate([f.Cash, f.Income], new() { AssetAccountId = f.Cash.Id, ClearingAccountId = f.Income.Id }));
         f.Asset.SetCashAccount();
         Assert.Throws<HrValidationException>(() => ClaimReceiptOptions.Validate([f.Asset, f.Clearing], new() { AssetAccountId = f.Asset.Id, ClearingAccountId = f.Clearing.Id }));
+    }
+
+    [Fact]
+    public async Task Profit_loss_counts_full_claims_by_claim_date_and_export_matches_without_writes()
+    {
+        await using var f = new Fixture(); await f.Initialize();
+        var unpaid = f.Claim(false);
+        var partial = f.Claim(false);
+        var received = f.Claim(true);
+        var cancelled = f.Claim(false); cancelled.Cancel(f.User.Id, f.Now);
+        var deleted = f.Claim(false); deleted.SoftDelete(f.User.Id, f.Now);
+        var outside = new FinanceClaim("OUT", null, "Bank", "Monthly", "2025-12", f.Date.AddDays(-1),
+            100, 14, 2, f.Date, true, null, f.User.Id, f.Now);
+        f.Db.AddRange(unpaid, partial, received, cancelled, deleted, outside);
+        await f.Db.SaveChangesAsync();
+        await f.Claims.ConfirmReceiptAsync(partial.Id, new(f.Date, 40, Guid.NewGuid()), default);
+        var journals = await f.Db.JournalEntries.CountAsync();
+        var entries = await f.Db.AccountingBookEntries.CountAsync();
+        var report = await f.Book.ProfitLossAsync(f.Date, f.Date, default);
+        Assert.Equal(336m, report.TotalClaims);
+        Assert.Equal(0m, report.TotalExpenses);
+        Assert.Equal(336m, report.NetProfitLoss);
+        Assert.Equal(3, Assert.Single(report.ClaimCategories).Transactions.Count);
+        Assert.All(report.ClaimCategories[0].Transactions, x => Assert.Equal(112m, x.Amount));
+        using var workbook = new ClosedXML.Excel.XLWorkbook(new MemoryStream(
+            await f.Book.ExportAsync("profit-loss", new(From: f.Date, To: f.Date), default)));
+        Assert.Equal(336m, workbook.Worksheet(1).Cell(7, 2).GetValue<decimal>());
+        Assert.Equal(9, workbook.Worksheet(2).LastRowUsed()!.RowNumber());
+        Assert.Equal(journals, await f.Db.JournalEntries.CountAsync());
+        Assert.Equal(entries, await f.Db.AccountingBookEntries.CountAsync());
+        Assert.False(f.Db.ChangeTracker.HasChanges());
+        var empty = await f.Book.ProfitLossAsync(f.Date.AddDays(1), f.Date.AddDays(1), default);
+        Assert.Equal(0m, empty.TotalClaims); Assert.Empty(empty.ClaimCategories);
+        await Assert.ThrowsAsync<HrValidationException>(() => f.Book.ProfitLossAsync(f.Date.AddDays(1), f.Date, default));
+    }
+
+    [Theory]
+    [InlineData("DRAFT")]
+    [InlineData("REJECTED")]
+    [InlineData("CANCELLED")]
+    [InlineData("DELETED")]
+    [InlineData("VOIDED")]
+    public async Task Profit_loss_excludes_non_active_claim_states(string status)
+    {
+        await using var f = new Fixture(); await f.Initialize();
+        var claim = f.Claim(false); f.Db.Add(claim);
+        f.Db.Entry(claim).Property(x => x.Status).CurrentValue = status;
+        await f.Db.SaveChangesAsync();
+        Assert.Equal(0m, (await f.Book.ProfitLossAsync(f.Date, f.Date, default)).TotalClaims);
     }
 
     private sealed class Fixture : IAsyncDisposable

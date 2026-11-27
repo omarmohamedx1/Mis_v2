@@ -79,16 +79,16 @@ public sealed partial class AccountingBookService
             var result = await ProfitLossAsync(from, to, token);
             Add(T("قائمة الأرباح والخسائر", "Profit & Loss"), [T("البند", "Metric"), T("المبلغ", "Amount")],
             [
-                new object?[] { T("إجمالي الإيرادات", "Total Revenue"), result.TotalRevenue },
+                new object?[] { T("إجمالي المطالبات", "Total Claims"), result.TotalClaims },
                 new object?[] { T("إجمالي المصروفات", "Total Expenses"), result.TotalExpenses },
                 new object?[] { T(result.NetProfitLoss < 0 ? "صافي الخسارة" : "صافي الربح", result.NetProfitLoss < 0 ? "Net Loss" : "Net Profit"), Math.Abs(result.NetProfitLoss) }
             ]);
-            var detailRows = result.RevenueCategories.SelectMany(category => category.Transactions.Select(transaction =>
-                    new object?[] { T("إيراد", "Revenue"), CategoryName(category.Category, ar), transaction.Date, transaction.JournalNumber, transaction.Description, transaction.Amount }))
+            var detailRows = result.ClaimCategories.SelectMany(category => category.Transactions.Select(transaction =>
+                    new object?[] { T("مطالبة", "Claim"), T("المطالبات", "Claims"), transaction.Date, transaction.JournalNumber, transaction.Description, transaction.Amount }))
                 .Concat(result.ExpenseCategories.SelectMany(category => category.Transactions.Select(transaction =>
                     new object?[] { T("مصروف", "Expense"), CategoryName(category.Category, ar), transaction.Date, transaction.JournalNumber, transaction.Description, transaction.Amount })));
             Add(T("تفاصيل الأرباح والخسائر", "Profit & Loss details"),
-                [T("النوع", "Type"), T("الفئة", "Category"), T("التاريخ", "Date"), T("رقم القيد", "Journal"), T("البيان", "Description"), T("المبلغ", "Amount")],
+                [T("النوع", "Type"), T("الفئة", "Category"), T("التاريخ", "Date"), T("رقم المطالبة / القيد", "Claim / Journal Number"), T("البيان", "Description"), T("المبلغ", "Amount")],
                 detailRows);
         }
         if (all || report == "cashbook")

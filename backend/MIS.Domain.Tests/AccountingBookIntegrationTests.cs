@@ -47,8 +47,8 @@ public sealed class AccountingBookIntegrationTests
             await fm.InitializeYearAsync(today.Year, default);
             var accounts = await fm.GetAccountsAsync(default); Guid Account(string code) => accounts.Single(x => x.Code == code).Id;
             var emptyProfitLoss = await bm.ProfitLossAsync(today.AddMonths(1), today.AddMonths(1), default);
-            Check(emptyProfitLoss.TotalRevenue == 0 && emptyProfitLoss.TotalExpenses == 0 && emptyProfitLoss.NetProfitLoss == 0 &&
-                  emptyProfitLoss.RevenueCategories.Count == 0 && emptyProfitLoss.ExpenseCategories.Count == 0,
+            Check(emptyProfitLoss.TotalClaims == 0 && emptyProfitLoss.TotalExpenses == 0 && emptyProfitLoss.NetProfitLoss == 0 &&
+                  emptyProfitLoss.ClaimCategories.Count == 0 && emptyProfitLoss.ExpenseCategories.Count == 0,
                 "an empty accounting period returns a successful zero profit and loss report");
             await Assert.ThrowsAsync<HrValidationException>(() => bm.ProfitLossAsync(today, today.AddDays(-1), default));
             async Task<AccountingBookEntryDto> Create(string cat, decimal amount, DateOnly? date = null, Guid? related = null, string? reference = null) => await bm.CreateAsync(new(cat, date ?? today, amount, Account(MIS.Domain.Constants.AccountingBookValues.AccountCode(cat)), Account(cat == "CARRIED_ADVANCE" ? "310100" : "110300"), "Isolated test " + cat, reference, cat.Contains("ADVANCE") ? employee.Id : null, related, Guid.NewGuid()), default);
@@ -480,6 +480,7 @@ public sealed class AccountingBookIntegrationTests
             await claimService.UpdateAsync(financialClaim.Id, claimInput with { Month = "Edited month" }, default);
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
                 "editing a pending claim does not change Company Income");
+            profitLossBeforeClaim = await bm.ProfitLossAsync(claimRangeFrom, today, default);
             await claimService.ConfirmReceiptAsync(financialClaim.Id, new(today), default);
             await claimService.ConfirmReceiptAsync(financialClaim.Id, new(today), default);
             Check(await db.AccountingBookEntries.CountAsync(x => x.SourceKey != null && x.SourceKey.StartsWith($"CLAIM:{financialClaim.Id}:")) == 1,
@@ -492,7 +493,7 @@ public sealed class AccountingBookIntegrationTests
                   (await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
                 "rejected claim cancellation leaves posted accounting entry and Company Income unchanged");
             var profitLossAfterClaimReceipt = await bm.ProfitLossAsync(claimRangeFrom, today, default);
-            Check(profitLossAfterClaimReceipt.TotalRevenue == profitLossBeforeClaim.TotalRevenue &&
+            Check(profitLossAfterClaimReceipt.TotalClaims == profitLossBeforeClaim.TotalClaims &&
                   profitLossAfterClaimReceipt.TotalExpenses == profitLossBeforeClaim.TotalExpenses,
                 "claim receipt is not duplicated as profit and loss revenue");
             Check((await bm.AdvancesAsync(today, null, null, default)).Sum(x => x.Remaining) == advancesBeforeClaim,
@@ -516,7 +517,7 @@ public sealed class AccountingBookIntegrationTests
             Check(await db.JournalEntries.CountAsync(x => x.ReversalOfJournalId == secondClaimReceipt.AccountingBookEntry.JournalEntryId) == 1,
                 "retrying a specific receipt reversal does not post another reversal");
             var profitLossAfterClaimReversal = await bm.ProfitLossAsync(claimRangeFrom, today, default);
-            Check(profitLossAfterClaimReversal.TotalRevenue == profitLossBeforeClaim.TotalRevenue &&
+            Check(profitLossAfterClaimReversal.TotalClaims == profitLossBeforeClaim.TotalClaims - 11100m &&
                   profitLossAfterClaimReversal.TotalExpenses == profitLossBeforeClaim.TotalExpenses,
                 "claim receipt reversals leave profit and loss unchanged");
 
@@ -547,7 +548,7 @@ public sealed class AccountingBookIntegrationTests
             Check((await bm.SummaryAsync(claimRangeFrom, today, default)).CompanyIncome == incomeBeforeClaim.CompanyIncome,
                 "explicit historical posting is idempotent and uses the recalculated net amount");
             var profitLossAfterHistoricalClaim = await bm.ProfitLossAsync(claimRangeFrom, today, default);
-            Check(profitLossAfterHistoricalClaim.TotalRevenue == profitLossBeforeHistoricalClaim.TotalRevenue &&
+            Check(profitLossAfterHistoricalClaim.TotalClaims == profitLossBeforeHistoricalClaim.TotalClaims &&
                   profitLossAfterHistoricalClaim.TotalExpenses == profitLossBeforeHistoricalClaim.TotalExpenses,
                 "historical claim posting does not create profit and loss revenue");
             await claimService.ReverseReceiptAsync(historicalClaim.Id, new("Historical test reversal"), default);
@@ -563,19 +564,19 @@ public sealed class AccountingBookIntegrationTests
             var profitIncome = await Create("REVENUE", 100000m); await Post(profitIncome);
             var profitExpense = await Create("PETTY", 40000m); await Post(profitExpense);
             var profitResult = await bm.ProfitLossAsync(reportFrom, today, default);
-            Check(profitResult.TotalRevenue - profitLossBaseline.TotalRevenue == 100000m &&
+            Check(profitResult.TotalClaims == profitLossBaseline.TotalClaims &&
                   profitResult.TotalExpenses - profitLossBaseline.TotalExpenses == 40000m &&
-                  profitResult.NetProfitLoss - profitLossBaseline.NetProfitLoss == 60000m,
-                "profit and loss reports a 100000 revenue less 40000 expense as 60000 net profit");
+                  profitResult.NetProfitLoss - profitLossBaseline.NetProfitLoss == -40000m,
+                "profit and loss ignores revenue journals and includes 40000 expense");
             var lossRevenue = await Create("REVENUE", 50000m); await Post(lossRevenue);
             var lossExpense = await Create("OTHER", 80000m); await Post(lossExpense);
             var lossResult = await bm.ProfitLossAsync(reportFrom, today, default);
-            Check(lossResult.TotalRevenue - profitResult.TotalRevenue == 50000m &&
+            Check(lossResult.TotalClaims == profitResult.TotalClaims &&
                   lossResult.TotalExpenses - profitResult.TotalExpenses == 80000m &&
-                  lossResult.NetProfitLoss - profitResult.NetProfitLoss == -30000m,
-                "profit and loss reports a 50000 revenue less 80000 expense as a 30000 net loss");
-            Check(lossResult.RevenueCategories.Single(x => x.Category == "REVENUE").Transactions.Count(x => x.JournalNumber == profitIncome.JournalNumber) == 1,
-                "a posted revenue journal is counted exactly once");
+                  lossResult.NetProfitLoss - profitResult.NetProfitLoss == -80000m,
+                "profit and loss ignores revenue journals and includes 80000 expense");
+            Check(!lossResult.ClaimCategories.SelectMany(x => x.Transactions).Any(x => x.JournalNumber == profitIncome.JournalNumber),
+                "posted revenue journals are excluded from claims reporting");
             await fr.ReverseJournalAsync(lossExpense.JournalEntryId, new("P&L test reversal"), default);
             var reversedLoss = await bm.ProfitLossAsync(reportFrom, today, default);
             Check(lossResult.TotalExpenses - reversedLoss.TotalExpenses == 80000m,
@@ -587,19 +588,19 @@ public sealed class AccountingBookIntegrationTests
             canceledJournal.AddLine(Account("410100"), 0, 123m, 0, 123m, 1, "Cancelled P&L test");
             canceledJournal.Cancel(); db.JournalEntries.Add(canceledJournal); await db.SaveChangesAsync();
             var afterCancellation = await bm.ProfitLossAsync(reportFrom, today, default);
-            Check(afterCancellation.TotalRevenue == reversedLoss.TotalRevenue && afterCancellation.TotalExpenses == reversedLoss.TotalExpenses,
+            Check(afterCancellation.TotalClaims == reversedLoss.TotalClaims && afterCancellation.TotalExpenses == reversedLoss.TotalExpenses,
                 "cancelled journals do not affect profit and loss");
             var outsideDate = reportFrom.AddDays(-1);
             var previousPeriodRevenue = await Create("REVENUE", 700m, outsideDate); await Post(previousPeriodRevenue);
             var currentRangeAfterPriorRevenue = await bm.ProfitLossAsync(reportFrom, today, default);
             var priorDayReport = await bm.ProfitLossAsync(outsideDate, outsideDate, default);
-            Check(currentRangeAfterPriorRevenue.TotalRevenue == afterCancellation.TotalRevenue &&
-                  priorDayReport.TotalRevenue == 700m && priorDayReport.TotalExpenses == 0,
-                "profit and loss date filters include only posted transactions in the selected range");
+            Check(currentRangeAfterPriorRevenue.TotalClaims == afterCancellation.TotalClaims &&
+                  priorDayReport.TotalClaims == 0m && priorDayReport.TotalExpenses == 0,
+                "revenue journals outside the claim date range do not affect profit and loss");
             var beforeCashReceipt = await bm.ProfitLossAsync(reportFrom, today, default);
             var pAndLCashReceipt = await Create("INCOME", 250000m); await Post(pAndLCashReceipt);
             var afterCashReceipt = await bm.ProfitLossAsync(reportFrom, today, default);
-            Check(afterCashReceipt.TotalRevenue == beforeCashReceipt.TotalRevenue &&
+            Check(afterCashReceipt.TotalClaims == beforeCashReceipt.TotalClaims &&
                   afterCashReceipt.TotalExpenses == beforeCashReceipt.TotalExpenses &&
                   afterCashReceipt.NetProfitLoss == beforeCashReceipt.NetProfitLoss,
                 "Company Income cash movements do not affect profit and loss");
@@ -608,8 +609,8 @@ public sealed class AccountingBookIntegrationTests
             var afterAdvance = await bm.ProfitLossAsync(reportFrom, today, default);
             var pAndLRepayment = await Create("ADVANCE_REPAYMENT", 200m, related: pAndLAdvance.Id); await Post(pAndLRepayment);
             var afterRepayment = await bm.ProfitLossAsync(reportFrom, today, default);
-            Check(afterAdvance.TotalRevenue == beforeAdvance.TotalRevenue && afterAdvance.TotalExpenses == beforeAdvance.TotalExpenses &&
-                  afterRepayment.TotalRevenue == beforeAdvance.TotalRevenue && afterRepayment.TotalExpenses == beforeAdvance.TotalExpenses,
+            Check(afterAdvance.TotalClaims == beforeAdvance.TotalClaims && afterAdvance.TotalExpenses == beforeAdvance.TotalExpenses &&
+                  afterRepayment.TotalClaims == beforeAdvance.TotalClaims && afterRepayment.TotalExpenses == beforeAdvance.TotalExpenses,
                 "employee advance creation and repayment do not affect profit and loss");
             using (var profitLossExport = new XLWorkbook(new MemoryStream(await bm.ExportAsync("profit-loss", new(From: reportFrom, To: today), default))))
                 Check(profitLossExport.Worksheets.Count == 2 && profitLossExport.Worksheets.First().RowsUsed().Count() == 8 &&

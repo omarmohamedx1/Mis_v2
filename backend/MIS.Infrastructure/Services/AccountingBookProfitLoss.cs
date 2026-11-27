@@ -14,7 +14,7 @@ public sealed partial class AccountingBookService
         var lines = await db.JournalEntryLines.AsNoTracking()
             .Where(x => (x.JournalEntry.Status == "POSTED" || x.JournalEntry.Status == "REVERSED")
                 && x.JournalEntry.PostingDate >= from && x.JournalEntry.PostingDate <= to
-                && (x.Account.AccountType == "REVENUE" || x.Account.AccountType == "EXPENSE")
+                && x.Account.AccountType == "EXPENSE"
                 && x.JournalEntry.EntryType != "ACCOUNTING_DELETE"
                 && !db.JournalEntries.Any(reversal => reversal.ReversalOfJournalId == x.JournalEntryId && reversal.EntryType == "ACCOUNTING_DELETE"))
             .Select(x => new
@@ -34,19 +34,15 @@ public sealed partial class AccountingBookService
             .GroupBy(x => new { x.JournalEntryId, x.JournalNumber, x.PostingDate, x.Description, x.Code, x.AccountType })
             .Select(group => new ProfitLossMovement
             {
-                Category = group.Key.AccountType == "REVENUE"
-                    ? "REVENUE"
-                    : AccountingBookValues.Categories.FirstOrDefault(category =>
-                        AccountingBookValues.AccountType(category) == "EXPENSE" &&
-                        AccountingBookValues.AccountCode(category) == group.Key.Code) ?? "OTHER",
-                Type = group.Key.AccountType,
+                Category = AccountingBookValues.Categories.FirstOrDefault(category =>
+                    AccountingBookValues.AccountType(category) == "EXPENSE" &&
+                    AccountingBookValues.AccountCode(category) == group.Key.Code) ?? "OTHER",
+                Type = "EXPENSE",
                 Transaction = new(
                     group.Key.PostingDate,
                     group.Key.JournalNumber,
                     group.Key.Description,
-                    group.Key.AccountType == "REVENUE"
-                        ? group.Sum(x => x.BaseCredit - x.BaseDebit)
-                        : group.Sum(x => x.BaseDebit - x.BaseCredit))
+                    group.Sum(x => x.BaseDebit - x.BaseCredit))
             })
             .Where(x => x.Transaction.Amount != 0)
             .ToList();
@@ -95,11 +91,23 @@ public sealed partial class AccountingBookService
                 .OrderBy(x => x.Category)
                 .ToArray();
 
-        var revenueCategories = Categories("REVENUE");
+        // Claims has no separate approval workflow: PENDING includes unpaid/partially paid
+        // registered claims; RECEIVED includes fully paid claims. Explicitly allow only these
+        // active states. This is management reporting, independent of journal recognition.
+        var claims = await db.FinanceClaims.AsNoTracking()
+            .Where(x => x.DeletedAt == null && (x.Status == "PENDING" || x.Status == "RECEIVED")
+                && x.ClaimDate >= from && x.ClaimDate <= to)
+            .OrderBy(x => x.ClaimDate).ThenBy(x => x.Serial).ThenBy(x => x.Id)
+            .Select(x => new AccountingProfitLossTransactionDto(
+                x.ClaimDate, x.Serial ?? x.Id.ToString(),
+                x.BankName + " · " + x.ClaimType + " · " + x.Month, x.Total))
+            .ToListAsync(token);
+        IReadOnlyList<AccountingProfitLossCategoryDto> claimCategories = claims.Count == 0
+            ? [] : [new("CLAIMS", claims.Sum(x => x.Amount), claims)];
         var expenseCategories = Categories("EXPENSE");
-        var revenue = revenueCategories.Sum(x => x.Amount);
+        var totalClaims = claimCategories.Sum(x => x.Amount);
         var expenses = expenseCategories.Sum(x => x.Amount);
-        return new(from, to, revenue, expenses, revenue - expenses, revenueCategories, expenseCategories);
+        return new(from, to, totalClaims, expenses, totalClaims - expenses, claimCategories, expenseCategories);
     }
 
     private sealed class ProfitLossMovement

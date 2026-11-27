@@ -15,12 +15,12 @@ public sealed record CreateAccountingBookEntryRequest(
     [MaxLength(80)] string? PaymentMethod = null, [MaxLength(1000)] string? Notes = null);
 public sealed record AccountingBookCategoryTotalDto(string Category, decimal Amount, int Count);
 public sealed record AccountingBookSummaryDto(DateOnly From, DateOnly To, decimal CompanyIncome, decimal Revenue, decimal Expenses, decimal AdvancesIssued, decimal AdvanceRepayments, decimal CashIn, decimal CashOut, decimal NetCashFlow, decimal PendingAmount, int PendingCount, decimal OutstandingAdvances, decimal CarriedAdvances, int LegacyPaidCount, IReadOnlyList<AccountingBookCategoryTotalDto> Categories);
-/// <summary>Profit and loss totals and category details calculated from posted revenue and expense journal lines.</summary>
+/// <summary>Management profit and loss from active registered claims and existing expense calculations.</summary>
 public sealed record AccountingProfitLossDto(
-    DateOnly From, DateOnly To, decimal TotalRevenue, decimal TotalExpenses, decimal NetProfitLoss,
-    IReadOnlyList<AccountingProfitLossCategoryDto> RevenueCategories,
+    DateOnly From, DateOnly To, decimal TotalClaims, decimal TotalExpenses, decimal NetProfitLoss,
+    IReadOnlyList<AccountingProfitLossCategoryDto> ClaimCategories,
     IReadOnlyList<AccountingProfitLossCategoryDto> ExpenseCategories);
-/// <summary>A revenue or expense category and its selected-period transactions.</summary>
+/// <summary>A claim or expense category and its selected-period transactions.</summary>
 public sealed record AccountingProfitLossCategoryDto(
     string Category, decimal Amount, IReadOnlyList<AccountingProfitLossTransactionDto> Transactions);
 /// <summary>A posted journal movement contributing to a profit and loss category.</summary>
